@@ -284,3 +284,26 @@ $bio = get_field('medewerker_kort_bio', get_the_ID());
 ---
 
 *This file is the source of truth for all AI agents, automated tools, and contributors working on the Voelgoed Rebuild inside Novamira.*
+
+---
+
+## Voelgoed Member Perks Plugin Submodule
+
+The `voelgoed-member-perks/` directory is a Git submodule for the custom **Voelgoed Member Perks** plugin.
+
+When working inside `voelgoed-member-perks/`, agents must follow:
+
+    voelgoed-member-perks/AGENTS.md
+
+That plugin-specific `AGENTS.md` overrides the broader site-level rules where they conflict.
+
+Important exception:
+
+- The broader Voelgoed rebuild prefers ACF, Bricks, and FluentSnippets for ordinary site work.
+- The Voelgoed Member Perks plugin is intentionally custom plugin code.
+- Do not put plugin logic into FluentSnippets, theme files, or Bricks templates.
+- Do not treat ACF as runtime authority inside the plugin.
+- Do not hardcode PMPro level IDs, Woo product IDs, billing terms, or current programme/level assumptions.
+- Use the plugin repo, branches, PRs, and slice planning docs as the implementation authority.
+
+The parent `vgnova` repo remains the Novamira/staging documentation workspace. The plugin repo is the code authority for Voelgoed Member Perks.
