@@ -1,6 +1,6 @@
 # Unified dashboard staging audit
 
-**Date:** 2026-09-19  
+**Date:** 2026-09-19
 **Scope:** Staging integration contract for the authenticated `/my-voelgoed/` dashboard.
 
 ## Audit method
@@ -144,4 +144,3 @@ The dashboard query provider must preserve the same privacy rule. User-specific 
 - `voelgoed-member-perks/includes/Config/SettingsRepository.php`
 - `voelgoed-member-perks/includes/Query/BricksHubDynamicData.php`
 - `voelgoed-member-perks/includes/Query/BricksQueryProvider.php`
-
