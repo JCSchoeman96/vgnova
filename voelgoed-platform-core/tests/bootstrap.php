@@ -12,7 +12,32 @@ require_once dirname(__DIR__) . '/includes/Services/CommerceService.php';
 if (! function_exists('home_url')) {
     function home_url(string $path = ''): string
     {
-        return 'https://voelgoed.test' . $path;
+        return (string) ($GLOBALS['vgpc_home_url'] ?? 'https://voelgoed.test') . $path;
+    }
+}
+
+if (! isset($GLOBALS['vgpc_current_user_id'])) {
+    $GLOBALS['vgpc_current_user_id'] = 42;
+}
+
+if (! function_exists('get_current_user_id')) {
+    function get_current_user_id(): int
+    {
+        return (int) ($GLOBALS['vgpc_current_user_id'] ?? 0);
+    }
+}
+
+if (! function_exists('vgpc_set_current_user_id')) {
+    function vgpc_set_current_user_id(int $user_id): void
+    {
+        $GLOBALS['vgpc_current_user_id'] = $user_id;
+    }
+}
+
+if (! function_exists('vgpc_set_home_url')) {
+    function vgpc_set_home_url(string $url): void
+    {
+        $GLOBALS['vgpc_home_url'] = rtrim($url, '/');
     }
 }
 

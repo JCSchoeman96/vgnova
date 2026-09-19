@@ -26,7 +26,7 @@ final class MembershipService implements DashboardServiceInterface
      */
     public function card(int $user_id): array
     {
-        if ($user_id <= 0) {
+        if (! $this->is_authenticated_user($user_id)) {
             return DashboardCard::empty(
                 'membership',
                 AfrikaansLabels::MEMBERSHIP,
@@ -144,19 +144,18 @@ final class MembershipService implements DashboardServiceInterface
             } else {
                 return null;
             }
+            if ($levels instanceof \Traversable) {
+                $levels = iterator_to_array($levels, false);
+            }
+
+            if ($levels === false || $levels === null) {
+                return [];
+            }
+
+            return is_array($levels) ? array_values($levels) : [];
         } catch (Throwable) {
             return null;
         }
-
-        if ($levels === false || $levels === null) {
-            return [];
-        }
-
-        if ($levels instanceof \Traversable) {
-            $levels = iterator_to_array($levels, false);
-        }
-
-        return is_array($levels) ? array_values($levels) : [];
     }
 
     private function url(string $page, string $query = ''): string
@@ -174,7 +173,22 @@ final class MembershipService implements DashboardServiceInterface
                 return '';
             }
 
-            return $this->scalar_string(\pmpro_url($page, $query, 'https'));
+            $scheme = null;
+            if (function_exists('home_url')) {
+                $home_parts = parse_url($this->scalar_string(\home_url('/')));
+                if (is_array($home_parts) && isset($home_parts['scheme'])) {
+                    $candidate = strtolower((string) $home_parts['scheme']);
+                    if (in_array($candidate, ['http', 'https'], true)) {
+                        $scheme = $candidate;
+                    }
+                }
+            }
+
+            if ($scheme === null) {
+                return $this->scalar_string(\pmpro_url($page, $query));
+            }
+
+            return $this->scalar_string(\pmpro_url($page, $query, $scheme));
         } catch (Throwable) {
             return '';
         }
@@ -264,6 +278,10 @@ final class MembershipService implements DashboardServiceInterface
 
     private function date_value(mixed $value): string
     {
+        if ($value === null || $value === false) {
+            return '';
+        }
+
         if ($value instanceof \DateTimeInterface) {
             return $value->format('Y-m-d');
         }
@@ -276,13 +294,44 @@ final class MembershipService implements DashboardServiceInterface
             }
         }
 
-        if (is_numeric($value) && (int) $value > 0) {
+        if (is_numeric($value)) {
+            if ((float) $value <= 0) {
+                return '';
+            }
+
             return function_exists('wp_date')
                 ? (string) \wp_date('Y-m-d', (int) $value)
-                : gmdate('Y-m-d', (int) $value);
+                : date('Y-m-d', (int) $value);
         }
 
-        return $this->scalar_string($value);
+        $text = $this->scalar_string($value);
+        if ($text === '' || in_array($text, ['0000-00-00', '0000-00-00 00:00:00'], true)) {
+            return '';
+        }
+
+        $timestamp = strtotime($text);
+        if ($timestamp !== false) {
+            return function_exists('wp_date')
+                ? (string) \wp_date('Y-m-d', $timestamp)
+                : date('Y-m-d', $timestamp);
+        }
+
+        return $text;
+    }
+
+    private function is_authenticated_user(int $user_id): bool
+    {
+        if ($user_id <= 0 || ! function_exists('get_current_user_id')) {
+            return false;
+        }
+
+        try {
+            $current_user_id = (int) \get_current_user_id();
+        } catch (Throwable) {
+            return false;
+        }
+
+        return $current_user_id > 0 && $current_user_id === $user_id;
     }
 
     private function status(string $status): string

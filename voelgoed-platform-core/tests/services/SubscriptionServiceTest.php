@@ -113,18 +113,14 @@ final class SubscriptionServiceTest
 {
     public function test_populated_user_returns_all_subscription_statuses_and_native_actions(): void
     {
-        if (! class_exists(SubscriptionService::class)) {
-            assert_true(false, 'SubscriptionService should be available.');
-
-            return;
-        }
+        assert_true(class_exists(SubscriptionService::class));
 
         $active = new VgpcSubscriptionFixture(
             101,
             42,
             'active',
             [new VgpcSubscriptionLineFixture('Voelgoedvriendinne Silwer')],
-            '2026-10-01',
+            '2026-10-01 09:30:00',
             'Via PayFast',
             '/my-account/view-subscription/101/'
         );
@@ -174,9 +170,7 @@ final class SubscriptionServiceTest
 
     public function test_empty_user_returns_a_valid_empty_card(): void
     {
-        if (! class_exists(SubscriptionService::class)) {
-            return;
-        }
+        assert_true(class_exists(SubscriptionService::class));
 
         $card = (new SubscriptionService(new VgpcSubscriptionProviderFixture([], [])))->card(42);
 
@@ -188,9 +182,7 @@ final class SubscriptionServiceTest
 
     public function test_missing_woo_subscriptions_returns_an_unavailable_card_without_throwing(): void
     {
-        if (! class_exists(SubscriptionService::class)) {
-            return;
-        }
+        assert_true(class_exists(SubscriptionService::class));
 
         $card = (new SubscriptionService())->card(42);
 
@@ -199,5 +191,57 @@ final class SubscriptionServiceTest
         assert_same('unavailable', $card['state']);
         assert_same([], $card['items']);
         assert_same([], $card['actions']);
+    }
+
+    public function test_rejects_a_requested_user_that_differs_from_the_authenticated_user(): void
+    {
+        assert_true(class_exists(SubscriptionService::class));
+
+        $provider = new VgpcSubscriptionProviderFixture(
+            [new VgpcSubscriptionFixture(101, 99, 'active', [], '2026-10-01', 'PayFast', '/subscription/101/')],
+            []
+        );
+
+        $card = (new SubscriptionService($provider))->card(99);
+
+        assert_same('empty', $card['state']);
+        assert_same([], $card['items']);
+        assert_same([], $card['actions']);
+        assert_same(0, $provider->requested_user_id);
+    }
+
+    public function test_returns_an_empty_card_when_the_authenticated_user_is_logged_out(): void
+    {
+        assert_true(class_exists(SubscriptionService::class));
+
+        vgpc_set_current_user_id(0);
+        $provider = new VgpcSubscriptionProviderFixture([], []);
+
+        try {
+            $card = (new SubscriptionService($provider))->card(42);
+        } finally {
+            vgpc_set_current_user_id(42);
+        }
+
+        assert_same('empty', $card['state']);
+        assert_same([], $card['items']);
+        assert_same([], $card['actions']);
+        assert_same(0, $provider->requested_user_id);
+    }
+
+    public function test_rejects_a_zero_requested_user_without_querying_woo_subscriptions(): void
+    {
+        assert_true(class_exists(SubscriptionService::class));
+
+        $provider = new VgpcSubscriptionProviderFixture(
+            [new VgpcSubscriptionFixture(101, 42, 'active', [], '2026-10-01', 'PayFast', '/subscription/101/')],
+            []
+        );
+
+        $card = (new SubscriptionService($provider))->card(0);
+
+        assert_same('empty', $card['state']);
+        assert_same([], $card['items']);
+        assert_same(0, $provider->requested_user_id);
     }
 }

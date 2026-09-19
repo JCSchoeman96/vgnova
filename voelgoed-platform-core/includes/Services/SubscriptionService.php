@@ -26,7 +26,7 @@ final class SubscriptionService implements DashboardServiceInterface
      */
     public function card(int $user_id): array
     {
-        if ($user_id <= 0) {
+        if (! $this->is_authenticated_user($user_id)) {
             return DashboardCard::empty(
                 'subscriptions',
                 AfrikaansLabels::SUBSCRIPTIONS,
@@ -46,11 +46,20 @@ final class SubscriptionService implements DashboardServiceInterface
         }
 
         $items = [];
-        foreach ($subscriptions as $subscription) {
-            $item = $this->item($subscription, $user_id);
-            if ($item !== null) {
-                $items[] = $item;
+        try {
+            foreach ($subscriptions as $subscription) {
+                $item = $this->item($subscription, $user_id);
+                if ($item !== null) {
+                    $items[] = $item;
+                }
             }
+        } catch (Throwable) {
+            return DashboardCard::empty(
+                'subscriptions',
+                AfrikaansLabels::SUBSCRIPTIONS,
+                'unavailable',
+                'Subskripsies is tans nie beskikbaar nie.'
+            );
         }
 
         if ($items === []) {
@@ -96,15 +105,14 @@ final class SubscriptionService implements DashboardServiceInterface
             } else {
                 return null;
             }
+            if ($subscriptions instanceof \Traversable) {
+                $subscriptions = iterator_to_array($subscriptions, false);
+            }
+
+            return is_array($subscriptions) ? array_values($subscriptions) : [];
         } catch (Throwable) {
             return null;
         }
-
-        if ($subscriptions instanceof \Traversable) {
-            $subscriptions = iterator_to_array($subscriptions, false);
-        }
-
-        return is_array($subscriptions) ? array_values($subscriptions) : [];
     }
 
     /**
@@ -160,9 +168,13 @@ final class SubscriptionService implements DashboardServiceInterface
 
     private function product_name(object $subscription): string
     {
-        $items = $this->method_value($subscription, 'get_items');
-        if ($items instanceof \Traversable) {
-            $items = iterator_to_array($items, false);
+        try {
+            $items = $this->method_value($subscription, 'get_items');
+            if ($items instanceof \Traversable) {
+                $items = iterator_to_array($items, false);
+            }
+        } catch (Throwable) {
+            throw new \RuntimeException('Subscription items could not be read.');
         }
 
         $names = [];
@@ -204,7 +216,7 @@ final class SubscriptionService implements DashboardServiceInterface
         }
 
         if ($formatted !== '') {
-            return $formatted;
+            return $this->date_value($formatted);
         }
 
         $date = $this->method_value($subscription, 'get_date', ['next_payment']);
@@ -365,6 +377,10 @@ final class SubscriptionService implements DashboardServiceInterface
 
     private function date_value(mixed $value): string
     {
+        if ($value === null || $value === false) {
+            return '';
+        }
+
         if ($value instanceof \DateTimeInterface) {
             return $value->format('Y-m-d');
         }
@@ -377,7 +393,44 @@ final class SubscriptionService implements DashboardServiceInterface
             }
         }
 
-        return $this->scalar_string($value);
+        if (is_numeric($value)) {
+            if ((float) $value <= 0) {
+                return '';
+            }
+
+            return function_exists('wp_date')
+                ? (string) \wp_date('Y-m-d', (int) $value)
+                : date('Y-m-d', (int) $value);
+        }
+
+        $text = $this->scalar_string($value);
+        if ($text === '' || in_array($text, ['0000-00-00', '0000-00-00 00:00:00'], true)) {
+            return '';
+        }
+
+        $timestamp = strtotime($text);
+        if ($timestamp !== false) {
+            return function_exists('wp_date')
+                ? (string) \wp_date('Y-m-d', $timestamp)
+                : date('Y-m-d', $timestamp);
+        }
+
+        return $text;
+    }
+
+    private function is_authenticated_user(int $user_id): bool
+    {
+        if ($user_id <= 0 || ! function_exists('get_current_user_id')) {
+            return false;
+        }
+
+        try {
+            $current_user_id = (int) \get_current_user_id();
+        } catch (Throwable) {
+            return false;
+        }
+
+        return $current_user_id > 0 && $current_user_id === $user_id;
     }
 
     private function status_label(string $status): string

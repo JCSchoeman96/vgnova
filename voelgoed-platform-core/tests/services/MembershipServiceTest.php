@@ -42,11 +42,7 @@ final class MembershipServiceTest
 {
     public function test_populated_user_returns_pmpro_membership_and_native_actions(): void
     {
-        if (! class_exists(MembershipService::class)) {
-            assert_true(false, 'MembershipService should be available.');
-
-            return;
-        }
+        assert_true(class_exists(MembershipService::class));
 
         $provider = new VgpcMembershipProviderFixture(
             [
@@ -54,8 +50,8 @@ final class MembershipServiceTest
                     'name'        => 'Voelgoedvriendinne Silwer',
                     'status'      => 'active',
                     'startdate'   => '2026-01-01',
-                    'enddate'     => '2026-12-31',
-                    'renewal_date'=> '2026-12-31',
+                    'enddate'     => '2026-12-31 18:00:00',
+                    'renewal_date'=> '2026-12-31T12:00:00+02:00',
                     'ID'          => 987,
                 ],
             ],
@@ -89,9 +85,7 @@ final class MembershipServiceTest
 
     public function test_empty_user_returns_a_valid_empty_card(): void
     {
-        if (! class_exists(MembershipService::class)) {
-            return;
-        }
+        assert_true(class_exists(MembershipService::class));
 
         $provider = new VgpcMembershipProviderFixture([], [
             'account' => '/pmpro-account/',
@@ -110,16 +104,105 @@ final class MembershipServiceTest
 
     public function test_missing_pmpro_returns_an_unavailable_card_without_throwing(): void
     {
-        if (! class_exists(MembershipService::class)) {
-            return;
-        }
+        assert_true(class_exists(MembershipService::class));
 
-        $card = (new MembershipService())->card(42);
+        $card = (new MembershipService(new stdClass()))->card(42);
 
         assert_same('membership', $card['key']);
         assert_same(AfrikaansLabels::MEMBERSHIP, $card['label']);
         assert_same('unavailable', $card['state']);
         assert_same([], $card['items']);
         assert_same([], $card['actions']);
+    }
+
+    public function test_rejects_a_requested_user_that_differs_from_the_authenticated_user(): void
+    {
+        assert_true(class_exists(MembershipService::class));
+
+        $provider = new VgpcMembershipProviderFixture(
+            [(object) ['name' => 'Moet nie sigbaar wees nie', 'ID' => 987]],
+            ['account' => '/pmpro-account/']
+        );
+
+        $card = (new MembershipService($provider))->card(99);
+
+        assert_same('empty', $card['state']);
+        assert_same([], $card['items']);
+        assert_same([], $card['actions']);
+        assert_same(0, $provider->requested_user_id);
+    }
+
+    public function test_returns_an_empty_card_when_the_authenticated_user_is_logged_out(): void
+    {
+        assert_true(class_exists(MembershipService::class));
+
+        vgpc_set_current_user_id(0);
+        $provider = new VgpcMembershipProviderFixture(
+            [(object) ['name' => 'Moet nie sigbaar wees nie', 'ID' => 987]],
+            ['account' => '/pmpro-account/']
+        );
+
+        try {
+            $card = (new MembershipService($provider))->card(42);
+        } finally {
+            vgpc_set_current_user_id(42);
+        }
+
+        assert_same('empty', $card['state']);
+        assert_same([], $card['items']);
+        assert_same([], $card['actions']);
+        assert_same(0, $provider->requested_user_id);
+    }
+
+    public function test_rejects_a_zero_requested_user_without_querying_pmpro(): void
+    {
+        assert_true(class_exists(MembershipService::class));
+
+        $provider = new VgpcMembershipProviderFixture(
+            [(object) ['name' => 'Moet nie sigbaar wees nie', 'ID' => 987]],
+            ['account' => '/pmpro-account/']
+        );
+
+        $card = (new MembershipService($provider))->card(0);
+
+        assert_same('empty', $card['state']);
+        assert_same([], $card['items']);
+        assert_same(0, $provider->requested_user_id);
+    }
+
+    public function test_http_pmpro_urls_remain_http(): void
+    {
+        assert_true(class_exists(MembershipService::class));
+
+        if (! function_exists('pmpro_getMembershipLevelsForUser')) {
+            function pmpro_getMembershipLevelsForUser(int $user_id): array
+            {
+                return [(object) ['name' => 'Voelgoedvriendinne Silwer', 'ID' => 987]];
+            }
+        }
+
+        if (! function_exists('pmpro_url')) {
+            function pmpro_url(string $page = '', string $query = '', ?string $scheme = null): string
+            {
+                $path = '/pmpro-' . trim($page, '/') . '/';
+                if ($query !== '') {
+                    $path .= '?' . ltrim($query, '?');
+                }
+
+                $base = $scheme !== null ? $scheme . '://voelgoed.test' : home_url('/');
+
+                return rtrim($base, '/') . $path;
+            }
+        }
+
+        vgpc_set_home_url('http://voelgoed.test');
+
+        try {
+            $card = (new MembershipService())->card(42);
+        } finally {
+            vgpc_set_home_url('https://voelgoed.test');
+        }
+
+        assert_same('http://voelgoed.test/pmpro-account/', $card['actions'][0]['url']);
     }
 }

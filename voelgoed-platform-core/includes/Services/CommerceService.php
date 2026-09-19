@@ -26,7 +26,7 @@ final class CommerceService implements DashboardServiceInterface
      */
     public function card(int $user_id): array
     {
-        if ($user_id <= 0) {
+        if (! $this->is_authenticated_user($user_id)) {
             return DashboardCard::empty(
                 'orders',
                 AfrikaansLabels::ORDERS,
@@ -46,11 +46,20 @@ final class CommerceService implements DashboardServiceInterface
         }
 
         $items = [];
-        foreach ($orders as $order) {
-            $item = $this->item($order, $user_id);
-            if ($item !== null) {
-                $items[] = $item;
+        try {
+            foreach ($orders as $order) {
+                $item = $this->item($order, $user_id);
+                if ($item !== null) {
+                    $items[] = $item;
+                }
             }
+        } catch (Throwable) {
+            return DashboardCard::empty(
+                'orders',
+                AfrikaansLabels::ORDERS,
+                'unavailable',
+                'Bestellings is tans nie beskikbaar nie.'
+            );
         }
 
         $actions = $this->account_actions();
@@ -94,15 +103,14 @@ final class CommerceService implements DashboardServiceInterface
             } else {
                 return null;
             }
+            if ($orders instanceof \Traversable) {
+                $orders = iterator_to_array($orders, false);
+            }
+
+            return is_array($orders) ? array_values($orders) : [];
         } catch (Throwable) {
             return null;
         }
-
-        if ($orders instanceof \Traversable) {
-            $orders = iterator_to_array($orders, false);
-        }
-
-        return is_array($orders) ? array_values($orders) : [];
     }
 
     /**
@@ -168,9 +176,13 @@ final class CommerceService implements DashboardServiceInterface
      */
     private function line_items(object $order): array
     {
-        $items = $this->method_value($order, 'get_items');
-        if ($items instanceof \Traversable) {
-            $items = iterator_to_array($items, false);
+        try {
+            $items = $this->method_value($order, 'get_items');
+            if ($items instanceof \Traversable) {
+                $items = iterator_to_array($items, false);
+            }
+        } catch (Throwable) {
+            throw new \RuntimeException('Order items could not be read.');
         }
 
         if (! is_array($items)) {
@@ -307,6 +319,10 @@ final class CommerceService implements DashboardServiceInterface
 
     private function date_value(mixed $value): string
     {
+        if ($value === null || $value === false) {
+            return '';
+        }
+
         if ($value instanceof \DateTimeInterface) {
             return $value->format('Y-m-d');
         }
@@ -319,7 +335,44 @@ final class CommerceService implements DashboardServiceInterface
             }
         }
 
-        return $this->scalar_string($value);
+        if (is_numeric($value)) {
+            if ((float) $value <= 0) {
+                return '';
+            }
+
+            return function_exists('wp_date')
+                ? (string) \wp_date('Y-m-d', (int) $value)
+                : date('Y-m-d', (int) $value);
+        }
+
+        $text = $this->scalar_string($value);
+        if ($text === '' || in_array($text, ['0000-00-00', '0000-00-00 00:00:00'], true)) {
+            return '';
+        }
+
+        $timestamp = strtotime($text);
+        if ($timestamp !== false) {
+            return function_exists('wp_date')
+                ? (string) \wp_date('Y-m-d', $timestamp)
+                : date('Y-m-d', $timestamp);
+        }
+
+        return $text;
+    }
+
+    private function is_authenticated_user(int $user_id): bool
+    {
+        if ($user_id <= 0 || ! function_exists('get_current_user_id')) {
+            return false;
+        }
+
+        try {
+            $current_user_id = (int) \get_current_user_id();
+        } catch (Throwable) {
+            return false;
+        }
+
+        return $current_user_id > 0 && $current_user_id === $user_id;
     }
 
     private function status_label(string $status): string

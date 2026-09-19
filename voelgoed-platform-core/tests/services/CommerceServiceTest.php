@@ -93,11 +93,11 @@ final class VgpcOrderFixture
 final class VgpcCommerceProviderFixture
 {
     /**
-     * @param array<int, object> $orders
+     * @param mixed $orders
      * @param array<string, string> $endpoints
      */
     public function __construct(
-        private array $orders,
+        private mixed $orders,
         private array $endpoints,
     ) {
     }
@@ -105,10 +105,7 @@ final class VgpcCommerceProviderFixture
     /** @var array<string, mixed> */
     public array $requested_args = [];
 
-    /**
-     * @return array<int, object>
-     */
-    public function orders(array $args): array
+    public function orders(array $args): mixed
     {
         $this->requested_args = $args;
 
@@ -130,18 +127,14 @@ final class CommerceServiceTest
 {
     public function test_populated_user_returns_only_owned_orders_and_native_endpoints(): void
     {
-        if (! class_exists(CommerceService::class)) {
-            assert_true(false, 'CommerceService should be available.');
-
-            return;
-        }
+        assert_true(class_exists(CommerceService::class));
 
         $owned_order = new VgpcOrderFixture(
             501,
             42,
             '501',
             'completed',
-            '2026-09-01',
+            '2026-09-01 11:45:00',
             '249.00',
             'ZAR',
             [new VgpcOrderLineFixture('Voelgoed Joernaal', 2)],
@@ -161,6 +154,7 @@ final class CommerceServiceTest
         $provider = new VgpcCommerceProviderFixture(
             [$owned_order, $other_order],
             [
+                'orders'          => '/my-account/orders/',
                 'downloads'       => '/my-account/downloads/',
                 'edit-address'    => '/my-account/edit-address/',
                 'payment-methods' => '/my-account/payment-methods/',
@@ -185,6 +179,7 @@ final class CommerceServiceTest
 
         $action_urls = array_column($card['actions'], 'url');
         assert_true(in_array('/my-account/downloads/', $action_urls, true));
+        assert_true(in_array('/my-account/orders/', $action_urls, true));
         assert_true(in_array('/my-account/edit-address/', $action_urls, true));
         assert_true(in_array('/my-account/payment-methods/', $action_urls, true));
         assert_false(in_array('library', array_column($card['actions'], 'key'), true));
@@ -192,11 +187,10 @@ final class CommerceServiceTest
 
     public function test_empty_user_returns_a_valid_empty_card_with_woo_account_actions(): void
     {
-        if (! class_exists(CommerceService::class)) {
-            return;
-        }
+        assert_true(class_exists(CommerceService::class));
 
         $provider = new VgpcCommerceProviderFixture([], [
+            'orders'          => '/my-account/orders/',
             'downloads'       => '/my-account/downloads/',
             'edit-address'    => '/my-account/edit-address/',
             'payment-methods' => '/my-account/payment-methods/',
@@ -213,9 +207,7 @@ final class CommerceServiceTest
 
     public function test_missing_woocommerce_returns_an_unavailable_card_without_throwing(): void
     {
-        if (! class_exists(CommerceService::class)) {
-            return;
-        }
+        assert_true(class_exists(CommerceService::class));
 
         $card = (new CommerceService())->card(42);
 
@@ -224,5 +216,75 @@ final class CommerceServiceTest
         assert_same('unavailable', $card['state']);
         assert_same([], $card['items']);
         assert_same([], $card['actions']);
+    }
+
+    public function test_rejects_a_requested_user_that_differs_from_the_authenticated_user(): void
+    {
+        assert_true(class_exists(CommerceService::class));
+
+        $provider = new VgpcCommerceProviderFixture(
+            [new VgpcOrderFixture(501, 99, '501', 'completed', '2026-09-01', '249.00', 'ZAR', [], '/order/501/')],
+            ['orders' => '/my-account/orders/']
+        );
+
+        $card = (new CommerceService($provider))->card(99);
+
+        assert_same('empty', $card['state']);
+        assert_same([], $card['items']);
+        assert_same([], $card['actions']);
+        assert_same([], $provider->requested_args);
+    }
+
+    public function test_returns_an_empty_card_when_the_authenticated_user_is_logged_out(): void
+    {
+        assert_true(class_exists(CommerceService::class));
+
+        vgpc_set_current_user_id(0);
+        $provider = new VgpcCommerceProviderFixture([], []);
+
+        try {
+            $card = (new CommerceService($provider))->card(42);
+        } finally {
+            vgpc_set_current_user_id(42);
+        }
+
+        assert_same('empty', $card['state']);
+        assert_same([], $card['items']);
+        assert_same([], $card['actions']);
+        assert_same([], $provider->requested_args);
+    }
+
+    public function test_throwing_order_iterator_returns_an_unavailable_card(): void
+    {
+        assert_true(class_exists(CommerceService::class));
+
+        $provider = new VgpcCommerceProviderFixture(new class implements IteratorAggregate {
+            public function getIterator(): Traversable
+            {
+                throw new RuntimeException('Provider iterator failed.');
+            }
+        }, []);
+
+        $card = (new CommerceService($provider))->card(42);
+
+        assert_same('unavailable', $card['state']);
+        assert_same([], $card['items']);
+        assert_same([], $card['actions']);
+    }
+
+    public function test_rejects_a_zero_requested_user_without_querying_woocommerce(): void
+    {
+        assert_true(class_exists(CommerceService::class));
+
+        $provider = new VgpcCommerceProviderFixture(
+            [new VgpcOrderFixture(501, 42, '501', 'completed', '2026-09-01', '249.00', 'ZAR', [], '/order/501/')],
+            ['orders' => '/my-account/orders/']
+        );
+
+        $card = (new CommerceService($provider))->card(0);
+
+        assert_same('empty', $card['state']);
+        assert_same([], $card['items']);
+        assert_same([], $provider->requested_args);
     }
 }
