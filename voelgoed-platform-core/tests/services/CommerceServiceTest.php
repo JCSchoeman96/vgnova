@@ -30,7 +30,7 @@ final class VgpcOrderFixture
      */
     public function __construct(
         private int $id,
-        private int $user_id,
+        private mixed $user_id,
         private string $number,
         private string $status,
         private string $date,
@@ -46,7 +46,7 @@ final class VgpcOrderFixture
         return $this->id;
     }
 
-    public function get_user_id(): int
+    public function get_user_id(): mixed
     {
         return $this->user_id;
     }
@@ -270,22 +270,28 @@ final class CommerceServiceTest
     {
         assert_true(class_exists(CommerceService::class));
 
-        $order = new VgpcOrderFixture(
-            505,
-            42,
-            '505',
-            'completed',
-            '2026-02-30',
-            '99.00',
-            'ZAR',
-            [],
-            '/my-account/view-order/505/'
-        );
-        $provider = new VgpcCommerceProviderFixture([$order], []);
+        $orders = [];
+        foreach (['2026-02-30', '2026-02-30abc', '2026-01-01T25:00'] as $offset => $date) {
+            $id = 505 + $offset;
+            $orders[] = new VgpcOrderFixture(
+                $id,
+                42,
+                (string) $id,
+                'completed',
+                $date,
+                '99.00',
+                'ZAR',
+                [],
+                '/my-account/view-order/' . $id . '/'
+            );
+        }
+        $provider = new VgpcCommerceProviderFixture($orders, []);
 
         $card = (new CommerceService($provider))->card(42);
 
         assert_same('', $card['items'][0]['date']);
+        assert_same('', $card['items'][1]['date']);
+        assert_same('', $card['items'][2]['date']);
     }
 
     public function test_rejects_a_requested_user_that_differs_from_the_authenticated_user(): void
@@ -356,5 +362,43 @@ final class CommerceServiceTest
         assert_same('empty', $card['state']);
         assert_same([], $card['items']);
         assert_same([], $provider->requested_args);
+    }
+
+    public function test_accepts_canonical_owner_ids_and_rejects_fractional_or_noncanonical_values(): void
+    {
+        assert_true(class_exists(CommerceService::class));
+
+        $valid = new VgpcOrderFixture(
+            506,
+            '42',
+            '506',
+            'completed',
+            '2026-09-01',
+            '99.00',
+            'ZAR',
+            [],
+            '/order/506/'
+        );
+        $invalid_owners = [42.5, '42.0', '4e1', ' 42', '042'];
+        $orders = [$valid];
+        foreach ($invalid_owners as $offset => $owner_id) {
+            $orders[] = new VgpcOrderFixture(
+                507 + $offset,
+                $owner_id,
+                (string) (507 + $offset),
+                'completed',
+                '2026-09-01',
+                '99.00',
+                'ZAR',
+                [],
+                '/order/' . (507 + $offset) . '/'
+            );
+        }
+
+        $provider = new VgpcCommerceProviderFixture($orders, []);
+        $card = (new CommerceService($provider))->card(42);
+
+        assert_same(1, count($card['items']));
+        assert_same('506', $card['items'][0]['order_number']);
     }
 }

@@ -165,7 +165,22 @@ final class CommerceService implements DashboardServiceInterface
             $owner = $order->user_id;
         }
 
-        return is_numeric($owner) ? (int) $owner : null;
+        return $this->positive_owner_id($owner);
+    }
+
+    private function positive_owner_id(mixed $value): ?int
+    {
+        if (is_int($value)) {
+            return $value > 0 ? $value : null;
+        }
+
+        if (! is_string($value) || preg_match('/^[1-9][0-9]*$/D', $value) !== 1) {
+            return null;
+        }
+
+        $owner_id = (int) $value;
+
+        return $owner_id > 0 && (string) $owner_id === $value ? $owner_id : null;
     }
 
     /**
@@ -347,11 +362,8 @@ final class CommerceService implements DashboardServiceInterface
             return '';
         }
 
-        if (preg_match('/^\d{4}-\d{2}-\d{2}(?:$|[T ])/', $text) === 1) {
-            $parts = array_map('intval', explode('-', substr($text, 0, 10)));
-            if (count($parts) !== 3 || ! checkdate($parts[1], $parts[2], $parts[0])) {
-                return '';
-            }
+        if (preg_match('/^\d{4}-\d{2}-\d{2}/', $text) === 1 && ! $this->valid_iso_date($text)) {
+            return '';
         }
 
         $timestamp = strtotime($text);
@@ -362,6 +374,43 @@ final class CommerceService implements DashboardServiceInterface
         }
 
         return $text;
+    }
+
+    private function valid_iso_date(string $value): bool
+    {
+        $matches = [];
+        if (preg_match(
+            '/^(\d{4})-(\d{2})-(\d{2})(?:(?:T| )(\d{2}):(\d{2})(?::(\d{2})(?:\.(\d+))?)?(Z|[+-]\d{2}:?\d{2})?)?$/D',
+            $value,
+            $matches
+        ) !== 1) {
+            return false;
+        }
+
+        if (! checkdate((int) $matches[2], (int) $matches[3], (int) $matches[1])) {
+            return false;
+        }
+
+        $hour = $matches[4] ?? '';
+        if ($hour === '') {
+            return true;
+        }
+
+        if ((int) $hour > 23 || (int) ($matches[5] ?? -1) > 59 || (int) ($matches[6] ?? 0) > 59) {
+            return false;
+        }
+
+        $timezone = $matches[8] ?? '';
+        if ($timezone === '' || $timezone === 'Z') {
+            return true;
+        }
+
+        $zone_parts = [];
+        if (preg_match('/^[+-](\d{2}):?(\d{2})$/D', $timezone, $zone_parts) !== 1) {
+            return false;
+        }
+
+        return (int) $zone_parts[1] <= 23 && (int) $zone_parts[2] <= 59;
     }
 
     private function is_authenticated_user(int $user_id): bool

@@ -80,6 +80,7 @@ final class MembershipServiceTest
         assert_same('membership', $card['key']);
         assert_same(AfrikaansLabels::MEMBERSHIP, $card['label']);
         assert_same('active', $card['state']);
+        assert_same('1 aktiewe lidmaatskap', $card['summary']);
         assert_same(42, $provider->requested_user_id);
         assert_same(1, count($card['items']));
         assert_same('Voelgoedvriendinne Silwer', $card['items'][0]['level_name']);
@@ -133,6 +134,11 @@ final class MembershipServiceTest
         assert_same('Status onbekend', $card['items'][0]['status_label']);
         assert_same('unknown', $card['items'][1]['status']);
         assert_same('Status onbekend', $card['items'][1]['status_label']);
+        assert_same('unknown', $card['state']);
+        assert_same('Lidmaatskapstatus onbekend.', $card['summary']);
+        assert_same([], $card['actions']);
+        assert_same([], $card['items'][0]['actions']);
+        assert_same([], $card['items'][1]['actions']);
     }
 
     public function test_missing_pmpro_returns_an_unavailable_card_without_throwing(): void
@@ -164,13 +170,40 @@ final class MembershipServiceTest
         assert_true(class_exists(MembershipService::class));
 
         $provider = new VgpcMembershipProviderFixture(
-            [(object) ['name' => 'Voelgoedvriendinne Silwer', 'enddate' => '2026-02-30']],
+            [
+                (object) ['name' => 'Onmoontlike dag', 'enddate' => '2026-02-30'],
+                (object) ['name' => 'Ongeldige agtervoegsel', 'enddate' => '2026-02-30abc'],
+                (object) ['name' => 'Ongeldige tyd', 'enddate' => '2026-01-01T25:00'],
+            ],
             []
         );
 
         $card = (new MembershipService($provider))->card(42);
 
         assert_same('', $card['items'][0]['expiry_date']);
+        assert_same('', $card['items'][1]['expiry_date']);
+        assert_same('', $card['items'][2]['expiry_date']);
+    }
+
+    public function test_expired_only_memberships_are_inactive_without_cancellation(): void
+    {
+        assert_true(class_exists(MembershipService::class));
+
+        $provider = new VgpcMembershipProviderFixture(
+            [(object) ['name' => 'Verstreke lidmaatskap', 'status' => 'expired', 'ID' => 991]],
+            [
+                'account' => '/pmpro-account/',
+                'invoice' => '/pmpro-invoice/',
+                'cancel'  => '/pmpro-cancel/',
+            ]
+        );
+
+        $card = (new MembershipService($provider))->card(42);
+
+        assert_same('inactive', $card['state']);
+        assert_same('Geen aktiewe lidmaatskap nie.', $card['summary']);
+        assert_same([], $card['items'][0]['actions']);
+        assert_false(in_array('cancel', array_column($card['actions'], 'key'), true));
     }
 
     public function test_rejects_a_requested_user_that_differs_from_the_authenticated_user(): void

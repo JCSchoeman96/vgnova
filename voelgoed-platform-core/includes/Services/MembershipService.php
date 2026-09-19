@@ -46,7 +46,8 @@ final class MembershipService implements DashboardServiceInterface
         }
 
         $items = [];
-        $first_level_id = null;
+        $active_count = 0;
+        $first_active_level_id = null;
 
         try {
             foreach ($levels as $level) {
@@ -56,17 +57,21 @@ final class MembershipService implements DashboardServiceInterface
                 }
 
                 $status = $this->status($this->value($level, 'status'));
+                if ($status === 'active') {
+                    ++$active_count;
+                }
+
                 $level_id = $this->scalar_value($level, 'ID');
                 if ($level_id === null) {
                     $level_id = $this->scalar_value($level, 'id');
                 }
 
-                if ($first_level_id === null && $level_id !== null && $level_id !== '') {
-                    $first_level_id = $level_id;
+                if ($status === 'active' && $first_active_level_id === null && $level_id !== null && $level_id !== '') {
+                    $first_active_level_id = $level_id;
                 }
 
                 $cancel_action = null;
-                if ($level_id !== null && $level_id !== '') {
+                if ($status === 'active' && $level_id !== null && $level_id !== '') {
                     $cancel_url = $this->url(
                         'cancel',
                         'levelstocancel=' . rawurlencode((string) $level_id)
@@ -117,20 +122,26 @@ final class MembershipService implements DashboardServiceInterface
         $this->append_action($actions, 'manage', 'Bestuur lidmaatskap', $this->url('account'));
         $this->append_action($actions, 'invoice', 'Sien fakture', $this->url('invoice'));
 
-        if ($first_level_id !== null) {
+        if ($first_active_level_id !== null) {
             $this->append_action(
                 $actions,
                 'cancel',
                 'Kanselleer lidmaatskap',
-                $this->url('cancel', 'levelstocancel=' . rawurlencode((string) $first_level_id))
+                $this->url('cancel', 'levelstocancel=' . rawurlencode((string) $first_active_level_id))
             );
         }
+
+        $has_unknown_status = in_array('unknown', array_column($items, 'status'), true);
+        $state = $active_count > 0 ? 'active' : ($has_unknown_status ? 'unknown' : 'inactive');
+        $summary = $active_count > 0
+            ? sprintf('%d aktiewe lidmaatskap', $active_count)
+            : ($has_unknown_status ? 'Lidmaatskapstatus onbekend.' : 'Geen aktiewe lidmaatskap nie.');
 
         return DashboardCard::make(
             'membership',
             AfrikaansLabels::MEMBERSHIP,
-            'active',
-            sprintf('%d aktiewe lidmaatskap', count($items)),
+            $state,
+            $summary,
             $actions,
             $items
         );
@@ -314,11 +325,8 @@ final class MembershipService implements DashboardServiceInterface
             return '';
         }
 
-        if (preg_match('/^\d{4}-\d{2}-\d{2}(?:$|[T ])/', $text) === 1) {
-            $parts = array_map('intval', explode('-', substr($text, 0, 10)));
-            if (count($parts) !== 3 || ! checkdate($parts[1], $parts[2], $parts[0])) {
-                return '';
-            }
+        if (preg_match('/^\d{4}-\d{2}-\d{2}/', $text) === 1 && ! $this->valid_iso_date($text)) {
+            return '';
         }
 
         $timestamp = strtotime($text);
@@ -329,6 +337,43 @@ final class MembershipService implements DashboardServiceInterface
         }
 
         return $text;
+    }
+
+    private function valid_iso_date(string $value): bool
+    {
+        $matches = [];
+        if (preg_match(
+            '/^(\d{4})-(\d{2})-(\d{2})(?:(?:T| )(\d{2}):(\d{2})(?::(\d{2})(?:\.(\d+))?)?(Z|[+-]\d{2}:?\d{2})?)?$/D',
+            $value,
+            $matches
+        ) !== 1) {
+            return false;
+        }
+
+        if (! checkdate((int) $matches[2], (int) $matches[3], (int) $matches[1])) {
+            return false;
+        }
+
+        $hour = $matches[4] ?? '';
+        if ($hour === '') {
+            return true;
+        }
+
+        if ((int) $hour > 23 || (int) ($matches[5] ?? -1) > 59 || (int) ($matches[6] ?? 0) > 59) {
+            return false;
+        }
+
+        $timezone = $matches[8] ?? '';
+        if ($timezone === '' || $timezone === 'Z') {
+            return true;
+        }
+
+        $zone_parts = [];
+        if (preg_match('/^[+-](\d{2}):?(\d{2})$/D', $timezone, $zone_parts) !== 1) {
+            return false;
+        }
+
+        return (int) $zone_parts[1] <= 23 && (int) $zone_parts[2] <= 59;
     }
 
     private function is_authenticated_user(int $user_id): bool

@@ -23,7 +23,7 @@ final class VgpcSubscriptionFixture
      */
     public function __construct(
         private int $id,
-        private int $user_id,
+        private mixed $user_id,
         private string $status,
         private array $items,
         private string $next_payment,
@@ -38,7 +38,7 @@ final class VgpcSubscriptionFixture
         return $this->id;
     }
 
-    public function get_user_id(): int
+    public function get_user_id(): mixed
     {
         return $this->user_id;
     }
@@ -290,6 +290,40 @@ final class SubscriptionServiceTest
         assert_same(0, $provider->requested_user_id);
     }
 
+    public function test_accepts_canonical_owner_ids_and_rejects_fractional_or_noncanonical_values(): void
+    {
+        assert_true(class_exists(SubscriptionService::class));
+
+        $valid = new VgpcSubscriptionFixture(
+            110,
+            '42',
+            'active',
+            [new VgpcSubscriptionLineFixture('Geldige eienaar')],
+            '',
+            'Via PayFast',
+            '/subscription/110/'
+        );
+        $invalid_owners = [42.5, '42.0', '4e1', ' 42', '042'];
+        $subscriptions = [$valid];
+        foreach ($invalid_owners as $offset => $owner_id) {
+            $subscriptions[] = new VgpcSubscriptionFixture(
+                111 + $offset,
+                $owner_id,
+                'active',
+                [new VgpcSubscriptionLineFixture('Ongeldige eienaar')],
+                '',
+                'Via PayFast',
+                '/subscription/' . (111 + $offset) . '/'
+            );
+        }
+
+        $provider = new VgpcSubscriptionProviderFixture($subscriptions, []);
+        $card = (new SubscriptionService($provider))->card(42);
+
+        assert_same(1, count($card['items']));
+        assert_same('110', (string) $card['items'][0]['subscription_id']);
+    }
+
     public function test_prefers_the_raw_next_payment_date_over_localized_display_text(): void
     {
         assert_true(class_exists(SubscriptionService::class));
@@ -366,20 +400,26 @@ final class SubscriptionServiceTest
     {
         assert_true(class_exists(SubscriptionService::class));
 
-        $subscription = new VgpcSubscriptionFixture(
-            109,
-            42,
-            'active',
-            [new VgpcSubscriptionLineFixture('Voelgoedvriendinne Brons')],
-            '01/10/2026',
-            'Via PayFast',
-            '/my-account/view-subscription/109/',
-            '2026-02-30'
-        );
-        $provider = new VgpcSubscriptionProviderFixture([$subscription], []);
+        $subscriptions = [];
+        foreach (['2026-02-30', '2026-02-30abc', '2026-01-01T25:00'] as $offset => $raw_date) {
+            $id = 109 + $offset;
+            $subscriptions[] = new VgpcSubscriptionFixture(
+                $id,
+                42,
+                'active',
+                [new VgpcSubscriptionLineFixture('Voelgoedvriendinne Brons')],
+                '01/10/2026',
+                'Via PayFast',
+                '/my-account/view-subscription/' . $id . '/',
+                $raw_date
+            );
+        }
+        $provider = new VgpcSubscriptionProviderFixture($subscriptions, []);
 
         $card = (new SubscriptionService($provider))->card(42);
 
         assert_same('01/10/2026', $card['items'][0]['next_payment_date']);
+        assert_same('01/10/2026', $card['items'][1]['next_payment_date']);
+        assert_same('01/10/2026', $card['items'][2]['next_payment_date']);
     }
 }
