@@ -41,6 +41,9 @@ wp-config.php
 # uncomment the next line
 #/wp-content/plugins
 
+# Brainstorming companion sessions
+/.superpowers/
+
 # All themes
 #
 # Note: If you wish to whitelist themes,
