@@ -67,7 +67,7 @@ The first dashboard release uses these boundaries:
 | `Bestellings` | WooCommerce | Read orders, downloads, addresses, and saved payment methods through WooCommerce account APIs or native endpoints. |
 | `Kursusse` | Masteriyo | Read owned or accessible courses, enrolment, progress, and certificates from Masteriyo. |
 | `Kaartjies` | Tickera | Read the current user's tickets and use Tickera's native status, QR, and download actions. |
-| `Lede-area` | Voelgoed Member Perks | `vgmp_enable_hub_display` is a staging prerequisite. At the inspected submodule commit, the current public member-perks surface does not expose a feature-flag accessor. `MemberAreaService` must require an approved public capability or configuration API before release. If that API is unavailable, return invisible and do not call `HubAccess`. If it reports the flag as false, hide the tab. Do not direct-read ACF or hardcode the setting in dashboard runtime. |
+| `Lede-area` | Voelgoed Member Perks | `vgmp_enable_hub_display` is a staging prerequisite. At the inspected submodule commit, the current public member-perks surface does not expose an approved dashboard-facing feature-flag accessor. `MemberAreaService` must require an approved public capability or configuration API before release. If that API is unavailable, return invisible and do not call `HubAccess`. If it reports the flag as false, hide the tab. Do not direct-read ACF or hardcode the setting in dashboard runtime. |
 | `Biblioteek` | None | Do not expose a generic library tab until its content source, access rules, and route are defined. |
 
 The conditional member tab is intentionally separate from `Lidmaatskap`. PMPro answers whether the user has membership access. Member Perks answers whether the user can open the configured benefits hub.
@@ -80,7 +80,7 @@ The local member-perks source was read without modifying the submodule. The insp
 - `voelgoed-member-perks/includes/Hub/HubPageResolver.php`
 - `voelgoed-member-perks/includes/Config/SettingsRepository.php`
 
-At the inspected submodule commit, the current public member-perks surface does not expose a feature-flag accessor for `vgmp_enable_hub_display`. This API is a staging prerequisite for the dashboard. `MemberAreaService` must require the approved public capability or configuration API before calling `HubAccess`; if it is unavailable, the service must return invisible.
+At the inspected submodule commit, the current public member-perks surface does not expose an approved dashboard-facing feature-flag accessor for `vgmp_enable_hub_display`. `SettingsRepository::feature_flags()` is an internal repository method, not the dashboard contract, and dashboard runtime must not call it directly. Until the plugin exposes and approves an integration-facing public accessor, for example through `Plugin`, `MemberAreaService` must return invisible before calling `HubAccess`. This API is a staging prerequisite for the dashboard.
 
 `HubAccess::resolve(HubAccess::CONTEXT_MAIN)` is the required contract for `Lede-area`. The dashboard should use the returned `can_view_hub` flag and, when it is true, apply the destination guard below before building a link from the returned `hub_page_id`. It must not hardcode a page ID.
 
@@ -99,7 +99,7 @@ For the main context, `HubAccess` reads `main_dashboard_page_id` through `Settin
 
 The dashboard integration therefore follows this sequence:
 
-1. Resolve the public member-perks service and require its approved capability/configuration API. At the inspected commit, no public flag accessor exists, so the service must return invisible and not call `HubAccess` until staging supplies this API.
+1. Resolve the public member-perks service and require its approved capability/configuration API. At the inspected commit, no approved public flag accessor exists, so the service must return invisible and not call `HubAccess` until staging supplies this API.
 2. Once the approved API exists, read `vgmp_enable_hub_display` through it. If the flag is unavailable or false, return invisible and do not call `HubAccess`.
 3. Call `resolve(HubAccess::CONTEXT_MAIN)` only after the service and display flag checks pass. A `dependency_missing` result from `HubAccess` is also a hidden-tab failure, but it is not the only failure mode.
 4. Hide `Lede-area` unless `can_view_hub` is true.
