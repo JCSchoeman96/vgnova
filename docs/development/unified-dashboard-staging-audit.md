@@ -9,7 +9,7 @@ This audit combines the verified staging facts supplied for this task with a rea
 
 The MCP and network checks from the implementation plan were not run in this pass because they stalled in earlier attempts. This document does not claim fresh `doctor`, ability-discovery, or live WordPress CLI output.
 
-Page ID evidence below comes from the supplied staging snapshot. The PMPro page title and shortcode mapping comes from the supplied external `backup-pre-cleanup-20260528.sql` staging backup. That backup is not present in this checkout, so the mapping is not independently reproducible here. These references were not rechecked against live WordPress.
+Page ID evidence below comes from the supplied staging snapshot. The PMPro page title and shortcode mappings/tags come from the supplied external `backup-pre-cleanup-20260528.sql` staging backup. That backup is not present in this checkout, so the mapping is not independently reproducible here. These references were not rechecked against live WordPress.
 
 ## Staging profile
 
@@ -54,7 +54,7 @@ These IDs identify the current staging pages only. They are migration and integr
 | Voelgoed Member Perks | My Voelgoednetwerk, page `992` | Current programme hub reference |
 | Generic library | No page found in the supplied snapshot | No route or dashboard tab may assume a generic `Biblioteek` authority |
 
-The member-perks page titles and IDs are useful for staging verification only. The dashboard must not embed `990`, `991`, or `992`. The PMPro titles and shortcode functions above are also staging references. Resolve PMPro settings at runtime rather than treating any page ID as a constant. The current design keeps WooCommerce downloads under `Bestellings`, Masteriyo resources under `Kursusse`, and Tickera files under `Kaartjies`. Editorial member content remains in the separate `/vriendin/` experience.
+The member-perks page titles and IDs are useful for staging verification only. The dashboard must not embed `990`, `991`, or `992`. The PMPro page titles and shortcode mappings/tags above are also staging references. Resolve PMPro settings at runtime rather than treating any page ID as a constant. The current design keeps WooCommerce downloads under `Bestellings`, Masteriyo resources under `Kursusse`, and Tickera files under `Kaartjies`. Editorial member content remains in the separate `/vriendin/` experience.
 
 ## Provider boundaries
 
@@ -182,8 +182,9 @@ Cache verification must check both response headers and behavior. The test or QA
 - `voelgoed-member-perks/includes/Display/HubAccess.php`
 - `voelgoed-member-perks/includes/Hub/HubPageResolver.php`
 - `voelgoed-member-perks/includes/Config/SettingsRepository.php`
+- `voelgoed-member-perks/includes/Plugin.php`
 - `voelgoed-member-perks/includes/Query/BricksHubDynamicData.php`
 - `voelgoed-member-perks/includes/Query/BricksQueryProvider.php`
 - Submodule commit `972a279be7a753594888e974132562e1cc099e24`
 - Supplied staging snapshot for current page IDs and installed versions
-- Supplied external `backup-pre-cleanup-20260528.sql` staging backup, not present in this checkout, for PMPro page titles and shortcode mapping
+- Supplied external `backup-pre-cleanup-20260528.sql` staging backup, not present in this checkout, for PMPro page titles and shortcode mappings/tags
