@@ -80,7 +80,12 @@ final class DashboardAction
     {
         $value = trim($value);
 
-        if ($value === '' || preg_match('/[\x00-\x20\x7f]/', $value) === 1 || str_contains($value, '\\')) {
+        if (
+            $value === ''
+            || preg_match('/[\x00-\x20\x7f]/', $value) === 1
+            || strpbrk($value, "<>\"'`") !== false
+            || str_contains($value, '\\')
+        ) {
             return '';
         }
 
@@ -108,6 +113,12 @@ final class DashboardAction
 
         $site_parts = parse_url((string) home_url('/'));
         if (! is_array($site_parts)) {
+            return '';
+        }
+
+        $url_scheme = strtolower((string) ($parts['scheme'] ?? ''));
+        $site_scheme = strtolower((string) ($site_parts['scheme'] ?? ''));
+        if ($site_scheme === '' || $url_scheme !== $site_scheme) {
             return '';
         }
 

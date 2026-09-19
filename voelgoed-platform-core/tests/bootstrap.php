@@ -6,6 +6,13 @@ require_once dirname(__DIR__) . '/includes/Contracts/DashboardAction.php';
 require_once dirname(__DIR__) . '/includes/Contracts/DashboardCard.php';
 require_once dirname(__DIR__) . '/includes/Config/AfrikaansLabels.php';
 
+if (! function_exists('home_url')) {
+    function home_url(string $path = ''): string
+    {
+        return 'https://voelgoed.test' . $path;
+    }
+}
+
 if (! isset($GLOBALS['vgpc_assertion_count'])) {
     $GLOBALS['vgpc_assertion_count'] = 0;
 }

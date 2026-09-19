@@ -79,6 +79,10 @@ final class DashboardCardTest
                 [DashboardAction::link('action', 'Action', '')]
             )
         );
+        assert_throws(
+            InvalidArgumentException::class,
+            static fn (): array => DashboardCard::make('key', 'Label', '!!!', '')
+        );
     }
 
     public function test_actions_accept_same_site_paths_and_reject_external_urls(): void
@@ -89,9 +93,20 @@ final class DashboardCardTest
             array_keys($action)
         );
 
+        $same_site_action = DashboardAction::link(
+            'account',
+            'Rekening',
+            'https://voelgoed.test/my-voelgoed/profile/'
+        );
+        assert_same('https://voelgoed.test/my-voelgoed/profile/', $same_site_action['url']);
+
         assert_throws(
             InvalidArgumentException::class,
             static fn (): array => DashboardAction::link('external', 'Ekstern', 'https://example.com/account/')
+        );
+        assert_throws(
+            InvalidArgumentException::class,
+            static fn (): array => DashboardAction::link('wrong-scheme', 'Verkeerd', 'http://voelgoed.test/account/')
         );
         assert_throws(
             InvalidArgumentException::class,
@@ -101,6 +116,34 @@ final class DashboardCardTest
             InvalidArgumentException::class,
             static fn (): array => DashboardAction::link('script', 'Skrip', 'javascript:alert(1)')
         );
+
+        foreach (['<', '>', '"', "'", '`'] as $delimiter) {
+            assert_throws(
+                InvalidArgumentException::class,
+                static fn (): array => DashboardAction::link('delimiter', 'Skeidingsteken', '/my-voelgoed/' . $delimiter)
+            );
+        }
+    }
+
+    public function test_card_normalizes_raw_action_arrays(): void
+    {
+        $card = DashboardCard::make(
+            'profile',
+            AfrikaansLabels::PROFILE,
+            'active',
+            'Profiel beskikbaar',
+            [
+                [
+                    'key'   => ' edit details ',
+                    'label' => ' <span>Wysig profiel</span> ',
+                    'url'   => '/my-voelgoed/profile/',
+                ],
+            ]
+        );
+
+        assert_same('edit-details', $card['actions'][0]['key']);
+        assert_same('Wysig profiel', $card['actions'][0]['label']);
+        assert_same('/my-voelgoed/profile/', $card['actions'][0]['url']);
     }
 
     public function test_labels_keep_member_area_conditional_and_library_deferred(): void

@@ -43,6 +43,11 @@ final class DashboardCard
             throw new InvalidArgumentException('Dashboard card label cannot be empty.');
         }
 
+        $normalized_state = self::key($state);
+        if ($normalized_state === '') {
+            throw new InvalidArgumentException('Dashboard card state cannot be empty.');
+        }
+
         $normalized_actions = [];
         foreach ($actions as $action) {
             if (! is_array($action)) {
@@ -56,7 +61,7 @@ final class DashboardCard
             'key'     => $normalized_key,
             'label'   => $normalized_label,
             'visible' => $visible,
-            'state'   => self::key($state),
+            'state'   => $normalized_state,
             'summary' => self::display($summary),
             'items'   => array_values($items),
             'actions' => $normalized_actions,
