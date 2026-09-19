@@ -204,7 +204,7 @@ final class SubscriptionService implements DashboardServiceInterface
     {
         $raw_date = $this->method_value($subscription, 'get_date', ['next_payment']);
         if ($raw_date !== null && $raw_date !== false) {
-            $normalized = $this->date_value($raw_date);
+            $normalized = $this->date_value($raw_date, false);
             if ($normalized !== '') {
                 return $normalized;
             }
@@ -382,7 +382,7 @@ final class SubscriptionService implements DashboardServiceInterface
         return is_scalar($value) ? trim((string) $value) : '';
     }
 
-    private function date_value(mixed $value): string
+    private function date_value(mixed $value, bool $preserve_unparseable = true): string
     {
         if ($value === null || $value === false) {
             return '';
@@ -422,7 +422,7 @@ final class SubscriptionService implements DashboardServiceInterface
                 : date('Y-m-d', $timestamp);
         }
 
-        return $text;
+        return $preserve_unparseable ? $text : '';
     }
 
     private function display_date_value(string $value): string

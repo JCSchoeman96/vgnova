@@ -296,4 +296,25 @@ final class SubscriptionServiceTest
         assert_same('01/10/2026', $card['items'][0]['next_payment_date']);
         assert_same('in 5 days', $card['items'][1]['next_payment_date']);
     }
+
+    public function test_falls_back_to_display_text_when_raw_next_payment_is_malformed(): void
+    {
+        assert_true(class_exists(SubscriptionService::class));
+
+        $subscription = new VgpcSubscriptionFixture(
+            106,
+            42,
+            'active',
+            [new VgpcSubscriptionLineFixture('Voelgoedvriendinne Brons')],
+            '01/10/2026',
+            'Via PayFast',
+            '/my-account/view-subscription/106/',
+            'not-a-date'
+        );
+        $provider = new VgpcSubscriptionProviderFixture([$subscription], []);
+
+        $card = (new SubscriptionService($provider))->card(42);
+
+        assert_same('01/10/2026', $card['items'][0]['next_payment_date']);
+    }
 }
