@@ -202,6 +202,14 @@ final class SubscriptionService implements DashboardServiceInterface
 
     private function next_payment(object $subscription): string
     {
+        $raw_date = $this->method_value($subscription, 'get_date', ['next_payment']);
+        if ($raw_date !== null && $raw_date !== false) {
+            $normalized = $this->date_value($raw_date);
+            if ($normalized !== '') {
+                return $normalized;
+            }
+        }
+
         $formatted = '';
         if (method_exists($subscription, 'get_date_to_display')) {
             try {
@@ -216,11 +224,10 @@ final class SubscriptionService implements DashboardServiceInterface
         }
 
         if ($formatted !== '') {
-            return $this->date_value($formatted);
+            return $this->display_date_value($formatted);
         }
 
-        $date = $this->method_value($subscription, 'get_date', ['next_payment']);
-        return $this->date_value($date);
+        return '';
     }
 
     private function payment_method(object $subscription): string
@@ -416,6 +423,22 @@ final class SubscriptionService implements DashboardServiceInterface
         }
 
         return $text;
+    }
+
+    private function display_date_value(string $value): string
+    {
+        if ($value === '') {
+            return '';
+        }
+
+        if (preg_match(
+            '/^\d{4}-\d{2}-\d{2}(?:[T ]\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:?\d{2})?)?$/',
+            $value
+        ) === 1) {
+            return $this->date_value($value);
+        }
+
+        return $value;
     }
 
     private function is_authenticated_user(int $user_id): bool

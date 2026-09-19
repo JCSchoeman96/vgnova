@@ -38,6 +38,19 @@ final class VgpcMembershipProviderFixture
     }
 }
 
+final class VgpcThrowingMembershipLevelFixture
+{
+    public function __isset(string $name): bool
+    {
+        throw new RuntimeException('Membership level property access failed.');
+    }
+
+    public function __get(string $name): mixed
+    {
+        throw new RuntimeException('Membership level property access failed.');
+    }
+}
+
 final class MembershipServiceTest
 {
     public function test_populated_user_returns_pmpro_membership_and_native_actions(): void
@@ -204,5 +217,21 @@ final class MembershipServiceTest
         }
 
         assert_same('http://voelgoed.test/pmpro-account/', $card['actions'][0]['url']);
+    }
+
+    public function test_throwing_level_properties_return_an_unavailable_card(): void
+    {
+        assert_true(class_exists(MembershipService::class));
+
+        $provider = new VgpcMembershipProviderFixture(
+            [new VgpcThrowingMembershipLevelFixture()],
+            ['account' => '/pmpro-account/']
+        );
+
+        $card = (new MembershipService($provider))->card(42);
+
+        assert_same('unavailable', $card['state']);
+        assert_same([], $card['items']);
+        assert_same([], $card['actions']);
     }
 }

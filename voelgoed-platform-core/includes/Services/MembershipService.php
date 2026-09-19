@@ -48,51 +48,60 @@ final class MembershipService implements DashboardServiceInterface
         $items = [];
         $first_level_id = null;
 
-        foreach ($levels as $level) {
-            $name = $this->value($level, 'name');
-            if ($name === '') {
-                continue;
-            }
+        try {
+            foreach ($levels as $level) {
+                $name = $this->value($level, 'name');
+                if ($name === '') {
+                    continue;
+                }
 
-            $status = $this->status($this->value($level, 'status'));
-            $level_id = $this->scalar_value($level, 'ID');
-            if ($level_id === null) {
-                $level_id = $this->scalar_value($level, 'id');
-            }
+                $status = $this->status($this->value($level, 'status'));
+                $level_id = $this->scalar_value($level, 'ID');
+                if ($level_id === null) {
+                    $level_id = $this->scalar_value($level, 'id');
+                }
 
-            if ($first_level_id === null && $level_id !== null && $level_id !== '') {
-                $first_level_id = $level_id;
-            }
+                if ($first_level_id === null && $level_id !== null && $level_id !== '') {
+                    $first_level_id = $level_id;
+                }
 
-            $cancel_action = null;
-            if ($level_id !== null && $level_id !== '') {
-                $cancel_url = $this->url(
-                    'cancel',
-                    'levelstocancel=' . rawurlencode((string) $level_id)
-                );
-                $cancel_action = $this->action(
-                    'cancel',
-                    'Kanselleer lidmaatskap',
-                    $cancel_url
-                );
-            }
+                $cancel_action = null;
+                if ($level_id !== null && $level_id !== '') {
+                    $cancel_url = $this->url(
+                        'cancel',
+                        'levelstocancel=' . rawurlencode((string) $level_id)
+                    );
+                    $cancel_action = $this->action(
+                        'cancel',
+                        'Kanselleer lidmaatskap',
+                        $cancel_url
+                    );
+                }
 
-            $item_actions = [];
-            if ($cancel_action !== null) {
-                $item_actions['cancel'] = $cancel_action;
-            }
+                $item_actions = [];
+                if ($cancel_action !== null) {
+                    $item_actions['cancel'] = $cancel_action;
+                }
 
-            $items[] = [
-                'level_name'   => $name,
-                'status'       => $status,
-                'status_label' => $this->status_label($status),
-                'start_date'   => $this->date_value($this->raw_value($level, 'startdate')),
-                'expiry_date'  => $this->date_value($this->raw_value($level, 'enddate')),
-                'renewal_date' => $this->date_value(
-                    $this->first_raw_value($level, ['renewal_date', 'next_payment'])
-                ),
-                'actions'      => $item_actions,
-            ];
+                $items[] = [
+                    'level_name'   => $name,
+                    'status'       => $status,
+                    'status_label' => $this->status_label($status),
+                    'start_date'   => $this->date_value($this->raw_value($level, 'startdate')),
+                    'expiry_date'  => $this->date_value($this->raw_value($level, 'enddate')),
+                    'renewal_date' => $this->date_value(
+                        $this->first_raw_value($level, ['renewal_date', 'next_payment'])
+                    ),
+                    'actions'      => $item_actions,
+                ];
+            }
+        } catch (Throwable) {
+            return DashboardCard::empty(
+                'membership',
+                AfrikaansLabels::MEMBERSHIP,
+                'unavailable',
+                'Lidmaatskap is tans nie beskikbaar nie.'
+            );
         }
 
         if ($items === []) {

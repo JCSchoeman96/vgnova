@@ -29,6 +29,7 @@ final class VgpcSubscriptionFixture
         private string $next_payment,
         private string $payment_method,
         private string $view_url,
+        private ?string $raw_next_payment = null,
     ) {
     }
 
@@ -60,9 +61,9 @@ final class VgpcSubscriptionFixture
         return $date_type === 'next_payment' ? $this->next_payment : '';
     }
 
-    public function get_date(string $date_type): string
+    public function get_date(string $date_type): ?string
     {
-        return $this->get_date_to_display($date_type);
+        return $this->raw_next_payment;
     }
 
     public function get_payment_method_to_display(string $context = 'admin'): string
@@ -243,5 +244,56 @@ final class SubscriptionServiceTest
         assert_same('empty', $card['state']);
         assert_same([], $card['items']);
         assert_same(0, $provider->requested_user_id);
+    }
+
+    public function test_prefers_the_raw_next_payment_date_over_localized_display_text(): void
+    {
+        assert_true(class_exists(SubscriptionService::class));
+
+        $subscription = new VgpcSubscriptionFixture(
+            103,
+            42,
+            'active',
+            [new VgpcSubscriptionLineFixture('Voelgoedvriendinne Goud')],
+            '01/10/2026',
+            'Via PayFast',
+            '/my-account/view-subscription/103/',
+            '2026-10-01 09:30:00'
+        );
+        $provider = new VgpcSubscriptionProviderFixture([$subscription], []);
+
+        $card = (new SubscriptionService($provider))->card(42);
+
+        assert_same('2026-10-01', $card['items'][0]['next_payment_date']);
+    }
+
+    public function test_preserves_localized_and_relative_display_text_when_raw_date_is_absent(): void
+    {
+        assert_true(class_exists(SubscriptionService::class));
+
+        $localized = new VgpcSubscriptionFixture(
+            104,
+            42,
+            'active',
+            [new VgpcSubscriptionLineFixture('Voelgoedvriendinne Silwer')],
+            '01/10/2026',
+            'Via PayFast',
+            '/my-account/view-subscription/104/'
+        );
+        $relative = new VgpcSubscriptionFixture(
+            105,
+            42,
+            'active',
+            [new VgpcSubscriptionLineFixture('Voelgoedvriendinne Brons')],
+            'in 5 days',
+            'Via PayFast',
+            '/my-account/view-subscription/105/'
+        );
+        $provider = new VgpcSubscriptionProviderFixture([$localized, $relative], []);
+
+        $card = (new SubscriptionService($provider))->card(42);
+
+        assert_same('01/10/2026', $card['items'][0]['next_payment_date']);
+        assert_same('in 5 days', $card['items'][1]['next_payment_date']);
     }
 }
