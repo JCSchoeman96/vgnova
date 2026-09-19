@@ -9,7 +9,7 @@ This audit combines the verified staging facts supplied for this task with a rea
 
 The MCP and network checks from the implementation plan were not run in this pass because they stalled in earlier attempts. This document does not claim fresh `doctor`, ability-discovery, or live WordPress CLI output.
 
-The PMPro page title and shortcode mapping below comes from local staging backup page records available in the workspace. It remains a staging reference and was not rechecked against live WordPress.
+Page ID evidence below comes from the supplied staging snapshot. The PMPro page title and shortcode mapping comes from the local `backup-pre-cleanup-20260528.sql` staging backup available in the workspace. These references were not rechecked against live WordPress.
 
 ## Staging profile
 
@@ -67,14 +67,14 @@ The first dashboard release uses these boundaries:
 | `Bestellings` | WooCommerce | Read orders, downloads, addresses, and saved payment methods through WooCommerce account APIs or native endpoints. |
 | `Kursusse` | Masteriyo | Read owned or accessible courses, enrolment, progress, and certificates from Masteriyo. |
 | `Kaartjies` | Tickera | Read the current user's tickets and use Tickera's native status, QR, and download actions. |
-| `Lede-area` | Voelgoed Member Perks | Render only for an active configured member programme and use the configured main hub destination. Do not recreate programme eligibility in dashboard code. |
+| `Lede-area` | Voelgoed Member Perks | `MemberAreaService` must use an approved public member-perks capability or configuration surface to confirm `vgmp_enable_hub_display`. If that surface is unavailable or the flag is false, hide the tab. Otherwise render only for an active configured member programme and use the configured main hub destination. Do not direct-read ACF or hardcode the setting in dashboard runtime. |
 | `Biblioteek` | None | Do not expose a generic library tab until its content source, access rules, and route are defined. |
 
 The conditional member tab is intentionally separate from `Lidmaatskap`. PMPro answers whether the user has membership access. Member Perks answers whether the user can open the configured benefits hub.
 
 ## Member-perks hub contract
 
-The local member-perks source was read without modifying the submodule:
+The local member-perks source was read without modifying the submodule. The inspected submodule commit was `972a279be7a753594888e974132562e1cc099e24`.
 
 - `voelgoed-member-perks/includes/Display/HubAccess.php`
 - `voelgoed-member-perks/includes/Hub/HubPageResolver.php`
@@ -91,21 +91,23 @@ The local implementation returns these main-context states:
 | `no_membership` | `false` | No member hub link; the resolver may return the configured main page as `upsell_page_id` |
 | `can_view` | `true` | Use the configured `hub_page_id` |
 
-For the main context, `HubAccess` reads `main_dashboard_page_id` through `SettingsRepository::hub_settings()`. That setting is the destination source. The resolver checks the current user, mapping availability, and the resolved membership profile before returning `can_view`.
+For the main context, `HubAccess` reads `main_dashboard_page_id` through `SettingsRepository::hub_settings()`. That setting is the destination source. `HubAccess::resolve()` checks the current user, mapping availability, and the resolved membership profile before returning `can_view`. `HubPageResolver` handles page and programme resolution separately. It does not replace the `HubAccess` user and membership check.
 
 `HubPageResolver` separately handles programme context. `auto` uses the current queried page when no page ID is passed, resolves only configured hub pages, and fails closed for a missing page, an unmapped page, or a hub that does not support the requested context. Explicit `all` mode has separate semantics. It returns the valid `all` programme context without resolving a page. This keeps programme selection in member-perks configuration rather than dashboard constants.
 
 The dashboard integration therefore follows this sequence:
 
-1. Resolve the member-perks service and call `resolve(HubAccess::CONTEXT_MAIN)`.
-2. Hide `Lede-area` unless `can_view_hub` is true.
-3. Even when `can_view_hub` is true, require `hub_page_id > 0` and call `get_permalink($hub_page_id)`.
-4. Require that permalink to be non-empty and a same-site URL. If either check fails, fail closed and hide the link.
-5. Leave programme-specific choices inside the configured member-perks hub.
+1. Resolve the public member-perks service. If `MemberAreaService` or its approved capability/configuration surface is unavailable, return invisible and do not call `HubAccess`.
+2. Read `vgmp_enable_hub_display` through that approved public surface. If the flag is unavailable or false, return invisible and do not call `HubAccess`.
+3. Call `resolve(HubAccess::CONTEXT_MAIN)` only after the service and display flag checks pass. A `dependency_missing` result from `HubAccess` is also a hidden-tab failure, but it is not the only failure mode.
+4. Hide `Lede-area` unless `can_view_hub` is true.
+5. Even when `can_view_hub` is true, require `hub_page_id > 0` and call `get_permalink($hub_page_id)`.
+6. Require that permalink to be non-empty and a same-site URL. If either check fails, fail closed and hide the link.
+7. Leave programme-specific choices inside the configured member-perks hub.
 
-## Verified Bricks integration hooks
+## Bricks hooks verified in local source
 
-The following hooks were verified in the local member-perks source. A dashboard Bricks adapter may follow these established patterns.
+The following hooks were verified in the local member-perks source, not through live staging. A dashboard Bricks adapter may follow these established patterns.
 
 ### Dynamic data
 
@@ -140,13 +142,15 @@ The dashboard query provider must preserve the same privacy rule. User-specific 
 
 Normalized user output is request-local by default. Dashboard HTML and fragments must not use a shared persistent, page, or edge cache. Do not put normalized dashboard cards or user-specific dynamic values in a shared persistent cache.
 
-At the dashboard page boundary:
+At the dashboard page boundary, apply cache controls before page or edge-cache decisions:
 
 - Set `DONOTCACHEPAGE` when the page-cache layer supports it.
 - Apply the equivalent page-cache exclusions for the installed page-cache and edge-cache layers.
 - Send private, no-store response handling for dashboard HTML and fragments, such as `Cache-Control: private, no-store` where the response layer permits it.
 
 The Bricks query cache key must include the current user and dashboard view context, as the local member-perks provider does. That key is an additional isolation measure. It is not sufficient by itself to make dashboard HTML, fragments, or normalized user output safe for shared caching.
+
+Cache verification must check both response headers and behavior. The test or QA path must confirm the private/no-store headers, the `DONOTCACHEPAGE` or equivalent exclusion signal, and that a later request cannot receive another user's dashboard HTML or fragments from a page or edge cache.
 
 ## Authentication and security contract
 
@@ -177,3 +181,6 @@ The Bricks query cache key must include the current user and dashboard view cont
 - `voelgoed-member-perks/includes/Config/SettingsRepository.php`
 - `voelgoed-member-perks/includes/Query/BricksHubDynamicData.php`
 - `voelgoed-member-perks/includes/Query/BricksQueryProvider.php`
+- Submodule commit `972a279be7a753594888e974132562e1cc099e24`
+- Supplied staging snapshot for current page IDs and installed versions
+- Local `backup-pre-cleanup-20260528.sql` staging backup for PMPro page titles and shortcode mapping
