@@ -109,7 +109,7 @@ final class SubscriptionService implements DashboardServiceInterface
                 $subscriptions = iterator_to_array($subscriptions, false);
             }
 
-            return is_array($subscriptions) ? array_values($subscriptions) : [];
+            return is_array($subscriptions) ? array_values($subscriptions) : null;
         } catch (Throwable) {
             return null;
         }
@@ -129,11 +129,7 @@ final class SubscriptionService implements DashboardServiceInterface
             return null;
         }
 
-        $status = $this->method_string($subscription, 'get_status');
-        if ($status === '') {
-            return null;
-        }
-        $status = strtolower($status);
+        $status = $this->status($this->method_string($subscription, 'get_status'));
 
         $subscription_id = $this->method_string($subscription, 'get_id');
         $product_name = $this->product_name($subscription);
@@ -394,7 +390,10 @@ final class SubscriptionService implements DashboardServiceInterface
 
         if (is_object($value) && method_exists($value, 'date')) {
             try {
-                return $this->scalar_string($value->date('Y-m-d'));
+                return $this->date_value(
+                    $this->scalar_string($value->date('Y-m-d')),
+                    $preserve_unparseable
+                );
             } catch (Throwable) {
                 return '';
             }
@@ -413,6 +412,13 @@ final class SubscriptionService implements DashboardServiceInterface
         $text = $this->scalar_string($value);
         if ($text === '' || in_array($text, ['0000-00-00', '0000-00-00 00:00:00'], true)) {
             return '';
+        }
+
+        if (preg_match('/^\d{4}-\d{2}-\d{2}(?:$|[T ])/', $text) === 1) {
+            $parts = array_map('intval', explode('-', substr($text, 0, 10)));
+            if (count($parts) !== 3 || ! checkdate($parts[1], $parts[2], $parts[0])) {
+                return '';
+            }
         }
 
         $timestamp = strtotime($text);
@@ -456,6 +462,17 @@ final class SubscriptionService implements DashboardServiceInterface
         return $current_user_id > 0 && $current_user_id === $user_id;
     }
 
+    private function status(string $status): string
+    {
+        $status = strtolower(trim($status));
+
+        return in_array(
+            $status,
+            ['active', 'pending', 'on-hold', 'failed', 'paused', 'cancelled', 'pending-cancel', 'expired', 'completed'],
+            true
+        ) ? $status : 'unknown';
+    }
+
     private function status_label(string $status): string
     {
         return [
@@ -468,6 +485,7 @@ final class SubscriptionService implements DashboardServiceInterface
             'pending-cancel' => 'Kansellasie hangende',
             'expired'        => 'Verstreke',
             'completed'      => 'Voltooi',
-        ][$status] ?? ucfirst(str_replace('-', ' ', $status));
+            'unknown'        => 'Status onbekend',
+        ][$status] ?? 'Status onbekend';
     }
 }

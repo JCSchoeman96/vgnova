@@ -107,7 +107,7 @@ final class CommerceService implements DashboardServiceInterface
                 $orders = iterator_to_array($orders, false);
             }
 
-            return is_array($orders) ? array_values($orders) : [];
+            return is_array($orders) ? array_values($orders) : null;
         } catch (Throwable) {
             return null;
         }
@@ -133,10 +133,7 @@ final class CommerceService implements DashboardServiceInterface
             $order_number = $order_id;
         }
 
-        $status = strtolower($this->method_string($order, 'get_status'));
-        if ($status === '') {
-            return null;
-        }
+        $status = $this->status($this->method_string($order, 'get_status'));
 
         $actions = [];
         $details_url = $this->method_string($order, 'get_view_order_url');
@@ -329,7 +326,7 @@ final class CommerceService implements DashboardServiceInterface
 
         if (is_object($value) && method_exists($value, 'date')) {
             try {
-                return $this->scalar_string($value->date('Y-m-d'));
+                return $this->date_value($this->scalar_string($value->date('Y-m-d')));
             } catch (Throwable) {
                 return '';
             }
@@ -348,6 +345,13 @@ final class CommerceService implements DashboardServiceInterface
         $text = $this->scalar_string($value);
         if ($text === '' || in_array($text, ['0000-00-00', '0000-00-00 00:00:00'], true)) {
             return '';
+        }
+
+        if (preg_match('/^\d{4}-\d{2}-\d{2}(?:$|[T ])/', $text) === 1) {
+            $parts = array_map('intval', explode('-', substr($text, 0, 10)));
+            if (count($parts) !== 3 || ! checkdate($parts[1], $parts[2], $parts[0])) {
+                return '';
+            }
         }
 
         $timestamp = strtotime($text);
@@ -375,6 +379,17 @@ final class CommerceService implements DashboardServiceInterface
         return $current_user_id > 0 && $current_user_id === $user_id;
     }
 
+    private function status(string $status): string
+    {
+        $status = strtolower(trim($status));
+
+        return in_array(
+            $status,
+            ['pending', 'processing', 'on-hold', 'completed', 'cancelled', 'refunded', 'failed'],
+            true
+        ) ? $status : 'unknown';
+    }
+
     private function status_label(string $status): string
     {
         return [
@@ -385,6 +400,7 @@ final class CommerceService implements DashboardServiceInterface
             'cancelled'  => 'Gekanselleer',
             'refunded'   => 'Terugbetaal',
             'failed'     => 'Misluk',
-        ][$status] ?? ucfirst(str_replace('-', ' ', $status));
+            'unknown'    => 'Status onbekend',
+        ][$status] ?? 'Status onbekend';
     }
 }

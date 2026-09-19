@@ -157,11 +157,7 @@ final class MembershipService implements DashboardServiceInterface
                 $levels = iterator_to_array($levels, false);
             }
 
-            if ($levels === false || $levels === null) {
-                return [];
-            }
-
-            return is_array($levels) ? array_values($levels) : [];
+            return is_array($levels) ? array_values($levels) : null;
         } catch (Throwable) {
             return null;
         }
@@ -297,7 +293,7 @@ final class MembershipService implements DashboardServiceInterface
 
         if (is_object($value) && method_exists($value, 'date')) {
             try {
-                return $this->scalar_string($value->date('Y-m-d'));
+                return $this->date_value($this->scalar_string($value->date('Y-m-d')));
             } catch (Throwable) {
                 return '';
             }
@@ -316,6 +312,13 @@ final class MembershipService implements DashboardServiceInterface
         $text = $this->scalar_string($value);
         if ($text === '' || in_array($text, ['0000-00-00', '0000-00-00 00:00:00'], true)) {
             return '';
+        }
+
+        if (preg_match('/^\d{4}-\d{2}-\d{2}(?:$|[T ])/', $text) === 1) {
+            $parts = array_map('intval', explode('-', substr($text, 0, 10)));
+            if (count($parts) !== 3 || ! checkdate($parts[1], $parts[2], $parts[0])) {
+                return '';
+            }
         }
 
         $timestamp = strtotime($text);
@@ -347,7 +350,9 @@ final class MembershipService implements DashboardServiceInterface
     {
         $status = strtolower(trim($status));
 
-        return $status !== '' ? $status : 'active';
+        return in_array($status, ['active', 'inactive', 'expired', 'cancelled'], true)
+            ? $status
+            : 'unknown';
     }
 
     private function status_label(string $status): string
@@ -357,6 +362,7 @@ final class MembershipService implements DashboardServiceInterface
             'inactive' => 'Onaktief',
             'expired'  => 'Verstreke',
             'cancelled' => 'Gekanselleer',
-        ][$status] ?? ucfirst(str_replace('-', ' ', $status));
+            'unknown'  => 'Status onbekend',
+        ][$status] ?? 'Status onbekend';
     }
 }

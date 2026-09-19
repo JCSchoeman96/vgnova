@@ -80,11 +80,11 @@ final class VgpcSubscriptionFixture
 final class VgpcSubscriptionProviderFixture
 {
     /**
-     * @param array<int, object> $subscriptions
+     * @param mixed $subscriptions
      * @param array<int, array<string, array<string, string>>> $actions
      */
     public function __construct(
-        private array $subscriptions,
+        private mixed $subscriptions,
         private array $actions,
     ) {
     }
@@ -92,9 +92,9 @@ final class VgpcSubscriptionProviderFixture
     public int $requested_user_id = 0;
 
     /**
-     * @return array<int, object>
+     * @return mixed
      */
-    public function subscriptions(int $user_id): array
+    public function subscriptions(int $user_id): mixed
     {
         $this->requested_user_id = $user_id;
 
@@ -181,6 +181,38 @@ final class SubscriptionServiceTest
         assert_same([], $card['items']);
     }
 
+    public function test_unknown_and_empty_statuses_use_a_generic_afrikaans_label(): void
+    {
+        assert_true(class_exists(SubscriptionService::class));
+
+        $unknown = new VgpcSubscriptionFixture(
+            107,
+            42,
+            'mystery-status',
+            [new VgpcSubscriptionLineFixture('Onbekende subskripsie')],
+            '',
+            'Via PayFast',
+            '/my-account/view-subscription/107/'
+        );
+        $empty = new VgpcSubscriptionFixture(
+            108,
+            42,
+            '',
+            [new VgpcSubscriptionLineFixture('Leë subskripsie')],
+            '',
+            'Via PayFast',
+            '/my-account/view-subscription/108/'
+        );
+        $provider = new VgpcSubscriptionProviderFixture([$unknown, $empty], []);
+
+        $card = (new SubscriptionService($provider))->card(42);
+
+        assert_same('unknown', $card['items'][0]['status']);
+        assert_same('Status onbekend', $card['items'][0]['status_label']);
+        assert_same('unknown', $card['items'][1]['status']);
+        assert_same('Status onbekend', $card['items'][1]['status_label']);
+    }
+
     public function test_missing_woo_subscriptions_returns_an_unavailable_card_without_throwing(): void
     {
         assert_true(class_exists(SubscriptionService::class));
@@ -189,6 +221,18 @@ final class SubscriptionServiceTest
 
         assert_same('subscriptions', $card['key']);
         assert_same(AfrikaansLabels::SUBSCRIPTIONS, $card['label']);
+        assert_same('unavailable', $card['state']);
+        assert_same([], $card['items']);
+        assert_same([], $card['actions']);
+    }
+
+    public function test_invalid_subscription_shape_returns_an_unavailable_card(): void
+    {
+        assert_true(class_exists(SubscriptionService::class));
+
+        $provider = new VgpcSubscriptionProviderFixture(new stdClass(), []);
+        $card = (new SubscriptionService($provider))->card(42);
+
         assert_same('unavailable', $card['state']);
         assert_same([], $card['items']);
         assert_same([], $card['actions']);
@@ -310,6 +354,27 @@ final class SubscriptionServiceTest
             'Via PayFast',
             '/my-account/view-subscription/106/',
             'not-a-date'
+        );
+        $provider = new VgpcSubscriptionProviderFixture([$subscription], []);
+
+        $card = (new SubscriptionService($provider))->card(42);
+
+        assert_same('01/10/2026', $card['items'][0]['next_payment_date']);
+    }
+
+    public function test_impossible_raw_iso_dates_use_display_text(): void
+    {
+        assert_true(class_exists(SubscriptionService::class));
+
+        $subscription = new VgpcSubscriptionFixture(
+            109,
+            42,
+            'active',
+            [new VgpcSubscriptionLineFixture('Voelgoedvriendinne Brons')],
+            '01/10/2026',
+            'Via PayFast',
+            '/my-account/view-subscription/109/',
+            '2026-02-30'
         );
         $provider = new VgpcSubscriptionProviderFixture([$subscription], []);
 

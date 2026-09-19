@@ -205,6 +205,42 @@ final class CommerceServiceTest
         assert_true(count($card['actions']) >= 3);
     }
 
+    public function test_unknown_and_empty_statuses_use_a_generic_afrikaans_label(): void
+    {
+        assert_true(class_exists(CommerceService::class));
+
+        $unknown = new VgpcOrderFixture(
+            503,
+            42,
+            '503',
+            'mystery-status',
+            '2026-09-01',
+            '99.00',
+            'ZAR',
+            [],
+            '/my-account/view-order/503/'
+        );
+        $empty = new VgpcOrderFixture(
+            504,
+            42,
+            '504',
+            '',
+            '2026-09-02',
+            '99.00',
+            'ZAR',
+            [],
+            '/my-account/view-order/504/'
+        );
+        $provider = new VgpcCommerceProviderFixture([$unknown, $empty], []);
+
+        $card = (new CommerceService($provider))->card(42);
+
+        assert_same('unknown', $card['items'][0]['status']);
+        assert_same('Status onbekend', $card['items'][0]['status_label']);
+        assert_same('unknown', $card['items'][1]['status']);
+        assert_same('Status onbekend', $card['items'][1]['status_label']);
+    }
+
     public function test_missing_woocommerce_returns_an_unavailable_card_without_throwing(): void
     {
         assert_true(class_exists(CommerceService::class));
@@ -216,6 +252,40 @@ final class CommerceServiceTest
         assert_same('unavailable', $card['state']);
         assert_same([], $card['items']);
         assert_same([], $card['actions']);
+    }
+
+    public function test_invalid_woocommerce_orders_shape_returns_an_unavailable_card(): void
+    {
+        assert_true(class_exists(CommerceService::class));
+
+        $provider = new VgpcCommerceProviderFixture(new stdClass(), []);
+        $card = (new CommerceService($provider))->card(42);
+
+        assert_same('unavailable', $card['state']);
+        assert_same([], $card['items']);
+        assert_same([], $card['actions']);
+    }
+
+    public function test_impossible_iso_order_dates_are_empty(): void
+    {
+        assert_true(class_exists(CommerceService::class));
+
+        $order = new VgpcOrderFixture(
+            505,
+            42,
+            '505',
+            'completed',
+            '2026-02-30',
+            '99.00',
+            'ZAR',
+            [],
+            '/my-account/view-order/505/'
+        );
+        $provider = new VgpcCommerceProviderFixture([$order], []);
+
+        $card = (new CommerceService($provider))->card(42);
+
+        assert_same('', $card['items'][0]['date']);
     }
 
     public function test_rejects_a_requested_user_that_differs_from_the_authenticated_user(): void
