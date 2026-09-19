@@ -19,8 +19,8 @@ require_once VGPC_PLUGIN_DIR . 'includes/Plugin.php';
 
 $vgpc_include_paths = [
     'includes/Contracts/DashboardServiceInterface.php',
-    'includes/Contracts/DashboardCard.php',
     'includes/Contracts/DashboardAction.php',
+    'includes/Contracts/DashboardCard.php',
     'includes/Config/AfrikaansLabels.php',
     'includes/Dashboard/DashboardContext.php',
     'includes/Services/MembershipService.php',

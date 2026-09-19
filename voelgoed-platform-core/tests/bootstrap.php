@@ -1,6 +1,11 @@
 <?php
 declare(strict_types=1);
 
+require_once dirname(__DIR__) . '/includes/Contracts/DashboardServiceInterface.php';
+require_once dirname(__DIR__) . '/includes/Contracts/DashboardAction.php';
+require_once dirname(__DIR__) . '/includes/Contracts/DashboardCard.php';
+require_once dirname(__DIR__) . '/includes/Config/AfrikaansLabels.php';
+
 if (! isset($GLOBALS['vgpc_assertion_count'])) {
     $GLOBALS['vgpc_assertion_count'] = 0;
 }
