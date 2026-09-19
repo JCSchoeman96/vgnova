@@ -31,7 +31,7 @@ The dashboard is a self-service account application. It is separate from `/vrien
 | Customer concept | Practical meaning | Source of truth | Dashboard label |
 | --- | --- | --- | --- |
 | PMPro membership | Access entitlement for membership-gated content and member benefits | PMPro membership level and status | `Lidmaatskap` |
-| Woo Subscription | Billing agreement for a recurring product or service. It may or may not grant a PMPro membership. | Woo Subscriptions | `Intekeninge` |
+| Woo Subscription | Billing agreement for a recurring product or service. It may or may not grant a PMPro membership. | Woo Subscriptions | `Subskripsies` |
 | Paid Masteriyo course | A course the user owns or is entitled to access | Masteriyo enrolment and course access | `Kursusse` |
 
 The overview must keep these concepts separate. A Woo subscription card must not imply that every subscription is a PMPro membership. A PMPro card must not display billing controls that belong to Woo Subscriptions.
@@ -44,15 +44,20 @@ The following labels are the approved first-pass Afrikaans UI copy. The route su
 | --- | --- | --- |
 | `/my-voelgoed/` | `Oorsig` | Personal summary, alerts, and next actions |
 | `/my-voelgoed/membership/` | `Lidmaatskap` | PMPro levels, access state, expiry, invoices, and membership actions |
-| `/my-voelgoed/subscriptions/` | `Intekeninge` | Woo Subscriptions status, next payment, payment state, renew, and cancel actions |
+| `/my-voelgoed/subscriptions/` | `Subskripsies` | Woo Subscriptions status, next payment, payment state, renew, and cancel actions |
 | `/my-voelgoed/orders/` | `Bestellings` | WooCommerce order history, receipts, and downloads |
 | `/my-voelgoed/tickets/` | `Kaartjies` | Tickera tickets, upcoming events, QR codes, and downloads |
 | `/my-voelgoed/learning/` | `Kursusse` | All owned or accessible Masteriyo courses, progress, and certificates |
-| `/my-voelgoed/library/` | `Biblioteek` | Member resources, saved items, and private downloads |
 | `/my-voelgoed/profile/` | `Profiel` | Personal details, password, addresses, preferences, and communication settings |
 | `/my-voelgoed/payment-methods/` | `Betaalmetodes` | WooCommerce saved payment methods. Expose this as a profile action or nested view unless testing shows it needs a top-level tab. |
 
-The overview may refer to `Aflaaie` inside `Bestellings` and `Biblioteek`, but it must not create a second download authority.
+Downloads remain attached to their owning system. WooCommerce downloads appear under `Bestellings`, Masteriyo resources under `Kursusse`, and Tickera ticket files under `Kaartjies`.
+
+### Deferred `Biblioteek`
+
+`Biblioteek` is not a first-release dashboard tab. The current staging site has no page or plugin authority for a generic library, saved-resource collection, or private-download index. Do not create a vague catch-all destination. If a library is needed later, first define its source and behaviour, such as saved content, curated member resources, or a document collection, then add a route and tab.
+
+For the first release, member benefits go to `Lede-area`, editorial member content remains in the separate `/vriendin/` experience, courses go to `Kursusse`, WooCommerce files go to `Bestellings`, and ticket files go to `Kaartjies`.
 
 ## Conditional member tab
 
@@ -72,11 +77,10 @@ The overview answers three questions: what the user has, what needs attention, a
 
 - Welcome and profile summary: name, avatar, and account state.
 - `Lidmaatskap`: current PMPro level, status, expiry or renewal date, and a link to manage access.
-- `Intekeninge`: all active, paused, on-hold, or failed Woo subscriptions, including the next payment date and a link to manage billing.
+- `Subskripsies`: all active, paused, on-hold, or failed Woo subscriptions, including the next payment date and a link to manage billing.
 - `Kursusse`: count of owned or accessible Masteriyo courses, the next course to continue, progress, and certificates.
 - `Kaartjies`: the next upcoming event, ticket count, QR or download action, and event date.
 - `Bestellings`: recent WooCommerce orders and download availability.
-- `Biblioteek`: member resources and saved items available to the user.
 - `Aandag nodig`: failed payment, expiring membership, upcoming event, incomplete profile, or course-progress reminders.
 
 Cards are summaries. Full management views open through the tabs and native provider actions.
@@ -117,10 +121,10 @@ The adapters may return empty states when a plugin is unavailable or the user ha
 
 1. Create the Bricks shell, authentication guard, responsive tabs, and Afrikaans copy system.
 2. Implement `Oorsig`, `Profiel`, `Bestellings`, and `Lidmaatskap` using native account actions.
-3. Add `Intekeninge`, including subscriptions that are not linked to PMPro.
+3. Add `Subskripsies`, including subscriptions that are not linked to PMPro.
 4. Add `Kursusse` with the complete Masteriyo owned/access list.
 5. Add `Kaartjies` and secure Tickera actions.
-6. Add `Biblioteek` and the conditional `Lede-area` tab.
+6. Add the conditional `Lede-area` tab.
 7. Add alerts, cache exclusions, analytics events, and responsive/accessibility hardening.
 
 ## Current staging references
@@ -139,9 +143,10 @@ The implementation must resolve these through plugin settings and the existing m
 - A logged-in customer can reach all applicable account areas from `/my-voelgoed/`.
 - All visible tabs, actions, statuses, empty states, and alerts are Afrikaans.
 - `Lidmaatskap` reports PMPro access and does not become a billing duplicate.
-- `Intekeninge` shows every relevant Woo subscription, including subscriptions unrelated to PMPro.
+- `Subskripsies` shows every relevant Woo subscription, including subscriptions unrelated to PMPro.
 - `Kursusse` shows every Masteriyo course the user owns or can access.
-- `Bestellings`, `Kaartjies`, and `Biblioteek` show only data belonging to the current user.
+- `Bestellings` and `Kaartjies` show only data belonging to the current user.
+- No generic `Biblioteek` tab is exposed until its source and behaviour are explicitly defined.
 - `Lede-area` appears only for active Vriendinneklub or Voelgoednetwerk members and opens the configured custom-plugin hub.
 - The member hub remains separate from the `/vriendin/` content experience, with clear links between the two.
 - Native WooCommerce, PMPro, Tickera, and Masteriyo management actions remain the source of truth.
