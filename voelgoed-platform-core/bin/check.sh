@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-for command_name in php rg; do
+for command_name in git php rg; do
   if ! command -v "$command_name" >/dev/null 2>&1; then
     echo "Required command not found: $command_name"
     exit 1
@@ -16,10 +16,22 @@ section() {
 }
 
 section "PHP syntax"
-mapfile -t php_files < <({
-  git ls-files -- '*.php'
-  git ls-files --others --exclude-standard -- '*.php'
-} | sort -u)
+if ! tracked_php_files="$(git ls-files -- '*.php')"; then
+  echo "Unable to list tracked PHP files."
+  exit 1
+fi
+
+if ! untracked_php_files="$(git ls-files --others --exclude-standard -- '*.php')"; then
+  echo "Unable to list untracked PHP files."
+  exit 1
+fi
+
+php_files=()
+while IFS= read -r file; do
+  if [ -n "$file" ]; then
+    php_files+=("$file")
+  fi
+done < <(printf '%s\n%s\n' "$tracked_php_files" "$untracked_php_files" | sort -u)
 
 if [ "${#php_files[@]}" -eq 0 ]; then
   echo "No PHP files found."
@@ -29,7 +41,16 @@ else
   done
 fi
 
-mapfile -t production_php_files < <(printf '%s\n' "${php_files[@]}" | rg -v '^tests/' || true)
+production_php_files=()
+for file in "${php_files[@]}"; do
+  case "$file" in
+    tests/*)
+      ;;
+    *)
+      production_php_files+=("$file")
+      ;;
+  esac
+done
 
 section "Forbidden direct ACF reads"
 acf_pattern='(^|[^[:alnum:]_])(get_field|get_fields|acf_get_value)[[:space:]]*\('

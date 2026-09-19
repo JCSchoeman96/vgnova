@@ -27,14 +27,19 @@ $passed = 0;
 
 foreach ($test_files as $test_file) {
     $classes_before = get_declared_classes();
+    $assertions_before = (int) ($GLOBALS['vgpc_assertion_count'] ?? 0);
     require_once $test_file;
     $classes_after = get_declared_classes();
     $new_classes = array_diff($classes_after, $classes_before);
     $file_test_count = 0;
 
     foreach ($new_classes as $class) {
+        if (! str_ends_with($class, 'Test')) {
+            continue;
+        }
+
         $reflection = new ReflectionClass($class);
-        if (! str_ends_with($class, 'Test') || $reflection->isAbstract()) {
+        if ($reflection->isAbstract()) {
             continue;
         }
 
@@ -51,8 +56,10 @@ foreach ($test_files as $test_file) {
         }
     }
 
-    if ($file_test_count === 0) {
+    $assertions_after = (int) ($GLOBALS['vgpc_assertion_count'] ?? 0);
+    if ($file_test_count === 0 && $assertions_after > $assertions_before) {
         ++$passed;
+        echo '.';
     }
 }
 
