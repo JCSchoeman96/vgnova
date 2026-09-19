@@ -5,6 +5,9 @@ require_once dirname(__DIR__) . '/includes/Contracts/DashboardServiceInterface.p
 require_once dirname(__DIR__) . '/includes/Contracts/DashboardAction.php';
 require_once dirname(__DIR__) . '/includes/Contracts/DashboardCard.php';
 require_once dirname(__DIR__) . '/includes/Config/AfrikaansLabels.php';
+require_once dirname(__DIR__) . '/includes/Services/MembershipService.php';
+require_once dirname(__DIR__) . '/includes/Services/SubscriptionService.php';
+require_once dirname(__DIR__) . '/includes/Services/CommerceService.php';
 
 if (! function_exists('home_url')) {
     function home_url(string $path = ''): string
