@@ -169,6 +169,76 @@ final class VgpcThrowingTicketProviderFixture
     }
 }
 
+final class VgpcNativeTickeraOrdersFixture
+{
+    public static mixed $requested_user_id = null;
+
+    public static int $calls = 0;
+
+    public static function get_user_orders(int $user_id): array
+    {
+        self::$requested_user_id = $user_id;
+        ++self::$calls;
+
+        return [
+            (object) [
+                'ID'          => 901,
+                'post_author' => $user_id,
+                'post_status' => 'order_paid',
+            ],
+        ];
+    }
+
+    public static function get_tickets_ids(int $order_id, string $post_status): array
+    {
+        return $order_id === 901 && $post_status === 'publish' ? [902] : [];
+    }
+}
+
+final class VgpcNativeTickeraTicketFixture
+{
+    public object $details;
+
+    public function __construct(int $ticket_id)
+    {
+        $this->details = (object) [
+            'post_parent' => 901,
+            'event_id'    => 903,
+            'status'      => 'valid',
+        ];
+    }
+}
+
+final class VgpcNativeTickeraEventFixture
+{
+    public object $details;
+
+    public function __construct(int $event_id)
+    {
+        $this->details = (object) [
+            'post_title'      => 'Native Tickera-geleentheid',
+            'event_date_time' => '2099-07-01 18:00:00',
+        ];
+    }
+}
+
+if (! function_exists('vgpc_register_native_tickera_fixtures')) {
+    function vgpc_register_native_tickera_fixtures(): void
+    {
+        $aliases = [
+            VgpcNativeTickeraOrdersFixture::class => 'Tickera\\TC_Orders',
+            VgpcNativeTickeraTicketFixture::class => 'Tickera\\TC_Ticket_Instance',
+            VgpcNativeTickeraEventFixture::class  => 'Tickera\\TC_Event',
+        ];
+
+        foreach ($aliases as $source => $target) {
+            if (! class_exists($target)) {
+                class_alias($source, $target);
+            }
+        }
+    }
+}
+
 final class TicketServiceTest
 {
     public function test_returns_owned_tickets_grouped_by_event_date_with_native_actions(): void
@@ -452,5 +522,18 @@ final class TicketServiceTest
         assert_false(isset($card['items'][0]['actions']['qr']));
         assert_true(isset($card['items'][0]['actions']['order']));
         assert_same('', $card['items'][0]['event_url']);
+    }
+
+    public function test_native_tickera_order_query_receives_authenticated_user_id(): void
+    {
+        vgpc_register_native_tickera_fixtures();
+
+        $card = (new TicketService())->card(42);
+
+        assert_same(42, VgpcNativeTickeraOrdersFixture::$requested_user_id);
+        assert_same(1, VgpcNativeTickeraOrdersFixture::$calls);
+        assert_same('active', $card['state']);
+        assert_same('902', $card['items'][0]['ticket_id']);
+        assert_same('order_paid', $card['items'][0]['status']);
     }
 }
