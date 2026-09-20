@@ -194,7 +194,7 @@ final class Navigation
         $key = str_replace('_', '-', $key);
 
         return match ($key) {
-            'memberarea' => DashboardRegistry::MEMBER_AREA,
+            'memberarea', DashboardRegistry::MEMBER_AREA => DashboardRegistry::MEMBER_AREA,
             default => DashboardContext::normalize_view_key($key),
         };
     }

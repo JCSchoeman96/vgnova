@@ -102,6 +102,13 @@ final class NavigationTest
         assert_same(AfrikaansLabels::MEMBER_AREA, end($visible_navigation)['label']);
         assert_same('/lede-area/', end($visible_navigation)['url']);
 
+        $active_navigation = (new Navigation(new DashboardRegistry([
+            'member-area' => new VgpcNavigationServiceFixture($visible_card),
+        ])))->items(new DashboardContext(42), 'member-area');
+
+        assert_true(end($active_navigation)['active']);
+        assert_same('page', end($active_navigation)['aria_current']);
+
         $hidden_navigation = (new Navigation(new DashboardRegistry([
             'member-area' => new VgpcNavigationServiceFixture(
                 DashboardCard::empty('member-area', AfrikaansLabels::MEMBER_AREA, 'empty', '', false)

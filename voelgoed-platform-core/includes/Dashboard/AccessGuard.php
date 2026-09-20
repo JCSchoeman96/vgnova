@@ -22,7 +22,9 @@ final class AccessGuard
 
     private bool $terminate_on_redirect;
 
-    private bool $registered = false;
+    private static bool $registered = false;
+
+    private static ?self $registered_instance = null;
 
     /**
      * @param callable|null $authentication_checker Optional testable login check.
@@ -40,12 +42,26 @@ final class AccessGuard
 
     public function register(): void
     {
-        if ($this->registered || ! function_exists('add_action')) {
+        if (! function_exists('add_action')) {
             return;
         }
 
+        if (self::$registered) {
+            if (
+                ! function_exists('has_action')
+                || self::$registered_instance === null
+                || has_action('template_redirect', [self::$registered_instance, 'guard_dashboard']) !== false
+            ) {
+                return;
+            }
+
+            self::$registered = false;
+            self::$registered_instance = null;
+        }
+
         add_action('template_redirect', [$this, 'guard_dashboard'], 1);
-        $this->registered = true;
+        self::$registered = true;
+        self::$registered_instance = $this;
     }
 
     public function is_authenticated(): bool

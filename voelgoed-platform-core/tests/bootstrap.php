@@ -92,6 +92,28 @@ if (! function_exists('add_action')) {
     }
 }
 
+if (! function_exists('has_action')) {
+    function has_action(string $hook, mixed $callback = null): int|false
+    {
+        $actions = $GLOBALS['vgpc_actions'][$hook] ?? [];
+        if (! is_array($actions) || $actions === []) {
+            return false;
+        }
+
+        if ($callback === null) {
+            return 10;
+        }
+
+        foreach ($actions as $action) {
+            if (($action['callback'] ?? null) === $callback) {
+                return (int) ($action['priority'] ?? 10);
+            }
+        }
+
+        return false;
+    }
+}
+
 if (! function_exists('wp_get_current_user')) {
     function wp_get_current_user(): object
     {

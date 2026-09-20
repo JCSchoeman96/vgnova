@@ -108,14 +108,28 @@ final class AccessGuardTest
         assert_same(1, count($GLOBALS['vgpc_actions']['template_redirect'] ?? []));
     }
 
+    public function test_register_is_idempotent_across_separate_guard_instances(): void
+    {
+        assert_true(class_exists(AccessGuard::class));
+
+        $GLOBALS['vgpc_actions'] = [];
+        $first = new AccessGuard(null, null, false);
+        $second = new AccessGuard(null, null, false);
+        $first->register();
+        $second->register();
+
+        assert_same(1, count($GLOBALS['vgpc_actions']['template_redirect'] ?? []));
+    }
+
     public function test_plugin_register_is_idempotent_for_template_redirect_hooks(): void
     {
         assert_true(class_exists(\Voelgoed\PlatformCore\Plugin::class));
 
         $GLOBALS['vgpc_actions'] = [];
-        $plugin = new \Voelgoed\PlatformCore\Plugin();
-        $plugin->register();
-        $plugin->register();
+        $first = new \Voelgoed\PlatformCore\Plugin();
+        $second = new \Voelgoed\PlatformCore\Plugin();
+        $first->register();
+        $second->register();
 
         assert_same(1, count($GLOBALS['vgpc_actions']['template_redirect'] ?? []));
     }
