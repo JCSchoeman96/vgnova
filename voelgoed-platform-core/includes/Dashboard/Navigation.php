@@ -139,8 +139,7 @@ final class Navigation
      */
     private function member_area_item(DashboardContext $context, string $active_key): ?array
     {
-        $cards = $this->registry->cards($context);
-        $card = $cards[DashboardRegistry::MEMBER_AREA] ?? null;
+        $card = $this->registry->card(DashboardRegistry::MEMBER_AREA, $context);
         if (! is_array($card) || ($card['visible'] ?? false) !== true) {
             return null;
         }

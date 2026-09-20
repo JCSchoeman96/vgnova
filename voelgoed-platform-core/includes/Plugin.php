@@ -23,8 +23,14 @@ final class Plugin
      */
     private array $components = [];
 
+    private bool $registered = false;
+
     public function register(): void
     {
+        if ($this->registered) {
+            return;
+        }
+
         $this->components = [];
 
         $registry = new DashboardRegistry();
@@ -43,6 +49,8 @@ final class Plugin
                 $component->register();
             }
         }
+
+        $this->registered = true;
     }
 
     /**

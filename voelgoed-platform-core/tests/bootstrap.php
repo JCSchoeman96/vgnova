@@ -15,6 +15,7 @@ require_once dirname(__DIR__) . '/includes/Dashboard/DashboardContext.php';
 require_once dirname(__DIR__) . '/includes/Dashboard/DashboardRegistry.php';
 require_once dirname(__DIR__) . '/includes/Dashboard/Navigation.php';
 require_once dirname(__DIR__) . '/includes/Dashboard/AccessGuard.php';
+require_once dirname(__DIR__) . '/includes/Plugin.php';
 
 if (! function_exists('home_url')) {
     function home_url(string $path = ''): string

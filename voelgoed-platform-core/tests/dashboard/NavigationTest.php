@@ -3,13 +3,15 @@ declare(strict_types=1);
 
 use Voelgoed\PlatformCore\Config\AfrikaansLabels;
 use Voelgoed\PlatformCore\Contracts\DashboardCard;
+use Voelgoed\PlatformCore\Contracts\DashboardServiceInterface;
 use Voelgoed\PlatformCore\Dashboard\DashboardContext;
 use Voelgoed\PlatformCore\Dashboard\DashboardRegistry;
 use Voelgoed\PlatformCore\Dashboard\Navigation;
-use Voelgoed\PlatformCore\Services\MemberAreaService;
 
-final class VgpcNavigationServiceFixture
+final class VgpcNavigationServiceFixture implements DashboardServiceInterface
 {
+    public int $calls = 0;
+
     /**
      * @param array<string, mixed> $card
      */
@@ -22,6 +24,8 @@ final class VgpcNavigationServiceFixture
      */
     public function card(int $user_id): array
     {
+        ++$this->calls;
+
         return $this->card;
     }
 }
@@ -115,7 +119,7 @@ final class NavigationTest
             'membership' => new VgpcNavigationServiceFixture(
                 DashboardCard::make('membership', AfrikaansLabels::MEMBERSHIP, 'active', 'Aktief')
             ),
-            'tickets' => new class {
+            'tickets' => new class implements DashboardServiceInterface {
                 public function card(int $user_id): array
                 {
                     throw new RuntimeException('Tickera is unavailable.');
@@ -131,5 +135,75 @@ final class NavigationTest
         assert_true(array_key_exists('orders', $cards));
         assert_true(array_key_exists('learning', $cards));
         assert_true(array_key_exists('member-area', $cards));
+    }
+
+    public function test_navigation_resolves_only_the_member_area_provider(): void
+    {
+        $cards = [];
+        $services = [];
+        foreach (DashboardRegistry::provider_keys() as $key) {
+            $label = match ($key) {
+                'membership' => AfrikaansLabels::MEMBERSHIP,
+                'subscriptions' => AfrikaansLabels::SUBSCRIPTIONS,
+                'orders' => AfrikaansLabels::ORDERS,
+                'tickets' => AfrikaansLabels::TICKETS,
+                'learning' => AfrikaansLabels::LEARNING,
+                'member-area' => AfrikaansLabels::MEMBER_AREA,
+                default => $key,
+            };
+            $cards[$key] = DashboardCard::make($key, $label, 'empty', '');
+            $services[$key] = new VgpcNavigationServiceFixture($cards[$key]);
+        }
+
+        $registry = new DashboardRegistry($services);
+        $navigation = new Navigation($registry);
+        $navigation->items(new DashboardContext(42));
+
+        foreach ($services as $key => $service) {
+            assert_same($key === 'member-area' ? 1 : 0, $service->calls, $key . ' provider call count differs.');
+        }
+    }
+
+    public function test_registry_rejects_custom_objects_that_do_not_implement_the_service_contract(): void
+    {
+        $registry = new DashboardRegistry([
+            'tickets' => new class {
+                public function card(int $user_id): array
+                {
+                    return DashboardCard::make('tickets', AfrikaansLabels::TICKETS, 'active', 'Should not be used.');
+                }
+            },
+        ]);
+
+        $cards = $registry->cards(new DashboardContext(42));
+
+        assert_same('unavailable', $cards['tickets']['state']);
+    }
+
+    public function test_registry_rejects_malicious_nested_actions_during_card_normalization(): void
+    {
+        $service = new class implements DashboardServiceInterface {
+            public function card(int $user_id): array
+            {
+                return [
+                    'key' => 'tickets',
+                    'label' => AfrikaansLabels::TICKETS,
+                    'visible' => true,
+                    'state' => 'active',
+                    'summary' => 'Kaartjies',
+                    'items' => [],
+                    'actions' => [[
+                        'key' => 'open',
+                        'label' => 'Maak oop',
+                        'url' => 'javascript:alert(1)',
+                    ]],
+                ];
+            }
+        };
+
+        $cards = (new DashboardRegistry(['tickets' => $service]))->cards(new DashboardContext(42));
+
+        assert_same('unavailable', $cards['tickets']['state']);
+        assert_same([], $cards['tickets']['actions']);
     }
 }

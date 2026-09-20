@@ -22,6 +22,8 @@ final class AccessGuard
 
     private bool $terminate_on_redirect;
 
+    private bool $registered = false;
+
     /**
      * @param callable|null $authentication_checker Optional testable login check.
      * @param callable|null $redirector Optional redirect sink, mainly for tests.
@@ -38,9 +40,12 @@ final class AccessGuard
 
     public function register(): void
     {
-        if (function_exists('add_action')) {
-            add_action('template_redirect', [$this, 'guard_dashboard'], 1);
+        if ($this->registered || ! function_exists('add_action')) {
+            return;
         }
+
+        add_action('template_redirect', [$this, 'guard_dashboard'], 1);
+        $this->registered = true;
     }
 
     public function is_authenticated(): bool
@@ -264,7 +269,7 @@ final class AccessGuard
             return false;
         }
 
-        if (isset($parts['user'], $parts['pass'])) {
+        if (isset($parts['user']) || isset($parts['pass'])) {
             return false;
         }
 

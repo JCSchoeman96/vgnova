@@ -84,4 +84,39 @@ final class AccessGuardTest
             $guard->return_url('/%2F%2Fattacker.example/steal')
         );
     }
+
+    public function test_return_urls_with_a_username_or_password_are_rejected(): void
+    {
+        assert_true(class_exists(AccessGuard::class));
+
+        $guard = new AccessGuard(null, null, false);
+        $fallback = 'https://voelgoed.test/my-voelgoed/';
+
+        assert_same($fallback, $guard->return_url('https://user@voelgoed.test/my-voelgoed/'));
+        assert_same($fallback, $guard->return_url('https://:secret@voelgoed.test/my-voelgoed/'));
+    }
+
+    public function test_register_is_idempotent_for_a_single_guard_instance(): void
+    {
+        assert_true(class_exists(AccessGuard::class));
+
+        $GLOBALS['vgpc_actions'] = [];
+        $guard = new AccessGuard(null, null, false);
+        $guard->register();
+        $guard->register();
+
+        assert_same(1, count($GLOBALS['vgpc_actions']['template_redirect'] ?? []));
+    }
+
+    public function test_plugin_register_is_idempotent_for_template_redirect_hooks(): void
+    {
+        assert_true(class_exists(\Voelgoed\PlatformCore\Plugin::class));
+
+        $GLOBALS['vgpc_actions'] = [];
+        $plugin = new \Voelgoed\PlatformCore\Plugin();
+        $plugin->register();
+        $plugin->register();
+
+        assert_same(1, count($GLOBALS['vgpc_actions']['template_redirect'] ?? []));
+    }
 }

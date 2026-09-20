@@ -7,6 +7,7 @@ use Throwable;
 use Voelgoed\PlatformCore\Config\AfrikaansLabels;
 use Voelgoed\PlatformCore\Contracts\DashboardAction;
 use Voelgoed\PlatformCore\Contracts\DashboardCard;
+use Voelgoed\PlatformCore\Contracts\DashboardServiceInterface;
 use Voelgoed\PlatformCore\Services\CommerceService;
 use Voelgoed\PlatformCore\Services\LearningService;
 use Voelgoed\PlatformCore\Services\MemberAreaService;
@@ -41,14 +42,14 @@ final class DashboardRegistry
     ];
 
     /**
-     * @var array<string, object>
+     * @var array<string, DashboardServiceInterface>
      */
     private array $services = [];
 
     private ?DashboardContext $context;
 
     /**
-     * @param array<string, object> $services
+     * @param array<string, DashboardServiceInterface|object> $services
      */
     public function __construct(array $services = [], ?DashboardContext $context = null)
     {
@@ -68,7 +69,7 @@ final class DashboardRegistry
         }
 
         foreach ($services as $key => $service) {
-            if (! is_object($service)) {
+            if (! $service instanceof DashboardServiceInterface) {
                 continue;
             }
 
@@ -89,14 +90,14 @@ final class DashboardRegistry
     }
 
     /**
-     * @return array<string, object>
+     * @return array<string, DashboardServiceInterface>
      */
     public function services(): array
     {
         return $this->services;
     }
 
-    public function service(string $key): ?object
+    public function service(string $key): ?DashboardServiceInterface
     {
         $key = self::normalize_provider_key($key);
 
@@ -185,7 +186,7 @@ final class DashboardRegistry
     private function card_for_provider(string $key, int $user_id): array
     {
         $service = $this->services[$key] ?? null;
-        if (! is_object($service) || ! method_exists($service, 'card')) {
+        if (! $service instanceof DashboardServiceInterface) {
             return $this->fallback_card($key);
         }
 
@@ -199,7 +200,19 @@ final class DashboardRegistry
             return $this->fallback_card($key);
         }
 
-        return $card;
+        try {
+            return DashboardCard::make(
+                $key,
+                $card['label'],
+                $card['state'],
+                $card['summary'],
+                $card['actions'],
+                $card['items'],
+                $card['visible']
+            );
+        } catch (Throwable) {
+            return $this->fallback_card($key);
+        }
     }
 
     /**
