@@ -173,17 +173,20 @@ final class VgpcNativeTickeraOrdersFixture
 {
     public static mixed $requested_user_id = null;
 
+    public static string $requested_user_email = '';
+
     public static int $calls = 0;
 
-    public static function get_user_orders(int $user_id): array
+    public static function get_user_orders(object $user): array
     {
-        self::$requested_user_id = $user_id;
+        self::$requested_user_id = (int) ($user->ID ?? 0);
+        self::$requested_user_email = (string) ($user->user_email ?? '');
         ++self::$calls;
 
         return [
             (object) [
                 'ID'          => 901,
-                'post_author' => $user_id,
+                'post_author' => self::$requested_user_id,
                 'post_status' => 'order_paid',
             ],
         ];
@@ -526,14 +529,17 @@ final class TicketServiceTest
 
     public function test_native_tickera_order_query_receives_authenticated_user_id(): void
     {
+        vgpc_set_current_user_email('native@example.test');
         vgpc_register_native_tickera_fixtures();
 
         $card = (new TicketService())->card(42);
 
         assert_same(42, VgpcNativeTickeraOrdersFixture::$requested_user_id);
+        assert_same('native@example.test', VgpcNativeTickeraOrdersFixture::$requested_user_email);
         assert_same(1, VgpcNativeTickeraOrdersFixture::$calls);
         assert_same('active', $card['state']);
         assert_same('902', $card['items'][0]['ticket_id']);
         assert_same('order_paid', $card['items'][0]['status']);
+        vgpc_set_current_user_email('');
     }
 }

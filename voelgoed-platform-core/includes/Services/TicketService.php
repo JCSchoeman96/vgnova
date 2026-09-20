@@ -183,7 +183,7 @@ final class TicketService implements DashboardServiceInterface
         }
 
         try {
-            return ['ok' => true, 'value' => $class::get_user_orders($user_id)];
+            return ['ok' => true, 'value' => $class::get_user_orders($user)];
         } catch (Throwable) {
             return ['ok' => false, 'value' => null];
         }

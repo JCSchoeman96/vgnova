@@ -148,6 +148,35 @@ final class VgpcLearningProviderFixture
     }
 }
 
+final class VgpcLearningAccessResultProviderFixture
+{
+    public function __construct(
+        private mixed $access,
+        private object $course,
+        private int $course_id,
+    ) {
+    }
+
+    public function user_courses(int $user_id, array $query = []): array
+    {
+        return [new VgpcLearningUserCourseFixture($this->course_id, $user_id, 'enrolled', $this->course)];
+    }
+
+    public function is_enrolled(int $course_id, int $user_id): mixed
+    {
+        return $this->access;
+    }
+}
+
+if (! class_exists('WP_Error')) {
+    class WP_Error
+    {
+        public function __construct(public string $code = '')
+        {
+        }
+    }
+}
+
 final class VgpcThrowingLearningProviderFixture
 {
     public function user_courses(int $user_id, array $query = []): array
@@ -217,6 +246,28 @@ final class LearningServiceTest
         assert_same('', $card['items'][0]['completion_label']);
         assert_same('', $card['items'][0]['next_lesson']);
         assert_same('', $card['items'][0]['certificate_url']);
+    }
+
+    public function test_null_provider_access_result_is_denied(): void
+    {
+        $course = new VgpcLearningCourseFixture(308, 'Onbekende toegang', '/kursus/onbekende-toegang/');
+        $provider = new VgpcLearningAccessResultProviderFixture(null, $course, 308);
+
+        $card = (new LearningService($provider))->card(42);
+
+        assert_same('empty', $card['state']);
+        assert_same([], $card['items']);
+    }
+
+    public function test_wp_error_provider_access_result_is_denied(): void
+    {
+        $course = new VgpcLearningCourseFixture(309, 'Foutiewe toegang', '/kursus/foutiewe-toegang/');
+        $provider = new VgpcLearningAccessResultProviderFixture(new WP_Error('denied'), $course, 309);
+
+        $card = (new LearningService($provider))->card(42);
+
+        assert_same('empty', $card['state']);
+        assert_same([], $card['items']);
     }
 
     public function test_empty_access_returns_afrikaans_empty_card(): void

@@ -325,7 +325,7 @@ final class LearningService implements DashboardServiceInterface
             );
             if ($result['found']) {
                 return $result['ok']
-                    ? ['ok' => true, 'allowed' => $result['value'] !== false]
+                    ? ['ok' => true, 'allowed' => $result['value'] === true]
                     : ['ok' => false, 'allowed' => false];
             }
         }
@@ -334,7 +334,7 @@ final class LearningService implements DashboardServiceInterface
             try {
                 return [
                     'ok'      => true,
-                    'allowed' => \masteriyo_is_user_enrolled_in_course($course_id, $user_id) !== false,
+                    'allowed' => \masteriyo_is_user_enrolled_in_course($course_id, $user_id) === true,
                 ];
             } catch (Throwable) {
                 return ['ok' => false, 'allowed' => false];
