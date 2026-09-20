@@ -70,6 +70,35 @@ The first dashboard release uses these boundaries:
 | `Lede-area` | Voelgoed Member Perks | `vgmp_enable_hub_display` is a staging prerequisite. At the inspected submodule commit, the current public member-perks surface does not expose an approved dashboard-facing feature-flag accessor. `MemberAreaService` must require an approved public capability or configuration API before release. If that API is unavailable, return invisible and do not call `HubAccess`. If it reports the flag as false, hide the tab. Do not direct-read ACF or hardcode the setting in dashboard runtime. |
 | `Biblioteek` | None | Do not expose a generic library tab until its content source, access rules, and route are defined. |
 
+## Masteriyo and Tickera API findings
+
+The installed staging source was inspected locally after read-only Novamira discovery reported Masteriyo 3.4.2 and Tickera 3.5.7.4. The exact patch versions differ from the earlier supplied snapshot, so the adapter must continue to guard every optional call.
+
+### Masteriyo
+
+The course adapter may use these supported runtime APIs and models:
+
+- `Masteriyo\\Query\\UserCourseQuery::get_user_courses()` with `user_id` and `status` query variables to enumerate the authenticated user's course access records.
+- `Masteriyo\\Models\\UserCourse::get_course_id()`, `get_user_id()`, `get_status()`, `get_permalink()`, and `get_course()` for normalized enrolment data.
+- `masteriyo_get_course($course_id)` and `masteriyo_is_user_enrolled_in_course($course_id, $user_id)` for course and access checks.
+- `Masteriyo\\Query\\CourseProgressQuery::get_course_progress()` or `masteriyo_get_course_progress_by_user_and_course()` for user-scoped progress.
+- `Masteriyo\\Models\\CourseProgress::get_summary('all')` for the provider's progress totals. A missing summary or zero total must remain an empty progress value, not 100 percent.
+- When the certificate addon is loaded, `masteriyo_get_course_certificate_id()` and `masteriyo_generate_certificate_download_url()` provide the native certificate identity and download URL. The adapter must omit the certificate action when either helper is unavailable or the course is not complete.
+
+The adapter must never query `masteriyo_user_items` or `masteriyo_user_activities` directly. It must also pass the authenticated WordPress user ID into every query and re-check returned records before exposing them.
+
+### Tickera
+
+The installed Tickera source exposes these supported runtime APIs:
+
+- `\\Tickera\\TC_Orders::get_user_orders($user)` returns the user's `tc_orders` posts. By default it scopes by WordPress post author. Tickera can optionally enable its email-history filter, so the dashboard must only use that mode when the returned order has been verified against the authenticated user's email.
+- `\\Tickera\\TC_Orders::get_tickets_ids($order_id, $post_status)` returns ticket-instance IDs for an owned order.
+- `\\Tickera\\TC_Ticket_Instance` exposes the ticket-instance details and its event ID. `\\Tickera\\TC_Event` exposes the event post title and event details.
+- `tickera_get_raw_ticket_download_link('', '', $ticket_id, true)` builds Tickera's native signed ticket-download URL. The dashboard must call it only after ownership is confirmed.
+- `$tc->tc_order_status_url($order, $order_key, '', false)` builds the native order-details URL when the global Tickera controller is available.
+
+Tickera ticket instances have an `owner_email` field, but the supported order lookup is WordPress-user based unless the optional email-history setting is enabled. If an order cannot be tied to the authenticated user by its author or by an exact verified email match, the dashboard must fail closed and omit that ticket. It must not search all ticket instances by email and display a result without this ownership check.
+
 The conditional member tab is intentionally separate from `Lidmaatskap`. PMPro answers whether the user has membership access. Member Perks answers whether the user can open the configured benefits hub.
 
 ## Member-perks hub contract
