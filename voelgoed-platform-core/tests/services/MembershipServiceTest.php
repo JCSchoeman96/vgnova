@@ -116,6 +116,22 @@ final class MembershipServiceTest
         assert_true($card['visible']);
     }
 
+    public function test_missing_pmpro_status_defaults_to_active_for_levels_api_records(): void
+    {
+        assert_true(class_exists(MembershipService::class));
+
+        $provider = new VgpcMembershipProviderFixture(
+            [(object) ['name' => 'PMPro vlak', 'ID' => 988]],
+            ['cancel' => '/pmpro-cancel/']
+        );
+
+        $card = (new MembershipService($provider))->card(42);
+
+        assert_same('active', $card['state']);
+        assert_same('active', $card['items'][0]['status']);
+        assert_true(in_array('cancel', array_column($card['actions'], 'key'), true));
+    }
+
     public function test_unknown_and_empty_statuses_use_a_generic_afrikaans_label(): void
     {
         assert_true(class_exists(MembershipService::class));
@@ -174,6 +190,7 @@ final class MembershipServiceTest
                 (object) ['name' => 'Onmoontlike dag', 'enddate' => '2026-02-30'],
                 (object) ['name' => 'Ongeldige agtervoegsel', 'enddate' => '2026-02-30abc'],
                 (object) ['name' => 'Ongeldige tyd', 'enddate' => '2026-01-01T25:00'],
+                (object) ['name' => 'Onleesbare datum', 'enddate' => 'not-a-date'],
             ],
             []
         );
@@ -183,6 +200,7 @@ final class MembershipServiceTest
         assert_same('', $card['items'][0]['expiry_date']);
         assert_same('', $card['items'][1]['expiry_date']);
         assert_same('', $card['items'][2]['expiry_date']);
+        assert_same('', $card['items'][3]['expiry_date']);
     }
 
     public function test_expired_only_memberships_are_inactive_without_cancellation(): void

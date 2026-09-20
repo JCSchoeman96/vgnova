@@ -38,6 +38,7 @@ final class VgpcOrderFixture
         private string $currency,
         private array $items,
         private string $view_url,
+        private mixed $customer_id = null,
     ) {
     }
 
@@ -49,6 +50,11 @@ final class VgpcOrderFixture
     public function get_user_id(): mixed
     {
         return $this->user_id;
+    }
+
+    public function get_customer_id(): mixed
+    {
+        return $this->customer_id;
     }
 
     public function get_order_number(): string
@@ -205,6 +211,54 @@ final class CommerceServiceTest
         assert_true(count($card['actions']) >= 3);
     }
 
+    public function test_prefers_woocommerce_customer_id_before_wordpress_user_id(): void
+    {
+        assert_true(class_exists(CommerceService::class));
+
+        $canonical = new VgpcOrderFixture(
+            507,
+            99,
+            '507',
+            'completed',
+            '2026-09-01',
+            '99.00',
+            'ZAR',
+            [],
+            '/order/507/',
+            '42'
+        );
+        $conflicting = new VgpcOrderFixture(
+            508,
+            42,
+            '508',
+            'completed',
+            '2026-09-01',
+            '99.00',
+            'ZAR',
+            [],
+            '/order/508/',
+            '99'
+        );
+        $fallback = new VgpcOrderFixture(
+            509,
+            42,
+            '509',
+            'completed',
+            '2026-09-01',
+            '99.00',
+            'ZAR',
+            [],
+            '/order/509/'
+        );
+        $provider = new VgpcCommerceProviderFixture([$canonical, $conflicting, $fallback], []);
+
+        $card = (new CommerceService($provider))->card(42);
+
+        assert_same(2, count($card['items']));
+        assert_same('507', $card['items'][0]['order_number']);
+        assert_same('509', $card['items'][1]['order_number']);
+    }
+
     public function test_unknown_and_empty_statuses_use_a_generic_afrikaans_label(): void
     {
         assert_true(class_exists(CommerceService::class));
@@ -271,7 +325,7 @@ final class CommerceServiceTest
         assert_true(class_exists(CommerceService::class));
 
         $orders = [];
-        foreach (['2026-02-30', '2026-02-30abc', '2026-01-01T25:00'] as $offset => $date) {
+        foreach (['2026-02-30', '2026-02-30abc', '2026-01-01T25:00', 'not-a-date'] as $offset => $date) {
             $id = 505 + $offset;
             $orders[] = new VgpcOrderFixture(
                 $id,
@@ -292,6 +346,7 @@ final class CommerceServiceTest
         assert_same('', $card['items'][0]['date']);
         assert_same('', $card['items'][1]['date']);
         assert_same('', $card['items'][2]['date']);
+        assert_same('', $card['items'][3]['date']);
     }
 
     public function test_rejects_a_requested_user_that_differs_from_the_authenticated_user(): void

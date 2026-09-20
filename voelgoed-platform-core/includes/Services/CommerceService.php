@@ -160,7 +160,11 @@ final class CommerceService implements DashboardServiceInterface
 
     private function owner_id(object $order): ?int
     {
-        $owner = $this->method_value($order, 'get_user_id');
+        $owner = $this->method_value($order, 'get_customer_id');
+        if ($owner === null) {
+            $owner = $this->method_value($order, 'get_user_id');
+        }
+
         if ($owner === null && isset($order->user_id) && is_scalar($order->user_id)) {
             $owner = $order->user_id;
         }
@@ -373,7 +377,7 @@ final class CommerceService implements DashboardServiceInterface
                 : date('Y-m-d', $timestamp);
         }
 
-        return $text;
+        return '';
     }
 
     private function valid_iso_date(string $value): bool

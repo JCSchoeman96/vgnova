@@ -56,7 +56,10 @@ final class MembershipService implements DashboardServiceInterface
                     continue;
                 }
 
-                $status = $this->status($this->value($level, 'status'));
+                $status_value = $this->has_value($level, 'status')
+                    ? $this->value($level, 'status')
+                    : 'active';
+                $status = $this->status($status_value);
                 if ($status === 'active') {
                     ++$active_count;
                 }
@@ -242,6 +245,19 @@ final class MembershipService implements DashboardServiceInterface
         return $this->scalar_string($this->raw_value($source, $key));
     }
 
+    private function has_value(mixed $source, string $key): bool
+    {
+        if (is_array($source)) {
+            return array_key_exists($key, $source);
+        }
+
+        if (! is_object($source)) {
+            return false;
+        }
+
+        return property_exists($source, $key) || isset($source->{$key});
+    }
+
     private function raw_value(mixed $source, string $key): mixed
     {
         if (is_object($source) && isset($source->{$key})) {
@@ -336,7 +352,7 @@ final class MembershipService implements DashboardServiceInterface
                 : date('Y-m-d', $timestamp);
         }
 
-        return $text;
+        return '';
     }
 
     private function valid_iso_date(string $value): bool
