@@ -43,11 +43,37 @@ final class VgpcMemberAreaProviderFixture
     }
 }
 
+final class MemberAreaServiceBoundaryTest
+{
+    public function test_flag_enabled_but_missing_hub_access_class_hides_member_area(): void
+    {
+        $hub = new VgpcMemberHubAccessFixture(['can_view_hub' => true, 'hub_page_id' => 990]);
+        $provider = new VgpcMemberAreaProviderFixture(['hub_display' => true], $hub);
+
+        $card = (new MemberAreaService($provider))->card(42);
+
+        assert_false($card['visible']);
+        assert_same([], $card['actions']);
+        assert_same(0, $hub->resolve_calls);
+    }
+}
+
 final class MemberAreaServiceTest
 {
+    private function ensure_hub_access_stub(): void
+    {
+        $class = '\\Voelgoed\\MemberPerks\\Display\\HubAccess';
+        if (class_exists($class)) {
+            return;
+        }
+
+        eval('namespace Voelgoed\\MemberPerks\\Display; final class HubAccess { public const CONTEXT_MAIN = "main"; }');
+    }
+
     public function test_active_member_area_uses_the_resolved_main_hub_and_same_site_url(): void
     {
         assert_true(class_exists(MemberAreaService::class));
+        $this->ensure_hub_access_stub();
 
         vgpc_set_permalink(990, '/my-voordele/');
         $hub = new VgpcMemberHubAccessFixture([
@@ -66,7 +92,7 @@ final class MemberAreaServiceTest
         assert_same('active', $card['state']);
         assert_true($card['visible']);
         assert_same(1, $hub->resolve_calls);
-        assert_same('main', $provider->feature_flags() !== null ? 'main' : '');
+        assert_same(1, $provider->flag_calls);
         assert_same('/my-voordele/', $card['actions'][0]['url']);
         assert_same('open', $card['actions'][0]['key']);
         assert_same(990, $card['items'][0]['hub_page_id']);
@@ -75,6 +101,7 @@ final class MemberAreaServiceTest
 
     public function test_disabled_feature_hides_member_area_without_resolving_hub_access(): void
     {
+        $this->ensure_hub_access_stub();
         $hub = new VgpcMemberHubAccessFixture(['can_view_hub' => true, 'hub_page_id' => 990]);
         $provider = new VgpcMemberAreaProviderFixture(
             ['vgmp_enable_hub_display' => false],
@@ -91,6 +118,7 @@ final class MemberAreaServiceTest
 
     public function test_missing_feature_flag_boundary_hides_member_area_in_production(): void
     {
+        $this->ensure_hub_access_stub();
         $hub = new VgpcMemberHubAccessFixture(['can_view_hub' => true, 'hub_page_id' => 990]);
         $provider = new class($hub) {
             public function __construct(private VgpcMemberHubAccessFixture $hub)
@@ -111,6 +139,7 @@ final class MemberAreaServiceTest
 
     public function test_inactive_hub_resolution_hides_member_area(): void
     {
+        $this->ensure_hub_access_stub();
         $hub = new VgpcMemberHubAccessFixture([
             'can_view_hub' => false,
             'hub_page_id'  => 990,
@@ -126,6 +155,7 @@ final class MemberAreaServiceTest
 
     public function test_missing_page_or_external_permalink_fails_closed(): void
     {
+        $this->ensure_hub_access_stub();
         $missing_page = new VgpcMemberHubAccessFixture(['can_view_hub' => true, 'hub_page_id' => 0]);
         $provider = new VgpcMemberAreaProviderFixture(['vgmp_enable_hub_display' => true], $missing_page);
         $card = (new MemberAreaService($provider))->card(42);
@@ -141,6 +171,7 @@ final class MemberAreaServiceTest
 
     public function test_dual_programme_resolution_still_exposes_one_main_hub_action(): void
     {
+        $this->ensure_hub_access_stub();
         vgpc_set_permalink(990, '/my-voordele/');
         $hub = new VgpcMemberHubAccessFixture([
             'can_view_hub' => true,
@@ -157,6 +188,7 @@ final class MemberAreaServiceTest
 
     public function test_requested_or_authenticated_user_mismatch_hides_member_area(): void
     {
+        $this->ensure_hub_access_stub();
         $hub = new VgpcMemberHubAccessFixture(['can_view_hub' => true, 'hub_page_id' => 990]);
         $provider = new VgpcMemberAreaProviderFixture(['vgmp_enable_hub_display' => true], $hub);
 
@@ -173,5 +205,21 @@ final class MemberAreaServiceTest
 
         assert_false($card['visible']);
         assert_same(0, $hub->resolve_calls);
+    }
+
+    public function test_hub_display_feature_flag_map_is_supported(): void
+    {
+        $this->ensure_hub_access_stub();
+        vgpc_set_permalink(990, '/my-voordele/');
+        $hub = new VgpcMemberHubAccessFixture([
+            'can_view_hub' => true,
+            'hub_page_id'  => 990,
+        ]);
+        $provider = new VgpcMemberAreaProviderFixture(['hub_display' => true], $hub);
+
+        $card = (new MemberAreaService($provider))->card(42);
+
+        assert_true($card['visible']);
+        assert_same('/my-voordele/', $card['actions'][0]['url']);
     }
 }

@@ -369,6 +369,14 @@ final class TicketService implements DashboardServiceInterface
         $download = $this->action('download', 'Laai kaartjie af', $download_url);
         if ($download !== null) {
             $actions['download'] = $download;
+
+            // Tickera renders tc_ticket_qr_code_element inside this signed
+            // ticket PDF. The QR action must use the same ownership-checked
+            // URL rather than constructing a second ticket endpoint.
+            $qr = $this->action('qr', 'Wys QR-kaartjie', $download_url);
+            if ($qr !== null) {
+                $actions['qr'] = $qr;
+            }
         }
 
         $order_url = $this->order_url($order, $order_id);

@@ -114,15 +114,15 @@ final class LearningService implements DashboardServiceInterface
             return ['ok' => false, 'value' => null];
         }
 
+        $query_args = ['user_id' => $user_id, 'status' => 'all'];
         try {
-            $query = new $class();
+            $query = new $class($query_args);
         } catch (Throwable) {
             $query = null;
         }
 
-        $arguments = [['user_id' => $user_id, 'status' => 'all']];
         if (is_object($query) && method_exists($query, 'get_user_courses')) {
-            $result = $this->invoke_method($query, 'get_user_courses', [$arguments, [$user_id, $arguments], []]);
+            $result = $this->invoke_method($query, 'get_user_courses', [[], [$query_args], [$user_id, $query_args]]);
             if ($result['ok']) {
                 return ['ok' => true, 'value' => $result['value']];
             }
@@ -132,7 +132,11 @@ final class LearningService implements DashboardServiceInterface
 
         if (is_callable([$class, 'get_user_courses'])) {
             try {
-                return ['ok' => true, 'value' => $class::get_user_courses($arguments)];
+                try {
+                    return ['ok' => true, 'value' => $class::get_user_courses($query_args)];
+                } catch (\ArgumentCountError) {
+                    return ['ok' => true, 'value' => $class::get_user_courses()];
+                }
             } catch (Throwable) {
                 return ['ok' => false, 'value' => null];
             }
@@ -574,7 +578,7 @@ final class LearningService implements DashboardServiceInterface
         try {
             $url = $this->invoke_function(
                 'masteriyo_generate_certificate_download_url',
-                [[$certificate_id, $course_id, $user_id], [$certificate_id]]
+                [[$course_id], [$course_id, $user_id]]
             );
         } catch (Throwable) {
             return '';

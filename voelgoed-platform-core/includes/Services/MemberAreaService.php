@@ -68,10 +68,14 @@ final class MemberAreaService implements DashboardServiceInterface
                 return $this->hidden_card();
             }
 
-            $context = 'main';
             $hub_access_class = '\\Voelgoed\\MemberPerks\\Display\\HubAccess';
-            if (class_exists($hub_access_class) && defined($hub_access_class . '::CONTEXT_MAIN')) {
-                $context = constant($hub_access_class . '::CONTEXT_MAIN');
+            if (! class_exists($hub_access_class) || ! defined($hub_access_class . '::CONTEXT_MAIN')) {
+                return $this->hidden_card();
+            }
+
+            $context = constant($hub_access_class . '::CONTEXT_MAIN');
+            if (! is_string($context) || trim($context) === '') {
+                return $this->hidden_card();
             }
 
             $resolution = $hub_access->resolve($context);
@@ -201,7 +205,7 @@ final class MemberAreaService implements DashboardServiceInterface
         }
 
         if (is_array($value)) {
-            foreach (['vgmp_enable_hub_display', 'enable_hub_display'] as $key) {
+            foreach (['hub_display', 'vgmp_enable_hub_display', 'enable_hub_display'] as $key) {
                 if (array_key_exists($key, $value) && is_bool($value[$key])) {
                     return $value[$key];
                 }

@@ -199,6 +199,7 @@ final class TicketServiceTest
         assert_same('used', $card['items'][1]['status']);
         assert_same('publish', $provider->requested_status);
         assert_same('/tickera/ticket/801/?sig=abc', $card['items'][0]['actions']['download']['url']);
+        assert_same('/tickera/ticket/801/?sig=abc', $card['items'][0]['actions']['qr']['url']);
         assert_same('/my-account/tickera-order/601/', $card['items'][0]['actions']['order']['url']);
     }
 
@@ -232,6 +233,40 @@ final class TicketServiceTest
 
         assert_same('empty', $card['state']);
         assert_same([], $card['items']);
+        vgpc_set_current_user_email('');
+    }
+
+    public function test_email_history_orders_require_an_exact_authenticated_email_match(): void
+    {
+        vgpc_set_current_user_email('user@example.test');
+        $provider = new VgpcTicketProviderFixture(
+            [
+                new VgpcTicketOrderFixture(607, null, 'user@example.test'),
+                new VgpcTicketOrderFixture(608, null, 'USER@EXAMPLE.TEST'),
+                new VgpcTicketOrderFixture(609, null, 'other@example.test'),
+                new VgpcTicketOrderFixture(610, null, ''),
+            ],
+            [
+                607 => [807],
+                608 => [808],
+                609 => [809],
+                610 => [810],
+                'instances' => [
+                    807 => new VgpcTicketInstanceFixture(807, 607, 701, 'user@example.test'),
+                    808 => new VgpcTicketInstanceFixture(808, 608, 701, 'user@example.test'),
+                    809 => new VgpcTicketInstanceFixture(809, 609, 701, 'other@example.test'),
+                    810 => new VgpcTicketInstanceFixture(810, 610, 701, 'user@example.test'),
+                ],
+            ],
+            [701 => new VgpcTicketEventFixture(701, 'E-posgeskiedenis', '2099-05-01', '/events/email-history/')]
+        );
+
+        $card = (new TicketService($provider))->card(42);
+
+        assert_same('active', $card['state']);
+        assert_same(2, count($card['items']));
+        assert_same('807', $card['items'][0]['ticket_id']);
+        assert_same('808', $card['items'][1]['ticket_id']);
         vgpc_set_current_user_email('');
     }
 
@@ -279,6 +314,7 @@ final class TicketServiceTest
         $card = (new TicketService($provider))->card(42);
 
         assert_false(isset($card['items'][0]['actions']['download']));
+        assert_false(isset($card['items'][0]['actions']['qr']));
         assert_true(isset($card['items'][0]['actions']['order']));
         assert_same('', $card['items'][0]['event_url']);
     }

@@ -97,6 +97,8 @@ The installed Tickera source exposes these supported runtime APIs:
 - `tickera_get_raw_ticket_download_link('', '', $ticket_id, true)` builds Tickera's native signed ticket-download URL. The dashboard must call it only after ownership is confirmed.
 - `$tc->tc_order_status_url($order, $order_key, '', false)` builds the native order-details URL when the global Tickera controller is available.
 
+Tickera's native `tc_ticket_qr_code_element` renders the QR code inside the signed ticket PDF returned by `tickera_get_raw_ticket_download_link('', '', $ticket_id, true)`. The dashboard's `qr` action therefore points to that same ownership-checked signed PDF URL. It does not construct a separate QR endpoint.
+
 Tickera ticket instances have an `owner_email` field, but the supported order lookup is WordPress-user based unless the optional email-history setting is enabled. If an order cannot be tied to the authenticated user by its author or by an exact verified email match, the dashboard must fail closed and omit that ticket. It must not search all ticket instances by email and display a result without this ownership check.
 
 The conditional member tab is intentionally separate from `Lidmaatskap`. PMPro answers whether the user has membership access. Member Perks answers whether the user can open the configured benefits hub.
@@ -111,7 +113,9 @@ The local member-perks source was read without modifying the submodule. The insp
 
 At the inspected submodule commit, the current public member-perks surface does not expose an approved dashboard-facing feature-flag accessor for `vgmp_enable_hub_display`. `SettingsRepository::feature_flags()` is an internal repository method, not the dashboard contract, and dashboard runtime must not call it directly. Until the plugin exposes and approves an integration-facing public accessor, for example through `Plugin`, `MemberAreaService` must return invisible before calling `HubAccess`. This API is a staging prerequisite for the dashboard.
 
-`HubAccess::resolve(HubAccess::CONTEXT_MAIN)` is the required contract for `Lede-area`. The dashboard should use the returned `can_view_hub` flag and, when it is true, apply the destination guard below before building a link from the returned `hub_page_id`. It must not hardcode a page ID.
+The approved dashboard boundary shape is either a public `feature_flags(): array` result containing a boolean `hub_display` key, or a dedicated public boolean accessor such as `is_hub_display_enabled()`. The adapter accepts the existing `vgmp_enable_hub_display` and `enable_hub_display` keys for compatibility, but it never calls `SettingsRepository::feature_flags()` directly. The boundary must also expose `hub_access()` or a `resolve()` object.
+
+`HubAccess::resolve(HubAccess::CONTEXT_MAIN)` is the required contract for `Lede-area`. The dashboard first requires the real `Voelgoed\\MemberPerks\\Display\\HubAccess` class and its `CONTEXT_MAIN` constant. It then uses the returned `can_view_hub` flag and, when it is true, applies the destination guard below before building a link from the returned `hub_page_id`. It must not fall back to a literal context or hardcode a page ID.
 
 The local implementation returns these main-context states:
 
@@ -129,8 +133,8 @@ For the main context, `HubAccess` reads `main_dashboard_page_id` through `Settin
 The dashboard integration therefore follows this sequence:
 
 1. Resolve the public member-perks service and require its approved capability/configuration API. At the inspected commit, no approved public flag accessor exists, so the service must return invisible and not call `HubAccess` until staging supplies this API.
-2. Once the approved API exists, read `vgmp_enable_hub_display` through it. If the flag is unavailable or false, return invisible and do not call `HubAccess`.
-3. Call `resolve(HubAccess::CONTEXT_MAIN)` only after the service and display flag checks pass. A `dependency_missing` result from `HubAccess` is also a hidden-tab failure, but it is not the only failure mode.
+2. Once the approved API exists, read `hub_display` through it. If the flag is unavailable or false, return invisible and do not call `HubAccess`.
+3. Require the real `HubAccess` class and `CONTEXT_MAIN` constant, then call `resolve(HubAccess::CONTEXT_MAIN)` only after the service and display flag checks pass. A `dependency_missing` result from `HubAccess` is also a hidden-tab failure, but it is not the only failure mode.
 4. Hide `Lede-area` unless `can_view_hub` is true.
 5. Even when `can_view_hub` is true, require `hub_page_id > 0` and call `get_permalink($hub_page_id)`.
 6. Require that permalink to be non-empty and a same-site URL. If either check fails, fail closed and hide the link.
