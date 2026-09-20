@@ -29,6 +29,36 @@ final class VgpcLearningCourseFixture
     }
 }
 
+final class VgpcLearningContinuingCourseFixture
+{
+    public int $continue_calls = 0;
+
+    public function __construct(
+        private int $id,
+        private string $title,
+        private string $permalink,
+        private string $continue_url,
+    ) {
+    }
+
+    public function get_name(): string
+    {
+        return $this->title;
+    }
+
+    public function get_permalink(): string
+    {
+        return $this->permalink;
+    }
+
+    public function continue_course_url(mixed $course_progress): string
+    {
+        ++$this->continue_calls;
+
+        return $this->continue_url;
+    }
+}
+
 final class VgpcLearningUserCourseFixture
 {
     public function __construct(
@@ -254,5 +284,50 @@ final class LearningServiceTest
         assert_same('', $card['items'][0]['course_url']);
         assert_same('', $card['items'][0]['certificate_url']);
         assert_same([], $card['items'][0]['actions']);
+    }
+
+    public function test_native_course_progress_summary_uses_nested_total_counts_for_completion(): void
+    {
+        $course = new VgpcLearningCourseFixture(306, 'Voltooide vordering', '/kursus/voltooide-vordering/');
+        $provider = new VgpcLearningProviderFixture(
+            [new VgpcLearningUserCourseFixture(306, 42, 'enrolled', $course)],
+            [306 => new VgpcLearningProgressFixture([
+                'total' => [
+                    'completed' => 4,
+                    'total'     => 4,
+                ],
+            ])],
+            [306 => '/sertifikate/306/']
+        );
+
+        $card = (new LearningService($provider))->card(42);
+
+        assert_same(100, $card['items'][0]['completion_percentage']);
+        assert_same('/sertifikate/306/', $card['items'][0]['certificate_url']);
+    }
+
+    public function test_incomplete_course_uses_native_continue_course_url(): void
+    {
+        $course = new VgpcLearningContinuingCourseFixture(
+            307,
+            'Gaan voort',
+            '/kursus/gaan-voort/',
+            '/kursus/gaan-voort/les/2/'
+        );
+        $provider = new VgpcLearningProviderFixture(
+            [new VgpcLearningUserCourseFixture(307, 42, 'enrolled', $course)],
+            [307 => new VgpcLearningProgressFixture([
+                'total' => [
+                    'completed' => 1,
+                    'total'     => 2,
+                ],
+            ])]
+        );
+
+        $card = (new LearningService($provider))->card(42);
+
+        assert_same('/kursus/gaan-voort/les/2/', $card['items'][0]['next_lesson_url']);
+        assert_same('/kursus/gaan-voort/les/2/', $card['items'][0]['actions']['next-lesson']['url']);
+        assert_same(1, $course->continue_calls);
     }
 }

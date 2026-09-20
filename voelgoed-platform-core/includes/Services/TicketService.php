@@ -443,18 +443,20 @@ final class TicketService implements DashboardServiceInterface
             }
         }
 
-        $status = $this->status($this->scalar_string(
-            $this->nested_record_value(
-                $ticket,
-                ['get_status', 'get_ticket_status'],
-                ['status', 'ticket_status'],
-                [
-                    ['details', 'status'],
-                    ['details', 'ticket_status'],
-                    ['details', 'post_status'],
-                ]
-            )
-        ));
+        $status = $this->order_status($order, $order_id);
+        if ($status === '') {
+            $status = $this->status($this->scalar_string(
+                $this->nested_record_value(
+                    $ticket,
+                    ['get_status', 'get_ticket_status'],
+                    ['status', 'ticket_status'],
+                    [
+                        ['details', 'status'],
+                        ['details', 'ticket_status'],
+                    ]
+                )
+            ));
+        }
         $actions = [];
 
         $download_url = $this->download_url($ticket_id);
@@ -834,16 +836,70 @@ final class TicketService implements DashboardServiceInterface
         return $status !== '' ? $status : 'unknown';
     }
 
+    private function order_status(mixed $order, int $order_id): string
+    {
+        $sources = [$order];
+        $native_order = $this->native_order($order, $order_id);
+        if ($native_order !== null && $native_order !== $order) {
+            $sources[] = $native_order;
+        }
+
+        foreach ($sources as $source) {
+            $status = strtolower(trim($this->scalar_string(
+                $this->nested_record_value(
+                    $source,
+                    ['get_order_status', 'get_status'],
+                    ['order_status', 'status', 'post_status'],
+                    [
+                        ['details', 'order_status'],
+                        ['details', 'post_status'],
+                        ['details', 'status'],
+                    ]
+                )
+            )));
+            if ($this->is_order_status($status)) {
+                return $status;
+            }
+        }
+
+        return '';
+    }
+
+    private function is_order_status(string $status): bool
+    {
+        return in_array($status, [
+            'order_received',
+            'order_paid',
+            'order_cancelled',
+            'order_fraud',
+            'order_refunded',
+            'received',
+            'paid',
+            'cancelled',
+            'fraud',
+            'refunded',
+        ], true);
+    }
+
     private function status_label(string $status): string
     {
         return [
-            'valid'     => 'Geldig',
-            'used'      => 'Gebruik',
-            'redeemed'  => 'Gebruik',
-            'cancelled' => 'Gekanselleer',
-            'void'      => 'Ongeldig',
-            'expired'   => 'Verstreke',
-            'unknown'   => 'Status onbekend',
+            'valid'           => 'Geldig',
+            'used'            => 'Gebruik',
+            'redeemed'        => 'Gebruik',
+            'cancelled'       => 'Gekanselleer',
+            'void'            => 'Ongeldig',
+            'expired'         => 'Verstreke',
+            'order_received'  => 'Ontvang',
+            'received'        => 'Ontvang',
+            'order_paid'      => 'Betaal',
+            'paid'            => 'Betaal',
+            'order_cancelled' => 'Gekanselleer',
+            'order_fraud'     => 'Bedrog',
+            'fraud'           => 'Bedrog',
+            'order_refunded'  => 'Terugbetaal',
+            'refunded'        => 'Terugbetaal',
+            'unknown'         => 'Status onbekend',
         ][$status] ?? 'Status onbekend';
     }
 

@@ -11,6 +11,7 @@ final class VgpcTicketOrderFixture
         private mixed $author,
         private string $email = '',
         private string $order_key = '',
+        private string $status = '',
     ) {
     }
 
@@ -32,6 +33,11 @@ final class VgpcTicketOrderFixture
     public function get_buyer_email(): string
     {
         return $this->email;
+    }
+
+    public function get_status(): string
+    {
+        return $this->status;
     }
 }
 
@@ -352,6 +358,51 @@ final class TicketServiceTest
         assert_same('/tickera/ticket/811/?sig=nested', $card['items'][0]['actions']['download']['url']);
         assert_same('/tickera/ticket/811/?sig=nested', $card['items'][0]['actions']['qr']['url']);
         vgpc_set_current_user_email('');
+    }
+
+    public function test_ticket_status_comes_from_parent_order_and_maps_order_states(): void
+    {
+        $provider = new VgpcTicketProviderFixture(
+            [
+                (object) [
+                    'ID'          => 620,
+                    'post_author' => 42,
+                    'details'     => (object) ['post_status' => 'order_paid'],
+                ],
+                new VgpcTicketOrderFixture(621, 42, '', 'order-key-621', 'order_cancelled'),
+                new VgpcTicketOrderFixture(622, 42, '', 'order-key-622', 'order_refunded'),
+            ],
+            [
+                620 => [820],
+                621 => [821],
+                622 => [822],
+                'instances' => [
+                    820 => (object) [
+                        'details' => (object) [
+                            'post_parent' => 620,
+                            'event_id'    => 705,
+                            'post_status' => 'valid',
+                        ],
+                    ],
+                    821 => new VgpcTicketInstanceFixture(821, 621, 706, '', 'valid'),
+                    822 => new VgpcTicketInstanceFixture(822, 622, 707, '', 'valid'),
+                ],
+            ],
+            [
+                705 => new VgpcTicketEventFixture(705, 'Betaalde geleentheid', '2099-06-02', '/events/betaal/'),
+                706 => new VgpcTicketEventFixture(706, 'Gekanselleerde geleentheid', '2099-06-03', '/events/gekanselleer/'),
+                707 => new VgpcTicketEventFixture(707, 'Terugbetaalde geleentheid', '2099-06-04', '/events/terugbetaal/')
+            ]
+        );
+
+        $card = (new TicketService($provider))->card(42);
+
+        assert_same('order_paid', $card['items'][0]['status']);
+        assert_same('Betaal', $card['items'][0]['status_label']);
+        assert_same('order_cancelled', $card['items'][1]['status']);
+        assert_same('Gekanselleer', $card['items'][1]['status_label']);
+        assert_same('order_refunded', $card['items'][2]['status']);
+        assert_same('Terugbetaal', $card['items'][2]['status_label']);
     }
 
     public function test_throwing_or_malformed_provider_returns_unavailable_card(): void

@@ -217,6 +217,23 @@ final class LearningService implements DashboardServiceInterface
         $percentage = $progress_info['percentage'];
         $next_lesson = $progress_info['next_lesson'];
         $next_lesson_url = $this->safe_url($progress_info['next_lesson_url']);
+        if (
+            $percentage !== ''
+            && (int) $percentage < 100
+            && is_object($course)
+            && method_exists($course, 'continue_course_url')
+        ) {
+            try {
+                $continue_url = $course->continue_course_url($progress['value']);
+            } catch (Throwable) {
+                $continue_url = '';
+            }
+
+            $continue_url = $this->safe_url($this->scalar_string($continue_url));
+            if ($continue_url !== '') {
+                $next_lesson_url = $continue_url;
+            }
+        }
         $certificate_url = '';
         if ($percentage !== '' && (int) $percentage >= 100) {
             $certificate_url = $this->certificate_url($course_id, $user_id);
@@ -470,6 +487,21 @@ final class LearningService implements DashboardServiceInterface
 
         $completed = $this->value_from_source($summary, ['completed', 'completed_count', 'completed_items', 'completed_items_count', 'completed_lessons']);
         $total = $this->value_from_source($summary, ['total', 'total_count', 'total_items', 'total_items_count', 'total_lessons']);
+        if (! is_numeric($completed) || ! is_numeric($total)) {
+            $total_summary = $this->value_from_source($summary, ['total']);
+            if (! is_numeric($completed)) {
+                $completed = $this->value_from_source(
+                    $total_summary,
+                    ['completed', 'completed_count', 'completed_items', 'completed_items_count', 'completed_lessons']
+                );
+            }
+            if (! is_numeric($total)) {
+                $total = $this->value_from_source(
+                    $total_summary,
+                    ['total', 'total_count', 'total_items', 'total_items_count', 'total_lessons']
+                );
+            }
+        }
         if (is_numeric($completed) && is_numeric($total) && (float) $total > 0) {
             return $this->normalise_percentage(((float) $completed / (float) $total) * 100);
         }
