@@ -11,6 +11,10 @@ require_once dirname(__DIR__) . '/includes/Services/CommerceService.php';
 require_once dirname(__DIR__) . '/includes/Services/LearningService.php';
 require_once dirname(__DIR__) . '/includes/Services/TicketService.php';
 require_once dirname(__DIR__) . '/includes/Services/MemberAreaService.php';
+require_once dirname(__DIR__) . '/includes/Dashboard/DashboardContext.php';
+require_once dirname(__DIR__) . '/includes/Dashboard/DashboardRegistry.php';
+require_once dirname(__DIR__) . '/includes/Dashboard/Navigation.php';
+require_once dirname(__DIR__) . '/includes/Dashboard/AccessGuard.php';
 
 if (! function_exists('home_url')) {
     function home_url(string $path = ''): string
@@ -27,6 +31,63 @@ if (! function_exists('get_current_user_id')) {
     function get_current_user_id(): int
     {
         return (int) ($GLOBALS['vgpc_current_user_id'] ?? 0);
+    }
+}
+
+if (! function_exists('is_user_logged_in')) {
+    function is_user_logged_in(): bool
+    {
+        return (int) ($GLOBALS['vgpc_current_user_id'] ?? 0) > 0;
+    }
+}
+
+if (! function_exists('wp_unslash')) {
+    function wp_unslash(mixed $value): mixed
+    {
+        return is_string($value) ? stripslashes($value) : $value;
+    }
+}
+
+if (! function_exists('wp_validate_redirect')) {
+    function wp_validate_redirect(string $location, string $fallback_url = ''): string
+    {
+        $parts = parse_url($location);
+        if (is_array($parts) && str_starts_with($location, '/') && ! str_starts_with($location, '//')) {
+            return $location;
+        }
+
+        if (is_array($parts) && strtolower((string) ($parts['host'] ?? '')) === 'voelgoed.test') {
+            return $location;
+        }
+
+        return $fallback_url;
+    }
+}
+
+if (! function_exists('wp_login_url')) {
+    function wp_login_url(string $redirect = ''): string
+    {
+        return home_url('/wp-login.php?redirect_to=' . rawurlencode($redirect));
+    }
+}
+
+if (! function_exists('wp_safe_redirect')) {
+    function wp_safe_redirect(string $location, int $status = 302, string $x_redirect_by = ''): bool
+    {
+        $GLOBALS['vgpc_last_redirect'] = $location;
+
+        return true;
+    }
+}
+
+if (! function_exists('add_action')) {
+    function add_action(string $hook, callable $callback, int $priority = 10, int $accepted_args = 1): void
+    {
+        $GLOBALS['vgpc_actions'][$hook][] = [
+            'callback'      => $callback,
+            'priority'      => $priority,
+            'accepted_args' => $accepted_args,
+        ];
     }
 }
 

@@ -27,8 +27,12 @@ final class Plugin
     {
         $this->components = [];
 
-        $this->register_component('registry', DashboardRegistry::class);
-        $this->register_component('navigation', Navigation::class);
+        $registry = new DashboardRegistry();
+        $this->components['registry'] = $registry;
+
+        $navigation = new Navigation($registry);
+        $this->components['navigation'] = $navigation;
+
         $this->register_component('access_guard', AccessGuard::class);
         $this->register_component('dynamic_data', DashboardDynamicData::class);
         $this->register_component('query_provider', DashboardQueryProvider::class);
