@@ -1,0 +1,285 @@
+<?php
+declare(strict_types=1);
+
+use Voelgoed\PlatformCore\Config\AfrikaansLabels;
+use Voelgoed\PlatformCore\Services\TicketService;
+
+final class VgpcTicketOrderFixture
+{
+    public function __construct(
+        private int $id,
+        private mixed $author,
+        private string $email = '',
+        private string $order_key = '',
+    ) {
+    }
+
+    public function get_id(): int
+    {
+        return $this->id;
+    }
+
+    public function get_user_id(): mixed
+    {
+        return $this->author;
+    }
+
+    public function get_order_key(): string
+    {
+        return $this->order_key;
+    }
+
+    public function get_buyer_email(): string
+    {
+        return $this->email;
+    }
+}
+
+final class VgpcTicketInstanceFixture
+{
+    public function __construct(
+        private int $id,
+        private int $order_id,
+        private int $event_id,
+        private string $owner_email = '',
+        private string $status = 'valid',
+    ) {
+    }
+
+    public function get_id(): int
+    {
+        return $this->id;
+    }
+
+    public function get_order_id(): int
+    {
+        return $this->order_id;
+    }
+
+    public function get_event_id(): int
+    {
+        return $this->event_id;
+    }
+
+    public function get_owner_email(): string
+    {
+        return $this->owner_email;
+    }
+
+    public function get_status(): string
+    {
+        return $this->status;
+    }
+}
+
+final class VgpcTicketEventFixture
+{
+    public function __construct(
+        private int $id,
+        private string $title,
+        private string $start,
+        private string $permalink,
+    ) {
+    }
+
+    public function get_id(): int
+    {
+        return $this->id;
+    }
+
+    public function get_name(): string
+    {
+        return $this->title;
+    }
+
+    public function get_start_date(): string
+    {
+        return $this->start;
+    }
+
+    public function get_permalink(): string
+    {
+        return $this->permalink;
+    }
+}
+
+final class VgpcTicketProviderFixture
+{
+    /** @param mixed $orders */
+    public function __construct(
+        private mixed $orders,
+        private array $tickets,
+        private array $events,
+        private array $downloads = [],
+    ) {
+    }
+
+    public int $requested_user_id = 0;
+
+    public string $requested_status = '';
+
+    public function orders(object $user): mixed
+    {
+        $this->requested_user_id = (int) ($user->ID ?? 0);
+
+        return $this->orders;
+    }
+
+    public function ticket_ids(int $order_id, string $post_status): array
+    {
+        $this->requested_status = $post_status;
+
+        return $this->tickets[$order_id] ?? [];
+    }
+
+    public function ticket(int $ticket_id): mixed
+    {
+        return $this->tickets['instances'][$ticket_id] ?? null;
+    }
+
+    public function event(int $event_id): mixed
+    {
+        return $this->events[$event_id] ?? null;
+    }
+
+    public function download_url(int $ticket_id): string
+    {
+        return (string) ($this->downloads[$ticket_id] ?? '');
+    }
+
+    public function order_url(object $order): string
+    {
+        return '/my-account/tickera-order/' . $order->get_id() . '/';
+    }
+}
+
+final class VgpcThrowingTicketProviderFixture
+{
+    public function orders(object $user): array
+    {
+        throw new RuntimeException('Tickera unavailable.');
+    }
+}
+
+final class TicketServiceTest
+{
+    public function test_returns_owned_tickets_grouped_by_event_date_with_native_actions(): void
+    {
+        assert_true(class_exists(TicketService::class));
+
+        $upcoming_event = new VgpcTicketEventFixture(701, 'Voelgoed Live', '2099-05-01 19:00:00', '/events/voelgoed-live/');
+        $past_event = new VgpcTicketEventFixture(702, 'Vrouedag', '2020-08-09 10:00:00', '/events/vrouedag/');
+        $provider = new VgpcTicketProviderFixture(
+            [
+                new VgpcTicketOrderFixture(601, 42, 'user@example.test', 'order-key-601'),
+                new VgpcTicketOrderFixture(602, 99, 'other@example.test', 'order-key-602'),
+            ],
+            [
+                601 => [801, 802],
+                602 => [803],
+                'instances' => [
+                    801 => new VgpcTicketInstanceFixture(801, 601, 701, 'user@example.test'),
+                    802 => new VgpcTicketInstanceFixture(802, 601, 702, 'user@example.test', 'used'),
+                    803 => new VgpcTicketInstanceFixture(803, 602, 701, 'other@example.test'),
+                ],
+            ],
+            [701 => $upcoming_event, 702 => $past_event],
+            [801 => '/tickera/ticket/801/?sig=abc', 802 => '/tickera/ticket/802/?sig=def']
+        );
+
+        $card = (new TicketService($provider))->card(42);
+
+        assert_same('tickets', $card['key']);
+        assert_same(AfrikaansLabels::TICKETS, $card['label']);
+        assert_same('active', $card['state']);
+        assert_same('upcoming', $card['items'][0]['group']);
+        assert_same('past', $card['items'][1]['group']);
+        assert_same('Voelgoed Live', $card['items'][0]['event_title']);
+        assert_same('801', $card['items'][0]['ticket_id']);
+        assert_same('used', $card['items'][1]['status']);
+        assert_same('publish', $provider->requested_status);
+        assert_same('/tickera/ticket/801/?sig=abc', $card['items'][0]['actions']['download']['url']);
+        assert_same('/my-account/tickera-order/601/', $card['items'][0]['actions']['order']['url']);
+    }
+
+    public function test_empty_ticket_access_uses_the_afrikaans_empty_copy(): void
+    {
+        $provider = new VgpcTicketProviderFixture([], [], []);
+
+        $card = (new TicketService($provider))->card(42);
+
+        assert_same('empty', $card['state']);
+        assert_same('Geen komende kaartjies nie.', $card['summary']);
+        assert_same([], $card['items']);
+    }
+
+    public function test_foreign_orders_and_ticket_email_mismatches_are_omitted(): void
+    {
+        vgpc_set_current_user_email('user@example.test');
+        $provider = new VgpcTicketProviderFixture(
+            [new VgpcTicketOrderFixture(603, 42, 'user@example.test')],
+            [
+                603 => [804, 805],
+                'instances' => [
+                    804 => new VgpcTicketInstanceFixture(804, 603, 701, 'other@example.test'),
+                    805 => new VgpcTicketInstanceFixture(805, 999, 701, 'user@example.test'),
+                ],
+            ],
+            [701 => new VgpcTicketEventFixture(701, 'Moet nie verskyn nie', '2099-05-01', '/events/hidden/')]
+        );
+
+        $card = (new TicketService($provider))->card(42);
+
+        assert_same('empty', $card['state']);
+        assert_same([], $card['items']);
+        vgpc_set_current_user_email('');
+    }
+
+    public function test_throwing_or_malformed_provider_returns_unavailable_card(): void
+    {
+        $card = (new TicketService(new VgpcThrowingTicketProviderFixture()))->card(42);
+        assert_same('unavailable', $card['state']);
+
+        $malformed = new VgpcTicketProviderFixture(new stdClass(), [], []);
+        $card = (new TicketService($malformed))->card(42);
+        assert_same('unavailable', $card['state']);
+    }
+
+    public function test_requested_or_authenticated_user_mismatch_does_not_query_tickera(): void
+    {
+        $provider = new VgpcTicketProviderFixture([], [], []);
+
+        $card = (new TicketService($provider))->card(99);
+        assert_same('empty', $card['state']);
+        assert_same(0, $provider->requested_user_id);
+
+        vgpc_set_current_user_id(0);
+        try {
+            $card = (new TicketService($provider))->card(42);
+        } finally {
+            vgpc_set_current_user_id(42);
+        }
+
+        assert_same('empty', $card['state']);
+        assert_same(0, $provider->requested_user_id);
+    }
+
+    public function test_external_download_and_order_urls_are_omitted(): void
+    {
+        $provider = new VgpcTicketProviderFixture(
+            [new VgpcTicketOrderFixture(604, 42)],
+            [
+                604 => [806],
+                'instances' => [806 => new VgpcTicketInstanceFixture(806, 604, 704)],
+            ],
+            [704 => new VgpcTicketEventFixture(704, 'Onveilige geleentheid', '2099-05-01', 'https://ander.example/event/')],
+            [806 => 'https://ander.example/ticket/806/']
+        );
+
+        $card = (new TicketService($provider))->card(42);
+
+        assert_false(isset($card['items'][0]['actions']['download']));
+        assert_true(isset($card['items'][0]['actions']['order']));
+        assert_same('', $card['items'][0]['event_url']);
+    }
+}

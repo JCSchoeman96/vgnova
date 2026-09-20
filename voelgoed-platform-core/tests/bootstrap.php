@@ -8,6 +8,9 @@ require_once dirname(__DIR__) . '/includes/Config/AfrikaansLabels.php';
 require_once dirname(__DIR__) . '/includes/Services/MembershipService.php';
 require_once dirname(__DIR__) . '/includes/Services/SubscriptionService.php';
 require_once dirname(__DIR__) . '/includes/Services/CommerceService.php';
+require_once dirname(__DIR__) . '/includes/Services/LearningService.php';
+require_once dirname(__DIR__) . '/includes/Services/TicketService.php';
+require_once dirname(__DIR__) . '/includes/Services/MemberAreaService.php';
 
 if (! function_exists('home_url')) {
     function home_url(string $path = ''): string
@@ -27,10 +30,45 @@ if (! function_exists('get_current_user_id')) {
     }
 }
 
+if (! function_exists('wp_get_current_user')) {
+    function wp_get_current_user(): object
+    {
+        return (object) [
+            'ID'         => (int) ($GLOBALS['vgpc_current_user_id'] ?? 0),
+            'user_email' => (string) ($GLOBALS['vgpc_current_user_email'] ?? ''),
+        ];
+    }
+}
+
+if (! function_exists('get_permalink')) {
+    function get_permalink(int $post_id): string
+    {
+        return (string) (($GLOBALS['vgpc_permalinks'] ?? [])[$post_id] ?? '');
+    }
+}
+
 if (! function_exists('vgpc_set_current_user_id')) {
     function vgpc_set_current_user_id(int $user_id): void
     {
         $GLOBALS['vgpc_current_user_id'] = $user_id;
+    }
+}
+
+if (! function_exists('vgpc_set_current_user_email')) {
+    function vgpc_set_current_user_email(string $email): void
+    {
+        $GLOBALS['vgpc_current_user_email'] = $email;
+    }
+}
+
+if (! function_exists('vgpc_set_permalink')) {
+    function vgpc_set_permalink(int $post_id, string $url): void
+    {
+        if (! isset($GLOBALS['vgpc_permalinks']) || ! is_array($GLOBALS['vgpc_permalinks'])) {
+            $GLOBALS['vgpc_permalinks'] = [];
+        }
+
+        $GLOBALS['vgpc_permalinks'][$post_id] = $url;
     }
 }
 
