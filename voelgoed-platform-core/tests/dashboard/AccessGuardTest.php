@@ -131,6 +131,11 @@ final class AccessGuardTest
         $first->register();
         $second->register();
 
-        assert_same(1, count($GLOBALS['vgpc_actions']['template_redirect'] ?? []));
+        $guards = array_filter(
+            $GLOBALS['vgpc_actions']['template_redirect'] ?? [],
+            static fn (array $registration): bool => ($registration['callback'][0] ?? null) instanceof AccessGuard
+        );
+
+        assert_same(1, count($guards));
     }
 }

@@ -15,6 +15,9 @@ require_once dirname(__DIR__) . '/includes/Dashboard/DashboardContext.php';
 require_once dirname(__DIR__) . '/includes/Dashboard/DashboardRegistry.php';
 require_once dirname(__DIR__) . '/includes/Dashboard/Navigation.php';
 require_once dirname(__DIR__) . '/includes/Dashboard/AccessGuard.php';
+require_once dirname(__DIR__) . '/includes/Bricks/DashboardDynamicData.php';
+require_once dirname(__DIR__) . '/includes/Bricks/DashboardQueryProvider.php';
+require_once dirname(__DIR__) . '/includes/Performance/CachePolicy.php';
 require_once dirname(__DIR__) . '/includes/Plugin.php';
 
 if (! function_exists('home_url')) {
