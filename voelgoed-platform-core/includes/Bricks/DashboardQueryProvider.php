@@ -41,28 +41,51 @@ final class DashboardQueryProvider
 
     private object $registry;
 
-    private bool $init_hook_registered = false;
+    private static bool $init_hook_registered = false;
 
-    private bool $hooks_registered = false;
+    private static ?self $init_hook_owner = null;
+
+    private static bool $hooks_registered = false;
+
+    private static ?self $hooks_owner = null;
 
     public function __construct(?object $registry = null)
     {
         $this->registry = $registry ?? new DashboardRegistry();
     }
 
+    public function registry(): object
+    {
+        return $this->registry;
+    }
+
     public function register(): void
     {
-        if ($this->init_hook_registered || ! function_exists('add_action')) {
+        if (! function_exists('add_action')) {
             return;
         }
 
+        if (self::$init_hook_registered) {
+            if (
+                ! function_exists('has_action')
+                || self::$init_hook_owner === null
+                || has_action('init', [self::$init_hook_owner, 'register_hooks']) !== false
+            ) {
+                return;
+            }
+
+            self::$init_hook_registered = false;
+            self::$init_hook_owner = null;
+        }
+
         add_action('init', [$this, 'register_hooks'], 20);
-        $this->init_hook_registered = true;
+        self::$init_hook_registered = true;
+        self::$init_hook_owner = $this;
     }
 
     public function register_hooks(): void
     {
-        if ($this->hooks_registered || ! $this->is_bricks_available()) {
+        if (! $this->is_bricks_available()) {
             return;
         }
 
@@ -70,10 +93,41 @@ final class DashboardQueryProvider
             return;
         }
 
+        if (self::$hooks_registered) {
+            if (
+                ! function_exists('has_filter')
+                || self::$hooks_owner === null
+                || $this->filters_are_present(self::$hooks_owner)
+            ) {
+                return;
+            }
+
+            self::$hooks_registered = false;
+            self::$hooks_owner = null;
+        }
+
+        add_filter('bricks/setup/control_options', [$this, 'register_control_options'], 10, 1);
         add_filter('bricks/posts/query_vars', [$this, 'filter_query_vars'], 10, 4);
+        add_filter('bricks/vg_dashboard_cards/query_vars', [$this, 'filter_custom_query_vars'], 10, 4);
         add_filter('bricks/query/cache_key', [$this, 'filter_cache_key'], 10, 2);
         add_filter('bricks/query/run', [$this, 'run_query'], 10, 2);
-        $this->hooks_registered = true;
+        self::$hooks_registered = true;
+        self::$hooks_owner = $this;
+    }
+
+    /**
+     * @param array<string, mixed> $control_options
+     * @return array<string, mixed>
+     */
+    public function register_control_options(array $control_options): array
+    {
+        if (! is_array($control_options['queryTypes'] ?? null)) {
+            $control_options['queryTypes'] = [];
+        }
+
+        $control_options['queryTypes'][self::QUERY_TYPE] = 'Voelgoed Dashboard: Kaart';
+
+        return $control_options;
     }
 
     /**
@@ -91,6 +145,34 @@ final class DashboardQueryProvider
 
         $query = is_array($settings['query'] ?? null) ? $settings['query'] : $settings;
         if ($this->query_type($query) !== self::QUERY_TYPE) {
+            return $query_vars;
+        }
+
+        $view_key = $this->view_key_from_query($query);
+        $user_id = $this->current_user_id();
+
+        return $this->query_for_view($view_key, $user_id);
+    }
+
+    /**
+     * Mark the custom Bricks object type without running a provider query.
+     * Bricks removes objectType from settings before this type-specific hook.
+     *
+     * @param array<string, mixed> $query_vars
+     * @param mixed                 $settings
+     * @return array<string, mixed>
+     */
+    public function filter_custom_query_vars($query_vars, $settings, $element_id = null, $element_name = null): array
+    {
+        unset($element_id, $element_name);
+
+        if (! is_array($query_vars) || ! is_array($settings)) {
+            return is_array($query_vars) ? $query_vars : [];
+        }
+
+        $query = is_array($settings['query'] ?? null) ? $settings['query'] : $settings;
+        $query_type = $this->query_type($query);
+        if ($query_type !== '' && $query_type !== self::QUERY_TYPE) {
             return $query_vars;
         }
 
@@ -255,7 +337,11 @@ final class DashboardQueryProvider
 
     private function query_type(array $query): string
     {
-        $type = $query['vg_query_type'] ?? $query[self::META_QUERY_TYPE] ?? $query['query_type'] ?? '';
+        $type = $query['vg_query_type']
+            ?? $query[self::META_QUERY_TYPE]
+            ?? $query['query_type']
+            ?? $query['objectType']
+            ?? '';
 
         return is_scalar($type) ? trim((string) $type) : '';
     }
@@ -336,5 +422,14 @@ final class DashboardQueryProvider
     private function is_bricks_available(): bool
     {
         return class_exists('Bricks\\Query');
+    }
+
+    private function filters_are_present(self $instance): bool
+    {
+        return has_filter('bricks/setup/control_options', [$instance, 'register_control_options']) !== false
+            && has_filter('bricks/posts/query_vars', [$instance, 'filter_query_vars']) !== false
+            && has_filter('bricks/vg_dashboard_cards/query_vars', [$instance, 'filter_custom_query_vars']) !== false
+            && has_filter('bricks/query/cache_key', [$instance, 'filter_cache_key']) !== false
+            && has_filter('bricks/query/run', [$instance, 'run_query']) !== false;
     }
 }

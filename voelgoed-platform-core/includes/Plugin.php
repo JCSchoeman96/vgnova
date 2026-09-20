@@ -40,8 +40,8 @@ final class Plugin
         $this->components['navigation'] = $navigation;
 
         $this->register_component('access_guard', AccessGuard::class);
-        $this->register_component('dynamic_data', DashboardDynamicData::class);
-        $this->register_component('query_provider', DashboardQueryProvider::class);
+        $this->register_component('dynamic_data', DashboardDynamicData::class, [$registry]);
+        $this->register_component('query_provider', DashboardQueryProvider::class, [$registry]);
         $this->register_component('cache_policy', CachePolicy::class);
 
         foreach ($this->components as $component) {
@@ -61,13 +61,16 @@ final class Plugin
         return $this->components;
     }
 
-    private function register_component(string $key, string $class): void
+    /**
+     * @param array<int, mixed> $constructor_args
+     */
+    private function register_component(string $key, string $class, array $constructor_args = []): void
     {
         if (! class_exists($class)) {
             return;
         }
 
-        $component = new $class();
+        $component = new $class(...$constructor_args);
 
         if (is_object($component)) {
             $this->components[$key] = $component;

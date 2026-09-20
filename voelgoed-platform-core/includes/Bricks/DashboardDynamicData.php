@@ -42,28 +42,51 @@ final class DashboardDynamicData
 
     private object $registry;
 
-    private bool $init_hook_registered = false;
+    private static bool $init_hook_registered = false;
 
-    private bool $hooks_registered = false;
+    private static ?self $init_hook_owner = null;
+
+    private static bool $hooks_registered = false;
+
+    private static ?self $hooks_owner = null;
 
     public function __construct(?object $registry = null)
     {
         $this->registry = $registry ?? new DashboardRegistry();
     }
 
+    public function registry(): object
+    {
+        return $this->registry;
+    }
+
     public function register(): void
     {
-        if ($this->init_hook_registered || ! function_exists('add_action')) {
+        if (! function_exists('add_action')) {
             return;
         }
 
+        if (self::$init_hook_registered) {
+            if (
+                ! function_exists('has_action')
+                || self::$init_hook_owner === null
+                || has_action('init', [self::$init_hook_owner, 'register_hooks']) !== false
+            ) {
+                return;
+            }
+
+            self::$init_hook_registered = false;
+            self::$init_hook_owner = null;
+        }
+
         add_action('init', [$this, 'register_hooks'], 20);
-        $this->init_hook_registered = true;
+        self::$init_hook_registered = true;
+        self::$init_hook_owner = $this;
     }
 
     public function register_hooks(): void
     {
-        if ($this->hooks_registered || ! $this->is_bricks_available()) {
+        if (! $this->is_bricks_available()) {
             return;
         }
 
@@ -71,10 +94,24 @@ final class DashboardDynamicData
             return;
         }
 
+        if (self::$hooks_registered) {
+            if (
+                ! function_exists('has_filter')
+                || self::$hooks_owner === null
+                || $this->filters_are_present(self::$hooks_owner)
+            ) {
+                return;
+            }
+
+            self::$hooks_registered = false;
+            self::$hooks_owner = null;
+        }
+
         add_filter('bricks/dynamic_tags_list', [$this, 'register_tags'], 10, 1);
         add_filter('bricks/dynamic_data/render_content', [$this, 'render_content'], 11, 3);
         add_filter('bricks/dynamic_data/render_tag', [$this, 'render_tag'], 20, 3);
-        $this->hooks_registered = true;
+        self::$hooks_registered = true;
+        self::$hooks_owner = $this;
     }
 
     /**
@@ -330,5 +367,12 @@ final class DashboardDynamicData
     private function is_bricks_available(): bool
     {
         return class_exists('Bricks\\Query');
+    }
+
+    private function filters_are_present(self $instance): bool
+    {
+        return has_filter('bricks/dynamic_tags_list', [$instance, 'register_tags']) !== false
+            && has_filter('bricks/dynamic_data/render_content', [$instance, 'render_content']) !== false
+            && has_filter('bricks/dynamic_data/render_tag', [$instance, 'render_tag']) !== false;
     }
 }

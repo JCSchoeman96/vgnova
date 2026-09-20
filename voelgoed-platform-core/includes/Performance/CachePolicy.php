@@ -14,7 +14,9 @@ final class CachePolicy
 
     private const LITESPEED_REASON = 'Voelgoed dashboard is user-specific.';
 
-    private bool $registered = false;
+    private static bool $registered = false;
+
+    private static ?self $registered_instance = null;
 
     /**
      * @var callable|null
@@ -31,8 +33,21 @@ final class CachePolicy
 
     public function register(): void
     {
-        if ($this->registered || ! function_exists('add_action')) {
+        if (! function_exists('add_action')) {
             return;
+        }
+
+        if (self::$registered) {
+            if (
+                ! function_exists('has_action')
+                || self::$registered_instance === null
+                || $this->registered_hooks_are_present(self::$registered_instance)
+            ) {
+                return;
+            }
+
+            self::$registered = false;
+            self::$registered_instance = null;
         }
 
         add_action('template_redirect', [$this, 'protect_request'], 0);
@@ -42,7 +57,8 @@ final class CachePolicy
             add_action('litespeed_control_finalize', [$this, 'litespeed_finalize'], 1, 1);
         }
 
-        $this->registered = true;
+        self::$registered = true;
+        self::$registered_instance = $this;
     }
 
     /**
@@ -68,8 +84,14 @@ final class CachePolicy
         return $this->apply();
     }
 
-    public function send_no_cache_headers(?string $request_uri = null): bool
+    /**
+     * Send private response headers. WordPress passes its WP object here.
+     *
+     * @param mixed $request_uri
+     */
+    public function send_no_cache_headers(mixed $request_uri = null): bool
     {
+        $request_uri = is_string($request_uri) ? $request_uri : null;
         if (! $this->apply($request_uri)) {
             return false;
         }
@@ -191,5 +213,25 @@ final class CachePolicy
         } catch (Throwable) {
             return '';
         }
+    }
+
+    private function registered_hooks_are_present(self $instance): bool
+    {
+        $hooks = [
+            ['template_redirect', [$instance, 'protect_request']],
+            ['send_headers', [$instance, 'send_no_cache_headers']],
+        ];
+
+        if ($this->litespeed_is_available()) {
+            $hooks[] = ['litespeed_control_finalize', [$instance, 'litespeed_finalize']];
+        }
+
+        foreach ($hooks as [$hook, $callback]) {
+            if (has_action($hook, $callback) === false) {
+                return false;
+            }
+        }
+
+        return true;
     }
 }

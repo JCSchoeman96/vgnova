@@ -40,6 +40,30 @@ if (! function_exists('apply_filters')) {
     }
 }
 
+if (! function_exists('has_filter')) {
+    function has_filter(string $hook, mixed $callback = null): int|false
+    {
+        $filters = $GLOBALS['vgpc_filters'][$hook] ?? [];
+        if (! is_array($filters) || $filters === []) {
+            return false;
+        }
+
+        if ($callback === null) {
+            return 10;
+        }
+
+        foreach ($filters as $priority => $registrations) {
+            foreach ($registrations as $registration) {
+                if (($registration['callback'] ?? null) === $callback) {
+                    return (int) $priority;
+                }
+            }
+        }
+
+        return false;
+    }
+}
+
 if (! function_exists('do_action')) {
     function do_action(string $hook, mixed ...$args): void
     {
@@ -107,6 +131,159 @@ final class VgpcDashboardRegistryFixture
 
 final class CachePolicyTest
 {
+    public function test_cache_policy_accepts_a_wordpress_hook_object_and_uses_the_current_request_uri(): void
+    {
+        assert_true(class_exists(CachePolicy::class));
+
+        $headers = [];
+        $request_uri = $_SERVER['REQUEST_URI'] ?? null;
+        $_SERVER['REQUEST_URI'] = '/my-voelgoed/orders/';
+
+        try {
+            $policy = new CachePolicy(
+                static function (string $name, string $value) use (&$headers): void {
+                    $headers[$name] = $value;
+                }
+            );
+
+            assert_true($policy->send_no_cache_headers((object) ['request_uri' => '/my-voelgoed/orders/']));
+            assert_same($policy->headers(), $headers);
+        } finally {
+            if ($request_uri === null) {
+                unset($_SERVER['REQUEST_URI']);
+            } else {
+                $_SERVER['REQUEST_URI'] = $request_uri;
+            }
+        }
+    }
+
+    public function test_dashboard_query_provider_exposes_a_bricks_type_and_marks_custom_query_vars(): void
+    {
+        assert_true(class_exists(DashboardQueryProvider::class));
+
+        $GLOBALS['vgpc_filters'] = [];
+        vgpc_set_current_user_id(42);
+        $provider = new DashboardQueryProvider(new VgpcDashboardRegistryFixture([
+            'orders' => [
+                'key'      => 'orders',
+                'label'    => 'Bestellings',
+                'visible'  => true,
+                'state'    => 'active',
+                'summary'  => 'Een bestelling',
+                'items'    => [],
+                'actions'  => [],
+            ],
+        ]));
+        $provider->register_hooks();
+
+        $control_options = apply_filters('bricks/setup/control_options', [
+            'queryTypes' => ['post' => 'Posts'],
+        ]);
+        assert_same(
+            'Voelgoed Dashboard: Kaart',
+            $control_options['queryTypes'][DashboardQueryProvider::QUERY_TYPE] ?? null
+        );
+
+        $query_vars = apply_filters(
+            'bricks/vg_dashboard_cards/query_vars',
+            [],
+            [
+                'query' => [
+                    'vg_dashboard_view' => 'orders',
+                ],
+            ],
+            'loop-1',
+            'block'
+        );
+
+        assert_same(DashboardQueryProvider::QUERY_TYPE, $query_vars[DashboardQueryProvider::META_QUERY_TYPE] ?? null);
+        assert_same(42, $query_vars[DashboardQueryProvider::META_USER_ID] ?? null);
+        assert_same('orders', $query_vars[DashboardQueryProvider::META_VIEW_KEY] ?? null);
+
+        $result = apply_filters('bricks/query/run', [], (object) [
+            'object_type' => DashboardQueryProvider::QUERY_TYPE,
+            'query_vars'  => $query_vars,
+        ]);
+        assert_same('orders', $result[0]['key'] ?? null);
+    }
+
+    public function test_dashboard_dynamic_data_registers_hooks_once_across_instances(): void
+    {
+        assert_true(class_exists(DashboardDynamicData::class));
+
+        $GLOBALS['vgpc_filters'] = [];
+        $first = new DashboardDynamicData(new VgpcDashboardRegistryFixture([]));
+        $second = new DashboardDynamicData(new VgpcDashboardRegistryFixture([]));
+        $first->register_hooks();
+        $second->register_hooks();
+
+        assert_same(1, count($GLOBALS['vgpc_filters']['bricks/dynamic_tags_list'][10] ?? []));
+        assert_same(1, count($GLOBALS['vgpc_filters']['bricks/dynamic_data/render_content'][11] ?? []));
+        assert_same(1, count($GLOBALS['vgpc_filters']['bricks/dynamic_data/render_tag'][20] ?? []));
+    }
+
+    public function test_dashboard_query_provider_registers_hooks_once_across_instances(): void
+    {
+        assert_true(class_exists(DashboardQueryProvider::class));
+
+        $GLOBALS['vgpc_filters'] = [];
+        $first = new DashboardQueryProvider(new VgpcDashboardRegistryFixture([]));
+        $second = new DashboardQueryProvider(new VgpcDashboardRegistryFixture([]));
+        $first->register_hooks();
+        $second->register_hooks();
+
+        assert_same(1, count($GLOBALS['vgpc_filters']['bricks/setup/control_options'][10] ?? []));
+        assert_same(1, count($GLOBALS['vgpc_filters']['bricks/vg_dashboard_cards/query_vars'][10] ?? []));
+        assert_same(1, count($GLOBALS['vgpc_filters']['bricks/query/cache_key'][10] ?? []));
+        assert_same(1, count($GLOBALS['vgpc_filters']['bricks/query/run'][10] ?? []));
+    }
+
+    public function test_bricks_init_hooks_register_once_across_separate_instances(): void
+    {
+        assert_true(class_exists(DashboardDynamicData::class));
+        assert_true(class_exists(DashboardQueryProvider::class));
+
+        $GLOBALS['vgpc_actions'] = [];
+        $dynamic_first = new DashboardDynamicData(new VgpcDashboardRegistryFixture([]));
+        $dynamic_second = new DashboardDynamicData(new VgpcDashboardRegistryFixture([]));
+        $query_first = new DashboardQueryProvider(new VgpcDashboardRegistryFixture([]));
+        $query_second = new DashboardQueryProvider(new VgpcDashboardRegistryFixture([]));
+        $dynamic_first->register();
+        $dynamic_second->register();
+        $query_first->register();
+        $query_second->register();
+
+        assert_same(2, count($GLOBALS['vgpc_actions']['init'] ?? []));
+    }
+
+    public function test_cache_policy_registers_hooks_once_across_instances(): void
+    {
+        assert_true(class_exists(CachePolicy::class));
+
+        $GLOBALS['vgpc_actions'] = [];
+        $first = new CachePolicy();
+        $second = new CachePolicy();
+        $first->register();
+        $second->register();
+
+        assert_same(1, count($GLOBALS['vgpc_actions']['template_redirect'] ?? []));
+        assert_same(1, count($GLOBALS['vgpc_actions']['send_headers'] ?? []));
+    }
+
+    public function test_plugin_injects_one_registry_into_dynamic_data_and_query_provider(): void
+    {
+        assert_true(class_exists(\Voelgoed\PlatformCore\Plugin::class));
+
+        $GLOBALS['vgpc_actions'] = [];
+        $GLOBALS['vgpc_filters'] = [];
+        $plugin = new \Voelgoed\PlatformCore\Plugin();
+        $plugin->register();
+        $components = $plugin->components();
+
+        assert_true(($components['dynamic_data']->registry() ?? null) === ($components['registry'] ?? null));
+        assert_true(($components['query_provider']->registry() ?? null) === ($components['registry'] ?? null));
+    }
+
     public function test_dashboard_query_cache_keys_include_user_and_view(): void
     {
         assert_true(class_exists(DashboardQueryProvider::class));
