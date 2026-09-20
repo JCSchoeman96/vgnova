@@ -152,6 +152,54 @@ The dashboard integration therefore follows this sequence:
 6. Require that permalink to be non-empty and a same-site URL. If either check fails, fail closed and hide the link.
 7. Leave programme-specific choices inside the configured member-perks hub.
 
+## Live staging implementation (2026-09-20)
+
+The dashboard shell and page surfaces were created and verified on the
+`vgnova` staging profile through Novamira. These IDs are staging references,
+not runtime constants:
+
+| Surface | ID | URL / use |
+| --- | ---: | --- |
+| `My Voelgoed` overview | 1155 | `/my-voelgoed/` |
+| `Lidmaatskap` | 1156 | `/my-voelgoed/membership/` |
+| `Subskripsies` | 1157 | `/my-voelgoed/subscriptions/` |
+| `Bestellings` | 1158 | `/my-voelgoed/orders/` |
+| `Kaartjies` | 1159 | `/my-voelgoed/tickets/` |
+| `Kursusse` | 1160 | `/my-voelgoed/learning/` |
+| `Profiel` | 1161 | `/my-voelgoed/profile/` |
+| Unified section shell | 1172 | Bricks section template, rendered through `bricks_after_header` |
+
+The unused content-template experiment (ID 1162) has no display conditions and
+is not part of the live render path. A section template was used instead because
+the Bricks `post-content` element did not include the child page content in the
+content-template render. The active section shell contains the Afrikaans
+navigation labels `Oorsig`, `Lidmaatskap`, `Subskripsies`, `Bestellings`,
+`Kaartjies`, `Kursusse`, and `Profiel`. It uses a semantic `nav` element with
+`aria-label="Dashboard-navigasie"` and keeps the existing `/vriendin/` hub
+separate.
+
+The overview cards explicitly cover PMPro access, all Woo subscriptions (also
+those not linked to PMPro), WooCommerce orders, Tickera tickets, every owned or
+accessible Masteriyo course, and attention items. No `Biblioteek` page, route,
+tab, or dynamic token was created. The active Bricks links use the staging page
+IDs above; child-page active state is supplied by Bricks' current-link output.
+
+Sequential `novamira/bricks-render-check` calls returned `reachable: true`,
+HTTP 200, `fatal: false`, `bricks_rendered: true`, and `css_linked: true` for
+all seven pages and the section template. The browser preview also confirmed
+the shell, Afrikaans navigation, semantic nav element, overview cards, and
+absence of `Biblioteek` text.
+
+The local `voelgoed-platform-core` plugin is tested in its feature worktree but
+is not installed on this staging site yet. Therefore the live pages are not
+being described as authenticated or user-data populated in this audit. The
+access guard, provider adapters, cache policy, Bricks dynamic data, and the
+conditional `Lede-area` navigation remain release-gated until that plugin is
+reviewed and deployed through its normal plugin workflow. The existing staging
+Member Perks plugin also lacks the approved public feature-flag accessor needed
+to expose `Lede-area`; the dashboard service fails closed until that boundary is
+available.
+
 ## Bricks hooks verified in local source
 
 The following hooks were verified in the local member-perks source, not through live staging. A dashboard Bricks adapter may follow these established patterns.
