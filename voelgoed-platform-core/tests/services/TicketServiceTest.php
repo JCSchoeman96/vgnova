@@ -351,14 +351,14 @@ final class TicketServiceTest
         vgpc_set_current_user_email('');
     }
 
-    public function test_nested_tickera_details_are_normalized_for_event_ticket_and_email_history(): void
+    public function test_nested_tickera_details_allow_matching_email_despite_foreign_author(): void
     {
         vgpc_set_current_user_email('nested@example.test');
         vgpc_set_permalink(703, '/events/nested/');
 
         $matching_order = (object) [
             'ID'          => 611,
-            'post_author' => 0,
+            'post_author' => 99,
             'post_name'   => 'nested-order-611',
             'details'     => (object) [
                 'tc_cart_info' => [
@@ -368,7 +368,7 @@ final class TicketServiceTest
         ];
         $mismatched_order = (object) [
             'ID'          => 612,
-            'post_author' => 0,
+            'post_author' => 99,
             'details'     => (object) [
                 'tc_cart_info' => [
                     'buyer_data' => ['email_post_meta' => 'other@example.test'],
@@ -377,7 +377,7 @@ final class TicketServiceTest
         ];
         $missing_email_order = (object) [
             'ID'          => 613,
-            'post_author' => 0,
+            'post_author' => 99,
             'details'     => (object) ['tc_cart_info' => ['buyer_data' => []]],
         ];
         $provider = new VgpcTicketProviderFixture(

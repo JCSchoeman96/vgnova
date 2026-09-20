@@ -209,17 +209,15 @@ final class TicketService implements DashboardServiceInterface
             ['post_author', 'author_id', 'user_id', 'customer_id']
         );
         $owner_id = $owner === null ? null : $this->canonical_id($owner);
-        $email = '';
+        $emails = [];
         $sources = [$order];
-        if ($owner_id === null) {
-            $native_order = $this->native_order($order, $order_id);
-            if ($native_order !== null && $native_order !== $order) {
-                $sources[] = $native_order;
-            }
+        $native_order = $this->native_order($order, $order_id);
+        if ($native_order !== null && $native_order !== $order) {
+            $sources[] = $native_order;
         }
 
         foreach ($sources as $source) {
-            $email = strtolower(trim($this->scalar_string(
+            $source_email = strtolower(trim($this->scalar_string(
                 $this->nested_record_value(
                     $source,
                     ['get_buyer_email', 'get_billing_email', 'get_email'],
@@ -236,28 +234,22 @@ final class TicketService implements DashboardServiceInterface
                     ]
                 )
             )));
-            if ($email !== '') {
-                break;
+            if ($source_email !== '') {
+                $emails[] = $source_email;
             }
         }
         $current_email = $this->current_user_email();
-
-        if ($owner_id !== null) {
-            return [
-                'error'    => false,
-                'owned'    => $owner_id === $user_id,
-                'order_id' => $order_id,
-                'email'    => $current_email,
-            ];
+        $email_owned = false;
+        foreach ($emails as $email) {
+            if ($current_email !== '' && hash_equals($current_email, $email)) {
+                $email_owned = true;
+                break;
+            }
         }
-
-        // Tickera can optionally return email-history orders. Permit those
-        // only when the order email exactly matches the authenticated email.
-        $email_owned = $email !== '' && $current_email !== '' && hash_equals($current_email, $email);
 
         return [
             'error'    => false,
-            'owned'    => $email_owned,
+            'owned'    => ($owner_id !== null && $owner_id === $user_id) || $email_owned,
             'order_id' => $order_id,
             'email'    => $current_email,
         ];

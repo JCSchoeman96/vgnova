@@ -168,6 +168,57 @@ final class VgpcLearningAccessResultProviderFixture
     }
 }
 
+final class VgpcLearningMissingAccessProviderFixture
+{
+    public function __construct(private object $course)
+    {
+    }
+
+    public function user_courses(int $user_id, array $query = []): array
+    {
+        return [new VgpcLearningUserCourseFixture(410, $user_id, 'enrolled', $this->course)];
+    }
+}
+
+final class VgpcNativeMasteriyoUserCourseQueryFixture
+{
+    /** @var array<string, mixed> */
+    public static array $query_args = [];
+
+    /** @var array<int, mixed> */
+    public static array $courses = [];
+
+    /** @param array<string, mixed> $query_args */
+    public function __construct(array $query_args = [])
+    {
+        self::$query_args = $query_args;
+    }
+
+    /** @return array<int, mixed> */
+    public function get_user_courses(): array
+    {
+        return self::$courses;
+    }
+}
+
+if (! function_exists('vgpc_register_native_masteriyo_fixtures')) {
+    function vgpc_register_native_masteriyo_fixtures(): void
+    {
+        if (! class_exists('Masteriyo\\Query\\UserCourseQuery')) {
+            class_alias(VgpcNativeMasteriyoUserCourseQueryFixture::class, 'Masteriyo\\Query\\UserCourseQuery');
+        }
+
+        if (! function_exists('masteriyo_is_user_enrolled_in_course')) {
+            eval(<<<'PHP'
+function masteriyo_is_user_enrolled_in_course($course_id, $user_id): bool
+{
+    return (int) $course_id === 410 && (int) $user_id === 42;
+}
+PHP);
+        }
+    }
+}
+
 if (! class_exists('WP_Error')) {
     class WP_Error
     {
@@ -219,7 +270,10 @@ final class LearningServiceTest
         assert_same('learning', $card['key']);
         assert_same(AfrikaansLabels::LEARNING, $card['label']);
         assert_same('active', $card['state']);
-        assert_same(['user_id' => 42, 'query' => ['status' => 'any']], $provider->course_query);
+        assert_same(
+            ['user_id' => 42, 'query' => ['status' => 'any', 'per_page' => -1]],
+            $provider->course_query
+        );
         assert_same(2, count($card['items']));
         assert_same('Selfsorg', $card['items'][0]['title']);
         assert_same('/kursus/selfsorg/', $card['items'][0]['course_url']);
@@ -267,6 +321,17 @@ final class LearningServiceTest
         $card = (new LearningService($provider))->card(42);
 
         assert_same('empty', $card['state']);
+        assert_same([], $card['items']);
+    }
+
+    public function test_missing_access_provider_is_unavailable(): void
+    {
+        $course = new VgpcLearningCourseFixture(410, 'Geen toegangskontrole', '/kursus/geen-toegangskontrole/');
+        $provider = new VgpcLearningMissingAccessProviderFixture($course);
+
+        $card = (new LearningService($provider))->card(42);
+
+        assert_same('unavailable', $card['state']);
         assert_same([], $card['items']);
     }
 
@@ -380,5 +445,23 @@ final class LearningServiceTest
         assert_same('/kursus/gaan-voort/les/2/', $card['items'][0]['next_lesson_url']);
         assert_same('/kursus/gaan-voort/les/2/', $card['items'][0]['actions']['next-lesson']['url']);
         assert_same(1, $course->continue_calls);
+    }
+
+    public function test_native_course_query_requests_all_owned_courses(): void
+    {
+        $course = new VgpcLearningCourseFixture(410, 'Alle kursusse', '/kursus/alle-kursusse/');
+        VgpcNativeMasteriyoUserCourseQueryFixture::$courses = [
+            new VgpcLearningUserCourseFixture(410, 42, 'enrolled', $course),
+        ];
+        vgpc_register_native_masteriyo_fixtures();
+
+        $card = (new LearningService())->card(42);
+
+        assert_same(
+            ['user_id' => 42, 'status' => 'any', 'per_page' => -1],
+            VgpcNativeMasteriyoUserCourseQueryFixture::$query_args
+        );
+        assert_same('active', $card['state']);
+        assert_same('410', $card['items'][0]['course_id']);
     }
 }

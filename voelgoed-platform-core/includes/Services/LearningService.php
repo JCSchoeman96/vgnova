@@ -97,10 +97,10 @@ final class LearningService implements DashboardServiceInterface
             $result = $this->provider_call(
                 ['user_courses', 'get_user_courses', 'courses'],
                 [
-                    [$user_id, ['status' => 'any']],
+                    [$user_id, ['status' => 'any', 'per_page' => -1]],
                     [$user_id, 'any'],
                     [$user_id],
-                    [['user_id' => $user_id, 'status' => 'any']],
+                    [['user_id' => $user_id, 'status' => 'any', 'per_page' => -1]],
                 ]
             );
 
@@ -114,7 +114,7 @@ final class LearningService implements DashboardServiceInterface
             return ['ok' => false, 'value' => null];
         }
 
-        $query_args = ['user_id' => $user_id, 'status' => 'any'];
+        $query_args = ['user_id' => $user_id, 'status' => 'any', 'per_page' => -1];
         try {
             $query = new $class($query_args);
         } catch (Throwable) {
@@ -341,7 +341,7 @@ final class LearningService implements DashboardServiceInterface
             }
         }
 
-        return ['ok' => true, 'allowed' => true];
+        return ['ok' => false, 'allowed' => false];
     }
 
     /**
