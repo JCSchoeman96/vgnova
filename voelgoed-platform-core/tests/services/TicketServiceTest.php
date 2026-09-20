@@ -149,7 +149,9 @@ final class VgpcTicketProviderFixture
 
     public function order_url(object $order): string
     {
-        return '/my-account/tickera-order/' . $order->get_id() . '/';
+        $order_id = method_exists($order, 'get_id') ? $order->get_id() : ($order->ID ?? 0);
+
+        return '/my-account/tickera-order/' . $order_id . '/';
     }
 }
 
@@ -267,6 +269,88 @@ final class TicketServiceTest
         assert_same(2, count($card['items']));
         assert_same('807', $card['items'][0]['ticket_id']);
         assert_same('808', $card['items'][1]['ticket_id']);
+        vgpc_set_current_user_email('');
+    }
+
+    public function test_nested_tickera_details_are_normalized_for_event_ticket_and_email_history(): void
+    {
+        vgpc_set_current_user_email('nested@example.test');
+        vgpc_set_permalink(703, '/events/nested/');
+
+        $matching_order = (object) [
+            'ID'          => 611,
+            'post_author' => 0,
+            'post_name'   => 'nested-order-611',
+            'details'     => (object) [
+                'tc_cart_info' => [
+                    'buyer_data' => ['email_post_meta' => 'nested@example.test'],
+                ],
+            ],
+        ];
+        $mismatched_order = (object) [
+            'ID'          => 612,
+            'post_author' => 0,
+            'details'     => (object) [
+                'tc_cart_info' => [
+                    'buyer_data' => ['email_post_meta' => 'other@example.test'],
+                ],
+            ],
+        ];
+        $missing_email_order = (object) [
+            'ID'          => 613,
+            'post_author' => 0,
+            'details'     => (object) ['tc_cart_info' => ['buyer_data' => []]],
+        ];
+        $provider = new VgpcTicketProviderFixture(
+            [$matching_order, $mismatched_order, $missing_email_order],
+            [
+                611 => [811],
+                612 => [812],
+                613 => [813],
+                'instances' => [
+                    811 => (object) [
+                        'details' => (object) [
+                            'post_parent' => 611,
+                            'event_id'    => 703,
+                            'owner_email' => 'nested@example.test',
+                            'post_status' => 'valid',
+                        ],
+                    ],
+                    812 => (object) [
+                        'details' => (object) [
+                            'post_parent' => 612,
+                            'event_id'    => 703,
+                            'owner_email' => 'other@example.test',
+                            'post_status' => 'valid',
+                        ],
+                    ],
+                    813 => (object) [
+                        'details' => (object) [
+                            'post_parent' => 613,
+                            'event_id'    => 703,
+                            'owner_email' => 'nested@example.test',
+                            'post_status' => 'valid',
+                        ],
+                    ],
+                ],
+            ],
+            [703 => (object) [
+                'details' => (object) [
+                    'post_title'       => 'Geneste Tickera-geleentheid',
+                    'event_date_time'  => '2099-06-01 18:00:00',
+                ],
+            ]],
+            [811 => '/tickera/ticket/811/?sig=nested']
+        );
+
+        $card = (new TicketService($provider))->card(42);
+
+        assert_same('active', $card['state']);
+        assert_same(1, count($card['items']));
+        assert_same('Geneste Tickera-geleentheid', $card['items'][0]['event_title']);
+        assert_same('2099-06-01', $card['items'][0]['event_date']);
+        assert_same('/tickera/ticket/811/?sig=nested', $card['items'][0]['actions']['download']['url']);
+        assert_same('/tickera/ticket/811/?sig=nested', $card['items'][0]['actions']['qr']['url']);
         vgpc_set_current_user_email('');
     }
 

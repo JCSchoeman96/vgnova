@@ -78,7 +78,7 @@ The installed staging source was inspected locally after read-only Novamira disc
 
 The course adapter may use these supported runtime APIs and models:
 
-- `Masteriyo\\Query\\UserCourseQuery::get_user_courses()` with `user_id` and `status` query variables to enumerate the authenticated user's course access records.
+- `Masteriyo\\Query\\UserCourseQuery::get_user_courses()` with `user_id` and `status => 'any'` query variables to enumerate the authenticated user's course access records, including every access state.
 - `Masteriyo\\Models\\UserCourse::get_course_id()`, `get_user_id()`, `get_status()`, `get_permalink()`, and `get_course()` for normalized enrolment data.
 - `masteriyo_get_course($course_id)` and `masteriyo_is_user_enrolled_in_course($course_id, $user_id)` for course and access checks.
 - `Masteriyo\\Query\\CourseProgressQuery::get_course_progress()` or `masteriyo_get_course_progress_by_user_and_course()` for user-scoped progress.
@@ -93,7 +93,7 @@ The installed Tickera source exposes these supported runtime APIs:
 
 - `\\Tickera\\TC_Orders::get_user_orders($user)` returns the user's `tc_orders` posts. By default it scopes by WordPress post author. Tickera can optionally enable its email-history filter, so the dashboard must only use that mode when the returned order has been verified against the authenticated user's email.
 - `\\Tickera\\TC_Orders::get_tickets_ids($order_id, $post_status)` returns ticket-instance IDs for an owned order.
-- `\\Tickera\\TC_Ticket_Instance` exposes the ticket-instance details and its event ID. `\\Tickera\\TC_Event` exposes the event post title and event details.
+- `\\Tickera\\TC_Ticket_Instance` exposes the ticket-instance details and its event ID. `\\Tickera\\TC_Event` exposes the event post title and event details. Native wrappers place these values under their `details` object; an order returned as `WP_Post` must be wrapped with supported `\\Tickera\\TC_Order` APIs before reading `tc_cart_info`/`buyer_data` email history (`email_post_meta`).
 - `tickera_get_raw_ticket_download_link('', '', $ticket_id, true)` builds Tickera's native signed ticket-download URL. The dashboard must call it only after ownership is confirmed.
 - `$tc->tc_order_status_url($order, $order_key, '', false)` builds the native order-details URL when the global Tickera controller is available.
 

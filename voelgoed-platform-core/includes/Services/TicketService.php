@@ -209,9 +209,37 @@ final class TicketService implements DashboardServiceInterface
             ['post_author', 'author_id', 'user_id', 'customer_id']
         );
         $owner_id = $owner === null ? null : $this->canonical_id($owner);
-        $email = strtolower(trim($this->scalar_string(
-            $this->record_value($order, ['get_buyer_email', 'get_billing_email', 'get_email'], ['buyer_email', 'billing_email', 'email'])
-        )));
+        $email = '';
+        $sources = [$order];
+        if ($owner_id === null) {
+            $native_order = $this->native_order($order, $order_id);
+            if ($native_order !== null && $native_order !== $order) {
+                $sources[] = $native_order;
+            }
+        }
+
+        foreach ($sources as $source) {
+            $email = strtolower(trim($this->scalar_string(
+                $this->nested_record_value(
+                    $source,
+                    ['get_buyer_email', 'get_billing_email', 'get_email'],
+                    ['buyer_email', 'billing_email', 'email'],
+                    [
+                        ['details', 'tc_cart_info', 'buyer_data', 'email'],
+                        ['details', 'tc_cart_info', 'buyer_data', 'email_post_meta'],
+                        ['details', 'tc_cart_info', 'buyer_data', 'user_email'],
+                        ['details', 'buyer_data', 'email'],
+                        ['details', 'buyer_email'],
+                        ['details', 'email'],
+                        ['tc_cart_info', 'buyer_data', 'email'],
+                        ['tc_cart_info', 'buyer_data', 'email_post_meta'],
+                    ]
+                )
+            )));
+            if ($email !== '') {
+                break;
+            }
+        }
         $current_email = $this->current_user_email();
 
         if ($owner_id !== null) {
@@ -289,7 +317,7 @@ final class TicketService implements DashboardServiceInterface
     }
 
     /**
-     * @param array{email: string} $ownership_email
+     * @param string $ownership_email
      * @return array<string, mixed>|null
      */
     private function item(
@@ -304,7 +332,16 @@ final class TicketService implements DashboardServiceInterface
             return null;
         }
 
-        $ticket_order_id = $this->record_value($ticket, ['get_order_id', 'get_tc_order_id'], ['order_id', 'tc_order_id']);
+        $ticket_order_id = $this->nested_record_value(
+            $ticket,
+            ['get_order_id', 'get_tc_order_id'],
+            ['order_id', 'tc_order_id'],
+            [
+                ['details', 'order_id'],
+                ['details', 'tc_order_id'],
+                ['details', 'post_parent'],
+            ]
+        );
         if ($ticket_order_id !== null) {
             $ticket_order = $this->canonical_id($ticket_order_id);
             if ($ticket_order === null || $ticket_order !== $order_id) {
@@ -313,14 +350,30 @@ final class TicketService implements DashboardServiceInterface
         }
 
         $ticket_email = strtolower(trim($this->scalar_string(
-            $this->record_value($ticket, ['get_owner_email', 'get_email'], ['owner_email', 'email'])
+            $this->nested_record_value(
+                $ticket,
+                ['get_owner_email', 'get_email'],
+                ['owner_email', 'email'],
+                [
+                    ['details', 'owner_email'],
+                    ['details', 'email'],
+                ]
+            )
         )));
         if ($ticket_email !== '' && $ownership_email !== '' && ! hash_equals($ownership_email, $ticket_email)) {
             return null;
         }
 
         $event_id = $this->canonical_id(
-            $this->record_value($ticket, ['get_event_id', 'get_tc_event_id'], ['event_id', 'tc_event_id'])
+            $this->nested_record_value(
+                $ticket,
+                ['get_event_id', 'get_tc_event_id'],
+                ['event_id', 'tc_event_id'],
+                [
+                    ['details', 'event_id'],
+                    ['details', 'tc_event_id'],
+                ]
+            )
         );
         if ($event_id === null) {
             return null;
@@ -337,20 +390,50 @@ final class TicketService implements DashboardServiceInterface
         }
 
         $event_title = $this->scalar_string(
-            $this->record_value($event, ['get_name', 'get_title'], ['post_title', 'title', 'name'])
+            $this->nested_record_value(
+                $event,
+                ['get_name', 'get_title'],
+                ['post_title', 'title', 'name'],
+                [
+                    ['details', 'post_title'],
+                    ['details', 'title'],
+                    ['details', 'name'],
+                ]
+            )
         );
         $event_date_raw = $this->record_value(
             $event,
             ['get_start_date', 'get_event_date', 'get_start_datetime', 'get_event_date_time', 'get_date'],
             ['start_date', 'event_date', 'start_datetime', 'event_date_time', 'date']
         );
+        if ($event_date_raw === null || $this->scalar_string($event_date_raw) === '') {
+            $event_date_raw = $this->nested_record_value(
+                $event,
+                [],
+                [],
+                [
+                    ['details', 'event_date_time'],
+                    ['details', 'start_datetime'],
+                    ['details', 'event_date'],
+                    ['details', 'start_date'],
+                ]
+            );
+        }
         $event_timestamp = $this->timestamp($event_date_raw);
         if ($event_title === '' || $event_timestamp === null) {
             return null;
         }
 
         $event_url = $this->safe_url($this->scalar_string(
-            $this->record_value($event, ['get_permalink', 'get_url'], ['permalink', 'url'])
+            $this->nested_record_value(
+                $event,
+                ['get_permalink', 'get_url'],
+                ['permalink', 'url'],
+                [
+                    ['details', 'permalink'],
+                    ['details', 'url'],
+                ]
+            )
         ));
         if ($event_url === '' && function_exists('get_permalink')) {
             try {
@@ -361,7 +444,16 @@ final class TicketService implements DashboardServiceInterface
         }
 
         $status = $this->status($this->scalar_string(
-            $this->record_value($ticket, ['get_status', 'get_ticket_status'], ['status', 'ticket_status'])
+            $this->nested_record_value(
+                $ticket,
+                ['get_status', 'get_ticket_status'],
+                ['status', 'ticket_status'],
+                [
+                    ['details', 'status'],
+                    ['details', 'ticket_status'],
+                    ['details', 'post_status'],
+                ]
+            )
         ));
         $actions = [];
 
@@ -469,12 +561,36 @@ final class TicketService implements DashboardServiceInterface
             return '';
         }
 
-        $order_key = $this->scalar_string($this->record_value($order, ['get_order_key'], ['order_key', 'post_name']));
+        $native_order = $this->native_order($order, $order_id);
+        $order_for_url = $native_order ?? $order;
+        $order_key = $this->scalar_string(
+            $this->nested_record_value(
+                $order_for_url,
+                ['get_order_key'],
+                ['order_key', 'tc_order_date', 'post_name'],
+                [
+                    ['details', 'tc_order_date'],
+                    ['details', 'order_key'],
+                    ['details', 'tc_order_key'],
+                ]
+            )
+        );
         $result = $this->invoke_method(
             $controller,
             'tc_order_status_url',
-            [[$order, $order_key, '', false], [$order_id, $order_key, '', false], [$order, $order_key]]
+            [[$order_for_url, $order_key, '', false], [$order_id, $order_key, '', false], [$order_for_url, $order_key]]
         );
+
+        if (! $result['ok'] && $native_order === null) {
+            $native_order = $this->native_order($order, $order_id);
+            if ($native_order !== null) {
+                $result = $this->invoke_method(
+                    $controller,
+                    'tc_order_status_url',
+                    [[$native_order, $order_key, '', false], [$native_order, $order_key]]
+                );
+            }
+        }
 
         return $result['ok'] ? $this->safe_url($this->scalar_string($result['value'])) : '';
     }
@@ -508,6 +624,28 @@ final class TicketService implements DashboardServiceInterface
             )));
         } catch (Throwable) {
             return '';
+        }
+    }
+
+    private function native_order(mixed $order, int $order_id): ?object
+    {
+        if ($this->provider !== null) {
+            return null;
+        }
+
+        $class = '\\Tickera\\TC_Order';
+        if (! class_exists($class)) {
+            return null;
+        }
+
+        if (is_object($order) && $order instanceof $class) {
+            return $order;
+        }
+
+        try {
+            return new $class($order_id);
+        } catch (Throwable) {
+            return null;
         }
     }
 
@@ -597,6 +735,43 @@ final class TicketService implements DashboardServiceInterface
         }
 
         return null;
+    }
+
+    /**
+     * Read a direct value first, then walk supported nested detail paths.
+     * Tickera's native wrappers put event and ticket fields in `details`.
+     *
+     * @param array<int, string>              $methods
+     * @param array<int, string>              $keys
+     * @param array<int, array<int, string>>  $paths
+     */
+    private function nested_record_value(mixed $source, array $methods, array $keys, array $paths): mixed
+    {
+        $value = $this->record_value($source, $methods, $keys);
+        if ($this->meaningful($value)) {
+            return $value;
+        }
+
+        foreach ($paths as $path) {
+            $current = $source;
+            foreach ($path as $segment) {
+                $current = $this->record_value($current, [], [$segment]);
+                if ($current === null) {
+                    continue 2;
+                }
+            }
+
+            if ($this->meaningful($current)) {
+                return $current;
+            }
+        }
+
+        return $value;
+    }
+
+    private function meaningful(mixed $value): bool
+    {
+        return $value !== null && (! is_string($value) || trim($value) !== '');
     }
 
     private function canonical_id(mixed $value): ?int

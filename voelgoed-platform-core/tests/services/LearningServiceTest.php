@@ -160,7 +160,7 @@ final class LearningServiceTest
         assert_same('learning', $card['key']);
         assert_same(AfrikaansLabels::LEARNING, $card['label']);
         assert_same('active', $card['state']);
-        assert_same(['user_id' => 42, 'query' => ['status' => 'all']], $provider->course_query);
+        assert_same(['user_id' => 42, 'query' => ['status' => 'any']], $provider->course_query);
         assert_same(2, count($card['items']));
         assert_same('Selfsorg', $card['items'][0]['title']);
         assert_same('/kursus/selfsorg/', $card['items'][0]['course_url']);

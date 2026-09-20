@@ -97,10 +97,10 @@ final class LearningService implements DashboardServiceInterface
             $result = $this->provider_call(
                 ['user_courses', 'get_user_courses', 'courses'],
                 [
-                    [$user_id, ['status' => 'all']],
-                    [$user_id, 'all'],
+                    [$user_id, ['status' => 'any']],
+                    [$user_id, 'any'],
                     [$user_id],
-                    [['user_id' => $user_id, 'status' => 'all']],
+                    [['user_id' => $user_id, 'status' => 'any']],
                 ]
             );
 
@@ -114,7 +114,7 @@ final class LearningService implements DashboardServiceInterface
             return ['ok' => false, 'value' => null];
         }
 
-        $query_args = ['user_id' => $user_id, 'status' => 'all'];
+        $query_args = ['user_id' => $user_id, 'status' => 'any'];
         try {
             $query = new $class($query_args);
         } catch (Throwable) {
@@ -362,28 +362,22 @@ final class LearningService implements DashboardServiceInterface
             return ['ok' => true, 'value' => null];
         }
 
-        $arguments = [['course_id' => $course_id, 'user_id' => $user_id]];
+        $query_args = ['course_id' => $course_id, 'user_id' => $user_id];
         try {
-            $query = new $class();
+            $query = new $class($query_args);
         } catch (Throwable) {
             return ['ok' => false, 'value' => null];
         }
 
-        if (is_object($query) && method_exists($query, 'get_course_progress')) {
-            $result = $this->invoke_method($query, 'get_course_progress', [$arguments, [$user_id, $course_id], []]);
-
-            return $result['ok'] ? ['ok' => true, 'value' => $result['value']] : ['ok' => false, 'value' => null];
+        if (! method_exists($query, 'get_course_progress')) {
+            return ['ok' => false, 'value' => null];
         }
 
-        if (is_callable([$class, 'get_course_progress'])) {
-            try {
-                return ['ok' => true, 'value' => $class::get_course_progress($arguments)];
-            } catch (Throwable) {
-                return ['ok' => false, 'value' => null];
-            }
-        }
+        // The query is already scoped by both IDs; the native API reads those
+        // arguments from the constructor and exposes a zero-argument getter.
+        $result = $this->invoke_method($query, 'get_course_progress', [[]]);
 
-        return ['ok' => true, 'value' => null];
+        return $result['ok'] ? ['ok' => true, 'value' => $result['value']] : ['ok' => false, 'value' => null];
     }
 
     /**
