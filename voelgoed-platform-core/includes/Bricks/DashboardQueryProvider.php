@@ -123,15 +123,6 @@ final class DashboardQueryProvider
             'vg_dashboard_view'        => $view_key,
         ];
 
-        if ($view_key === '' || $user_id < 1 || ! $this->is_authenticated()) {
-            return $query;
-        }
-
-        $card = $this->card_for_view($view_key, $user_id);
-        if ($card === []) {
-            return $query;
-        }
-
         return $query;
     }
 

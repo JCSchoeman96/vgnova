@@ -40,6 +40,16 @@ if (! function_exists('apply_filters')) {
     }
 }
 
+if (! function_exists('do_action')) {
+    function do_action(string $hook, mixed ...$args): void
+    {
+        $GLOBALS['vgpc_do_actions'][] = [
+            'hook' => $hook,
+            'args' => $args,
+        ];
+    }
+}
+
 if (! function_exists('sanitize_text_field')) {
     function sanitize_text_field(string $value): string
     {
@@ -74,6 +84,8 @@ if (! function_exists('wp_get_current_user')) {
 
 final class VgpcDashboardRegistryFixture
 {
+    public int $calls = 0;
+
     /**
      * @param array<string, array<string, mixed>|null> $cards
      */
@@ -87,6 +99,7 @@ final class VgpcDashboardRegistryFixture
     public function card(string $key, mixed $context = null): ?array
     {
         unset($context);
+        ++$this->calls;
 
         return $this->cards[$key] ?? null;
     }
@@ -171,7 +184,8 @@ final class CachePolicyTest
         assert_true(class_exists(DashboardQueryProvider::class));
 
         vgpc_set_current_user_id(31);
-        $provider = new DashboardQueryProvider(new VgpcDashboardRegistryFixture([]));
+        $registry = new VgpcDashboardRegistryFixture([]);
+        $provider = new DashboardQueryProvider($registry);
         $card = $provider->card_for_view('orders', 31);
 
         assert_same('orders', $card['key'] ?? null);
@@ -179,14 +193,24 @@ final class CachePolicyTest
         assert_same([], $card['items'] ?? null);
         assert_same([], $card['actions'] ?? null);
 
+        $registry->calls = 0;
         $query_one = $provider->query_for_view('orders', 31);
         $query_two = $provider->query_for_view('orders', 32);
+        assert_same(0, $registry->calls);
+
         $key_one = $provider->filter_cache_key('bricks_loop', (object) ['query_vars' => $query_one]);
         $key_two = $provider->filter_cache_key('bricks_loop', (object) ['query_vars' => $query_two]);
 
         assert_not_same($key_one, $key_two);
         assert_same([0], $query_one['post__in'] ?? null);
         assert_same([0], $query_two['post__in'] ?? null);
+
+        $result = $provider->run_query([], (object) [
+            'object_type' => DashboardQueryProvider::QUERY_TYPE,
+            'query_vars' => $query_one,
+        ]);
+        assert_same(1, $registry->calls);
+        assert_same('orders', $result[0]['key'] ?? null);
         vgpc_set_current_user_id(42);
     }
 
@@ -253,6 +277,52 @@ final class CachePolicyTest
             $policy->cache_control_header()
         );
         assert_false($policy->apply('/content/example/'));
+    }
+
+    public function test_cache_policy_does_not_register_unconfirmed_layer_hooks(): void
+    {
+        assert_true(class_exists(CachePolicy::class));
+
+        $GLOBALS['vgpc_actions'] = [];
+        $policy = new CachePolicy();
+        assert_same([], $policy->installed_page_cache_hooks());
+        $policy->register();
+        assert_same([], $GLOBALS['vgpc_actions']['litespeed_control_finalize'] ?? []);
+    }
+
+    public function test_cache_policy_sends_headers_and_notifies_a_detected_litespeed_layer(): void
+    {
+        assert_true(class_exists(CachePolicy::class));
+
+        if (! defined('LSCWP_V')) {
+            define('LSCWP_V', 'test');
+        }
+
+        $headers = [];
+        $GLOBALS['vgpc_do_actions'] = [];
+        $policy = new CachePolicy(
+            static function (string $name, string $value) use (&$headers): void {
+                $headers[$name] = $value;
+            }
+        );
+
+        assert_same([
+            'litespeed_control_finalize',
+            'litespeed_control_set_nocache',
+            'litespeed_control_set_private',
+        ], $policy->installed_page_cache_hooks());
+        assert_same(4, count($policy->headers()));
+        assert_true($policy->send_no_cache_headers('/my-voelgoed/orders/'));
+        assert_same($policy->headers(), $headers);
+        assert_same([
+            'litespeed_control_set_nocache',
+            'litespeed_control_set_private',
+        ], array_column($GLOBALS['vgpc_do_actions'], 'hook'));
+
+        $GLOBALS['vgpc_actions'] = [];
+        $policy->register();
+        assert_true(count($GLOBALS['vgpc_actions']['litespeed_control_finalize'] ?? []) === 1);
+        assert_false($policy->send_no_cache_headers('/content/example/'));
     }
 }
 

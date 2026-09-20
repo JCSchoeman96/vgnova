@@ -9,6 +9,18 @@ This audit combines the verified staging facts supplied for this task with a rea
 
 The MCP and network checks from the implementation plan were not run in this pass because they stalled in earlier attempts. This document does not claim fresh `doctor`, ability-discovery, or live WordPress CLI output.
 
+## Local cache-layer inspection
+
+On 2026-09-20, a read-only filesystem check inspected:
+
+```text
+/home/jcschoeman96/Local Sites/voelgoed-novamira/app/public/wp-content/plugins
+```
+
+The directory contains no `litespeed-cache`, `litespeed`, or other page-cache plugin directory. A separate `wp-content/fluent-snippet-storage/cached` directory exists, but it is FluentSnippets storage and is not a page-cache layer. This is local filesystem evidence only. No MCP inspection is claimed here.
+
+The dashboard cache policy therefore registers no LiteSpeed or other page-cache hooks when the layer is absent. If a later runtime has LiteSpeed Cache loaded, the policy uses the confirmed LiteSpeed cache-control hooks only after detecting its runtime constant or class. It does not treat a reported plugin list or an assumed hook name as proof that the layer is installed.
+
 Page ID evidence below comes from the supplied staging snapshot. The PMPro page title and shortcode mappings/tags come from the supplied external `backup-pre-cleanup-20260528.sql` staging backup. That backup is not present in this checkout, so the mapping is not independently reproducible here. These references were not rechecked against live WordPress.
 
 ## Staging profile
@@ -180,7 +192,7 @@ Normalized user output is request-local by default. Dashboard HTML and fragments
 At the dashboard page boundary, apply cache controls before page or edge-cache decisions:
 
 - Set `DONOTCACHEPAGE` when the page-cache layer supports it.
-- Apply the equivalent page-cache exclusions for the installed page-cache and edge-cache layers.
+- Apply the equivalent page-cache exclusions for an installed page-cache or edge-cache layer only after its runtime presence and hook names are confirmed. The local plugin-directory check above found no LiteSpeed Cache installation.
 - Send private, no-store response handling for dashboard HTML and fragments, such as `Cache-Control: private, no-store` where the response layer permits it.
 
 The Bricks query cache key must include the current user and dashboard view context, as the local member-perks provider does. That key is an additional isolation measure. It is not sufficient by itself to make dashboard HTML, fragments, or normalized user output safe for shared caching.

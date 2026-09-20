@@ -16,6 +16,19 @@ final class CachePolicy
 
     private bool $registered = false;
 
+    /**
+     * @var callable|null
+     */
+    private $header_sender;
+
+    /**
+     * @param callable|null $header_sender Optional response-header sink for tests.
+     */
+    public function __construct(?callable $header_sender = null)
+    {
+        $this->header_sender = $header_sender;
+    }
+
     public function register(): void
     {
         if ($this->registered || ! function_exists('add_action')) {
@@ -62,6 +75,11 @@ final class CachePolicy
         }
 
         foreach ($this->headers() as $name => $value) {
+            if ($this->header_sender !== null) {
+                ($this->header_sender)($name, $value);
+                continue;
+            }
+
             if (function_exists('headers_sent') && headers_sent()) {
                 break;
             }
@@ -124,6 +142,10 @@ final class CachePolicy
 
     /**
      * Return the page-cache hooks confirmed for the installed LiteSpeed layer.
+     *
+     * The local staging plugin directory does not contain LiteSpeed Cache. The
+     * list stays empty until the runtime detects the layer through its known
+     * constant or class. No cache hook is registered without that signal.
      *
      * @return array<int, string>
      */
