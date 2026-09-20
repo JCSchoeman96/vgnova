@@ -174,7 +174,10 @@ is not part of the live render path. A section template was used instead because
 the Bricks `post-content` element did not include the child page content in the
 content-template render. The active section shell contains the Afrikaans
 navigation labels `Oorsig`, `Lidmaatskap`, `Subskripsies`, `Bestellings`,
-`Kaartjies`, `Kursusse`, and `Profiel`. It uses a semantic `nav` element with
+`Kaartjies`, `Kursusse`, and `Profiel`. It also contains a hidden-by-default
+`Lede-area` link (`vga301`) whose Bricks element condition checks the approved
+`{vg_dashboard_member_area_visible}` token and whose destination uses
+`{vg_dashboard_member_area_url}`. It uses a semantic `nav` element with
 `aria-label="Dashboard-navigasie"` and keeps the existing `/vriendin/` hub
 separate.
 
@@ -187,8 +190,9 @@ IDs above; child-page active state is supplied by Bricks' current-link output.
 Sequential `novamira/bricks-render-check` calls returned `reachable: true`,
 HTTP 200, `fatal: false`, `bricks_rendered: true`, and `css_linked: true` for
 all seven pages and the section template. The browser preview also confirmed
-the shell, Afrikaans navigation, semantic nav element, overview cards, and
-absence of `Biblioteek` text.
+the shell, Afrikaans navigation, semantic nav element, overview cards, hidden
+conditional link when the dashboard plugin is absent, and absence of
+`Biblioteek` text.
 
 The local `voelgoed-platform-core` plugin is tested in its feature worktree but
 is not installed on this staging site yet. Therefore the live pages are not
