@@ -43,6 +43,18 @@ final class VgpcMemberAreaProviderFixture
     }
 }
 
+final class VgpcMemberFeatureFlagCallableFixture
+{
+    public int $calls = 0;
+
+    public function resolve(string $key): array
+    {
+        ++$this->calls;
+
+        return ['hub_display' => $key === 'vgmp_enable_hub_display'];
+    }
+}
+
 final class MemberAreaServiceBoundaryTest
 {
     public function test_flag_enabled_but_missing_hub_access_class_hides_member_area(): void
@@ -221,5 +233,22 @@ final class MemberAreaServiceTest
 
         assert_true($card['visible']);
         assert_same('/my-voordele/', $card['actions'][0]['url']);
+    }
+
+    public function test_callable_array_feature_flag_resolver_is_supported(): void
+    {
+        $this->ensure_hub_access_stub();
+        vgpc_set_permalink(990, '/my-voordele/');
+        $hub = new VgpcMemberHubAccessFixture([
+            'can_view_hub' => true,
+            'hub_page_id'  => 990,
+        ]);
+        $provider = new VgpcMemberAreaProviderFixture([], $hub);
+        $resolver = new VgpcMemberFeatureFlagCallableFixture();
+
+        $card = (new MemberAreaService($provider, [$resolver, 'resolve']))->card(42);
+
+        assert_true($card['visible']);
+        assert_same(1, $resolver->calls);
     }
 }

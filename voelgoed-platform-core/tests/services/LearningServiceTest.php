@@ -148,6 +148,36 @@ final class VgpcLearningProviderFixture
     }
 }
 
+final class VgpcLearningUserFirstProviderFixture
+{
+    public array $access_arguments = [];
+
+    public array $progress_arguments = [];
+
+    public function __construct(private object $course)
+    {
+    }
+
+    public function user_courses(int $user_id, array $query = []): array
+    {
+        return [new VgpcLearningUserCourseFixture(412, $user_id, 'enrolled', $this->course)];
+    }
+
+    public function is_enrolled(int $user_id, int $course_id): bool
+    {
+        $this->access_arguments = [$user_id, $course_id];
+
+        return $user_id === 42 && $course_id === 412;
+    }
+
+    public function course_progress(int $user_id, int $course_id): mixed
+    {
+        $this->progress_arguments = [$user_id, $course_id];
+
+        return new VgpcLearningProgressFixture(['completed' => 1, 'total' => 2]);
+    }
+}
+
 final class VgpcLearningAccessResultProviderFixture
 {
     public function __construct(
@@ -463,5 +493,18 @@ final class LearningServiceTest
         );
         assert_same('active', $card['state']);
         assert_same('410', $card['items'][0]['course_id']);
+    }
+
+    public function test_provider_user_first_course_methods_keep_user_and_course_order(): void
+    {
+        $course = new VgpcLearningCourseFixture(412, 'Gebruiker eerste', '/kursus/gebruiker-eerste/');
+        $provider = new VgpcLearningUserFirstProviderFixture($course);
+
+        $card = (new LearningService($provider))->card(42);
+
+        assert_same('active', $card['state']);
+        assert_same([42, 412], $provider->access_arguments);
+        assert_same([42, 412], $provider->progress_arguments);
+        assert_same(50, $card['items'][0]['completion_percentage']);
     }
 }

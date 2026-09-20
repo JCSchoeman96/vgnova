@@ -109,6 +109,25 @@ final class VgpcTicketEventFixture
     }
 }
 
+final class VgpcLocalizedMultiDayTicketEventFixture
+{
+    public object $details;
+
+    public function __construct()
+    {
+        $this->details = (object) [
+            'post_title'          => 'Meerdaggeleentheid',
+            'event_date_time'     => '2099-08-15 09:00:00',
+            'event_end_date_time' => '2099-08-17 17:00:00',
+        ];
+    }
+
+    public function get_event_date(): string
+    {
+        return 'Saterdag 15 Augustus 2099 tot Maandag 17 Augustus 2099';
+    }
+}
+
 final class VgpcTicketProviderFixture
 {
     /** @param mixed $orders */
@@ -431,6 +450,24 @@ final class TicketServiceTest
         assert_same('/tickera/ticket/811/?sig=nested', $card['items'][0]['actions']['download']['url']);
         assert_same('/tickera/ticket/811/?sig=nested', $card['items'][0]['actions']['qr']['url']);
         vgpc_set_current_user_email('');
+    }
+
+    public function test_raw_tickera_event_start_date_drives_grouping_before_localized_getter(): void
+    {
+        $provider = new VgpcTicketProviderFixture(
+            [new VgpcTicketOrderFixture(614, 42)],
+            [
+                614 => [814],
+                'instances' => [814 => new VgpcTicketInstanceFixture(814, 614, 708)],
+            ],
+            [708 => new VgpcLocalizedMultiDayTicketEventFixture()]
+        );
+
+        $card = (new TicketService($provider))->card(42);
+
+        assert_same('active', $card['state']);
+        assert_same('upcoming', $card['items'][0]['group']);
+        assert_same('2099-08-15', $card['items'][0]['event_date']);
     }
 
     public function test_ticket_status_comes_from_parent_order_and_maps_order_states(): void

@@ -319,9 +319,10 @@ final class LearningService implements DashboardServiceInterface
     private function access_check(int $course_id, int $user_id): array
     {
         if ($this->provider !== null && is_object($this->provider)) {
-            $result = $this->provider_call(
+            $result = $this->provider_user_course_call(
                 ['is_enrolled', 'is_user_enrolled', 'user_can_access', 'has_access'],
-                [[$course_id, $user_id], [$user_id, $course_id]]
+                $course_id,
+                $user_id
             );
             if ($result['found']) {
                 return $result['ok']
@@ -350,9 +351,10 @@ final class LearningService implements DashboardServiceInterface
     private function progress(int $course_id, int $user_id): array
     {
         if ($this->provider !== null && is_object($this->provider)) {
-            $result = $this->provider_call(
+            $result = $this->provider_user_course_call(
                 ['course_progress', 'get_course_progress', 'progress'],
-                [[$course_id, $user_id], [$user_id, $course_id], [['course_id' => $course_id, 'user_id' => $user_id]]]
+                $course_id,
+                $user_id
             );
             if ($result['found']) {
                 return $result['ok']
@@ -629,6 +631,65 @@ final class LearningService implements DashboardServiceInterface
         }
 
         return ['found' => false, 'ok' => false, 'value' => null];
+    }
+
+    /**
+     * @param array<int, string> $methods
+     * @return array{found: bool, ok: bool, value: mixed}
+     */
+    private function provider_user_course_call(array $methods, int $course_id, int $user_id): array
+    {
+        foreach ($methods as $method) {
+            if (! is_object($this->provider) || ! method_exists($this->provider, $method)) {
+                continue;
+            }
+
+            try {
+                $reflection = new ReflectionMethod($this->provider, $method);
+            } catch (Throwable) {
+                return ['found' => true, 'ok' => false, 'value' => null];
+            }
+
+            return $this->invoke_method(
+                $this->provider,
+                $method,
+                $this->user_course_variants($reflection, $course_id, $user_id)
+            );
+        }
+
+        return ['found' => false, 'ok' => false, 'value' => null];
+    }
+
+    /**
+     * @return array<int, array<int, mixed>>
+     */
+    private function user_course_variants(ReflectionMethod $reflection, int $course_id, int $user_id): array
+    {
+        $parameters = $reflection->getParameters();
+        $first_role = isset($parameters[0]) ? $this->parameter_role($parameters[0]) : '';
+        $second_role = isset($parameters[1]) ? $this->parameter_role($parameters[1]) : '';
+
+        $course_first = [$course_id, $user_id];
+        $user_first = [$user_id, $course_id];
+        if ($first_role === 'user' && $second_role === 'course') {
+            return [$user_first, $course_first, [['course_id' => $course_id, 'user_id' => $user_id]]];
+        }
+
+        return [$course_first, $user_first, [['course_id' => $course_id, 'user_id' => $user_id]]];
+    }
+
+    private function parameter_role(\ReflectionParameter $parameter): string
+    {
+        $name = strtolower(str_replace(['_', '-'], '', $parameter->getName()));
+        if (str_contains($name, 'user')) {
+            return 'user';
+        }
+
+        if (str_contains($name, 'course')) {
+            return 'course';
+        }
+
+        return '';
     }
 
     /**

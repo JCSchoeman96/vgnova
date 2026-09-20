@@ -393,22 +393,22 @@ final class TicketService implements DashboardServiceInterface
                 ]
             )
         );
-        $event_date_raw = $this->record_value(
+        $event_date_raw = $this->nested_record_value(
             $event,
-            ['get_start_date', 'get_event_date', 'get_start_datetime', 'get_event_date_time', 'get_date'],
-            ['start_date', 'event_date', 'start_datetime', 'event_date_time', 'date']
+            [],
+            ['event_date_time', 'start_datetime', 'event_date', 'start_date', 'date'],
+            [
+                ['details', 'event_date_time'],
+                ['details', 'start_datetime'],
+                ['details', 'event_date'],
+                ['details', 'start_date'],
+            ]
         );
         if ($event_date_raw === null || $this->scalar_string($event_date_raw) === '') {
-            $event_date_raw = $this->nested_record_value(
+            $event_date_raw = $this->record_value(
                 $event,
-                [],
-                [],
-                [
-                    ['details', 'event_date_time'],
-                    ['details', 'start_datetime'],
-                    ['details', 'event_date'],
-                    ['details', 'start_date'],
-                ]
+                ['get_start_date', 'get_event_date', 'get_start_datetime', 'get_event_date_time', 'get_date'],
+                ['start_date', 'event_date', 'start_datetime', 'event_date_time', 'date']
             );
         }
         $event_timestamp = $this->timestamp($event_date_raw);

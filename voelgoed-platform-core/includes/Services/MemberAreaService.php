@@ -221,9 +221,13 @@ final class MemberAreaService implements DashboardServiceInterface
      */
     private function invoke_callable(mixed $callable, array $variants): mixed
     {
-        $reflection = is_object($callable) && ! ($callable instanceof \Closure)
-            ? new ReflectionMethod($callable, '__invoke')
-            : new ReflectionFunction($callable);
+        if (is_array($callable) && count($callable) === 2) {
+            $reflection = new ReflectionMethod($callable[0], $callable[1]);
+        } elseif (is_object($callable) && ! ($callable instanceof \Closure)) {
+            $reflection = new ReflectionMethod($callable, '__invoke');
+        } else {
+            $reflection = new ReflectionFunction($callable);
+        }
 
         foreach ($variants as $arguments) {
             if (! $this->accepts_arguments($reflection, count($arguments))) {
