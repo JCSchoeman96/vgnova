@@ -37,7 +37,7 @@ continues to fail closed rather than reading private plugin state.
 | PASS | Public-token fail-closed | User-specific tokens on a public `/content/` request resolve empty; context fixtures cover text, attribute, URL, and custom-content escaping. |
 | PASS | Bricks cache isolation | Query cache keys differ by user and dashboard view. |
 | PASS | Bricks overview | Page 1155 renders normalized membership, subscription, order, ticket, and learning summary tokens. `Aandag nodig` is absent. |
-| PASS | Bricks focused views | Pages 1156–1161 render the normalized summary on each focused view. The `subscriptions` slug collision with Woo was fixed by the dashboard route resolver; `/my-account/` remains the native Woo workflow. |
+| PASS | Bricks focused views | Provider-focused pages 1156–1160 render their normalized summaries; profile page 1161 renders its profile actions. The `subscriptions` slug collision with Woo was fixed by the dashboard route resolver; `/my-account/` remains the native Woo workflow. |
 | PASS | Masteriyo missing progress | User 12 has two real enrollments. Masteriyo returns boolean `false` for missing progress; the card remains `availability=available`, contains both courses, and has empty completion/certificate fields with no certificate action. |
 | PASS | Woo Subscriptions fixture | Controlled product 1186 produced active subscription 1187 and cancelled subscription 1188 for standalone user 15 (no PMPro membership). The normalized card contains both provider lifecycle statuses; user 14 sees none. |
 | PASS | Tickera fixtures | User 15 owns orders 1198–1200 and ticket instances 1202–1204. Upcoming events are ascending (1189 then 1191), the past event is grouped separately, signed native download URLs are present, and foreign instance 1205 is excluded. |
@@ -54,8 +54,9 @@ continues to fail closed rather than reading private plugin state.
   tickets `1159`, learning `1160`, profile `1161`
 - Shared account section/header: template `1172`
 
-The overview and focused pages consume the dashboard dynamic-data summaries;
-provider-native pages remain authoritative for mutations and full history.
+The overview and provider-focused pages consume the dashboard dynamic-data
+summaries; profile actions and provider-native pages remain authoritative for
+mutations and full history.
 
 ### Controlled fixture notes
 
