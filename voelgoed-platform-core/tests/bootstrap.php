@@ -12,6 +12,7 @@ require_once dirname(__DIR__) . '/includes/Services/LearningService.php';
 require_once dirname(__DIR__) . '/includes/Services/TicketService.php';
 require_once dirname(__DIR__) . '/includes/Services/MemberAreaService.php';
 require_once dirname(__DIR__) . '/includes/Dashboard/DashboardContext.php';
+require_once dirname(__DIR__) . '/includes/Dashboard/DashboardRoutes.php';
 require_once dirname(__DIR__) . '/includes/Dashboard/DashboardRegistry.php';
 require_once dirname(__DIR__) . '/includes/Dashboard/Navigation.php';
 require_once dirname(__DIR__) . '/includes/Dashboard/AccessGuard.php';

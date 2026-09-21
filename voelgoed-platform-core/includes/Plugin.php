@@ -7,6 +7,7 @@ use Voelgoed\PlatformCore\Bricks\DashboardDynamicData;
 use Voelgoed\PlatformCore\Bricks\DashboardQueryProvider;
 use Voelgoed\PlatformCore\Dashboard\AccessGuard;
 use Voelgoed\PlatformCore\Dashboard\DashboardRegistry;
+use Voelgoed\PlatformCore\Dashboard\DashboardRoutes;
 use Voelgoed\PlatformCore\Dashboard\Navigation;
 use Voelgoed\PlatformCore\Performance\CachePolicy;
 
@@ -38,6 +39,9 @@ final class Plugin
 
         $navigation = new Navigation($registry);
         $this->components['navigation'] = $navigation;
+
+        $routes = new DashboardRoutes();
+        $this->components['routes'] = $routes;
 
         $cache_policy = new CachePolicy();
         $this->components['cache_policy'] = $cache_policy;

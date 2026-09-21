@@ -24,6 +24,7 @@ $vgpc_include_paths = [
     'includes/Contracts/DashboardCard.php',
     'includes/Config/AfrikaansLabels.php',
     'includes/Dashboard/DashboardContext.php',
+    'includes/Dashboard/DashboardRoutes.php',
     'includes/Services/MembershipService.php',
     'includes/Services/SubscriptionService.php',
     'includes/Services/CommerceService.php',
