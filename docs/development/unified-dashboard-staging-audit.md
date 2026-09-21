@@ -152,7 +152,7 @@ The dashboard integration therefore follows this sequence:
 6. Require that permalink to be non-empty and a same-site URL. If either check fails, fail closed and hide the link.
 7. Leave programme-specific choices inside the configured member-perks hub.
 
-## Live staging implementation (2026-09-20)
+## Live staging implementation (2026-09-21)
 
 The dashboard shell and page surfaces were created and verified on the
 `vgnova` staging profile through Novamira. These IDs are staging references,
@@ -174,10 +174,9 @@ is not part of the live render path. A section template was used instead because
 the Bricks `post-content` element did not include the child page content in the
 content-template render. The active section shell contains the Afrikaans
 navigation labels `Oorsig`, `Lidmaatskap`, `Subskripsies`, `Bestellings`,
-`Kaartjies`, `Kursusse`, and `Profiel`. It also contains a hidden-by-default
-`Lede-area` link (`vga301`) whose Bricks element condition checks the approved
-`{vg_dashboard_member_area_visible}` token and whose destination uses
-`{vg_dashboard_member_area_url}`. It uses a semantic `nav` element with
+`Kaartjies`, `Kursusse`, and `Profiel`. The conditional `Lede-area` element was
+removed for this release because Member Perks has no approved public capability
+accessor. The shell uses a semantic `nav` element with
 `aria-label="Dashboard-navigasie"` and keeps the existing `/vriendin/` hub
 separate.
 
@@ -200,9 +199,12 @@ The exact `voelgoed-platform-core` plugin revision was copied byte-for-byte to
 the staging plugin directory, activated, and exercised through the live site.
 The access guard, provider adapters, cache policy, Bricks dynamic data, and
 dashboard summary bindings are therefore covered by the runtime handoff. The
-existing staging Member Perks plugin still lacks the approved public feature-flag
-accessor needed to expose `Lede-area`; the dashboard service fails closed and
-the staging shell omits that navigation item until the boundary is available.
+`subscriptions` child route also has a dashboard-scoped request resolver because
+Woo Subscriptions claims that slug; the native `/my-account/` workflow remains
+unchanged. The existing staging Member Perks plugin still lacks the approved
+public feature-flag accessor needed to expose `Lede-area`; the dashboard service
+fails closed and the staging shell omits that navigation item until the boundary
+is available.
 
 ## Bricks hooks verified in local source
 
