@@ -34,6 +34,9 @@ jobs:
           php-version: '8.0'
           tools: none
 
+      - name: Install ripgrep
+        run: sudo apt-get update && sudo apt-get install --yes ripgrep
+
       - name: Run dashboard checks
         working-directory: voelgoed-platform-core
         run: ./bin/check.sh
