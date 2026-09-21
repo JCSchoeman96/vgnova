@@ -53,6 +53,10 @@ final class CachePolicy
         add_action('template_redirect', [$this, 'protect_request'], 0);
         add_action('send_headers', [$this, 'send_no_cache_headers'], 0);
 
+        if (function_exists('add_filter')) {
+            add_filter('wp_robots', [$this, 'robots'], 10, 1);
+        }
+
         if ($this->litespeed_is_available()) {
             add_action('litespeed_control_finalize', [$this, 'litespeed_finalize'], 1, 1);
         }
@@ -125,6 +129,28 @@ final class CachePolicy
         if ($this->is_dashboard_request()) {
             $this->apply();
         }
+    }
+
+    /**
+     * Keep authenticated dashboard routes out of search indexes.
+     *
+     * @param array<string, mixed> $robots
+     * @return array<string, mixed>
+     */
+    public function robots(array $robots): array
+    {
+        if (! $this->is_dashboard_request()) {
+            return $robots;
+        }
+
+        if (function_exists('wp_robots_no_robots')) {
+            return \wp_robots_no_robots($robots);
+        }
+
+        $robots['noindex'] = true;
+        unset($robots['index']);
+
+        return $robots;
     }
 
     public function is_dashboard_request(?string $request_uri = null): bool
@@ -221,6 +247,12 @@ final class CachePolicy
             ['template_redirect', [$instance, 'protect_request']],
             ['send_headers', [$instance, 'send_no_cache_headers']],
         ];
+
+        if (function_exists('has_filter')) {
+            if (has_filter('wp_robots', [$instance, 'robots']) === false) {
+                return false;
+            }
+        }
 
         if ($this->litespeed_is_available()) {
             $hooks[] = ['litespeed_control_finalize', [$instance, 'litespeed_finalize']];

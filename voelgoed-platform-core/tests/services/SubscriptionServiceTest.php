@@ -156,7 +156,7 @@ final class SubscriptionServiceTest
 
         assert_same('subscriptions', $card['key']);
         assert_same(AfrikaansLabels::SUBSCRIPTIONS, $card['label']);
-        assert_same('active', $card['state']);
+        assert_same('available', $card['availability']);
         assert_same(42, $provider->requested_user_id);
         assert_same(2, count($card['items']));
         assert_same('Voelgoedvriendinne Silwer', $card['items'][0]['product_name']);
@@ -177,8 +177,29 @@ final class SubscriptionServiceTest
 
         assert_same('subscriptions', $card['key']);
         assert_same(AfrikaansLabels::SUBSCRIPTIONS, $card['label']);
-        assert_same('empty', $card['state']);
+        assert_same('available', $card['availability']);
         assert_same([], $card['items']);
+    }
+
+    public function test_cancelled_only_subscriptions_are_populated_but_not_projected_as_active(): void
+    {
+        $provider = new VgpcSubscriptionProviderFixture([
+            new VgpcSubscriptionFixture(
+                106,
+                42,
+                'cancelled',
+                [new VgpcSubscriptionLineFixture('Gekanselleerde plan')],
+                '',
+                'PayFast',
+                '/my-account/view-subscription/106/'
+            ),
+        ], []);
+
+        $card = (new SubscriptionService($provider))->card(42);
+
+        assert_same('available', $card['availability']);
+        assert_same('populated', $card['content_state']);
+        assert_same('cancelled', $card['items'][0]['status']);
     }
 
     public function test_unknown_and_empty_statuses_use_a_generic_afrikaans_label(): void
@@ -221,7 +242,7 @@ final class SubscriptionServiceTest
 
         assert_same('subscriptions', $card['key']);
         assert_same(AfrikaansLabels::SUBSCRIPTIONS, $card['label']);
-        assert_same('unavailable', $card['state']);
+        assert_same('unavailable', $card['availability']);
         assert_same([], $card['items']);
         assert_same([], $card['actions']);
     }
@@ -233,7 +254,7 @@ final class SubscriptionServiceTest
         $provider = new VgpcSubscriptionProviderFixture(new stdClass(), []);
         $card = (new SubscriptionService($provider))->card(42);
 
-        assert_same('unavailable', $card['state']);
+        assert_same('unavailable', $card['availability']);
         assert_same([], $card['items']);
         assert_same([], $card['actions']);
     }
@@ -249,7 +270,7 @@ final class SubscriptionServiceTest
 
         $card = (new SubscriptionService($provider))->card(99);
 
-        assert_same('empty', $card['state']);
+        assert_same('unavailable', $card['availability']);
         assert_same([], $card['items']);
         assert_same([], $card['actions']);
         assert_same(0, $provider->requested_user_id);
@@ -268,7 +289,7 @@ final class SubscriptionServiceTest
             vgpc_set_current_user_id(42);
         }
 
-        assert_same('empty', $card['state']);
+        assert_same('unavailable', $card['availability']);
         assert_same([], $card['items']);
         assert_same([], $card['actions']);
         assert_same(0, $provider->requested_user_id);
@@ -285,7 +306,7 @@ final class SubscriptionServiceTest
 
         $card = (new SubscriptionService($provider))->card(0);
 
-        assert_same('empty', $card['state']);
+        assert_same('unavailable', $card['availability']);
         assert_same([], $card['items']);
         assert_same(0, $provider->requested_user_id);
     }

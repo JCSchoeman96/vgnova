@@ -21,19 +21,20 @@ final class DashboardCardTest
         $card = DashboardCard::make(
             'subscriptions',
             AfrikaansLabels::SUBSCRIPTIONS,
-            'active',
+            'available',
             '1 aktiewe subskripsie',
             [DashboardAction::link('manage', 'Bestuur subskripsies', '/my-voelgoed/subscriptions/')]
         );
 
         assert_same(
-            ['key', 'label', 'visible', 'state', 'summary', 'items', 'actions'],
+            ['key', 'label', 'visible', 'availability', 'content_state', 'summary', 'items', 'actions'],
             array_keys($card)
         );
         assert_same('subscriptions', $card['key']);
         assert_same('Subskripsies', $card['label']);
         assert_true($card['visible']);
-        assert_same('active', $card['state']);
+        assert_same('available', $card['availability']);
+        assert_same('populated', $card['content_state']);
         assert_same('1 aktiewe subskripsie', $card['summary']);
         assert_same([], $card['items']);
         assert_same('manage', $card['actions'][0]['key']);
@@ -46,14 +47,15 @@ final class DashboardCardTest
         $card = DashboardCard::make(
             ' subscriptions alert ',
             " <strong>Subskripsies</strong> ",
-            ' active state ',
+            ' available ',
             " <em>Een subskripsie</em>\n",
             [DashboardAction::link(' manage now ', ' <span>Bestuur</span> ', '/my-voelgoed/subscriptions/')]
         );
 
         assert_same('subscriptions-alert', $card['key']);
         assert_same('Subskripsies', $card['label']);
-        assert_same('active-state', $card['state']);
+        assert_same('available', $card['availability']);
+        assert_same('populated', $card['content_state']);
         assert_same('Een subskripsie', $card['summary']);
         assert_same('manage-now', $card['actions'][0]['key']);
         assert_same('Bestuur', $card['actions'][0]['label']);
@@ -130,7 +132,7 @@ final class DashboardCardTest
         $card = DashboardCard::make(
             'profile',
             AfrikaansLabels::PROFILE,
-            'active',
+            'available',
             'Profiel beskikbaar',
             [
                 [

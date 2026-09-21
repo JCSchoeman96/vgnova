@@ -98,7 +98,7 @@ final class MemberAreaService implements DashboardServiceInterface
             return DashboardCard::make(
                 'member-area',
                 AfrikaansLabels::MEMBER_AREA,
-                'active',
+                DashboardCard::AVAILABILITY_AVAILABLE,
                 'Jou Lede-area is beskikbaar.',
                 [$action],
                 [[
@@ -284,7 +284,7 @@ final class MemberAreaService implements DashboardServiceInterface
         return DashboardCard::empty(
             'member-area',
             AfrikaansLabels::MEMBER_AREA,
-            'empty',
+            DashboardCard::AVAILABILITY_AVAILABLE,
             'Lede-area is tans nie beskikbaar nie.',
             false
         );

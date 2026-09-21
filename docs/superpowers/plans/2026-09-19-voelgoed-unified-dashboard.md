@@ -215,14 +215,15 @@ The tests must assert that a card always contains these keys and that actions co
 $card = DashboardCard::make(
     'subscriptions',
     AfrikaansLabels::SUBSCRIPTIONS,
-    'active',
+    'available',
     '1 aktiewe subskripsie',
     [DashboardAction::link('manage', 'Bestuur subskripsies', '/my-voelgoed/subscriptions/')]
 );
 
 assert_same('subscriptions', $card['key']);
 assert_same('Subskripsies', $card['label']);
-assert_same('active', $card['state']);
+assert_same('available', $card['availability']);
+assert_same('populated', $card['content_state']);
 assert_true(str_starts_with($card['actions'][0]['url'], '/'));
 ```
 
@@ -245,7 +246,8 @@ Use this stable card shape:
     'key'      => 'subscriptions',
     'label'    => 'Subskripsies',
     'visible'  => true,
-    'state'    => 'active',
+    'availability'  => 'available',
+    'content_state' => 'populated',
     'summary'  => '1 aktiewe subskripsie',
     'items'    => [],
     'actions'  => [
@@ -274,7 +276,7 @@ public const LEARNING = 'Kursusse';
 public const PROFILE = 'Profiel';
 public const PAYMENT_METHODS = 'Betaalmetodes';
 public const MEMBER_AREA = 'Lede-area';
-public const ATTENTION = 'Aandag nodig';
+public const ATTENTION = 'Aandag nodig'; // Reserved for a later alert projection; not rendered in this release.
 ```
 
 Do not add a generic `Biblioteek` label or route in this release.
@@ -570,7 +572,7 @@ Use `aria-current="page"`, visible keyboard focus, and horizontal scrolling on s
 
 - [ ] **Step 5: Add the overview cards.**
 
-Create cards for `Lidmaatskap`, `Subskripsies`, `Bestellings`, `Kaartjies`, `Kursusse`, and `Aandag nodig`. Hide a card only when its service returns no applicable content. The overview contains summary actions, not duplicate provider dashboards.
+Create cards for `Lidmaatskap`, `Subskripsies`, `Bestellings`, `Kaartjies`, and `Kursusse`. `Aandag nodig` is deferred because this release has no alert projection service or approved cross-provider rules. Hide a card only when its service returns no applicable content. The overview contains summary actions, not duplicate provider dashboards.
 
 - [ ] **Step 6: Add native provider sections.**
 

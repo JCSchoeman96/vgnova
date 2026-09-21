@@ -84,7 +84,14 @@ if (! function_exists('sanitize_text_field')) {
 if (! function_exists('esc_url')) {
     function esc_url(string $url): string
     {
-        return $url;
+        return htmlspecialchars($url, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+    }
+}
+
+if (! function_exists('esc_attr')) {
+    function esc_attr(string $value): string
+    {
+        return htmlspecialchars($value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
     }
 }
 
@@ -129,6 +136,31 @@ final class VgpcDashboardRegistryFixture
     }
 }
 
+final class VgpcDynamicCachePolicyFixture
+{
+    public int $apply_calls = 0;
+
+    public function is_dashboard_request(?string $request_uri = null): bool
+    {
+        $path = parse_url($request_uri ?? (string) ($_SERVER['REQUEST_URI'] ?? ''), PHP_URL_PATH);
+
+        if (! is_string($path)) {
+            return false;
+        }
+
+        $path = rtrim($path, '/');
+
+        return $path === '/my-voelgoed' || str_starts_with($path, '/my-voelgoed/');
+    }
+
+    public function apply(?string $request_uri = null): bool
+    {
+        ++$this->apply_calls;
+
+        return $this->is_dashboard_request($request_uri);
+    }
+}
+
 final class CachePolicyTest
 {
     public function test_cache_policy_accepts_a_wordpress_hook_object_and_uses_the_current_request_uri(): void
@@ -168,7 +200,7 @@ final class CachePolicyTest
                 'key'      => 'orders',
                 'label'    => 'Bestellings',
                 'visible'  => true,
-                'state'    => 'active',
+                'availability' => 'available', 'content_state' => 'populated',
                 'summary'  => 'Een bestelling',
                 'items'    => [],
                 'actions'  => [],
@@ -268,6 +300,7 @@ final class CachePolicyTest
 
         assert_same(1, count($GLOBALS['vgpc_actions']['template_redirect'] ?? []));
         assert_same(1, count($GLOBALS['vgpc_actions']['send_headers'] ?? []));
+        assert_same(1, count($GLOBALS['vgpc_filters']['wp_robots'][10] ?? []));
     }
 
     public function test_plugin_injects_one_registry_into_dynamic_data_and_query_provider(): void
@@ -293,7 +326,7 @@ final class CachePolicyTest
                 'key'      => 'orders',
                 'label'    => 'Bestellings',
                 'visible'  => true,
-                'state'    => 'empty',
+                'availability' => 'available', 'content_state' => 'empty',
                 'summary'  => '',
                 'items'    => [],
                 'actions'  => [],
@@ -336,7 +369,7 @@ final class CachePolicyTest
                 'key'      => 'orders',
                 'label'    => 'Bestellings',
                 'visible'  => true,
-                'state'    => 'active',
+                'availability' => 'available', 'content_state' => 'populated',
                 'summary'  => 'Een bestelling',
                 'items'    => [['order_id' => '100']],
                 'actions'  => [],
@@ -366,7 +399,7 @@ final class CachePolicyTest
         $card = $provider->card_for_view('orders', 31);
 
         assert_same('orders', $card['key'] ?? null);
-        assert_same('empty', $card['state'] ?? null);
+        assert_same('available', $card['availability'] ?? null);
         assert_same([], $card['items'] ?? null);
         assert_same([], $card['actions'] ?? null);
 
@@ -400,7 +433,7 @@ final class CachePolicyTest
                 'key'      => 'membership',
                 'label'    => 'Lidmaatskap',
                 'visible'  => true,
-                'state'    => 'active',
+                'availability' => 'available', 'content_state' => 'populated',
                 'summary'  => 'Aktief',
                 'items'    => [],
                 'actions'  => [],
@@ -409,7 +442,7 @@ final class CachePolicyTest
                 'key'      => 'member-area',
                 'label'    => 'Lede-area',
                 'visible'  => true,
-                'state'    => 'active',
+                'availability' => 'available', 'content_state' => 'populated',
                 'summary'  => '',
                 'items'    => [],
                 'actions'  => [[
@@ -439,6 +472,147 @@ final class CachePolicyTest
             static fn (mixed $name): bool => is_string($name) && str_starts_with($name, '{vg_dashboard_')
         )));
         assert_false(in_array('{vg_dashboard_biblioteek}', $names, true));
+    }
+
+    public function test_dashboard_dynamic_data_refuses_private_tokens_on_public_requests(): void
+    {
+        $request_uri = $_SERVER['REQUEST_URI'] ?? null;
+        $_SERVER['REQUEST_URI'] = '/content/open-post/';
+
+        try {
+            $registry = new VgpcDashboardRegistryFixture([
+                'membership' => [
+                    'key'           => 'membership',
+                    'label'         => 'Lidmaatskap',
+                    'visible'       => true,
+                    'availability'  => 'available',
+                    'content_state' => 'populated',
+                    'summary'       => 'Privaat waarde',
+                    'items'         => [],
+                    'actions'       => [],
+                ],
+            ]);
+            $dynamic = new DashboardDynamicData($registry, new VgpcDynamicCachePolicyFixture());
+
+            assert_same(
+                '',
+                $dynamic->render_tag('{vg_dashboard_membership_summary}', null, 'text')
+            );
+            assert_same(
+                'Welkom ',
+                $dynamic->render_content('Welkom {vg_dashboard_membership_summary}', null, 'text')
+            );
+        } finally {
+            if ($request_uri === null) {
+                unset($_SERVER['REQUEST_URI']);
+            } else {
+                $_SERVER['REQUEST_URI'] = $request_uri;
+            }
+        }
+    }
+
+    public function test_dashboard_dynamic_data_escapes_by_bricks_context_and_marks_the_request_private(): void
+    {
+        $request_uri = $_SERVER['REQUEST_URI'] ?? null;
+        $_SERVER['REQUEST_URI'] = '/my-voelgoed/';
+        $policy = new VgpcDynamicCachePolicyFixture();
+
+        try {
+            $dynamic = new DashboardDynamicData(
+                new VgpcDashboardRegistryFixture([
+                    'membership' => [
+                        'key'           => 'membership',
+                        'label'         => 'Lidmaatskap',
+                        'visible'       => true,
+                        'availability'  => 'available',
+                        'content_state' => 'populated',
+                        'summary'       => 'A & "B"',
+                    'items'         => [],
+                    'actions'       => [],
+                ],
+                    'member-area' => [
+                        'key'           => 'member-area',
+                        'label'         => 'Lede-area',
+                        'visible'       => true,
+                        'availability'  => 'available',
+                        'content_state' => 'populated',
+                        'summary'       => 'Beskikbaar',
+                        'items'         => [],
+                        'actions'       => [[
+                            'key'   => 'open',
+                            'label' => 'Maak oop',
+                            'url'   => '/my-voordele/?q=a&b=1',
+                        ]],
+                    ],
+                ]),
+                $policy
+            );
+
+            assert_same(
+                'A &amp; &quot;B&quot;',
+                $dynamic->render_tag('{vg_dashboard_membership_summary}', null, 'text')
+            );
+            assert_same(
+                'A &amp; &quot;B&quot;',
+                $dynamic->render_tag('{vg_dashboard_membership_summary}', null, 'attribute')
+            );
+            assert_same(
+                'Welkom A &amp; &quot;B&quot;',
+                $dynamic->render_content('Welkom {vg_dashboard_membership_summary}', null, 'text')
+            );
+            assert_same(
+                '/my-voordele/?q=a&amp;b=1',
+                $dynamic->render_tag('{vg_dashboard_member_area_url}', null, 'link')
+            );
+            assert_same(4, $policy->apply_calls);
+        } finally {
+            if ($request_uri === null) {
+                unset($_SERVER['REQUEST_URI']);
+            } else {
+                $_SERVER['REQUEST_URI'] = $request_uri;
+            }
+        }
+    }
+
+    public function test_dashboard_dynamic_data_fails_closed_for_logged_out_dashboard_requests(): void
+    {
+        $request_uri = $_SERVER['REQUEST_URI'] ?? null;
+        $_SERVER['REQUEST_URI'] = '/my-voelgoed/';
+        vgpc_set_current_user_id(0);
+
+        try {
+            $dynamic = new DashboardDynamicData(new VgpcDashboardRegistryFixture([]));
+
+            assert_same('', $dynamic->render_tag('{vg_dashboard_membership_summary}', null, 'text'));
+            assert_same('Welkom ', $dynamic->render_content('Welkom {vg_dashboard_membership_summary}', null, 'text'));
+        } finally {
+            vgpc_set_current_user_id(42);
+            if ($request_uri === null) {
+                unset($_SERVER['REQUEST_URI']);
+            } else {
+                $_SERVER['REQUEST_URI'] = $request_uri;
+            }
+        }
+    }
+
+    public function test_dashboard_routes_are_noindex(): void
+    {
+        $request_uri = $_SERVER['REQUEST_URI'] ?? null;
+        $_SERVER['REQUEST_URI'] = '/my-voelgoed/orders/';
+
+        try {
+            $policy = new CachePolicy();
+            $robots = $policy->robots(['index' => true, 'follow' => true]);
+
+            assert_true(isset($robots['noindex']));
+            assert_false(array_key_exists('index', $robots));
+        } finally {
+            if ($request_uri === null) {
+                unset($_SERVER['REQUEST_URI']);
+            } else {
+                $_SERVER['REQUEST_URI'] = $request_uri;
+            }
+        }
     }
 
     public function test_dashboard_cache_policy_disables_shared_caching(): void

@@ -35,7 +35,7 @@ The supplied staging snapshot reports the following installed stack. Because liv
 | Bricks Builder | Installed, version not supplied | Site presentation and Bricks templates |
 | Automatic.css | Installed, version not supplied | ACSS utility classes, variables, and responsive tokens |
 | Advanced Custom Fields Pro | 6.8.1 | Existing field and configuration interface where a provider uses ACF |
-| Masteriyo | 3.4.0 | Course ownership and course access |
+| Masteriyo | 3.4.2 | Course ownership and course access; minimum supported version for this dashboard |
 | Paid Memberships Pro | 3.8.5 | Membership access and membership status |
 | WooCommerce | 11.1.0 | Orders, account actions, downloads, addresses, and payment methods |
 | WooCommerce Subscriptions | 8.8.1 | Recurring billing and subscription actions |
@@ -182,10 +182,12 @@ navigation labels `Oorsig`, `Lidmaatskap`, `Subskripsies`, `Bestellings`,
 separate.
 
 The overview cards explicitly cover PMPro access, all Woo subscriptions (also
-those not linked to PMPro), WooCommerce orders, Tickera tickets, every owned or
-accessible Masteriyo course, and attention items. No `Biblioteek` page, route,
-tab, or dynamic token was created. The active Bricks links use the staging page
-IDs above; child-page active state is supplied by Bricks' current-link output.
+those not linked to PMPro), WooCommerce orders, Tickera tickets, and every owned
+or accessible Masteriyo course. `Aandag nodig` is deferred because this release
+has no alert projection service or approved cross-provider rules. No `Biblioteek`
+page, route, tab, or dynamic token was created. The active Bricks links use the
+staging page IDs above; child-page active state is supplied by Bricks' current-
+link output.
 
 Sequential `novamira/bricks-render-check` calls returned `reachable: true`,
 HTTP 200, `fatal: false`, `bricks_rendered: true`, and `css_linked: true` for

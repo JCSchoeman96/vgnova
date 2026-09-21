@@ -30,7 +30,7 @@ final class CommerceService implements DashboardServiceInterface
             return DashboardCard::empty(
                 'orders',
                 AfrikaansLabels::ORDERS,
-                'empty',
+                DashboardCard::AVAILABILITY_UNAVAILABLE,
                 'Meld aan om jou bestellings te sien.'
             );
         }
@@ -40,7 +40,7 @@ final class CommerceService implements DashboardServiceInterface
             return DashboardCard::empty(
                 'orders',
                 AfrikaansLabels::ORDERS,
-                'unavailable',
+                DashboardCard::AVAILABILITY_UNAVAILABLE,
                 'Bestellings is tans nie beskikbaar nie.'
             );
         }
@@ -57,13 +57,12 @@ final class CommerceService implements DashboardServiceInterface
             return DashboardCard::empty(
                 'orders',
                 AfrikaansLabels::ORDERS,
-                'unavailable',
+                DashboardCard::AVAILABILITY_UNAVAILABLE,
                 'Bestellings is tans nie beskikbaar nie.'
             );
         }
 
         $actions = $this->account_actions();
-        $state = $items === [] ? 'empty' : 'active';
         $summary = $items === []
             ? 'Geen bestellings nie.'
             : sprintf('%d bestelling%s', count($items), count($items) === 1 ? '' : 's');
@@ -71,7 +70,7 @@ final class CommerceService implements DashboardServiceInterface
         return DashboardCard::make(
             'orders',
             AfrikaansLabels::ORDERS,
-            $state,
+            DashboardCard::AVAILABILITY_AVAILABLE,
             $summary,
             $actions,
             $items
@@ -86,7 +85,7 @@ final class CommerceService implements DashboardServiceInterface
         $args = [
             'customer_id' => $user_id,
             'status'      => 'any',
-            'limit'       => -1,
+            'limit'       => 10,
             'orderby'     => 'date',
             'order'       => 'DESC',
         ];

@@ -43,7 +43,7 @@ final class NavigationTest
                 DashboardCard::empty(
                     'member-area',
                     AfrikaansLabels::MEMBER_AREA,
-                    'empty',
+                    'available',
                     '',
                     false
                 )
@@ -90,7 +90,7 @@ final class NavigationTest
         $visible_card = DashboardCard::make(
             'member-area',
             AfrikaansLabels::MEMBER_AREA,
-            'active',
+            'available',
             'Jou Lede-area is beskikbaar.',
             [['key' => 'open', 'label' => 'Maak oop', 'url' => '/lede-area/']]
         );
@@ -111,7 +111,7 @@ final class NavigationTest
 
         $hidden_navigation = (new Navigation(new DashboardRegistry([
             'member-area' => new VgpcNavigationServiceFixture(
-                DashboardCard::empty('member-area', AfrikaansLabels::MEMBER_AREA, 'empty', '', false)
+                DashboardCard::empty('member-area', AfrikaansLabels::MEMBER_AREA, 'available', '', false)
             ),
         ])))->items(new DashboardContext(42));
 
@@ -124,7 +124,7 @@ final class NavigationTest
 
         $registry = new DashboardRegistry([
             'membership' => new VgpcNavigationServiceFixture(
-                DashboardCard::make('membership', AfrikaansLabels::MEMBERSHIP, 'active', 'Aktief')
+                DashboardCard::make('membership', AfrikaansLabels::MEMBERSHIP, 'available', 'Aktief')
             ),
             'tickets' => new class implements DashboardServiceInterface {
                 public function card(int $user_id): array
@@ -136,12 +136,26 @@ final class NavigationTest
 
         $cards = $registry->cards(new DashboardContext(42));
 
-        assert_same('active', $cards['membership']['state']);
-        assert_same('unavailable', $cards['tickets']['state']);
+        assert_same('available', $cards['membership']['availability']);
+        assert_same('unavailable', $cards['tickets']['availability']);
         assert_same(AfrikaansLabels::TICKETS, $cards['tickets']['label']);
         assert_true(array_key_exists('orders', $cards));
         assert_true(array_key_exists('learning', $cards));
         assert_true(array_key_exists('member-area', $cards));
+    }
+
+    public function test_registry_memoizes_provider_cards_for_the_current_request(): void
+    {
+        $service = new VgpcNavigationServiceFixture(
+            DashboardCard::make('membership', AfrikaansLabels::MEMBERSHIP, 'available', 'Aktief')
+        );
+        $registry = new DashboardRegistry(['membership' => $service]);
+
+        $registry->cards(new DashboardContext(42));
+        $registry->card('membership', new DashboardContext(42));
+        $registry->card('membership', new DashboardContext(42));
+
+        assert_same(1, $service->calls);
     }
 
     public function test_navigation_resolves_only_the_member_area_provider(): void
@@ -158,7 +172,7 @@ final class NavigationTest
                 'member-area' => AfrikaansLabels::MEMBER_AREA,
                 default => $key,
             };
-            $cards[$key] = DashboardCard::make($key, $label, 'empty', '');
+            $cards[$key] = DashboardCard::make($key, $label, 'available', '');
             $services[$key] = new VgpcNavigationServiceFixture($cards[$key]);
         }
 
@@ -177,14 +191,14 @@ final class NavigationTest
             'tickets' => new class {
                 public function card(int $user_id): array
                 {
-                    return DashboardCard::make('tickets', AfrikaansLabels::TICKETS, 'active', 'Should not be used.');
+                    return DashboardCard::make('tickets', AfrikaansLabels::TICKETS, 'available', 'Should not be used.');
                 }
             },
         ]);
 
         $cards = $registry->cards(new DashboardContext(42));
 
-        assert_same('unavailable', $cards['tickets']['state']);
+        assert_same('unavailable', $cards['tickets']['availability']);
     }
 
     public function test_registry_rejects_malicious_nested_actions_during_card_normalization(): void
@@ -196,7 +210,7 @@ final class NavigationTest
                     'key' => 'tickets',
                     'label' => AfrikaansLabels::TICKETS,
                     'visible' => true,
-                    'state' => 'active',
+                    'availability' => 'available', 'content_state' => 'populated',
                     'summary' => 'Kaartjies',
                     'items' => [],
                     'actions' => [[
@@ -210,7 +224,7 @@ final class NavigationTest
 
         $cards = (new DashboardRegistry(['tickets' => $service]))->cards(new DashboardContext(42));
 
-        assert_same('unavailable', $cards['tickets']['state']);
+        assert_same('unavailable', $cards['tickets']['availability']);
         assert_same([], $cards['tickets']['actions']);
     }
 }

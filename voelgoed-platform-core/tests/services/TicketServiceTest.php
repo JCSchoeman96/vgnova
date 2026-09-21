@@ -4,6 +4,22 @@ declare(strict_types=1);
 use Voelgoed\PlatformCore\Config\AfrikaansLabels;
 use Voelgoed\PlatformCore\Services\TicketService;
 
+if (! function_exists('wp_timezone')) {
+    function wp_timezone(): DateTimeZone
+    {
+        return new DateTimeZone((string) ($GLOBALS['vgpc_wp_timezone'] ?? 'UTC'));
+    }
+}
+
+if (! function_exists('wp_date')) {
+    function wp_date(string $format, ?int $timestamp = null, ?DateTimeZone $timezone = null): string
+    {
+        $date = new DateTimeImmutable('@' . (string) ($timestamp ?? time()));
+
+        return $date->setTimezone($timezone ?? wp_timezone())->format($format);
+    }
+}
+
 final class VgpcTicketOrderFixture
 {
     public function __construct(
@@ -291,7 +307,7 @@ final class TicketServiceTest
 
         assert_same('tickets', $card['key']);
         assert_same(AfrikaansLabels::TICKETS, $card['label']);
-        assert_same('active', $card['state']);
+        assert_same('available', $card['availability']);
         assert_same('upcoming', $card['items'][0]['group']);
         assert_same('past', $card['items'][1]['group']);
         assert_same('Voelgoed Live', $card['items'][0]['event_title']);
@@ -309,9 +325,59 @@ final class TicketServiceTest
 
         $card = (new TicketService($provider))->card(42);
 
-        assert_same('empty', $card['state']);
+        assert_same('available', $card['availability']);
         assert_same('Geen komende kaartjies nie.', $card['summary']);
         assert_same([], $card['items']);
+    }
+
+    public function test_upcoming_tickets_sort_ascending_and_past_tickets_sort_descending(): void
+    {
+        $provider = new VgpcTicketProviderFixture(
+            [new VgpcTicketOrderFixture(630, 42)],
+            [
+                630 => [830, 831, 832, 833],
+                'instances' => [
+                    830 => new VgpcTicketInstanceFixture(830, 630, 711),
+                    831 => new VgpcTicketInstanceFixture(831, 630, 712),
+                    832 => new VgpcTicketInstanceFixture(832, 630, 713),
+                    833 => new VgpcTicketInstanceFixture(833, 630, 714),
+                ],
+            ],
+            [
+                711 => new VgpcTicketEventFixture(711, 'Laat komende', '2099-06-01 10:00:00', '/events/laat/'),
+                712 => new VgpcTicketEventFixture(712, 'Vroeg komende', '2099-05-01 10:00:00', '/events/vroeg/'),
+                713 => new VgpcTicketEventFixture(713, 'Ou verlede', '2024-01-01 10:00:00', '/events/ou/'),
+                714 => new VgpcTicketEventFixture(714, 'Onlangse verlede', '2025-01-01 10:00:00', '/events/onlangse/'),
+            ]
+        );
+
+        $card = (new TicketService($provider))->card(42);
+
+        assert_same(['831', '830', '833', '832'], array_column($card['items'], 'ticket_id'));
+        assert_same(['upcoming', 'upcoming', 'past', 'past'], array_column($card['items'], 'group'));
+    }
+
+    public function test_event_datetimes_use_the_wordpress_timezone_for_timestamps_and_display(): void
+    {
+        $GLOBALS['vgpc_wp_timezone'] = 'Africa/Johannesburg';
+        $provider = new VgpcTicketProviderFixture(
+            [new VgpcTicketOrderFixture(631, 42)],
+            [
+                631 => [834],
+                'instances' => [834 => new VgpcTicketInstanceFixture(834, 631, 715)],
+            ],
+            [715 => new VgpcTicketEventFixture(715, 'Plaaslike tyd', '2099-08-15 00:30:00', '/events/plaaslik/')]
+        );
+
+        try {
+            $card = (new TicketService($provider))->card(42);
+        } finally {
+            unset($GLOBALS['vgpc_wp_timezone']);
+        }
+
+        $expected_timestamp = new DateTimeImmutable('2099-08-15 00:30:00', new DateTimeZone('Africa/Johannesburg'));
+        assert_same($expected_timestamp->getTimestamp(), $card['items'][0]['event_timestamp']);
+        assert_same('2099-08-15', $card['items'][0]['event_date']);
     }
 
     public function test_foreign_orders_and_ticket_email_mismatches_are_omitted(): void
@@ -331,7 +397,7 @@ final class TicketServiceTest
 
         $card = (new TicketService($provider))->card(42);
 
-        assert_same('empty', $card['state']);
+        assert_same('available', $card['availability']);
         assert_same([], $card['items']);
         vgpc_set_current_user_email('');
     }
@@ -363,7 +429,7 @@ final class TicketServiceTest
 
         $card = (new TicketService($provider))->card(42);
 
-        assert_same('active', $card['state']);
+        assert_same('available', $card['availability']);
         assert_same(2, count($card['items']));
         assert_same('807', $card['items'][0]['ticket_id']);
         assert_same('808', $card['items'][1]['ticket_id']);
@@ -443,7 +509,7 @@ final class TicketServiceTest
 
         $card = (new TicketService($provider))->card(42);
 
-        assert_same('active', $card['state']);
+        assert_same('available', $card['availability']);
         assert_same(1, count($card['items']));
         assert_same('Geneste Tickera-geleentheid', $card['items'][0]['event_title']);
         assert_same('2099-06-01', $card['items'][0]['event_date']);
@@ -465,7 +531,7 @@ final class TicketServiceTest
 
         $card = (new TicketService($provider))->card(42);
 
-        assert_same('active', $card['state']);
+        assert_same('available', $card['availability']);
         assert_same('upcoming', $card['items'][0]['group']);
         assert_same('2099-08-15', $card['items'][0]['event_date']);
     }
@@ -518,11 +584,11 @@ final class TicketServiceTest
     public function test_throwing_or_malformed_provider_returns_unavailable_card(): void
     {
         $card = (new TicketService(new VgpcThrowingTicketProviderFixture()))->card(42);
-        assert_same('unavailable', $card['state']);
+        assert_same('unavailable', $card['availability']);
 
         $malformed = new VgpcTicketProviderFixture(new stdClass(), [], []);
         $card = (new TicketService($malformed))->card(42);
-        assert_same('unavailable', $card['state']);
+        assert_same('unavailable', $card['availability']);
     }
 
     public function test_requested_or_authenticated_user_mismatch_does_not_query_tickera(): void
@@ -530,7 +596,7 @@ final class TicketServiceTest
         $provider = new VgpcTicketProviderFixture([], [], []);
 
         $card = (new TicketService($provider))->card(99);
-        assert_same('empty', $card['state']);
+        assert_same('unavailable', $card['availability']);
         assert_same(0, $provider->requested_user_id);
 
         vgpc_set_current_user_id(0);
@@ -540,7 +606,7 @@ final class TicketServiceTest
             vgpc_set_current_user_id(42);
         }
 
-        assert_same('empty', $card['state']);
+        assert_same('unavailable', $card['availability']);
         assert_same(0, $provider->requested_user_id);
     }
 
@@ -574,7 +640,7 @@ final class TicketServiceTest
         assert_same(42, VgpcNativeTickeraOrdersFixture::$requested_user_id);
         assert_same('native@example.test', VgpcNativeTickeraOrdersFixture::$requested_user_email);
         assert_same(1, VgpcNativeTickeraOrdersFixture::$calls);
-        assert_same('active', $card['state']);
+        assert_same('available', $card['availability']);
         assert_same('902', $card['items'][0]['ticket_id']);
         assert_same('order_paid', $card['items'][0]['status']);
         vgpc_set_current_user_email('');

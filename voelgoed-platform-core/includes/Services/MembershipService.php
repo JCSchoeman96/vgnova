@@ -30,7 +30,7 @@ final class MembershipService implements DashboardServiceInterface
             return DashboardCard::empty(
                 'membership',
                 AfrikaansLabels::MEMBERSHIP,
-                'empty',
+                DashboardCard::AVAILABILITY_UNAVAILABLE,
                 'Meld aan om jou lidmaatskap te sien.'
             );
         }
@@ -40,7 +40,7 @@ final class MembershipService implements DashboardServiceInterface
             return DashboardCard::empty(
                 'membership',
                 AfrikaansLabels::MEMBERSHIP,
-                'unavailable',
+                DashboardCard::AVAILABILITY_UNAVAILABLE,
                 'Lidmaatskap is tans nie beskikbaar nie.'
             );
         }
@@ -107,7 +107,7 @@ final class MembershipService implements DashboardServiceInterface
             return DashboardCard::empty(
                 'membership',
                 AfrikaansLabels::MEMBERSHIP,
-                'unavailable',
+                DashboardCard::AVAILABILITY_UNAVAILABLE,
                 'Lidmaatskap is tans nie beskikbaar nie.'
             );
         }
@@ -116,7 +116,7 @@ final class MembershipService implements DashboardServiceInterface
             return DashboardCard::empty(
                 'membership',
                 AfrikaansLabels::MEMBERSHIP,
-                'empty',
+                DashboardCard::AVAILABILITY_AVAILABLE,
                 'Geen aktiewe lidmaatskap nie.'
             );
         }
@@ -135,7 +135,6 @@ final class MembershipService implements DashboardServiceInterface
         }
 
         $has_unknown_status = in_array('unknown', array_column($items, 'status'), true);
-        $state = $active_count > 0 ? 'active' : ($has_unknown_status ? 'unknown' : 'inactive');
         $summary = $active_count > 0
             ? sprintf('%d aktiewe lidmaatskap', $active_count)
             : ($has_unknown_status ? 'Lidmaatskapstatus onbekend.' : 'Geen aktiewe lidmaatskap nie.');
@@ -143,7 +142,7 @@ final class MembershipService implements DashboardServiceInterface
         return DashboardCard::make(
             'membership',
             AfrikaansLabels::MEMBERSHIP,
-            $state,
+            DashboardCard::AVAILABILITY_AVAILABLE,
             $summary,
             $actions,
             $items

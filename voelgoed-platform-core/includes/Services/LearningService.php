@@ -18,11 +18,17 @@ use Voelgoed\PlatformCore\Contracts\DashboardServiceInterface;
  */
 final class LearningService implements DashboardServiceInterface
 {
+    public const MIN_MASTERIYO_VERSION = '3.4.2';
+
     private mixed $provider;
 
-    public function __construct(mixed $provider = null)
+    /** @var callable|null */
+    private $version_resolver;
+
+    public function __construct(mixed $provider = null, ?callable $version_resolver = null)
     {
         $this->provider = $provider;
+        $this->version_resolver = $version_resolver;
     }
 
     /**
@@ -34,9 +40,13 @@ final class LearningService implements DashboardServiceInterface
             return DashboardCard::empty(
                 'learning',
                 AfrikaansLabels::LEARNING,
-                'empty',
+                DashboardCard::AVAILABILITY_UNAVAILABLE,
                 'Meld aan om jou kursusse te sien.'
             );
+        }
+
+        if (! $this->masteriyo_supported()) {
+            return $this->unavailable();
         }
 
         try {
@@ -66,7 +76,7 @@ final class LearningService implements DashboardServiceInterface
                 return DashboardCard::empty(
                     'learning',
                     AfrikaansLabels::LEARNING,
-                    'empty',
+                    DashboardCard::AVAILABILITY_AVAILABLE,
                     'Geen kursusse met toegang nie.'
                 );
             }
@@ -74,7 +84,7 @@ final class LearningService implements DashboardServiceInterface
             return DashboardCard::make(
                 'learning',
                 AfrikaansLabels::LEARNING,
-                'active',
+                DashboardCard::AVAILABILITY_AVAILABLE,
                 sprintf('%d kursus%s', count($items), count($items) === 1 ? '' : 'se'),
                 [],
                 $items
@@ -143,6 +153,29 @@ final class LearningService implements DashboardServiceInterface
         }
 
         return ['ok' => false, 'value' => null];
+    }
+
+    private function masteriyo_supported(): bool
+    {
+        if ($this->provider !== null) {
+            return true;
+        }
+
+        $version = null;
+        if ($this->version_resolver !== null) {
+            try {
+                $resolved = ($this->version_resolver)();
+                $version = is_scalar($resolved) ? trim((string) $resolved) : null;
+            } catch (Throwable) {
+                return false;
+            }
+        } elseif (defined('MASTERIYO_VERSION')) {
+            $version = trim((string) constant('MASTERIYO_VERSION'));
+        }
+
+        return $version !== null
+            && $version !== ''
+            && version_compare($version, self::MIN_MASTERIYO_VERSION, '>=');
     }
 
     /**
@@ -956,7 +989,7 @@ final class LearningService implements DashboardServiceInterface
         return DashboardCard::empty(
             'learning',
             AfrikaansLabels::LEARNING,
-            'unavailable',
+            DashboardCard::AVAILABILITY_UNAVAILABLE,
             'Kursusse is tans nie beskikbaar nie.'
         );
     }

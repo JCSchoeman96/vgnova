@@ -79,7 +79,7 @@ final class MembershipServiceTest
 
         assert_same('membership', $card['key']);
         assert_same(AfrikaansLabels::MEMBERSHIP, $card['label']);
-        assert_same('active', $card['state']);
+        assert_same('available', $card['availability']);
         assert_same('1 aktiewe lidmaatskap', $card['summary']);
         assert_same(42, $provider->requested_user_id);
         assert_same(1, count($card['items']));
@@ -111,7 +111,7 @@ final class MembershipServiceTest
 
         assert_same('membership', $card['key']);
         assert_same(AfrikaansLabels::MEMBERSHIP, $card['label']);
-        assert_same('empty', $card['state']);
+        assert_same('available', $card['availability']);
         assert_same([], $card['items']);
         assert_true($card['visible']);
     }
@@ -127,7 +127,7 @@ final class MembershipServiceTest
 
         $card = (new MembershipService($provider))->card(42);
 
-        assert_same('active', $card['state']);
+        assert_same('available', $card['availability']);
         assert_same('active', $card['items'][0]['status']);
         assert_true(in_array('cancel', array_column($card['actions'], 'key'), true));
     }
@@ -150,7 +150,7 @@ final class MembershipServiceTest
         assert_same('Status onbekend', $card['items'][0]['status_label']);
         assert_same('unknown', $card['items'][1]['status']);
         assert_same('Status onbekend', $card['items'][1]['status_label']);
-        assert_same('unknown', $card['state']);
+        assert_same('available', $card['availability']);
         assert_same('Lidmaatskapstatus onbekend.', $card['summary']);
         assert_same([], $card['actions']);
         assert_same([], $card['items'][0]['actions']);
@@ -165,7 +165,7 @@ final class MembershipServiceTest
 
         assert_same('membership', $card['key']);
         assert_same(AfrikaansLabels::MEMBERSHIP, $card['label']);
-        assert_same('unavailable', $card['state']);
+        assert_same('unavailable', $card['availability']);
         assert_same([], $card['items']);
         assert_same([], $card['actions']);
     }
@@ -176,7 +176,7 @@ final class MembershipServiceTest
 
         $card = (new MembershipService(new VgpcMembershipProviderFixture(new stdClass(), [])))->card(42);
 
-        assert_same('unavailable', $card['state']);
+        assert_same('unavailable', $card['availability']);
         assert_same([], $card['items']);
         assert_same([], $card['actions']);
     }
@@ -218,7 +218,7 @@ final class MembershipServiceTest
 
         $card = (new MembershipService($provider))->card(42);
 
-        assert_same('inactive', $card['state']);
+        assert_same('available', $card['availability']);
         assert_same('Geen aktiewe lidmaatskap nie.', $card['summary']);
         assert_same([], $card['items'][0]['actions']);
         assert_false(in_array('cancel', array_column($card['actions'], 'key'), true));
@@ -235,7 +235,7 @@ final class MembershipServiceTest
 
         $card = (new MembershipService($provider))->card(99);
 
-        assert_same('empty', $card['state']);
+        assert_same('unavailable', $card['availability']);
         assert_same([], $card['items']);
         assert_same([], $card['actions']);
         assert_same(0, $provider->requested_user_id);
@@ -257,7 +257,7 @@ final class MembershipServiceTest
             vgpc_set_current_user_id(42);
         }
 
-        assert_same('empty', $card['state']);
+        assert_same('unavailable', $card['availability']);
         assert_same([], $card['items']);
         assert_same([], $card['actions']);
         assert_same(0, $provider->requested_user_id);
@@ -274,7 +274,7 @@ final class MembershipServiceTest
 
         $card = (new MembershipService($provider))->card(0);
 
-        assert_same('empty', $card['state']);
+        assert_same('unavailable', $card['availability']);
         assert_same([], $card['items']);
         assert_same(0, $provider->requested_user_id);
     }
@@ -326,7 +326,7 @@ final class MembershipServiceTest
 
         $card = (new MembershipService($provider))->card(42);
 
-        assert_same('unavailable', $card['state']);
+        assert_same('unavailable', $card['availability']);
         assert_same([], $card['items']);
         assert_same([], $card['actions']);
     }

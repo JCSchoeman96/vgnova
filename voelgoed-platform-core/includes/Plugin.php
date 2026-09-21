@@ -39,10 +39,12 @@ final class Plugin
         $navigation = new Navigation($registry);
         $this->components['navigation'] = $navigation;
 
+        $cache_policy = new CachePolicy();
+        $this->components['cache_policy'] = $cache_policy;
+
         $this->register_component('access_guard', AccessGuard::class);
-        $this->register_component('dynamic_data', DashboardDynamicData::class, [$registry]);
+        $this->register_component('dynamic_data', DashboardDynamicData::class, [$registry, $cache_policy]);
         $this->register_component('query_provider', DashboardQueryProvider::class, [$registry]);
-        $this->register_component('cache_policy', CachePolicy::class);
 
         foreach ($this->components as $component) {
             if (method_exists($component, 'register')) {

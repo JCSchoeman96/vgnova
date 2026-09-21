@@ -101,7 +101,7 @@ final class MemberAreaServiceTest
 
         assert_same('member-area', $card['key']);
         assert_same(AfrikaansLabels::MEMBER_AREA, $card['label']);
-        assert_same('active', $card['state']);
+        assert_same('available', $card['availability']);
         assert_true($card['visible']);
         assert_same(1, $hub->resolve_calls);
         assert_same(1, $provider->flag_calls);
@@ -123,7 +123,7 @@ final class MemberAreaServiceTest
         $card = (new MemberAreaService($provider))->card(42);
 
         assert_false($card['visible']);
-        assert_same('empty', $card['state']);
+        assert_same('available', $card['availability']);
         assert_same([], $card['actions']);
         assert_same(0, $hub->resolve_calls);
     }

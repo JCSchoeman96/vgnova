@@ -42,6 +42,8 @@ final class DashboardDynamicData
 
     private object $registry;
 
+    private ?object $cache_policy;
+
     private static bool $init_hook_registered = false;
 
     private static ?self $init_hook_owner = null;
@@ -50,9 +52,10 @@ final class DashboardDynamicData
 
     private static ?self $hooks_owner = null;
 
-    public function __construct(?object $registry = null)
+    public function __construct(?object $registry = null, ?object $cache_policy = null)
     {
         $this->registry = $registry ?? new DashboardRegistry();
+        $this->cache_policy = $cache_policy;
     }
 
     public function registry(): object
@@ -151,9 +154,17 @@ final class DashboardDynamicData
      */
     public function render_content($content, $post = null, string $context = 'text')
     {
-        unset($post, $context);
+        unset($post);
 
         if (! is_string($content) || ! str_contains($content, '{vg_dashboard_')) {
+            return $content;
+        }
+
+        if (! $this->can_resolve_private_data()) {
+            foreach (array_keys(self::FIELD_LABELS) as $field) {
+                $content = str_replace('{' . $field . '}', '', $content);
+            }
+
             return $content;
         }
 
@@ -163,7 +174,7 @@ final class DashboardDynamicData
                 continue;
             }
 
-            $content = str_replace($token, $this->value_for_field($field), $content);
+            $content = str_replace($token, $this->escape_for_context($this->value_for_field($field), $context), $content);
         }
 
         return $content;
@@ -177,14 +188,18 @@ final class DashboardDynamicData
      */
     public function render_tag($value, $post = null, string $context = 'text')
     {
-        unset($post, $context);
+        unset($post);
 
         $field = $this->normalize_field_name($value);
         if ($field === null) {
             return $value;
         }
 
-        return $this->value_for_field($field);
+        if (! $this->can_resolve_private_data()) {
+            return '';
+        }
+
+        return $this->escape_for_context($this->value_for_field($field), $context);
     }
 
     /**
@@ -196,6 +211,12 @@ final class DashboardDynamicData
         if ($field === null) {
             return '';
         }
+
+        if (! $this->can_resolve_private_data()) {
+            return '';
+        }
+
+        $this->mark_request_private();
 
         $user_id = $this->current_user_id();
         if ($user_id < 1) {
@@ -289,7 +310,7 @@ final class DashboardDynamicData
                 continue;
             }
 
-            return function_exists('esc_url') ? (string) esc_url($url) : $url;
+            return $url;
         }
 
         return '';
@@ -362,6 +383,65 @@ final class DashboardDynamicData
         }
 
         return trim(strip_tags($value));
+    }
+
+    private function can_resolve_private_data(): bool
+    {
+        if (! $this->is_dashboard_request()) {
+            return false;
+        }
+
+        return $this->current_user_id() > 0;
+    }
+
+    private function is_dashboard_request(): bool
+    {
+        if ($this->cache_policy !== null && method_exists($this->cache_policy, 'is_dashboard_request')) {
+            try {
+                return (bool) $this->cache_policy->is_dashboard_request();
+            } catch (Throwable) {
+                return false;
+            }
+        }
+
+        $request_uri = isset($_SERVER['REQUEST_URI']) && is_scalar($_SERVER['REQUEST_URI'])
+            ? (string) $_SERVER['REQUEST_URI']
+            : '';
+        $path = parse_url($request_uri, PHP_URL_PATH);
+        if (! is_string($path)) {
+            return false;
+        }
+
+        $path = rtrim($path, '/');
+
+        return $path === '/my-voelgoed' || str_starts_with($path, '/my-voelgoed/');
+    }
+
+    private function mark_request_private(): void
+    {
+        if ($this->cache_policy === null || ! method_exists($this->cache_policy, 'apply')) {
+            return;
+        }
+
+        try {
+            $this->cache_policy->apply();
+        } catch (Throwable) {
+        }
+    }
+
+    private function escape_for_context(string $value, string $context): string
+    {
+        $context = strtolower(trim($context));
+
+        if (in_array($context, ['link', 'url', 'image', 'media'], true)) {
+            return function_exists('esc_url') ? (string) esc_url($value) : $value;
+        }
+
+        if (in_array($context, ['attribute', 'attr', 'aria', 'custom-attribute'], true)) {
+            return function_exists('esc_attr') ? (string) esc_attr($value) : htmlspecialchars($value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+        }
+
+        return function_exists('esc_html') ? (string) esc_html($value) : htmlspecialchars($value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
     }
 
     private function is_bricks_available(): bool

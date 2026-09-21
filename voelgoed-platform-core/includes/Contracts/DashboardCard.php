@@ -10,6 +10,14 @@ use InvalidArgumentException;
  */
 final class DashboardCard
 {
+    public const AVAILABILITY_AVAILABLE = 'available';
+
+    public const AVAILABILITY_UNAVAILABLE = 'unavailable';
+
+    public const CONTENT_EMPTY = 'empty';
+
+    public const CONTENT_POPULATED = 'populated';
+
     /**
      * @param array<int, array<string, mixed>> $actions
      * @param array<int, mixed>                $items
@@ -17,7 +25,8 @@ final class DashboardCard
      *     key: string,
      *     label: string,
      *     visible: bool,
-     *     state: string,
+     *     availability: self::AVAILABILITY_AVAILABLE|self::AVAILABILITY_UNAVAILABLE,
+     *     content_state: self::CONTENT_EMPTY|self::CONTENT_POPULATED,
      *     summary: string,
      *     items: array<int, mixed>,
      *     actions: array<int, array{key: string, label: string, url: string}>
@@ -26,11 +35,12 @@ final class DashboardCard
     public static function make(
         string $key,
         string $label,
-        string $state,
+        string $availability,
         string $summary = '',
         array $actions = [],
         array $items = [],
-        bool $visible = true
+        bool $visible = true,
+        ?string $content_state = null
     ): array {
         $normalized_key = self::key($key);
         $normalized_label = self::display($label);
@@ -43,9 +53,9 @@ final class DashboardCard
             throw new InvalidArgumentException('Dashboard card label cannot be empty.');
         }
 
-        $normalized_state = self::key($state);
-        if ($normalized_state === '') {
-            throw new InvalidArgumentException('Dashboard card state cannot be empty.');
+        $normalized_availability = self::key($availability);
+        if (! in_array($normalized_availability, [self::AVAILABILITY_AVAILABLE, self::AVAILABILITY_UNAVAILABLE], true)) {
+            throw new InvalidArgumentException('Dashboard card availability must be available or unavailable.');
         }
 
         $normalized_actions = [];
@@ -57,14 +67,23 @@ final class DashboardCard
             $normalized_actions[] = DashboardAction::normalize($action);
         }
 
+        $normalized_content_state = $content_state === null
+            ? ($normalized_actions !== [] || $items !== [] ? self::CONTENT_POPULATED : self::CONTENT_EMPTY)
+            : self::key($content_state);
+
+        if (! in_array($normalized_content_state, [self::CONTENT_EMPTY, self::CONTENT_POPULATED], true)) {
+            throw new InvalidArgumentException('Dashboard card content state must be empty or populated.');
+        }
+
         return [
-            'key'     => $normalized_key,
-            'label'   => $normalized_label,
-            'visible' => $visible,
-            'state'   => $normalized_state,
-            'summary' => self::display($summary),
-            'items'   => array_values($items),
-            'actions' => $normalized_actions,
+            'key'           => $normalized_key,
+            'label'         => $normalized_label,
+            'visible'       => $visible,
+            'availability'  => $normalized_availability,
+            'content_state' => $normalized_content_state,
+            'summary'       => self::display($summary),
+            'items'         => array_values($items),
+            'actions'       => $normalized_actions,
         ];
     }
 
@@ -76,11 +95,11 @@ final class DashboardCard
     public static function empty(
         string $key,
         string $label,
-        string $state = 'unavailable',
+        string $availability = self::AVAILABILITY_AVAILABLE,
         string $summary = '',
         bool $visible = true
     ): array {
-        return self::make($key, $label, $state, $summary, [], [], $visible);
+        return self::make($key, $label, $availability, $summary, [], [], $visible, self::CONTENT_EMPTY);
     }
 
     private static function key(string $value): string

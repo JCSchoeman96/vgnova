@@ -171,9 +171,9 @@ final class CommerceServiceTest
 
         assert_same('orders', $card['key']);
         assert_same(AfrikaansLabels::ORDERS, $card['label']);
-        assert_same('active', $card['state']);
+        assert_same('available', $card['availability']);
         assert_same(42, $provider->requested_args['customer_id']);
-        assert_same(-1, $provider->requested_args['limit']);
+        assert_same(10, $provider->requested_args['limit']);
         assert_same(1, count($card['items']));
         assert_same('501', $card['items'][0]['order_number']);
         assert_same('completed', $card['items'][0]['status']);
@@ -206,7 +206,7 @@ final class CommerceServiceTest
 
         assert_same('orders', $card['key']);
         assert_same(AfrikaansLabels::ORDERS, $card['label']);
-        assert_same('empty', $card['state']);
+        assert_same('available', $card['availability']);
         assert_same([], $card['items']);
         assert_true(count($card['actions']) >= 3);
     }
@@ -303,7 +303,7 @@ final class CommerceServiceTest
 
         assert_same('orders', $card['key']);
         assert_same(AfrikaansLabels::ORDERS, $card['label']);
-        assert_same('unavailable', $card['state']);
+        assert_same('unavailable', $card['availability']);
         assert_same([], $card['items']);
         assert_same([], $card['actions']);
     }
@@ -315,7 +315,7 @@ final class CommerceServiceTest
         $provider = new VgpcCommerceProviderFixture(new stdClass(), []);
         $card = (new CommerceService($provider))->card(42);
 
-        assert_same('unavailable', $card['state']);
+        assert_same('unavailable', $card['availability']);
         assert_same([], $card['items']);
         assert_same([], $card['actions']);
     }
@@ -360,7 +360,7 @@ final class CommerceServiceTest
 
         $card = (new CommerceService($provider))->card(99);
 
-        assert_same('empty', $card['state']);
+        assert_same('unavailable', $card['availability']);
         assert_same([], $card['items']);
         assert_same([], $card['actions']);
         assert_same([], $provider->requested_args);
@@ -379,7 +379,7 @@ final class CommerceServiceTest
             vgpc_set_current_user_id(42);
         }
 
-        assert_same('empty', $card['state']);
+        assert_same('unavailable', $card['availability']);
         assert_same([], $card['items']);
         assert_same([], $card['actions']);
         assert_same([], $provider->requested_args);
@@ -398,7 +398,7 @@ final class CommerceServiceTest
 
         $card = (new CommerceService($provider))->card(42);
 
-        assert_same('unavailable', $card['state']);
+        assert_same('unavailable', $card['availability']);
         assert_same([], $card['items']);
         assert_same([], $card['actions']);
     }
@@ -414,7 +414,7 @@ final class CommerceServiceTest
 
         $card = (new CommerceService($provider))->card(0);
 
-        assert_same('empty', $card['state']);
+        assert_same('unavailable', $card['availability']);
         assert_same([], $card['items']);
         assert_same([], $provider->requested_args);
     }

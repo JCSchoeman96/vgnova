@@ -20,6 +20,10 @@ require_once dirname(__DIR__) . '/includes/Bricks/DashboardQueryProvider.php';
 require_once dirname(__DIR__) . '/includes/Performance/CachePolicy.php';
 require_once dirname(__DIR__) . '/includes/Plugin.php';
 
+if (! defined('MASTERIYO_VERSION')) {
+    define('MASTERIYO_VERSION', '3.4.2');
+}
+
 if (! function_exists('home_url')) {
     function home_url(string $path = ''): string
     {

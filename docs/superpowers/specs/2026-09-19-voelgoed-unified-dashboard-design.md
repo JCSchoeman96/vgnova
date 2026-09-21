@@ -73,7 +73,7 @@ The implementation may use `My voordele` as an alternative internal page title, 
 
 ## Overview content
 
-The overview answers three questions: what the user has, what needs attention, and what they can do next.
+The first release overview answers what the user has and what they can do next. A separate alert projection is deferred until its provider rules are defined.
 
 - Welcome and profile summary: name, avatar, and account state.
 - `Lidmaatskap`: current PMPro level, status, expiry or renewal date, and a link to manage access.
@@ -81,7 +81,7 @@ The overview answers three questions: what the user has, what needs attention, a
 - `Kursusse`: count of owned or accessible Masteriyo courses, the next course to continue, progress, and certificates.
 - `Kaartjies`: the next upcoming event, ticket count, QR or download action, and event date.
 - `Bestellings`: recent WooCommerce orders and download availability.
-- `Aandag nodig`: failed payment, expiring membership, upcoming event, incomplete profile, or course-progress reminders.
+- `Aandag nodig` is deferred. This release does not claim a cross-provider alert projection, so it is not rendered as a card or dynamic service.
 
 Cards are summaries. Full management views open through the tabs and native provider actions.
 
@@ -125,7 +125,7 @@ The adapters may return empty states when a plugin is unavailable or the user ha
 4. Add `Kursusse` with the complete Masteriyo owned/access list.
 5. Add `Kaartjies` and secure Tickera actions.
 6. Add the conditional `Lede-area` tab.
-7. Add alerts, cache exclusions, analytics events, and responsive/accessibility hardening.
+7. Add cache exclusions, analytics events, and responsive/accessibility hardening. Define and implement `Aandag nodig` in a later slice after its provider rules are approved.
 
 ## Current staging references
 

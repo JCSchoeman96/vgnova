@@ -46,6 +46,13 @@ final class DashboardRegistry
      */
     private array $services = [];
 
+    /**
+     * Request-local card projections keyed by provider and user ID.
+     *
+     * @var array<string, array<string, mixed>>
+     */
+    private array $card_cache = [];
+
     private ?DashboardContext $context;
 
     /**
@@ -185,33 +192,39 @@ final class DashboardRegistry
 
     private function card_for_provider(string $key, int $user_id): array
     {
+        $cache_key = $key . ':' . $user_id;
+        if (array_key_exists($cache_key, $this->card_cache)) {
+            return $this->card_cache[$cache_key];
+        }
+
         $service = $this->services[$key] ?? null;
         if (! $service instanceof DashboardServiceInterface) {
-            return $this->fallback_card($key);
+            return $this->card_cache[$cache_key] = $this->fallback_card($key);
         }
 
         try {
             $card = $service->card($user_id);
         } catch (Throwable) {
-            return $this->fallback_card($key);
+            return $this->card_cache[$cache_key] = $this->fallback_card($key);
         }
 
         if (! is_array($card) || ! $this->is_valid_card($card, $key)) {
-            return $this->fallback_card($key);
+            return $this->card_cache[$cache_key] = $this->fallback_card($key);
         }
 
         try {
-            return DashboardCard::make(
+            return $this->card_cache[$cache_key] = DashboardCard::make(
                 $key,
                 $card['label'],
-                $card['state'],
+                $card['availability'],
                 $card['summary'],
                 $card['actions'],
                 $card['items'],
-                $card['visible']
+                $card['visible'],
+                $card['content_state']
             );
         } catch (Throwable) {
-            return $this->fallback_card($key);
+            return $this->card_cache[$cache_key] = $this->fallback_card($key);
         }
     }
 
@@ -224,7 +237,7 @@ final class DashboardRegistry
             return false;
         }
 
-        foreach (['label', 'visible', 'state', 'summary', 'items', 'actions'] as $required) {
+        foreach (['label', 'visible', 'availability', 'content_state', 'summary', 'items', 'actions'] as $required) {
             if (! array_key_exists($required, $card)) {
                 return false;
             }
@@ -232,7 +245,8 @@ final class DashboardRegistry
 
         return is_string($card['label'])
             && is_bool($card['visible'])
-            && is_string($card['state'])
+            && is_string($card['availability'])
+            && is_string($card['content_state'])
             && is_string($card['summary'])
             && is_array($card['items'])
             && is_array($card['actions']);
@@ -249,7 +263,7 @@ final class DashboardRegistry
         return DashboardCard::empty(
             $key,
             $label,
-            'unavailable',
+            DashboardCard::AVAILABILITY_UNAVAILABLE,
             $visible ? $label . ' is tans nie beskikbaar nie.' : '',
             $visible
         );
@@ -282,7 +296,7 @@ final class DashboardRegistry
         return DashboardCard::make(
             DashboardContext::PROFILE,
             AfrikaansLabels::PROFILE,
-            'active',
+            DashboardCard::AVAILABILITY_AVAILABLE,
             '',
             [$action]
         );
@@ -296,7 +310,7 @@ final class DashboardRegistry
         return DashboardCard::make(
             DashboardContext::PAYMENT_METHODS,
             AfrikaansLabels::PAYMENT_METHODS,
-            'active',
+            DashboardCard::AVAILABILITY_AVAILABLE,
             '',
             [DashboardAction::link(
                 'profile',

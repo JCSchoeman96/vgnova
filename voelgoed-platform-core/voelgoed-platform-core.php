@@ -5,6 +5,7 @@ declare(strict_types=1);
  * Plugin Name: Voelgoed Platform Core
  * Description: Unified authenticated Voelgoed customer dashboard integrations.
  * Version: 0.1.0
+ * Requires PHP: 8.0
  * Text Domain: voelgoed-platform-core
  */
 

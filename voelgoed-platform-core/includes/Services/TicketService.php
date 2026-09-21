@@ -35,7 +35,7 @@ final class TicketService implements DashboardServiceInterface
             return DashboardCard::empty(
                 'tickets',
                 AfrikaansLabels::TICKETS,
-                'empty',
+                DashboardCard::AVAILABILITY_UNAVAILABLE,
                 'Meld aan om jou kaartjies te sien.'
             );
         }
@@ -53,6 +53,7 @@ final class TicketService implements DashboardServiceInterface
 
             $upcoming = [];
             $past = [];
+            $now = $this->now();
             foreach ($orders as $order) {
                 $ownership = $this->order_ownership($order, $user_id);
                 if ($ownership['error']) {
@@ -101,13 +102,16 @@ final class TicketService implements DashboardServiceInterface
                         continue;
                     }
 
-                    if ($item['event_timestamp'] >= time()) {
+                    if ($item['event_timestamp'] >= $now) {
                         $upcoming[] = $item;
                     } else {
                         $past[] = $item;
                     }
                 }
             }
+
+            usort($upcoming, [$this, 'sort_upcoming']);
+            usort($past, [$this, 'sort_past']);
 
             $items = array_merge(
                 array_map(
@@ -124,7 +128,7 @@ final class TicketService implements DashboardServiceInterface
                 return DashboardCard::make(
                     'tickets',
                     AfrikaansLabels::TICKETS,
-                    'empty',
+                    DashboardCard::AVAILABILITY_AVAILABLE,
                     'Geen komende kaartjies nie.',
                     [],
                     $items
@@ -142,7 +146,7 @@ final class TicketService implements DashboardServiceInterface
             return DashboardCard::make(
                 'tickets',
                 AfrikaansLabels::TICKETS,
-                'active',
+                DashboardCard::AVAILABILITY_AVAILABLE,
                 $summary,
                 [],
                 $items
@@ -478,8 +482,8 @@ final class TicketService implements DashboardServiceInterface
             'event_title'     => $event_title,
             'title'           => $event_title,
             'event_url'       => $event_url,
-            'event_date'      => date('Y-m-d', $event_timestamp),
-            'date'            => date('Y-m-d', $event_timestamp),
+            'event_date'      => $this->display_date($event_timestamp),
+            'date'            => $this->display_date($event_timestamp),
             'event_timestamp' => $event_timestamp,
             'status'          => $status,
             'status_label'    => $this->status_label($status),
@@ -659,9 +663,79 @@ final class TicketService implements DashboardServiceInterface
             return null;
         }
 
-        $timestamp = strtotime($text);
+        try {
+            return (new \DateTimeImmutable($text, $this->timezone()))->getTimestamp();
+        } catch (Throwable) {
+            return null;
+        }
+    }
 
-        return $timestamp === false ? null : $timestamp;
+    private function timezone(): \DateTimeZone
+    {
+        if (function_exists('wp_timezone')) {
+            try {
+                $timezone = wp_timezone();
+                if ($timezone instanceof \DateTimeZone) {
+                    return $timezone;
+                }
+            } catch (Throwable) {
+            }
+        }
+
+        try {
+            return new \DateTimeZone(date_default_timezone_get());
+        } catch (Throwable) {
+            return new \DateTimeZone('UTC');
+        }
+    }
+
+    private function now(): int
+    {
+        if (function_exists('current_datetime')) {
+            try {
+                $current = current_datetime();
+                if ($current instanceof \DateTimeInterface) {
+                    return $current->getTimestamp();
+                }
+            } catch (Throwable) {
+            }
+        }
+
+        return (new \DateTimeImmutable('now', $this->timezone()))->getTimestamp();
+    }
+
+    private function display_date(int $timestamp): string
+    {
+        if (function_exists('wp_date')) {
+            try {
+                return (string) wp_date('Y-m-d', $timestamp, $this->timezone());
+            } catch (Throwable) {
+            }
+        }
+
+        return (new \DateTimeImmutable('@' . $timestamp))
+            ->setTimezone($this->timezone())
+            ->format('Y-m-d');
+    }
+
+    /** @param array<string, mixed> $left @param array<string, mixed> $right */
+    private function sort_upcoming(array $left, array $right): int
+    {
+        $timestamp_order = ((int) ($left['event_timestamp'] ?? 0)) <=> ((int) ($right['event_timestamp'] ?? 0));
+
+        return $timestamp_order !== 0
+            ? $timestamp_order
+            : ((string) ($left['ticket_id'] ?? '') <=> (string) ($right['ticket_id'] ?? ''));
+    }
+
+    /** @param array<string, mixed> $left @param array<string, mixed> $right */
+    private function sort_past(array $left, array $right): int
+    {
+        $timestamp_order = ((int) ($right['event_timestamp'] ?? 0)) <=> ((int) ($left['event_timestamp'] ?? 0));
+
+        return $timestamp_order !== 0
+            ? $timestamp_order
+            : ((string) ($left['ticket_id'] ?? '') <=> (string) ($right['ticket_id'] ?? ''));
     }
 
     /**
@@ -903,7 +977,7 @@ final class TicketService implements DashboardServiceInterface
         return DashboardCard::empty(
             'tickets',
             AfrikaansLabels::TICKETS,
-            'unavailable',
+            DashboardCard::AVAILABILITY_UNAVAILABLE,
             'Kaartjies is tans nie beskikbaar nie.'
         );
     }

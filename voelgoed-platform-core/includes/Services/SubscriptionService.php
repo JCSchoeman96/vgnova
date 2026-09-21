@@ -30,7 +30,7 @@ final class SubscriptionService implements DashboardServiceInterface
             return DashboardCard::empty(
                 'subscriptions',
                 AfrikaansLabels::SUBSCRIPTIONS,
-                'empty',
+                DashboardCard::AVAILABILITY_UNAVAILABLE,
                 'Meld aan om jou subskripsies te sien.'
             );
         }
@@ -40,7 +40,7 @@ final class SubscriptionService implements DashboardServiceInterface
             return DashboardCard::empty(
                 'subscriptions',
                 AfrikaansLabels::SUBSCRIPTIONS,
-                'unavailable',
+                DashboardCard::AVAILABILITY_UNAVAILABLE,
                 'Subskripsies is tans nie beskikbaar nie.'
             );
         }
@@ -57,7 +57,7 @@ final class SubscriptionService implements DashboardServiceInterface
             return DashboardCard::empty(
                 'subscriptions',
                 AfrikaansLabels::SUBSCRIPTIONS,
-                'unavailable',
+                DashboardCard::AVAILABILITY_UNAVAILABLE,
                 'Subskripsies is tans nie beskikbaar nie.'
             );
         }
@@ -66,7 +66,7 @@ final class SubscriptionService implements DashboardServiceInterface
             return DashboardCard::empty(
                 'subscriptions',
                 AfrikaansLabels::SUBSCRIPTIONS,
-                'empty',
+                DashboardCard::AVAILABILITY_AVAILABLE,
                 'Geen subskripsies nie.'
             );
         }
@@ -81,7 +81,7 @@ final class SubscriptionService implements DashboardServiceInterface
         return DashboardCard::make(
             'subscriptions',
             AfrikaansLabels::SUBSCRIPTIONS,
-            'active',
+            DashboardCard::AVAILABILITY_AVAILABLE,
             sprintf('%d subskripsie%s', count($items), count($items) === 1 ? '' : 's'),
             $actions,
             $items

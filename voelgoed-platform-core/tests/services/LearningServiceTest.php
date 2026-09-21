@@ -268,6 +268,14 @@ final class VgpcThrowingLearningProviderFixture
 
 final class LearningServiceTest
 {
+    public function test_native_masteriyo_below_the_security_minimum_fails_closed(): void
+    {
+        $card = (new LearningService(null, static fn (): string => '3.4.1'))->card(42);
+
+        assert_same('unavailable', $card['availability']);
+        assert_same([], $card['items']);
+    }
+
     public function test_returns_owned_courses_with_progress_next_lesson_and_certificate(): void
     {
         assert_true(class_exists(LearningService::class));
@@ -299,7 +307,7 @@ final class LearningServiceTest
 
         assert_same('learning', $card['key']);
         assert_same(AfrikaansLabels::LEARNING, $card['label']);
-        assert_same('active', $card['state']);
+        assert_same('available', $card['availability']);
         assert_same(
             ['user_id' => 42, 'query' => ['status' => 'any', 'per_page' => -1]],
             $provider->course_query
@@ -339,7 +347,7 @@ final class LearningServiceTest
 
         $card = (new LearningService($provider))->card(42);
 
-        assert_same('empty', $card['state']);
+        assert_same('available', $card['availability']);
         assert_same([], $card['items']);
     }
 
@@ -350,7 +358,7 @@ final class LearningServiceTest
 
         $card = (new LearningService($provider))->card(42);
 
-        assert_same('empty', $card['state']);
+        assert_same('available', $card['availability']);
         assert_same([], $card['items']);
     }
 
@@ -361,7 +369,7 @@ final class LearningServiceTest
 
         $card = (new LearningService($provider))->card(42);
 
-        assert_same('unavailable', $card['state']);
+        assert_same('unavailable', $card['availability']);
         assert_same([], $card['items']);
     }
 
@@ -372,7 +380,7 @@ final class LearningServiceTest
         $card = (new LearningService($provider))->card(42);
 
         assert_same(AfrikaansLabels::LEARNING, $card['label']);
-        assert_same('empty', $card['state']);
+        assert_same('available', $card['availability']);
         assert_same('Geen kursusse met toegang nie.', $card['summary']);
         assert_same([], $card['items']);
     }
@@ -381,7 +389,7 @@ final class LearningServiceTest
     {
         $card = (new LearningService(new VgpcThrowingLearningProviderFixture()))->card(42);
 
-        assert_same('unavailable', $card['state']);
+        assert_same('unavailable', $card['availability']);
         assert_same([], $card['items']);
         assert_same([], $card['actions']);
     }
@@ -392,7 +400,7 @@ final class LearningServiceTest
 
         $card = (new LearningService($provider))->card(99);
 
-        assert_same('empty', $card['state']);
+        assert_same('unavailable', $card['availability']);
         assert_same([], $provider->course_query);
 
         vgpc_set_current_user_id(0);
@@ -402,7 +410,7 @@ final class LearningServiceTest
             vgpc_set_current_user_id(42);
         }
 
-        assert_same('empty', $card['state']);
+        assert_same('unavailable', $card['availability']);
         assert_same([], $provider->course_query);
     }
 
@@ -412,7 +420,7 @@ final class LearningServiceTest
 
         $card = (new LearningService($provider))->card(42);
 
-        assert_same('unavailable', $card['state']);
+        assert_same('unavailable', $card['availability']);
         assert_same([], $card['items']);
     }
 
@@ -491,7 +499,7 @@ final class LearningServiceTest
             ['user_id' => 42, 'status' => 'any', 'per_page' => -1],
             VgpcNativeMasteriyoUserCourseQueryFixture::$query_args
         );
-        assert_same('active', $card['state']);
+        assert_same('available', $card['availability']);
         assert_same('410', $card['items'][0]['course_id']);
     }
 
@@ -502,7 +510,7 @@ final class LearningServiceTest
 
         $card = (new LearningService($provider))->card(42);
 
-        assert_same('active', $card['state']);
+        assert_same('available', $card['availability']);
         assert_same([42, 412], $provider->access_arguments);
         assert_same([42, 412], $provider->progress_arguments);
         assert_same(50, $card['items'][0]['completion_percentage']);

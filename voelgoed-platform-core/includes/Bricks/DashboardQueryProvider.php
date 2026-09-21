@@ -243,11 +243,12 @@ final class DashboardQueryProvider
             return DashboardCard::make(
                 $view_key,
                 $this->scalar($card['label'] ?? $this->label_for_card($view_key)),
-                $this->scalar($card['state'] ?? 'empty'),
+                $this->scalar($card['availability'] ?? DashboardCard::AVAILABILITY_AVAILABLE),
                 $this->scalar($card['summary'] ?? ''),
                 is_array($card['actions'] ?? null) ? $card['actions'] : [],
                 is_array($card['items'] ?? null) ? $card['items'] : [],
-                ($card['visible'] ?? true) === true
+                ($card['visible'] ?? true) === true,
+                $this->scalar($card['content_state'] ?? DashboardCard::CONTENT_EMPTY)
             );
         } catch (Throwable) {
             return $this->empty_card($view_key);
@@ -367,7 +368,7 @@ final class DashboardQueryProvider
 
     private function empty_card(string $key): array
     {
-        return DashboardCard::empty($key, $this->label_for_card($key), 'empty', '');
+        return DashboardCard::empty($key, $this->label_for_card($key), DashboardCard::AVAILABILITY_AVAILABLE, '');
     }
 
     private function label_for_card(string $key): string
