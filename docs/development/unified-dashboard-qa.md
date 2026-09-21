@@ -2,11 +2,9 @@
 
 ## Status
 
-The dashboard plugin tree from `850f991` is deployed byte-for-byte and active
-on the `vgnova` staging site. The final PR head may add documentation after this
-runtime run, but it must retain this exact plugin tree. The provider and Bricks
-checks below were exercised against the deployed tree; no production deployment
-is implied.
+The dashboard plugin tree from `ca8a7c7` is deployed byte-for-byte and active
+on the `vgnova` staging site. The provider, Bricks, and route checks below were
+exercised against that tree; no production deployment is implied.
 
 `Aandag nodig` and `Lede-area` are explicitly deferred from this release.
 Neither surface is rendered until its provider contract is approved. Member
@@ -17,7 +15,7 @@ continues to fail closed rather than reading private plugin state.
 
 ### Environment
 
-- Deployment/plugin tree: `850f991`, Voelgoed Platform Core `0.1.0`, active
+- Deployment/plugin tree: `ca8a7c7`, Voelgoed Platform Core `0.1.0`, active
 - WordPress `7.1.1`; PHP-FPM `8.5.3`
 - Bricks `2.3.5`; Bricks child theme `1.1`
 - WooCommerce `11.1.1`; WooCommerce Subscriptions `8.8.1`
