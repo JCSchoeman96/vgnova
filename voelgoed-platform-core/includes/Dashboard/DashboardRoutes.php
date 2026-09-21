@@ -62,7 +62,7 @@ final class DashboardRoutes
             explode('/', trim($path, '/')),
             static fn (string $segment): bool => $segment !== ''
         ));
-        if (($segments[0] ?? '') !== 'my-voelgoed') {
+        if (count($segments) !== 2 || ($segments[0] ?? '') !== 'my-voelgoed') {
             return DashboardContext::OVERVIEW;
         }
 
