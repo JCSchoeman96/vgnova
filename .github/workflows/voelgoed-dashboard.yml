@@ -1,0 +1,45 @@
+name: Voelgoed dashboard checks
+
+on:
+  pull_request:
+    paths:
+      - 'voelgoed-platform-core/**'
+      - '.github/workflows/voelgoed-dashboard.yml'
+      - 'docs/development/unified-dashboard-qa.md'
+  push:
+    branches:
+      - main
+      - 'feat/**'
+    paths:
+      - 'voelgoed-platform-core/**'
+      - '.github/workflows/voelgoed-dashboard.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  dashboard:
+    name: Dashboard checks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the exact revision
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.0'
+          tools: none
+
+      - name: Install ripgrep
+        run: sudo apt-get update && sudo apt-get install --yes ripgrep
+
+      - name: Run dashboard checks
+        working-directory: voelgoed-platform-core
+        run: ./bin/check.sh
+
+      - name: Check patch whitespace
+        run: git diff --check "${{ github.event.pull_request.base.sha || 'HEAD^' }}...${{ github.event.pull_request.head.sha || github.sha }}"

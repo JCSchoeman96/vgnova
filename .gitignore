@@ -41,6 +41,12 @@ wp-config.php
 # uncomment the next line
 #/wp-content/plugins
 
+# Brainstorming companion sessions
+/.superpowers/
+
+# Local git worktrees
+/.worktrees/
+
 # All themes
 #
 # Note: If you wish to whitelist themes,

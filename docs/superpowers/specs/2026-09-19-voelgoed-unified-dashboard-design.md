@@ -1,0 +1,152 @@
+# Voelgoed unified customer dashboard design
+
+**Status:** Approved for implementation
+
+**Date:** 2026-09-19
+
+## Goal
+
+Create one authenticated customer dashboard at `/my-voelgoed/`. It gives users one place to see and manage their Voelgoed account across Paid Memberships Pro (PMPro), WooCommerce, Woo Subscriptions, Tickera, Masteriyo, and the existing Voelgoed Member Perks plugin.
+
+The dashboard is a self-service account application. It is separate from `/vriendin/`, which remains the content and discovery hub for members.
+
+## Decisions
+
+- Use `/my-voelgoed/` as the canonical dashboard root.
+- Use a top-tab navigation pattern on desktop and a responsive, horizontally scrollable tab pattern on small screens.
+- Keep every visible dashboard label, button, empty state, status, and alert in Afrikaans.
+- Keep technical route slugs and plugin identifiers stable where they protect native WordPress and WooCommerce routing. The UI language does not require English labels.
+- Use the authenticated WordPress user ID as the identity key across all services.
+- PMPro is the authority for membership access and membership status.
+- Woo Subscriptions is the authority for payment and billing. A subscription may be linked to a PMPro membership product or may be independent of PMPro.
+- Masteriyo is the authority for paid course ownership, enrolment, progress, and certificates. The dashboard must show every course the user owns or can access.
+- WooCommerce is the authority for orders, downloads, addresses, and saved payment methods.
+- Tickera is the authority for ticket ownership, ticket status, event details, QR codes, and ticket downloads.
+- The dashboard reads each system as its source of truth. It does not copy membership, subscription, order, ticket, or course state into a new master ACF table.
+- Keep member-perks configuration and eligibility inside the `voelgoed-member-perks` plugin. The dashboard may consume its public access resolver, but must not recreate its programme rules.
+- Reuse native provider actions for payment, subscription, order, ticket, and course operations. The dashboard supplies a consistent shell and deep links rather than replacing secure provider workflows.
+
+## Entitlement model
+
+| Customer concept | Practical meaning | Source of truth | Dashboard label |
+| --- | --- | --- | --- |
+| PMPro membership | Access entitlement for membership-gated content and member benefits | PMPro membership level and status | `Lidmaatskap` |
+| Woo Subscription | Billing agreement for a recurring product or service. It may or may not grant a PMPro membership. | Woo Subscriptions | `Subskripsies` |
+| Paid Masteriyo course | A course the user owns or is entitled to access | Masteriyo enrolment and course access | `Kursusse` |
+
+The overview must keep these concepts separate. A Woo subscription card must not imply that every subscription is a PMPro membership. A PMPro card must not display billing controls that belong to Woo Subscriptions.
+
+## Navigation and routes
+
+The following labels are the approved first-pass Afrikaans UI copy. The route suffixes remain implementation keys and may be mapped to native WooCommerce endpoints where appropriate.
+
+| Route | Afrikaans label | Primary responsibility |
+| --- | --- | --- |
+| `/my-voelgoed/` | `Oorsig` | Personal summary, alerts, and next actions |
+| `/my-voelgoed/membership/` | `Lidmaatskap` | PMPro levels, access state, expiry, invoices, and membership actions |
+| `/my-voelgoed/subscriptions/` | `Subskripsies` | Woo Subscriptions status, next payment, payment state, renew, and cancel actions |
+| `/my-voelgoed/orders/` | `Bestellings` | WooCommerce order history, receipts, and downloads |
+| `/my-voelgoed/tickets/` | `Kaartjies` | Tickera tickets, upcoming events, QR codes, and downloads |
+| `/my-voelgoed/learning/` | `Kursusse` | All owned or accessible Masteriyo courses, progress, and certificates |
+| `/my-voelgoed/profile/` | `Profiel` | Personal details, password, addresses, preferences, and communication settings |
+| `/my-voelgoed/payment-methods/` | `Betaalmetodes` | WooCommerce saved payment methods. Expose this as a profile action or nested view unless testing shows it needs a top-level tab. |
+
+Downloads remain attached to their owning system. WooCommerce downloads appear under `Bestellings`, Masteriyo resources under `Kursusse`, and Tickera ticket files under `Kaartjies`.
+
+### Deferred `Biblioteek`
+
+`Biblioteek` is not a first-release dashboard tab. The current staging site has no page or plugin authority for a generic library, saved-resource collection, or private-download index. Do not create a vague catch-all destination. If a library is needed later, first define its source and behaviour, such as saved content, curated member resources, or a document collection, then add a route and tab.
+
+For the first release, editorial member content remains in the separate `/vriendin/` experience, courses go to `Kursusse`, WooCommerce files go to `Bestellings`, and ticket files go to `Kaartjies`. `Lede-area` is explicitly deferred until Member Perks exposes an approved public dashboard capability accessor.
+
+## Deferred `Lede-area`
+
+The dashboard does not render a `Lede-area` tab in this release. The installed Member Perks `0.18.0` surface has no approved public accessor for the `vgmp_enable_hub_display` feature flag, so the dashboard must not guess entitlement through ACF or private plugin repositories.
+
+`MemberAreaService` remains fail-closed and may retain its reserved dynamic-data contract for a later release. Until the Member Perks plugin publishes and approves a capability accessor, no authenticated user receives a dashboard link to the benefits hub, including eligible staging users.
+
+When the accessor is available, a later release may use the existing `HubAccess::resolve(HubAccess::CONTEXT_MAIN)` flow. That release must keep PMPro membership and Member Perks hub eligibility separate, avoid hardcoded IDs, and verify eligible, ineligible, and dual-programme users.
+
+`Lede-area` remains intentionally distinct from `Lidmaatskap`: `Lidmaatskap` manages the PMPro access entitlement, while a future `Lede-area` link would open the Member Perks destination.
+
+## Overview content
+
+The first release overview answers what the user has and what they can do next. A separate alert projection is deferred until its provider rules are defined.
+
+- Welcome and profile summary: name, avatar, and account state.
+- `Lidmaatskap`: current PMPro level, status, expiry or renewal date, and a link to manage access.
+- `Subskripsies`: all active, paused, on-hold, or failed Woo subscriptions, including the next payment date and a link to manage billing.
+- `Kursusse`: count of owned or accessible Masteriyo courses, the next course to continue, progress, and certificates.
+- `Kaartjies`: the next upcoming event, ticket count, QR or download action, and event date.
+- `Bestellings`: recent WooCommerce orders and download availability.
+- `Aandag nodig` is deferred. This release does not claim a cross-provider alert projection, so it is not rendered as a card or dynamic service.
+
+Cards are summaries. Full management views open through the tabs and native provider actions.
+
+## Service boundary
+
+Implement a small adapter boundary for the dashboard presentation layer. Each adapter returns a small, normalized view model and keeps plugin-specific data structures out of Bricks templates.
+
+- `Membership_Service`: PMPro level, status, expiry, invoices, and access actions.
+- `Subscription_Service`: Woo Subscriptions state, next payment, payment method, and manage actions. It must include standalone subscriptions as well as membership-linked subscriptions.
+- `Commerce_Service`: Woo orders, downloads, addresses, and payment methods.
+- `Ticket_Service`: Tickera tickets grouped by upcoming and past events, with secure QR and download actions.
+- `Learning_Service`: Masteriyo owned or accessible courses, enrolment state, progress, next lesson, and certificates.
+- `Member_Area_Service`: reserved for a future Member Perks capability integration. In this release it fails closed because the installed plugin does not expose an approved public feature-flag accessor.
+
+The adapters may return empty states when a plugin is unavailable or the user has no records. An unavailable integration must not break the rest of the dashboard.
+
+## Bricks realization
+
+- Build the shell in Bricks using existing global classes, ACSS variables, responsive controls, and reusable template parts.
+- Use dynamic data for user and plugin values. Do not hardcode account data in a Bricks template.
+- Use conditions to hide tabs and cards when the user has no applicable data or entitlement.
+- Use a reusable tab component with an active-state data attribute. JavaScript, if needed, targets data attributes rather than visual classes.
+- Keep the overview concise. Do not embed five full vendor dashboards inside the overview.
+- Link to native WooCommerce account endpoints and provider actions for operations that involve payment, cancellation, downloads, ticket validation, or course delivery.
+
+## Access, security, and caching
+
+- Require authentication for every dashboard route and view.
+- Send unauthenticated visitors to the configured login page with a validated return URL.
+- Check the current user before every service query and every account action.
+- Do not expose another user’s orders, memberships, tickets, courses, downloads, or payment data through query parameters or client-side state.
+- Mark the dashboard and its routes as non-indexable.
+- Exclude user-specific dashboard pages and fragments from page and edge caches. Do not serve member-specific HTML from a shared cache.
+- Keep payment and subscription mutations inside WooCommerce, Woo Subscriptions, and PMPro’s supported actions.
+
+## Delivery sequence
+
+1. Create the Bricks shell, authentication guard, responsive tabs, and Afrikaans copy system.
+2. Implement `Oorsig`, `Profiel`, `Bestellings`, and `Lidmaatskap` using native account actions.
+3. Add `Subskripsies`, including subscriptions that are not linked to PMPro.
+4. Add `Kursusse` with the complete Masteriyo owned/access list.
+5. Add `Kaartjies` and secure Tickera actions.
+6. Defer `Lede-area` until Member Perks exposes an approved public capability accessor; do not render a dashboard link in this release.
+7. Add cache exclusions, analytics events, and responsive/accessibility hardening. Define and implement `Aandag nodig` in a later slice after its provider rules are approved.
+
+## Current staging references
+
+The staging site already has native account pages for WooCommerce, PMPro, and Masteriyo, plus configured member-perks hubs. These are references for integration and migration only, not new authorities:
+
+- WooCommerce account page: current staging page `74`.
+- PMPro account, billing, invoice, levels, and profile pages: current staging pages `60` through `68`.
+- Masteriyo account page: current staging page `433`.
+- Member-perks main and programme hub pages: current staging pages `990`, `991`, and `992`.
+
+The implementation must resolve these through plugin settings and the existing member-perks repositories rather than embedding these staging IDs in templates or code.
+
+## Acceptance criteria
+
+- A logged-in customer can reach all applicable account areas from `/my-voelgoed/`.
+- All visible tabs, actions, statuses, empty states, and alerts are Afrikaans.
+- `Lidmaatskap` reports PMPro access and does not become a billing duplicate.
+- `Subskripsies` shows every relevant Woo subscription, including subscriptions unrelated to PMPro.
+- `Kursusse` shows every Masteriyo course the user owns or can access.
+- `Bestellings` and `Kaartjies` show only data belonging to the current user.
+- No generic `Biblioteek` tab is exposed until its source and behaviour are explicitly defined.
+- `Lede-area` is explicitly deferred in this release; no dashboard link is rendered until Member Perks exposes an approved public capability accessor.
+- The member hub remains separate from the `/vriendin/` content experience, with clear links between the two.
+- Native WooCommerce, PMPro, Tickera, and Masteriyo management actions remain the source of truth.
+- No shared cache returns one user’s dashboard HTML to another user.
+- The dashboard remains usable on mobile without replacing the approved Bricks and ACSS design system.
