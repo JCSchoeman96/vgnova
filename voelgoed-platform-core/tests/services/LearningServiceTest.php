@@ -340,6 +340,39 @@ final class LearningServiceTest
         assert_same('', $card['items'][0]['certificate_url']);
     }
 
+    public function test_boolean_false_progress_keeps_an_accessible_course_available(): void
+    {
+        $course = new VgpcLearningCourseFixture(305, 'Nog geen vordering', '/kursus/nog-geen-vordering/');
+        $provider = new VgpcLearningProviderFixture(
+            [new VgpcLearningUserCourseFixture(305, 42, 'enrolled', $course)],
+            [305 => false]
+        );
+
+        $card = (new LearningService($provider))->card(42);
+
+        assert_same('available', $card['availability']);
+        assert_same('populated', $card['content_state']);
+        assert_same(1, count($card['items']));
+        assert_same('', $card['items'][0]['completion_percentage']);
+        assert_same('', $card['items'][0]['completion_label']);
+        assert_same('', $card['items'][0]['certificate_url']);
+        assert_false(array_key_exists('certificate', $card['items'][0]['actions']));
+    }
+
+    public function test_non_empty_malformed_progress_still_fails_closed(): void
+    {
+        $course = new VgpcLearningCourseFixture(306, 'Onbekende vordering', '/kursus/onbekende-vordering/');
+        $provider = new VgpcLearningProviderFixture(
+            [new VgpcLearningUserCourseFixture(306, 42, 'enrolled', $course)],
+            [306 => 'nie geldige vordering nie']
+        );
+
+        $card = (new LearningService($provider))->card(42);
+
+        assert_same('unavailable', $card['availability']);
+        assert_same([], $card['items']);
+    }
+
     public function test_null_provider_access_result_is_denied(): void
     {
         $course = new VgpcLearningCourseFixture(308, 'Onbekende toegang', '/kursus/onbekende-toegang/');

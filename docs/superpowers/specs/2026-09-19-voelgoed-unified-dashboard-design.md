@@ -57,19 +57,17 @@ Downloads remain attached to their owning system. WooCommerce downloads appear u
 
 `Biblioteek` is not a first-release dashboard tab. The current staging site has no page or plugin authority for a generic library, saved-resource collection, or private-download index. Do not create a vague catch-all destination. If a library is needed later, first define its source and behaviour, such as saved content, curated member resources, or a document collection, then add a route and tab.
 
-For the first release, member benefits go to `Lede-area`, editorial member content remains in the separate `/vriendin/` experience, courses go to `Kursusse`, WooCommerce files go to `Bestellings`, and ticket files go to `Kaartjies`.
+For the first release, editorial member content remains in the separate `/vriendin/` experience, courses go to `Kursusse`, WooCommerce files go to `Bestellings`, and ticket files go to `Kaartjies`. `Lede-area` is explicitly deferred until Member Perks exposes an approved public dashboard capability accessor.
 
-## Conditional member tab
+## Deferred `Lede-area`
 
-Add one dynamic top-level tab labelled `Lede-area`.
+The dashboard does not render a `Lede-area` tab in this release. The installed Member Perks `0.18.0` surface has no approved public accessor for the `vgmp_enable_hub_display` feature flag, so the dashboard must not guess entitlement through ACF or private plugin repositories.
 
-The tab is rendered only when the authenticated user has an active Vriendinneklub or Voelgoednetwerk programme according to the existing member-perks access resolver. It links to the configured custom-plugin hub. It does not appear for ordinary WooCommerce customers, learners, ticket holders, or users with no active programme.
+`MemberAreaService` remains fail-closed and may retain its reserved dynamic-data contract for a later release. Until the Member Perks plugin publishes and approves a capability accessor, no authenticated user receives a dashboard link to the benefits hub, including eligible staging users.
 
-The destination is resolved through the existing member-perks configuration and `HubAccess` flow. Do not hardcode PMPro level IDs or hub page IDs in the dashboard. If the user has more than one eligible programme, the configured main hub remains the single entry point. Programme-specific hub links can be provided inside that hub when needed.
+When the accessor is available, a later release may use the existing `HubAccess::resolve(HubAccess::CONTEXT_MAIN)` flow. That release must keep PMPro membership and Member Perks hub eligibility separate, avoid hardcoded IDs, and verify eligible, ineligible, and dual-programme users.
 
-`Lede-area` is intentionally distinct from `Lidmaatskap`. `Lidmaatskap` manages the PMPro access entitlement; `Lede-area` opens the member content and benefits destination.
-
-The implementation may use `My voordele` as an alternative internal page title, but the navigation label remains `Lede-area` unless the product owner changes the copy.
+`Lede-area` remains intentionally distinct from `Lidmaatskap`: `Lidmaatskap` manages the PMPro access entitlement, while a future `Lede-area` link would open the Member Perks destination.
 
 ## Overview content
 
@@ -94,7 +92,7 @@ Implement a small adapter boundary for the dashboard presentation layer. Each ad
 - `Commerce_Service`: Woo orders, downloads, addresses, and payment methods.
 - `Ticket_Service`: Tickera tickets grouped by upcoming and past events, with secure QR and download actions.
 - `Learning_Service`: Masteriyo owned or accessible courses, enrolment state, progress, next lesson, and certificates.
-- `Member_Area_Service`: member-perks eligibility and configured hub URL. It delegates eligibility and destination decisions to the existing custom plugin.
+- `Member_Area_Service`: reserved for a future Member Perks capability integration. In this release it fails closed because the installed plugin does not expose an approved public feature-flag accessor.
 
 The adapters may return empty states when a plugin is unavailable or the user has no records. An unavailable integration must not break the rest of the dashboard.
 
@@ -124,7 +122,7 @@ The adapters may return empty states when a plugin is unavailable or the user ha
 3. Add `Subskripsies`, including subscriptions that are not linked to PMPro.
 4. Add `Kursusse` with the complete Masteriyo owned/access list.
 5. Add `Kaartjies` and secure Tickera actions.
-6. Add the conditional `Lede-area` tab.
+6. Defer `Lede-area` until Member Perks exposes an approved public capability accessor; do not render a dashboard link in this release.
 7. Add cache exclusions, analytics events, and responsive/accessibility hardening. Define and implement `Aandag nodig` in a later slice after its provider rules are approved.
 
 ## Current staging references
@@ -147,7 +145,7 @@ The implementation must resolve these through plugin settings and the existing m
 - `Kursusse` shows every Masteriyo course the user owns or can access.
 - `Bestellings` and `Kaartjies` show only data belonging to the current user.
 - No generic `Biblioteek` tab is exposed until its source and behaviour are explicitly defined.
-- `Lede-area` appears only for active Vriendinneklub or Voelgoednetwerk members and opens the configured custom-plugin hub.
+- `Lede-area` is explicitly deferred in this release; no dashboard link is rendered until Member Perks exposes an approved public capability accessor.
 - The member hub remains separate from the `/vriendin/` content experience, with clear links between the two.
 - Native WooCommerce, PMPro, Tickera, and Masteriyo management actions remain the source of truth.
 - No shared cache returns one user’s dashboard HTML to another user.

@@ -79,7 +79,7 @@ The first dashboard release uses these boundaries:
 | `Bestellings` | WooCommerce | Read orders, downloads, addresses, and saved payment methods through WooCommerce account APIs or native endpoints. |
 | `Kursusse` | Masteriyo | Read owned or accessible courses, enrolment, progress, and certificates from Masteriyo. |
 | `Kaartjies` | Tickera | Read the current user's tickets and use Tickera's native status, QR, and download actions. |
-| `Lede-area` | Voelgoed Member Perks | `vgmp_enable_hub_display` is a staging prerequisite. At the inspected submodule commit, the current public member-perks surface does not expose an approved dashboard-facing feature-flag accessor. `MemberAreaService` must require an approved public capability or configuration API before release. If that API is unavailable, return invisible and do not call `HubAccess`. If it reports the flag as false, hide the tab. Do not direct-read ACF or hardcode the setting in dashboard runtime. |
+| `Lede-area` | Voelgoed Member Perks | Deferred from this release. At the inspected submodule commit, the current public member-perks surface does not expose an approved dashboard-facing feature-flag accessor. `MemberAreaService` returns invisible and the Bricks shell omits the tab until that API is available. Do not direct-read ACF or hardcode the setting in dashboard runtime. |
 | `Biblioteek` | None | Do not expose a generic library tab until its content source, access rules, and route are defined. |
 
 ## Masteriyo and Tickera API findings
@@ -113,7 +113,7 @@ Tickera's native `tc_ticket_qr_code_element` renders the QR code inside the sign
 
 Tickera ticket instances have an `owner_email` field, but the supported order lookup is WordPress-user based unless the optional email-history setting is enabled. If an order cannot be tied to the authenticated user by its author or by an exact verified email match, the dashboard must fail closed and omit that ticket. It must not search all ticket instances by email and display a result without this ownership check.
 
-The conditional member tab is intentionally separate from `Lidmaatskap`. PMPro answers whether the user has membership access. Member Perks answers whether the user can open the configured benefits hub.
+`Lede-area` is intentionally separate from `Lidmaatskap`, but it is deferred from this release. PMPro answers whether the user has membership access; Member Perks will answer whether the user can open the configured benefits hub once an approved public capability accessor exists.
 
 ## Member-perks hub contract
 
@@ -123,7 +123,7 @@ The local member-perks source was read without modifying the submodule. The insp
 - `voelgoed-member-perks/includes/Hub/HubPageResolver.php`
 - `voelgoed-member-perks/includes/Config/SettingsRepository.php`
 
-At the inspected submodule commit, the current public member-perks surface does not expose an approved dashboard-facing feature-flag accessor for `vgmp_enable_hub_display`. `SettingsRepository::feature_flags()` is an internal repository method, not the dashboard contract, and dashboard runtime must not call it directly. Until the plugin exposes and approves an integration-facing public accessor, for example through `Plugin`, `MemberAreaService` must return invisible before calling `HubAccess`. This API is a staging prerequisite for the dashboard.
+At the inspected submodule commit, the current public member-perks surface does not expose an approved dashboard-facing feature-flag accessor for `vgmp_enable_hub_display`. `SettingsRepository::feature_flags()` is an internal repository method, not the dashboard contract, and dashboard runtime must not call it directly. Until the plugin exposes and approves an integration-facing public accessor, `MemberAreaService` must return invisible before calling `HubAccess`; the dashboard therefore does not render `Lede-area` in this release.
 
 The approved dashboard boundary shape is either a public `feature_flags(): array` result containing a boolean `hub_display` key, or a dedicated public boolean accessor such as `is_hub_display_enabled()`. The adapter accepts the existing `vgmp_enable_hub_display` and `enable_hub_display` keys for compatibility, but it never calls `SettingsRepository::feature_flags()` directly. The boundary must also expose `hub_access()` or a `resolve()` object.
 
@@ -196,15 +196,13 @@ the shell, Afrikaans navigation, semantic nav element, overview cards, hidden
 conditional link when the dashboard plugin is absent, and absence of
 `Biblioteek` text.
 
-The local `voelgoed-platform-core` plugin is tested in its feature worktree but
-is not installed on this staging site yet. Therefore the live pages are not
-being described as authenticated or user-data populated in this audit. The
-access guard, provider adapters, cache policy, Bricks dynamic data, and the
-conditional `Lede-area` navigation remain release-gated until that plugin is
-reviewed and deployed through its normal plugin workflow. The existing staging
-Member Perks plugin also lacks the approved public feature-flag accessor needed
-to expose `Lede-area`; the dashboard service fails closed until that boundary is
-available.
+The exact `voelgoed-platform-core` plugin revision was copied byte-for-byte to
+the staging plugin directory, activated, and exercised through the live site.
+The access guard, provider adapters, cache policy, Bricks dynamic data, and
+dashboard summary bindings are therefore covered by the runtime handoff. The
+existing staging Member Perks plugin still lacks the approved public feature-flag
+accessor needed to expose `Lede-area`; the dashboard service fails closed and
+the staging shell omits that navigation item until the boundary is available.
 
 ## Bricks hooks verified in local source
 
@@ -266,7 +264,7 @@ Cache verification must check both response headers and behavior. The test or QA
 - Treat all page IDs in this file as staging references. Resolve them at runtime.
 - Keep PMPro as the access authority and Woo Subscriptions as the billing authority.
 - Use Masteriyo for course access and Tickera for tickets. Do not infer either from orders or PMPro state.
-- Delegate `Lede-area` visibility and its destination to `HubAccess::resolve(HubAccess::CONTEXT_MAIN)`.
+- Keep `Lede-area` deferred until the approved public capability accessor exists; a later release may delegate visibility and destination to `HubAccess::resolve(HubAccess::CONTEXT_MAIN)`.
 - Do not hardcode member-perks hub IDs, PMPro level IDs, Woo product IDs, or billing terms.
 - Treat the approved public `vgmp_enable_hub_display` API as a staging prerequisite. If it is unavailable, `MemberAreaService` returns invisible before `HubAccess` runs.
 - Do not create a generic `Biblioteek` page or tab in this release.

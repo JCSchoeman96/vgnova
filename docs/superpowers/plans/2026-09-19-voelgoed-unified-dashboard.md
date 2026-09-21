@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Build an authenticated `/my-voelgoed/` dashboard that presents PMPro membership access, Woo Subscriptions billing, WooCommerce commerce, Tickera tickets, Masteriyo courses, profile actions, and the conditional member-perks hub in one Afrikaans interface.
+**Goal:** Build an authenticated `/my-voelgoed/` dashboard that presents PMPro membership access, Woo Subscriptions billing, WooCommerce commerce, Tickera tickets, Masteriyo courses, and profile actions in one Afrikaans interface. Member Perks `Lede-area` integration is explicitly deferred until its approved public capability boundary exists.
 
-**Architecture:** Bricks and Automatic.css own the dashboard shell, layout, responsive behaviour, and visible copy. A small `voelgoed-platform-core` plugin owns only the normalized service adapters, authentication guard, conditional navigation data, Bricks dynamic data, and cache safety that native WordPress and plugin UI cannot express. PMPro, WooCommerce/Woo Subscriptions, Tickera, Masteriyo, and `voelgoed-member-perks` remain the authorities for their own data and actions.
+**Architecture:** Bricks and Automatic.css own the dashboard shell, layout, responsive behaviour, and visible copy. A small `voelgoed-platform-core` plugin owns only the normalized service adapters, authentication guard, reserved navigation data, Bricks dynamic data, and cache safety that native WordPress and plugin UI cannot express. PMPro, WooCommerce/Woo Subscriptions, Tickera, Masteriyo, and `voelgoed-member-perks` remain the authorities for their own data and actions.
 
 **Tech Stack:** WordPress, Bricks Builder, Automatic.css, PMPro, WooCommerce, Woo Subscriptions, Tickera, Masteriyo, Voelgoed Member Perks, PHP 8.5, plain PHP tests, Novamira/vgnova MCP.
 
@@ -61,7 +61,7 @@ Bricks template: Unified Customer Dashboard Shell
 Bricks template parts: Dashboard Tabs, Dashboard Overview Cards, Dashboard Alert
 ```
 
-There is no `library` page or `Biblioteek` tab in this release. WooCommerce downloads, Masteriyo course resources, and Tickera ticket files stay with their owning views. Editorial member content remains in `/vriendin/`; member benefits use the conditional `Lede-area` link.
+There is no `library` page or `Biblioteek` tab in this release. WooCommerce downloads, Masteriyo course resources, and Tickera ticket files stay with their owning views. Editorial member content remains in `/vriendin/`; `Lede-area` is deferred because Member Perks `0.18.0` has no approved public dashboard capability accessor.
 
 ---
 
@@ -227,7 +227,7 @@ assert_same('populated', $card['content_state']);
 assert_true(str_starts_with($card['actions'][0]['url'], '/'));
 ```
 
-Add an assertion that `Biblioteek` is absent from `AfrikaansLabels::sections()` and that `Lede-area` is present only as a conditional navigation item, not as a provider service.
+Add an assertion that `Biblioteek` is absent from `AfrikaansLabels::sections()` and that the reserved `Lede-area` service remains fail-closed without an approved Member Perks capability accessor.
 
 - [ ] **Step 2: Run the contract test to verify failure.**
 
@@ -436,7 +436,7 @@ Return this order for the tab component:
 Oorsig → Lidmaatskap → Subskripsies → Bestellings → Kaartjies → Kursusse → Profiel
 ```
 
-Append `Lede-area` only when `MemberAreaService` returns `visible = true`. Keep `Betaalmetodes` as a profile action unless the responsive usability test proves it needs its own tab.
+Do not append `Lede-area` in this release. Keep `MemberAreaService` fail-closed until Member Perks exposes an approved public capability accessor. Keep `Betaalmetodes` as a profile action unless the responsive usability test proves it needs its own tab.
 
 Every navigation item must include `label`, `url`, `active`, `visible`, and `aria_current`. Labels come only from `AfrikaansLabels`.
 
@@ -461,7 +461,7 @@ Use the WordPress login helper and validate the return path. Never accept an arb
 php voelgoed-platform-core/tests/run-dashboard-tests.php
 ```
 
-Expected: logged-out requests redirect safely, logged-in requests continue, the tab order is stable, and `Lede-area` is absent for ordinary users.
+Expected: logged-out requests redirect safely, logged-in requests continue, the tab order is stable, and the deferred `Lede-area` link is absent for all users in this release.
 
 - [ ] **Step 6: Commit the dashboard registry.**
 
@@ -491,8 +491,8 @@ vg_dashboard_subscription_summary
 vg_dashboard_order_summary
 vg_dashboard_ticket_summary
 vg_dashboard_learning_summary
-vg_dashboard_member_area_url
-vg_dashboard_member_area_visible
+vg_dashboard_member_area_url       (reserved; not rendered in this release)
+vg_dashboard_member_area_visible   (reserved; not rendered in this release)
 ```
 
 All field labels in the Bricks editor must be Afrikaans or clearly prefixed with `Voelgoed Dashboard`.
@@ -588,35 +588,28 @@ Append the verified parent and child page IDs, template ID, and condition summar
 
 ---
 
-### Task 9: Wire the conditional `Lede-area` tab and provider links
+### Task 9: Defer `Lede-area` until the Member Perks boundary is available
 
 **Files:**
-- Modify through vgnova MCP: Dashboard Tabs template part and focused Bricks views
-- Modify: `voelgoed-platform-core/includes/Dashboard/Navigation.php`
-- Test: `voelgoed-platform-core/tests/dashboard/NavigationTest.php`
+- Modify through vgnova MCP: remove the deferred `Lede-area` item from the dashboard shell
+- Modify: `docs/development/unified-dashboard-staging-audit.md`
+- Modify: `docs/development/unified-dashboard-qa.md`
 
-- [ ] **Step 1: Add the conditional navigation item.**
+- [x] **Step 1: Confirm the approved accessor is unavailable.**
 
-Render `Lede-area` only when `MemberAreaService` reports `visible = true`. Build the URL from the configured page returned by `HubAccess`; never use `990`, `991`, or `992` as constants.
+The installed Member Perks `0.18.0` plugin does not expose an approved public dashboard-facing feature-flag accessor. Do not direct-read ACF, call `SettingsRepository::feature_flags()`, or hardcode a hub page ID.
 
-- [ ] **Step 2: Verify ordinary users do not see the tab.**
+- [x] **Step 2: Keep the adapter fail-closed.**
 
-Run the navigation unit test with an inactive profile fixture and verify that the tab is absent from both the navigation array and rendered HTML.
+`MemberAreaService` returns an invisible result before attempting hub resolution when the approved capability boundary is unavailable. Its reserved dynamic-data tokens remain unavailable to public or non-dashboard requests.
 
-- [ ] **Step 3: Verify active programme users see one direct tab.**
+- [x] **Step 3: Remove the staging navigation item.**
 
-Run fixtures for Vriendinneklub, Voelgoednetwerk, and a dual-programme user. Expected: one `Lede-area` tab points to the configured main hub. The dashboard must not show a programme chooser unless the configured hub itself provides one.
+Remove the hidden conditional `Lede-area` Bricks item from template `1172`, verify the navigation tree has no `vga301` item, and record the deferral in the QA handoff.
 
-- [ ] **Step 4: Add clear links between experiences.**
+- [ ] **Step 4: Re-open this scope in a later release.**
 
-In the member area card, use Afrikaans copy that distinguishes `Lidmaatskap` management from the member-perks hub. Keep `/vriendin/` as a separate content/discovery destination and link to it only from an approved member-content CTA, not from a fabricated `Biblioteek` route.
-
-- [ ] **Step 5: Commit the dynamic tab.**
-
-```bash
-git add voelgoed-platform-core/includes/Dashboard/Navigation.php voelgoed-platform-core/tests/dashboard/NavigationTest.php
-git commit -m "Add conditional Afrikaans member area tab"
-```
+After Member Perks publishes an approved accessor, add eligible/ineligible/dual-programme fixtures and restore one dynamic `Lede-area` link through `HubAccess::resolve(HubAccess::CONTEXT_MAIN)`. Keep `/vriendin/` separate from the dashboard and do not create a `Biblioteek` route.
 
 ---
 
@@ -652,8 +645,9 @@ data-vg-dashboard-event="open_subscriptions"
 data-vg-dashboard-event="open_orders"
 data-vg-dashboard-event="open_tickets"
 data-vg-dashboard-event="open_learning"
-data-vg-dashboard-event="open_member_area"
 ```
+
+`open_member_area` is reserved for a later Member Perks integration release.
 
 Push these stable keys to the existing GTM data layer only after verifying the site’s current tracking hook through read-only inspection.
 
@@ -696,12 +690,12 @@ Use existing approved staging test users. Do not create or alter accounts withou
 
 ```text
 logged out       → safe login redirect with return path
-ordinary user    → no Lede-area tab
+ordinary user    → no Lede-area tab (deferred for all users in this release)
 PMPro member     → Lidmaatskap summary and native manage link
 standalone Woo   → Subskripsies summary without PMPro assumption
 course owner     → every accessible Masteriyo course appears
 ticket holder    → only owned Tickera tickets appear
-dual programme   → one Lede-area tab to the configured main hub
+dual programme   → Lede-area remains deferred until the approved accessor exists
 ```
 
 - [ ] **Step 4: Verify cache isolation.**
@@ -729,7 +723,7 @@ git commit -m "Document unified dashboard staging QA"
 - [ ] PMPro remains the access authority, while Woo Subscriptions remains the billing authority.
 - [ ] Masteriyo displays all owned or accessible courses rather than only perk-granted courses.
 - [ ] Tickera and WooCommerce data are scoped to the current WordPress user.
-- [ ] The conditional member tab delegates to `HubAccess` and does not hardcode staging IDs.
+- [ ] `Lede-area` remains explicitly deferred until Member Perks exposes an approved public capability accessor; no staging IDs are hardcoded.
 - [ ] `/vriendin/` remains separate from the dashboard and is not disguised as a library.
 - [ ] All visible labels, empty states, status labels, and actions are Afrikaans.
 - [ ] Every task contains a concrete file path, command, expected result, and verification step where a local change is involved.

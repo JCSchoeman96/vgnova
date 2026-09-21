@@ -445,6 +445,12 @@ final class LearningService implements DashboardServiceInterface
             $progress = $progress[0] ?? null;
         }
 
+        // Masteriyo uses false when an enrolled learner has no progress row yet.
+        // That is an empty progress value, not an invalid provider response.
+        if ($progress === false) {
+            $progress = null;
+        }
+
         if (is_scalar($progress) && $progress !== '' && ! is_numeric($progress)) {
             throw new \RuntimeException('Course progress shape is invalid.');
         }
