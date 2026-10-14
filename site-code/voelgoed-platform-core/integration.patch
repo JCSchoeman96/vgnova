@@ -1,0 +1,10 @@
+--- a/voelgoed-platform-core.php
++++ b/voelgoed-platform-core.php
+@@ -25,0 +26 @@
++    'includes/Taxonomy/ContentTopicTaxonomy.php',
+--- a/includes/Plugin.php
++++ b/includes/Plugin.php
+@@ -12,0 +13 @@
++use Voelgoed\PlatformCore\Taxonomy\ContentTopicTaxonomy;
+@@ -47,0 +49 @@
++        $this->register_component('content_topic_taxonomy', ContentTopicTaxonomy::class);
