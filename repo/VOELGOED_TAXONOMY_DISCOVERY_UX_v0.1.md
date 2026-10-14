@@ -679,7 +679,6 @@ Avoid structures such as:
 ```text
 Nuwe Jy
 → Gesondheid
-→ Vrouegesondheid
 → Hormone
 → Menopouse
 → Warmgloede
