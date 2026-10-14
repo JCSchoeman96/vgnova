@@ -1,8 +1,8 @@
 # Voelgoed Canonical Topic Taxonomy & Legacy Migration Framework
-**Version:** 0.1  
-**Status:** LOCKED BASELINE  
-**Date:** 2026-10-13  
-**Companion documents:**  
+**Version:** 0.1
+**Status:** LOCKED BASELINE
+**Date:** 2026-10-13
+**Companion documents:**
 - `VOELGOED_CANONICAL_INFORMATION_ARCHITECTURE_v0.1.md`
 - `VOELGOED_TAXONOMY_DISCOVERY_UX_v0.1.md`
 

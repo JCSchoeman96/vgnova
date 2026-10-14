@@ -1,7 +1,7 @@
 # Voelgoed Canonical Information Architecture & Content Model
-**Version:** 0.1  
-**Status:** LOCKED BASELINE  
-**Date:** 2026-10-12  
+**Version:** 0.1
+**Status:** LOCKED BASELINE
+**Date:** 2026-10-12
 
 > This document is the canonical baseline for the Voelgoed rebuild. It consolidates the architecture decisions that have been accepted and supersedes conflicting earlier proposals where they differ from the decisions below.
 

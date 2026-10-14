@@ -1,7 +1,7 @@
 # Voelgoed Taxonomy, Discovery & User-Facing Information Architecture
-**Version:** 0.1  
-**Status:** LOCKED BASELINE  
-**Date:** 2026-10-13  
+**Version:** 0.1
+**Status:** LOCKED BASELINE
+**Date:** 2026-10-13
 **Companion to:** `VOELGOED_CANONICAL_INFORMATION_ARCHITECTURE_v0.1.md`
 
 > This document locks the user-facing taxonomy and discovery principles for the Voelgoed rebuild.
