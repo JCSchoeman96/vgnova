@@ -22,3 +22,21 @@ php site-code/voelgoed-platform-core/tests/run-content-topic-tests.php
 The active site seeds terms through `wp vg-content-topic-setup`. That command
 creates only missing canonical terms, stops on slug or parent conflicts, and
 flushes rewrite rules once after successful setup.
+
+## Local content topic migration proof
+
+`wp vg-content-topic-migrate` prints a read-only report by default. Review the
+manifest and fingerprint before applying it:
+
+```sh
+wp vg-content-topic-migrate --format=json
+wp vg-content-topic-migrate --apply --fingerprint=<reviewed-fingerprint> --format=json
+wp vg-content-topic-migrate --format=json
+wp vg-content-topic-migrate --rollback --format=json
+```
+
+The apply command requires the source fingerprint from the reviewed dry run.
+If the legacy terms, assignments, canonical tree, or object types change before
+apply, it stops without writing. The migration records only canonical
+relationships it creates. Rollback removes those recorded relationships and
+leaves legacy category data and unrelated topic assignments in place.
