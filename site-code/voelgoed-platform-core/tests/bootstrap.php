@@ -38,6 +38,11 @@ if (! class_exists('WP_CLI')) {
             self::$messages[] = ['type' => 'success', 'message' => $message];
         }
 
+        public static function line(string $message): void
+        {
+            self::$messages[] = ['type' => 'line', 'message' => $message];
+        }
+
         public static function error(string $message): never
         {
             throw new RuntimeException($message);
@@ -61,6 +66,10 @@ $GLOBALS['vgpc_test_next_term_id'] = 1000;
 $GLOBALS['vgpc_test_insert_count'] = 0;
 $GLOBALS['vgpc_test_rewrite_flush_count'] = 0;
 $GLOBALS['vgpc_test_force_suffix_next_insert'] = false;
+$GLOBALS['vgpc_test_posts'] = [];
+$GLOBALS['vgpc_test_relationships'] = [];
+$GLOBALS['vgpc_test_set_term_calls'] = 0;
+$GLOBALS['vgpc_test_fail_set_term_call'] = null;
 
 function vgpc_test_reset(): void
 {
@@ -72,6 +81,10 @@ function vgpc_test_reset(): void
     $GLOBALS['vgpc_test_insert_count'] = 0;
     $GLOBALS['vgpc_test_rewrite_flush_count'] = 0;
     $GLOBALS['vgpc_test_force_suffix_next_insert'] = false;
+    $GLOBALS['vgpc_test_posts'] = [];
+    $GLOBALS['vgpc_test_relationships'] = [];
+    $GLOBALS['vgpc_test_set_term_calls'] = 0;
+    $GLOBALS['vgpc_test_fail_set_term_call'] = null;
     WP_CLI::$commands = [];
     WP_CLI::$messages = [];
 }
@@ -172,6 +185,99 @@ function get_term(int $term_id, string $taxonomy = ''): object|false
     return $term;
 }
 
+function get_post(int $post_id): object|false
+{
+    return $GLOBALS['vgpc_test_posts'][$post_id] ?? false;
+}
+
+function get_post_type(int|object|null $post = null): string|false
+{
+    $post = is_object($post) ? $post : get_post((int) $post);
+
+    return $post->post_type ?? false;
+}
+
+function get_the_title(int|object $post = 0): string
+{
+    $post = is_object($post) ? $post : get_post((int) $post);
+
+    return (string) ($post->post_title ?? '');
+}
+
+function get_objects_in_term(array|int $term_ids, string $taxonomy, array $args = []): array|WP_Error
+{
+    $term_ids = array_map('intval', (array) $term_ids);
+    $objects = [];
+    foreach ($GLOBALS['vgpc_test_relationships'][$taxonomy] ?? [] as $object_id => $assigned_ids) {
+        if (array_intersect($term_ids, $assigned_ids)) {
+            $objects[] = (int) $object_id;
+        }
+    }
+
+    return array_values(array_unique($objects));
+}
+
+function wp_get_object_terms(int $object_id, string $taxonomy, array $args = []): array|WP_Error
+{
+    $terms = [];
+    foreach ($GLOBALS['vgpc_test_relationships'][$taxonomy][$object_id] ?? [] as $term_id) {
+        $term = get_term((int) $term_id, $taxonomy);
+        if ($term) {
+            $terms[] = $term;
+        }
+    }
+
+    if (($args['fields'] ?? '') === 'slugs') {
+        return array_map(static fn (object $term): string => $term->slug, $terms);
+    }
+
+    return $terms;
+}
+
+function wp_set_object_terms(int $object_id, array|string|int $terms, string $taxonomy, bool $append = false): array|WP_Error
+{
+    ++$GLOBALS['vgpc_test_set_term_calls'];
+    if ($GLOBALS['vgpc_test_fail_set_term_call'] === $GLOBALS['vgpc_test_set_term_calls']) {
+        return new WP_Error('test_assignment_failed', 'Injected relationship failure.');
+    }
+
+    $term_ids = [];
+    foreach ((array) $terms as $term) {
+        $resolved = is_numeric($term)
+            ? get_term((int) $term, $taxonomy)
+            : get_term_by('slug', (string) $term, $taxonomy);
+        if (! $resolved) {
+            return new WP_Error('invalid_term', 'The requested term does not exist.');
+        }
+        $term_ids[] = (int) $resolved->term_id;
+    }
+
+    $existing = $GLOBALS['vgpc_test_relationships'][$taxonomy][$object_id] ?? [];
+    $GLOBALS['vgpc_test_relationships'][$taxonomy][$object_id] = $append
+        ? array_values(array_unique(array_merge($existing, $term_ids)))
+        : $term_ids;
+
+    return $GLOBALS['vgpc_test_relationships'][$taxonomy][$object_id];
+}
+
+function wp_remove_object_terms(int $object_id, array|string|int $terms, string $taxonomy): bool|WP_Error
+{
+    $term_ids = [];
+    foreach ((array) $terms as $term) {
+        $resolved = is_numeric($term)
+            ? get_term((int) $term, $taxonomy)
+            : get_term_by('slug', (string) $term, $taxonomy);
+        if ($resolved) {
+            $term_ids[] = (int) $resolved->term_id;
+        }
+    }
+
+    $existing = $GLOBALS['vgpc_test_relationships'][$taxonomy][$object_id] ?? [];
+    $GLOBALS['vgpc_test_relationships'][$taxonomy][$object_id] = array_values(array_diff($existing, $term_ids));
+
+    return true;
+}
+
 function sanitize_term_field(string $field, string $value, int $term_id, string $taxonomy, string $context): string
 {
     if ($field === 'name' && $context === 'db') {
@@ -232,6 +338,18 @@ function update_option(string $option, mixed $value, mixed $autoload = null): bo
     $GLOBALS['vgpc_test_options'][$option] = $value;
 
     return true;
+}
+
+function delete_option(string $option): bool
+{
+    unset($GLOBALS['vgpc_test_options'][$option]);
+
+    return true;
+}
+
+function wp_json_encode(mixed $value, int $flags = 0): string|false
+{
+    return json_encode($value, $flags);
 }
 
 function flush_rewrite_rules(bool $hard = true): void
