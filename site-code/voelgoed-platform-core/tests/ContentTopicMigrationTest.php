@@ -2,6 +2,7 @@
 declare(strict_types=1);
 
 use Voelgoed\PlatformCore\Taxonomy\ContentTopicMigration;
+use Voelgoed\PlatformCore\Taxonomy\ContentTopicRoles;
 use Voelgoed\PlatformCore\Taxonomy\ContentTopicTaxonomy;
 
 require_once __DIR__ . '/../includes/Taxonomy/ContentTopicMigration.php';
@@ -104,6 +105,15 @@ final class ContentTopicMigrationTest
         );
 
         return [$terms, $rows];
+    }
+
+    private function role_service(): ContentTopicRoles
+    {
+        $roles = new ContentTopicRoles();
+        $roles->register();
+        do_action('acf/init');
+
+        return $roles;
     }
 
     public function test_mapping_classifies_all_thirteen_legacy_terms(): void
@@ -264,5 +274,40 @@ final class ContentTopicMigrationTest
 
         vgpc_test_true(is_wp_error($result), 'Rollback must stop when its recorded state has drifted.');
         vgpc_test_same(6, count($this->direct_relationship_slugs()), 'Unsafe rollback must leave all remaining relationships unchanged.');
+    }
+
+    public function test_task2_rollback_preserves_a_primary_relationship_created_by_task3(): void
+    {
+        $migration = $this->fixture();
+        $fingerprint = $migration->dry_run()['fingerprint'];
+        $migration->apply($fingerprint);
+        $roles = $this->role_service();
+        $manual_topic = get_term_by('slug', 'gesondheid', 'content_topic');
+        $roles->set_primary_topic(514, (int) $manual_topic->term_id);
+
+        $rollback = $migration->rollback();
+
+        vgpc_test_true(! is_wp_error($rollback), 'Task 2 rollback must still remove only its recorded relationships.');
+        vgpc_test_same([[514, 'gesondheid']], $this->direct_relationship_slugs(), 'The Task 3 relationship must remain after Task 2 rollback.');
+        vgpc_test_same('gesondheid', $roles->get_primary_topic(514)->slug, 'The retained direct topic must remain Primary.');
+        vgpc_test_same('REVIEWED', $roles->get_classification_state(514), 'The retained Primary classification must stay reviewed.');
+        vgpc_test_same(false, get_option('vgpc_content_topic_migration_local_v1', false), 'Task 2 rollback must retain its existing record cleanup behavior.');
+    }
+
+    public function test_task2_rollback_clears_primary_when_it_removes_that_owned_topic(): void
+    {
+        $migration = $this->fixture();
+        $fingerprint = $migration->dry_run()['fingerprint'];
+        $migration->apply($fingerprint);
+        $roles = $this->role_service();
+        $migration_topic = get_term_by('slug', 'nuwe-jy', 'content_topic');
+        $roles->set_primary_topic(514, (int) $migration_topic->term_id);
+
+        $rollback = $migration->rollback();
+
+        vgpc_test_true(! is_wp_error($rollback), 'Task 2 rollback must still succeed for intact migration rows.');
+        vgpc_test_same(false, metadata_exists('post', 514, ContentTopicRoles::PRIMARY_META_KEY), 'No Primary reference may survive removal of its direct term.');
+        vgpc_test_same([], $this->direct_relationship_slugs(), 'The controlled rollback must remove all seven Task 2-owned relationships.');
+        vgpc_test_same('UNCLASSIFIED', $roles->get_classification_state(514), 'The seed must become unclassified after rollback removes its only topic.');
     }
 }

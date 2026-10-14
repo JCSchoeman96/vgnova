@@ -68,6 +68,10 @@ $GLOBALS['vgpc_test_rewrite_flush_count'] = 0;
 $GLOBALS['vgpc_test_force_suffix_next_insert'] = false;
 $GLOBALS['vgpc_test_posts'] = [];
 $GLOBALS['vgpc_test_relationships'] = [];
+$GLOBALS['vgpc_test_meta'] = [];
+$GLOBALS['vgpc_test_field_groups'] = [];
+$GLOBALS['vgpc_test_filters'] = [];
+$GLOBALS['vgpc_test_screen'] = null;
 $GLOBALS['vgpc_test_set_term_calls'] = 0;
 $GLOBALS['vgpc_test_fail_set_term_call'] = null;
 
@@ -83,10 +87,16 @@ function vgpc_test_reset(): void
     $GLOBALS['vgpc_test_force_suffix_next_insert'] = false;
     $GLOBALS['vgpc_test_posts'] = [];
     $GLOBALS['vgpc_test_relationships'] = [];
+    $GLOBALS['vgpc_test_meta'] = [];
+    $GLOBALS['vgpc_test_field_groups'] = [];
+    $GLOBALS['vgpc_test_filters'] = [];
+    $GLOBALS['vgpc_test_screen'] = null;
     $GLOBALS['vgpc_test_set_term_calls'] = 0;
     $GLOBALS['vgpc_test_fail_set_term_call'] = null;
     WP_CLI::$commands = [];
     WP_CLI::$messages = [];
+    $_POST = [];
+    $_GET = [];
 }
 
 function vgpc_test_same(mixed $expected, mixed $actual, string $message): void
@@ -129,6 +139,40 @@ function add_action(string $hook, callable $callback, int $priority = 10, int $a
         'priority' => $priority,
         'accepted_args' => $accepted_args,
     ];
+}
+
+function add_filter(string $hook, callable $callback, int $priority = 10, int $accepted_args = 1): void
+{
+    $GLOBALS['vgpc_test_filters'][$hook][] = [
+        'callback' => $callback,
+        'priority' => $priority,
+        'accepted_args' => $accepted_args,
+    ];
+}
+
+function apply_filters(string $hook, mixed $value, mixed ...$args): mixed
+{
+    $callbacks = $GLOBALS['vgpc_test_filters'][$hook] ?? [];
+    usort($callbacks, static fn (array $left, array $right): int => $left['priority'] <=> $right['priority']);
+
+    foreach ($callbacks as $filter) {
+        $accepted_args = max(1, (int) ($filter['accepted_args'] ?? 1));
+        $filter_args = array_slice(array_merge([$value], $args), 0, $accepted_args);
+        $value = ($filter['callback'])(...$filter_args);
+    }
+
+    return $value;
+}
+
+function do_action(string $hook, mixed ...$args): void
+{
+    $callbacks = $GLOBALS['vgpc_test_actions'][$hook] ?? [];
+    usort($callbacks, static fn (array $left, array $right): int => $left['priority'] <=> $right['priority']);
+
+    foreach ($callbacks as $action) {
+        $accepted_args = (int) ($action['accepted_args'] ?? 1);
+        ($action['callback'])(...array_slice($args, 0, $accepted_args));
+    }
 }
 
 function taxonomy_exists(string $taxonomy): bool
@@ -231,6 +275,14 @@ function wp_get_object_terms(int $object_id, string $taxonomy, array $args = [])
         return array_map(static fn (object $term): string => $term->slug, $terms);
     }
 
+    if (($args['fields'] ?? '') === 'ids') {
+        return array_map(static fn (object $term): int => (int) $term->term_id, $terms);
+    }
+
+    if (($args['orderby'] ?? '') === 'term_id') {
+        usort($terms, static fn (object $left, object $right): int => $left->term_id <=> $right->term_id);
+    }
+
     return $terms;
 }
 
@@ -257,6 +309,8 @@ function wp_set_object_terms(int $object_id, array|string|int $terms, string $ta
         ? array_values(array_unique(array_merge($existing, $term_ids)))
         : $term_ids;
 
+    do_action('set_object_terms', $object_id, (array) $terms, $term_ids, $taxonomy, $append, $existing);
+
     return $GLOBALS['vgpc_test_relationships'][$taxonomy][$object_id];
 }
 
@@ -274,6 +328,8 @@ function wp_remove_object_terms(int $object_id, array|string|int $terms, string 
 
     $existing = $GLOBALS['vgpc_test_relationships'][$taxonomy][$object_id] ?? [];
     $GLOBALS['vgpc_test_relationships'][$taxonomy][$object_id] = array_values(array_diff($existing, $term_ids));
+
+    do_action('deleted_term_relationships', $object_id, array_values(array_intersect($existing, $term_ids)), $taxonomy);
 
     return true;
 }
@@ -318,9 +374,160 @@ function wp_delete_term(int $term_id, string $taxonomy): bool
         return false;
     }
 
+    $object_ids = [];
+    foreach ($GLOBALS['vgpc_test_relationships'][$taxonomy] ?? [] as $object_id => $term_ids) {
+        if (in_array($term_id, $term_ids, true)) {
+            wp_remove_object_terms((int) $object_id, $term_id, $taxonomy);
+            $object_ids[] = (int) $object_id;
+        }
+    }
+
     unset($GLOBALS['vgpc_test_terms'][$term_id]);
+    do_action('delete_term', $term_id, $term_id + 10000, $taxonomy, $term, $object_ids);
 
     return true;
+}
+
+function metadata_exists(string $meta_type, int $object_id, string $meta_key): bool
+{
+    return array_key_exists($meta_key, $GLOBALS['vgpc_test_meta'][$object_id] ?? []);
+}
+
+function get_post_meta(int $post_id, string $meta_key = '', bool $single = false): mixed
+{
+    $meta = $GLOBALS['vgpc_test_meta'][$post_id] ?? [];
+    if ($meta_key === '') {
+        return $meta;
+    }
+
+    $value = $meta[$meta_key] ?? '';
+    return $single ? $value : ($value === '' ? [] : [$value]);
+}
+
+function update_post_meta(int $post_id, string $meta_key, mixed $value): bool
+{
+    $GLOBALS['vgpc_test_meta'][$post_id][$meta_key] = $value;
+    return true;
+}
+
+function delete_post_meta(int $post_id, string $meta_key): bool
+{
+    unset($GLOBALS['vgpc_test_meta'][$post_id][$meta_key]);
+    return true;
+}
+
+function acf_add_local_field_group(array $field_group): void
+{
+    $GLOBALS['vgpc_test_field_groups'][$field_group['key']] = $field_group;
+}
+
+function vgpc_test_acf_field(string $selector): ?array
+{
+    foreach ($GLOBALS['vgpc_test_field_groups'] as $field_group) {
+        foreach ($field_group['fields'] ?? [] as $field) {
+            if (($field['key'] ?? null) === $selector || ($field['name'] ?? null) === $selector) {
+                return $field;
+            }
+        }
+    }
+
+    return null;
+}
+
+function vgpc_test_acf_field_name(string $selector): ?string
+{
+    $field = vgpc_test_acf_field($selector);
+
+    return $field === null ? null : (string) $field['name'];
+}
+
+function get_field(string|int $selector, int|string|false $post_id = false, bool $format_value = true): mixed
+{
+    $field_name = vgpc_test_acf_field_name((string) $selector);
+    if ($field_name === null) {
+        return null;
+    }
+
+    return $GLOBALS['vgpc_test_meta'][(int) $post_id][$field_name] ?? null;
+}
+
+function update_field(string|int $selector, mixed $value, int|string|false $post_id = false): bool
+{
+    $field = vgpc_test_acf_field((string) $selector);
+    if ($field === null) {
+        return false;
+    }
+
+    $post_id = (int) $post_id;
+    $field_name = (string) $field['name'];
+    $value = apply_filters('acf/update_value/key=' . $field['key'], $value, $post_id, $field);
+    if ($value === null) {
+        return true;
+    }
+
+    $GLOBALS['vgpc_test_meta'][$post_id][$field_name] = $value;
+    $GLOBALS['vgpc_test_meta'][$post_id]['_' . $field_name] = (string) $selector;
+
+    return true;
+}
+
+function delete_field(string|int $selector, int|string|false $post_id = false): bool
+{
+    $field_name = vgpc_test_acf_field_name((string) $selector);
+    if ($field_name === null) {
+        return false;
+    }
+
+    $post_id = (int) $post_id;
+    unset(
+        $GLOBALS['vgpc_test_meta'][$post_id][$field_name],
+        $GLOBALS['vgpc_test_meta'][$post_id]['_' . $field_name]
+    );
+
+    return true;
+}
+
+function get_posts(array $args = []): array
+{
+    $post_types = (array) ($args['post_type'] ?? 'post');
+    $post_types = $post_types === ['any'] ? array_column($GLOBALS['vgpc_test_posts'], 'post_type') : $post_types;
+    $post_ids = [];
+    foreach ($GLOBALS['vgpc_test_posts'] as $post_id => $post) {
+        if (! in_array($post->post_type ?? '', $post_types, true)) {
+            continue;
+        }
+        if (isset($args['meta_key'])) {
+            $value = $GLOBALS['vgpc_test_meta'][$post_id][$args['meta_key']] ?? null;
+            if ((string) $value !== (string) ($args['meta_value'] ?? '')) {
+                continue;
+            }
+        }
+        $post_ids[] = (int) $post_id;
+    }
+
+    return ($args['fields'] ?? '') === 'ids'
+        ? $post_ids
+        : array_map(static fn (int $post_id): object => get_post($post_id), $post_ids);
+}
+
+function get_current_screen(): ?object
+{
+    return $GLOBALS['vgpc_test_screen'];
+}
+
+function is_admin(): bool
+{
+    return true;
+}
+
+function esc_html(string $value): string
+{
+    return htmlspecialchars($value, ENT_QUOTES, 'UTF-8');
+}
+
+function esc_attr(string $value): string
+{
+    return htmlspecialchars($value, ENT_QUOTES, 'UTF-8');
 }
 
 function is_wp_error(mixed $thing): bool
