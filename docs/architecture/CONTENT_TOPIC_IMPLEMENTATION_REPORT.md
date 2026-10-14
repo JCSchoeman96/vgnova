@@ -177,7 +177,7 @@ The live FluentSnippets directory contains nine PHP snippet files. The HappyFile
 | ACF field group list and schemas | Passed. Featured Content Manager has eight fields including featured_leefstyl. Event Medewerkers has one multi-value relationship field targeting medewerker. Kategorie Vennoot Mapping targets content_category terms. |
 | FluentSnippets source scan | Passed. Nine stored PHP snippet files were inspected. No file references content_topic. The HappyFiles synchronizer uses content_category and hf_cat_post. |
 | Runtime/source comparison | Passed. The active runtime ContentTopicTaxonomy.php is byte-identical to the tracked module. The runtime bootstrap contains both additions from integration.patch. |
-| git ls-remote origin refs/heads/feat/canonical-content-topic | No remote branch found. The Task 1 branch was not pushed. |
+| git ls-remote origin refs/heads/feat/canonical-content-topic | No remote branch found at Task 1 completion. The Task 1 branch had not been pushed at that time. |
 
 ### Automated tests rerun after the documentation edits
 
@@ -211,7 +211,7 @@ The exact creation timestamp for the first three terms is not available because 
 
 ## I. Risks and blockers
 
-No Task 1 implementation blocker remains. Before Task 2, use this report and POST_TASK_1_CURRENT_STATE.md as the current baseline. The local feature branch has not been pushed, so the committed source and documentation are not yet visible in the remote repository.
+No Task 1 implementation blocker remained at Task 1A completion. At that time, the local feature branch had not been pushed, so the committed source and documentation were not yet visible in the remote repository.
 
 ## J. Task 1B refinement and verification
 
@@ -237,7 +237,7 @@ The historical Task 1 provenance remains unchanged. Vrouegesondheid was one of t
 
 The post-deletion `wp vg-content-topic-setup` run reported seven roots, 55 terms, zero created, and 55 existing. It did not flush rewrite rules. All seven approved object-type attachments remain in place, and no content_topic relationships were added.
 
-Task 1B ran on local branch `fix/remove-vrouegesondheid-topic`, based on the approved Task 1A branch. It was not pushed.
+Task 1B ran on local branch `fix/remove-vrouegesondheid-topic`, based on the approved Task 1A branch. At Task 1B completion, the branch was still local. It was pushed to GitHub before this reconciliation. The remote branch pointed to `7a2c0a3fac29cfd94ca7a127fb777a9a37af58bb`.
 
 | Task 1B verification | Result |
 |---|---|
@@ -253,6 +253,6 @@ Task 1B ran on local branch `fix/remove-vrouegesondheid-topic`, based on the app
 
 The source-controlled changes are limited to the canonical module, its focused test file, and the two architecture documents listed above. The active runtime copy was updated to match the module byte for byte, and the one unassigned term was removed from the local WordPress database. No legacy taxonomy, relationship, template, URL, field, partner, HappyFiles, people, event, broadcast, or membership changes were made.
 
-Deviations: None. Risks or blockers for Task 2 found during Task 1B: None. The follow-up branch remains local until architecture review.
+Deviations: None. Risks or blockers for Task 2 found during Task 1B: None. The follow-up branch was local at Task 1B completion and was later pushed to GitHub before reconciliation. The remote ref then pointed to `7a2c0a3fac29cfd94ca7a127fb777a9a37af58bb`.
 
 Task 2 and all later migration work remain out of scope.
