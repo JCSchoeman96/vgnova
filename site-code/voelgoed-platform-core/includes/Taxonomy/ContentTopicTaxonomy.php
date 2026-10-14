@@ -30,7 +30,6 @@ final class ContentTopicTaxonomy
     private const TERMS = [
         ['name' => 'Nuwe Jy', 'slug' => 'nuwe-jy', 'parent' => null],
         ['name' => 'Gesondheid', 'slug' => 'gesondheid', 'parent' => 'nuwe-jy'],
-        ['name' => 'Vrouegesondheid', 'slug' => 'vrouegesondheid', 'parent' => 'gesondheid'],
         ['name' => 'Voeding & gewig', 'slug' => 'voeding-gewig', 'parent' => 'nuwe-jy'],
         ['name' => 'Gesonde eetgewoontes', 'slug' => 'gesonde-eetgewoontes', 'parent' => 'voeding-gewig'],
         ['name' => 'Gewigsbestuur', 'slug' => 'gewigsbestuur', 'parent' => 'voeding-gewig'],
@@ -211,7 +210,7 @@ final class ContentTopicTaxonomy
         if (count($terms) !== count(self::TERMS) || $root_terms !== 7) {
             return new \WP_Error(
                 'vgpc_content_topic_count_mismatch',
-                sprintf('Expected 56 topics and 7 roots; found %d topics and %d roots.', count($terms), $root_terms)
+                sprintf('Expected 55 topics and 7 roots; found %d topics and %d roots.', count($terms), $root_terms)
             );
         }
 

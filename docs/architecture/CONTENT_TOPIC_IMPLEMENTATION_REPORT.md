@@ -1,10 +1,10 @@
 # Content topic implementation report
 
-Tasks: Voelgoed Architecture Correction, Task 1 and Task 1A.
+Tasks: Voelgoed Architecture Correction, Task 1, Task 1A, and Task 1B.
 
-Status: Task 1A complete. Task 2 has not started. No legacy migration or cleanup has been performed.
+Status: Task 1B complete. Task 2 has not started. No legacy migration or cleanup has been performed.
 
-Functional Task 1 implementation: UNCHANGED.
+Task 1B made one narrow functional change: it removed the unassigned Vrouegesondheid term and changed the canonical seed count to 55. No other functional code changed.
 
 Site checked: vgnova at http://localhost:10039/, WordPress 7.1.3.
 
@@ -24,9 +24,9 @@ The taxonomy registers during init at priority 100, after the platform post type
 
 The temporary rewrite prefix is /onderwerp/. Hierarchical term paths are enabled, with_front is false, and no root-level topic routes were added.
 
-The explicit WP-CLI command wp vg-content-topic-setup seeds terms. It looks up terms by taxonomy and slug, resolves parents by known slug, and stops on conflicting names, slugs, or parents. It leaves descriptions empty and checks for exactly seven roots and 56 terms. A successful setup flushes rewrites once. The option vgpc_content_topic_rewrite_flushed_v1 records the flush. A repeated setup does not flush rewrites again.
+The explicit WP-CLI command wp vg-content-topic-setup seeds terms. It looks up terms by taxonomy and slug, resolves parents by known slug, and stops on conflicting names, slugs, or parents. It leaves descriptions empty and checks for exactly seven roots and 55 terms. A successful setup flushes rewrites once. The option vgpc_content_topic_rewrite_flushed_v1 records the flush. A repeated setup does not flush rewrites again.
 
-The runtime taxonomy module matches the tracked source byte for byte. Both have SHA-256 24aeeb08858810ea93fecb511c6cd2b86651805af3916497196d48232f0a8964. The active plugin bootstrap contains both additions recorded by integration.patch.
+The runtime taxonomy module matches the tracked source byte for byte. Both have SHA-256 8b107985c34f1989a73c74ea6e06862fcfb02796f6007c22c982e5256c43befe. The active plugin bootstrap contains both additions recorded by integration.patch.
 
 Task 1 source files:
 
@@ -46,9 +46,17 @@ Task 1A documentation files:
 
 No functional PHP, database, taxonomy, template, relationship, or URL changes were made in Task 1A.
 
+Task 1B files:
+
+- site-code/voelgoed-platform-core/includes/Taxonomy/ContentTopicTaxonomy.php
+- site-code/voelgoed-platform-core/tests/ContentTopicTaxonomyTest.php
+- docs/architecture/CONTENT_TOPIC_IMPLEMENTATION_REPORT.md
+- docs/architecture/POST_TASK_1_CURRENT_STATE.md
+- Runtime copy: `/home/jcschoeman96/Local Sites/voelgoed-novamira/app/public/wp-content/plugins/voelgoed-platform-core/includes/Taxonomy/ContentTopicTaxonomy.php`
+
 ## B. Seeding provenance
 
-The final content_topic state has 56 canonical terms. Three terms existed before the successful setup run:
+At Task 1 completion, content_topic had 56 canonical terms. Three terms existed before the successful setup run:
 
 | Name | Slug | Parent |
 |---|---|---|
@@ -64,7 +72,7 @@ WordPress does not store a term creation timestamp. The exact time of the first 
 
 | Provenance check | Result |
 |---|---:|
-| Canonical content_topic term count | 56 |
+| Canonical content_topic term count at Task 1 completion | 56 |
 | Pre-existing canonical terms before successful run | 3 |
 | Terms created by successful recorded run | 53 |
 | Terms created by second idempotency run | 0 |
@@ -101,12 +109,12 @@ At the start of Task 1A, branch feat/canonical-content-topic pointed to Task 1 c
 |---|---|
 | Taxonomy | content_topic |
 | Owner | Voelgoed Platform Core |
-| Terms | 56 |
+| Terms | 55 |
 | Roots | 7 |
 | Assignments | 0 |
 | Public route prefix | /onderwerp/ |
 
-The seven roots are Nuwe Jy, Geloof, Self, Werk + Geld, Ouerskap, Huwelik, and Mensstories. The full hierarchy appears in POST_TASK_1_CURRENT_STATE.md.
+The seven roots are Nuwe Jy, Geloof, Self, Werk + Geld, Ouerskap, Huwelik, and Mensstories. The current full hierarchy appears in POST_TASK_1_CURRENT_STATE.md. Task 1B removed Vrouegesondheid after confirming it had no assignments.
 
 It is attached to exactly post, mto-course, product, tc_events, medewerker, uitsending, and kompetisie. It is not attached to page, team_member, testimonial, kompetisie_entry, vg_perk, tc_tickets, tc_orders, or product_variation.
 
@@ -191,7 +199,7 @@ Task 1 also verified the REST taxonomy endpoint, editor taxonomy controls, repre
 | content_topic assignments created | NO |
 | Task 2 migration started | NO |
 
-Task 1A WordPress checks were read-only. The only Task 1A changes are documentation and the source-of-truth rule.
+Task 1A WordPress checks were read-only. Task 1A changed documentation and the source-of-truth rule only. Task 1B made the single topic-term removal described below.
 
 ## H. Findings and deviations
 
@@ -204,5 +212,47 @@ The exact creation timestamp for the first three terms is not available because 
 ## I. Risks and blockers
 
 No Task 1 implementation blocker remains. Before Task 2, use this report and POST_TASK_1_CURRENT_STATE.md as the current baseline. The local feature branch has not been pushed, so the committed source and documentation are not yet visible in the remote repository.
+
+## J. Task 1B refinement and verification
+
+Architecture review removed Vrouegesondheid from the canonical hierarchy because the distinction from Gesondheid did not provide enough discovery value for Voelgoed's audience. This keeps Gesondheid directly under Nuwe Jy. No replacement health subtopics were added.
+
+Before deletion, the live term was term ID 351 with name Vrouegesondheid, slug vrouegesondheid, and parent slug gesondheid. A fresh `get_objects_in_term()` check returned zero assigned object IDs. The term was then deleted explicitly with `wp term delete content_topic 351`. The normal setup command was not changed to delete unexpected terms.
+
+The historical Task 1 provenance remains unchanged. Vrouegesondheid was one of the three valid terms that predated the successful Task 1 seed run. That run created 53 of 56 terms, the second run created zero, and no duplicates or `-2` slugs were created. Task 1B later removed Vrouegesondheid after verifying it had no relationships.
+
+| Current canonical check | Result |
+|---|---:|
+| content_topic terms | 55 |
+| Root terms | 7 |
+| content_topic relationships | 0 |
+| Vrouegesondheid in content_topic | No |
+| Leefstyl in content_topic | No |
+| Nuwe Jy → Gesondheid | Present; Gesondheid has no child terms |
+| Other canonical term parents | Unchanged |
+| content_category terms | 13 |
+| content_category relationships | 8 |
+| Leefstyl in content_category | Yes |
+| Legacy data changed | No |
+
+The post-deletion `wp vg-content-topic-setup` run reported seven roots, 55 terms, zero created, and 55 existing. It did not flush rewrite rules. All seven approved object-type attachments remain in place, and no content_topic relationships were added.
+
+Task 1B ran on local branch `fix/remove-vrouegesondheid-topic`, based on the approved Task 1A branch. It was not pushed.
+
+| Task 1B verification | Result |
+|---|---|
+| Read-only `wp eval` snapshot through `novamira/run-wp-cli` | Passed. Confirmed 56 terms and zero assignments before deletion; the final snapshot confirms 55 terms, seven roots, zero assignments, exact object-type attachments, and the requested parent chains. |
+| `wp term delete content_topic 351` | Passed. WordPress deleted exactly one content_topic term after its zero-assignment check. |
+| `wp vg-content-topic-setup` | Passed. Reported 7 roots, 55 terms, 0 created, 55 already present, and no rewrite flush. |
+| Final `wp eval` snapshot through `novamira/run-wp-cli` | Passed. Vrouegesondheid and Leefstyl are absent from content_topic; content_category remains at 13 terms and 8 relationships with its prior terms, attachments, and assignments. |
+| `php site-code/voelgoed-platform-core/tests/run-content-topic-tests.php` | Passed: 10 tests. |
+| `php '/home/jcschoeman96/Local Sites/voelgoed-novamira/app/public/wp-content/plugins/voelgoed-platform-core/tests/run-dashboard-tests.php'` | Passed: 127 tests. |
+| `find site-code/voelgoed-platform-core -type f -name '*.php' -print0 \| xargs -0 -n1 php -l`, plus runtime module lint | Passed with no syntax errors. |
+| `git diff --check` | Passed. |
+| `sha256sum` for source and runtime `ContentTopicTaxonomy.php` | Passed. Both hashes are `8b107985c34f1989a73c74ea6e06862fcfb02796f6007c22c982e5256c43befe`. |
+
+The source-controlled changes are limited to the canonical module, its focused test file, and the two architecture documents listed above. The active runtime copy was updated to match the module byte for byte, and the one unassigned term was removed from the local WordPress database. No legacy taxonomy, relationship, template, URL, field, partner, HappyFiles, people, event, broadcast, or membership changes were made.
+
+Deviations: None. Risks or blockers for Task 2 found during Task 1B: None. The follow-up branch remains local until architecture review.
 
 Task 2 and all later migration work remain out of scope.
