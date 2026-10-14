@@ -1,0 +1,16 @@
+# Voelgoed Platform Core content topic slice
+
+This directory tracks the `content_topic` module installed into the existing
+Voelgoed Platform Core plugin at `wp-content/plugins/voelgoed-platform-core`.
+The Local WordPress copy is not a Git checkout. `integration.patch` records the
+two bootstrap changes made to load and register this module.
+
+Run the focused checks with:
+
+```sh
+php site-code/voelgoed-platform-core/tests/run-content-topic-tests.php
+```
+
+The active site seeds terms through `wp vg-content-topic-setup`. That command
+creates only missing canonical terms, stops on slug or parent conflicts, and
+flushes rewrite rules once after successful setup.
