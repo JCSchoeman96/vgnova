@@ -10,7 +10,6 @@ final class ContentTopicTaxonomyTest
         $expected = [
             ['Nuwe Jy', 'nuwe-jy', null],
             ['Gesondheid', 'gesondheid', 'nuwe-jy'],
-            ['Vrouegesondheid', 'vrouegesondheid', 'gesondheid'],
             ['Voeding & gewig', 'voeding-gewig', 'nuwe-jy'],
             ['Gesonde eetgewoontes', 'gesonde-eetgewoontes', 'voeding-gewig'],
             ['Gewigsbestuur', 'gewigsbestuur', 'voeding-gewig'],
@@ -71,7 +70,11 @@ final class ContentTopicTaxonomyTest
             ContentTopicTaxonomy::definitions()
         );
 
-        vgpc_test_same(56, count($actual), 'The locked tree must contain 56 terms.');
+        vgpc_test_same(55, count($actual), 'The locked tree must contain 55 terms.');
+        vgpc_test_same([], array_values(array_filter(
+            ContentTopicTaxonomy::definitions(),
+            static fn (array $term): bool => $term['slug'] === 'vrouegesondheid'
+        )), 'Vrouegesondheid must not be in the canonical definitions.');
         vgpc_test_same($expected, $actual, 'Names, slugs, order, and parent slugs must match the locked tree.');
     }
 
@@ -116,22 +119,27 @@ final class ContentTopicTaxonomyTest
 
         $first = $taxonomy->setup();
         vgpc_test_true(! is_wp_error($first), 'The first setup must succeed.');
-        vgpc_test_same(56, $first['total_terms'], 'Setup must report 56 terms.');
+        vgpc_test_same(55, $first['total_terms'], 'Setup must report 55 terms.');
         vgpc_test_same(7, $first['root_terms'], 'Setup must report seven roots.');
-        vgpc_test_same(56, $first['created_terms'], 'The first setup must create all terms.');
+        vgpc_test_same(55, $first['created_terms'], 'The first setup must create all terms.');
         vgpc_test_same(true, $first['rewrite_flushed'], 'The first setup must flush rewrite rules.');
 
         $second = $taxonomy->setup();
         vgpc_test_true(! is_wp_error($second), 'A second setup must succeed.');
         vgpc_test_same(0, $second['created_terms'], 'A second setup must not create terms.');
-        vgpc_test_same(56, $second['existing_terms'], 'A second setup must reuse every term.');
+        vgpc_test_same(55, $second['existing_terms'], 'A second setup must reuse every term.');
         vgpc_test_same(false, $second['rewrite_flushed'], 'A second setup must not flush again.');
-        vgpc_test_same(56, count(get_terms(['taxonomy' => 'content_topic', 'hide_empty' => false])), 'The taxonomy must contain 56 terms.');
+        $terms = get_terms(['taxonomy' => 'content_topic', 'hide_empty' => false]);
+        vgpc_test_same(55, count($terms), 'The taxonomy must contain 55 terms.');
         vgpc_test_same(1, $GLOBALS['vgpc_test_rewrite_flush_count'], 'Rewrite rules must flush once only.');
         vgpc_test_same([], array_values(array_filter(
-            get_terms(['taxonomy' => 'content_topic', 'hide_empty' => false]),
+            $terms,
             static fn (object $term): bool => $term->name === 'Leefstyl' || $term->slug === 'leefstyl'
         )), 'Leefstyl must not exist in content_topic.');
+        vgpc_test_same([], array_values(array_filter(
+            $terms,
+            static fn (object $term): bool => $term->name === 'Vrouegesondheid' || $term->slug === 'vrouegesondheid'
+        )), 'Vrouegesondheid must not exist in content_topic.');
         vgpc_test_same('Voeding &amp; gewig', get_term_by('slug', 'voeding-gewig', 'content_topic')->name, 'The stored ampersand must follow WordPress term-name sanitization.');
 
         $by_slug = [];
@@ -167,6 +175,22 @@ final class ContentTopicTaxonomyTest
         vgpc_test_true(is_wp_error($result), 'An unexpected term must stop setup.');
         vgpc_test_same(0, $GLOBALS['vgpc_test_insert_count'], 'Setup must not partially seed around an unexpected term.');
         vgpc_test_same(1, count(get_terms(['taxonomy' => 'content_topic', 'hide_empty' => false])), 'The existing term must remain untouched.');
+        vgpc_test_same(0, $GLOBALS['vgpc_test_rewrite_flush_count'], 'Failed setup must not flush rewrites.');
+    }
+
+    public function test_setup_does_not_delete_a_removed_canonical_term_automatically(): void
+    {
+        vgpc_test_reset();
+        $taxonomy = new ContentTopicTaxonomy();
+        $taxonomy->register_taxonomy();
+        $existing = vgpc_test_add_term('Vrouegesondheid', 'vrouegesondheid', 0);
+
+        $result = $taxonomy->setup();
+
+        vgpc_test_true(is_wp_error($result), 'An unexpected removed term must stop setup.');
+        vgpc_test_same($existing->term_id, get_term_by('slug', 'vrouegesondheid', 'content_topic')->term_id, 'Setup must leave the unexpected term untouched.');
+        vgpc_test_same(1, count(get_terms(['taxonomy' => 'content_topic', 'hide_empty' => false])), 'Setup must not seed around the unexpected term.');
+        vgpc_test_same(0, $GLOBALS['vgpc_test_insert_count'], 'Setup must not create terms while a removed term remains.');
         vgpc_test_same(0, $GLOBALS['vgpc_test_rewrite_flush_count'], 'Failed setup must not flush rewrites.');
     }
 

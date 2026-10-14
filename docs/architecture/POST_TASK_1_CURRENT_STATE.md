@@ -1,17 +1,17 @@
-# Voelgoed current-state architecture after Task 1 and Task 1A
+# Voelgoed current-state architecture after Task 1, Task 1A, and Task 1B
 
 Inspection date: 2026-10-14
 Site: vgnova at http://localhost:10039/
 WordPress: 7.1.3
-Status: Factual snapshot after Task 1 implementation and Task 1A verification.
+Status: Factual snapshot after Task 1 implementation, Task 1A housekeeping, and Task 1B taxonomy refinement.
 
-This document describes the current staging site. It is not a proposal for later architecture. WordPress and ACF state were inspected read-only through Novamira. Task 1A changed documentation only.
+This document describes the current staging site. It is not a proposal for later architecture. WordPress and ACF state were inspected through Novamira. Task 1A changed documentation only. Task 1B removed one unassigned canonical topic and updated its seed definition.
 
 ## 11.1 Executive summary
 
-Task 1 added the canonical hierarchical taxonomy content_topic with seven roots and 56 terms. It is registered by the source-controlled Voelgoed Platform Core module and has no assignments.
+Task 1 introduced the canonical hierarchical taxonomy content_topic. Task 1B removed Vrouegesondheid after a fresh check found no assignments, leaving seven roots and 55 terms. The taxonomy is registered by the source-controlled Voelgoed Platform Core module and has no assignments.
 
-The older content_category taxonomy remains live with 13 terms, current relationships, and current code and template dependencies. The site keeps both taxonomies in parallel while the architecture owner reviews the baseline. No legacy term or relationship has been migrated or removed.
+The older content_category taxonomy remains live with 13 terms, current relationships, and current code and template dependencies. The site keeps both taxonomies in parallel while the architecture owner reviews the baseline. No legacy content_category term or relationship has been migrated or removed.
 
 The two taxonomies are independent. No synchronization between content_category and content_topic exists in the Platform Core module or the nine FluentSnippets source files inspected. The existing HappyFiles sync remains between content_category and hf_cat_post.
 
@@ -21,7 +21,7 @@ The two taxonomies are independent. No synchronization between content_category 
 |---|---|
 | Taxonomy | content_topic |
 | Owner | Voelgoed Platform Core |
-| Terms | 56 |
+| Terms | 55 |
 | Root pillars | 7 |
 | Assignments | 0 |
 | Public rewrite prefix | /onderwerp/ |
@@ -32,7 +32,6 @@ Complete canonical hierarchy:
     content_topic
     ├── Nuwe Jy (nuwe-jy)
     │   ├── Gesondheid (gesondheid)
-    │   │   └── Vrouegesondheid (vrouegesondheid)
     │   ├── Voeding & gewig (voeding-gewig)
     │   │   ├── Gesonde eetgewoontes (gesonde-eetgewoontes)
     │   │   └── Gewigsbestuur (gewigsbestuur)
@@ -88,6 +87,8 @@ Complete canonical hierarchy:
         └── Ware lewensverhale (ware-lewensverhale)
 
 Runtime checks confirmed the exact root names and parent chains. The term list contains no Leefstyl and no unexpected -2 slugs. All term descriptions are empty.
+
+Vrouegesondheid is absent. Gesondheid remains under Nuwe Jy and has no child terms.
 
 ## 11.3 Attached object types
 
@@ -163,7 +164,7 @@ content_category remains attached to:
     testimonial
     team_member
 
-No assignments were copied to content_topic. No legacy terms or assignments were changed in Task 1 or Task 1A.
+No assignments were copied to content_topic. Task 1B changed no legacy terms or assignments.
 
 ## 11.5 Parallel-state diagram
 
@@ -185,7 +186,7 @@ No assignments were copied to content_topic. No legacy terms or assignments were
 
     content_topic
     ├── 7 roots
-    ├── 56 terms
+    ├── 55 terms
     ├── 0 assignments
     └── future semantic source of truth
 
@@ -202,7 +203,7 @@ These live systems require review before or during a later controlled migration:
 - Article display helpers. An active FluentSnippets helper obtains the first content_category term for article display.
 - No content_topic sync. The inspected Platform Core module and nine FluentSnippets source files contain no content_topic synchronization logic.
 
-None of these dependencies changed in Task 1A.
+Task 1B changed none of these dependencies.
 
 ## 11.7 Current people architecture
 
@@ -247,7 +248,7 @@ No commercial or partner refactor has started.
 
 PMPro remains the membership and access-control source. Voelgoed Member Perks remains the separate perk and benefit subsystem.
 
-Task 1 and Task 1A did not change PMPro or Member Perks.
+Task 1, Task 1A, and Task 1B did not change PMPro or Member Perks.
 
 ## 11.12 Current merchandising architecture
 
@@ -285,7 +286,7 @@ Current registered routes and permalink settings include:
 
 The WordPress permalink structure is /content/%postname%/. The post type post has no archive, and no page with slug content is published. Course and shop archives resolve to /kursusse/ and /produkte/. The /leer/ and /winkel/ paths are single-item bases.
 
-Canonical future routes such as /uitsendings/, /podsending/, /mense/, /lidmaatskap/, and /kompetisies/ were not implemented as part of Task 1 or Task 1A. No URL migration was performed.
+Canonical future routes such as /uitsendings/, /podsending/, /mense/, /lidmaatskap/, and /kompetisies/ were not implemented as part of Task 1, Task 1A, or Task 1B. No URL migration was performed.
 
 ## 11.14 Current source-of-truth map
 
@@ -327,3 +328,11 @@ The following work has not started:
 - SEO and schema finalisation.
 
 Task 2 has not started. No legacy migration or cleanup has been performed.
+
+## 11.16 Task 1B verification
+
+Before removal, Vrouegesondheid was term ID 351 under Gesondheid. A direct relationship query returned zero assigned object IDs. Task 1B then removed that one content_topic term. The updated setup command returned 55 total terms, seven roots, zero newly created terms, and 55 existing terms. It did not flush rewrite rules.
+
+The final content_topic taxonomy has 55 terms, seven roots, and zero relationships. The seven approved object-type attachments remain unchanged. Vrouegesondheid and Leefstyl are absent from content_topic.
+
+The legacy snapshot still has 13 content_category terms, eight relationships, Leefstyl, the same ten object-type attachments, and the same assigned object IDs listed above. No legacy migration or cleanup has started.
