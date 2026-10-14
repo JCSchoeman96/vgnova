@@ -2,7 +2,7 @@
 
 > **Project:** Voelgoed Platform Consolidation  
 > **Agent Scope:** AI assistants and automated tooling working within this codebase  
-> **Last Updated:** June 2026  
+> **Last Updated:** October 2026
 
 ---
 
@@ -72,6 +72,24 @@ One unified WordPress site — `voelgoed.co.za` — with:
 | **FluentSnippets** | **ALL custom code snippets** (PHP, JS, CSS). The only approved snippet manager. |
 | **Rank Math SEO** | SEO metadata, schema markup, XML sitemap, redirects. |
 | **Fluent Forms** | Forms (contact, newsletter, nominations). Integrates with FluentCRM. |
+
+### Voelgoed Platform Core source ownership
+
+For the current project phase, the canonical Platform Core source is the
+`site-code/voelgoed-platform-core/` module in the `vgnova` repository. The
+active WordPress directory at `wp-content/plugins/voelgoed-platform-core/` is
+a runtime deployment copy. The module's `integration.patch` records the
+bootstrap changes needed to apply the source-controlled code to that copy.
+
+The canonical `content_topic` taxonomy is the explicit domain-architecture
+exception to ACF-owned taxonomy registration. Voelgoed Platform Core owns its
+definition and seeding logic. This exception applies only to `content_topic`.
+
+Any Platform Core code change must first exist in the source-controlled
+`vgnova/site-code/voelgoed-platform-core/` module. The active local WordPress
+plugin directory must not contain unique architecture changes that are absent
+from the repository. Do not create a competing `content_topic` definition in
+ACF, FluentSnippets, or theme code.
 
 ### Analytics & Tracking
 | Tool | Purpose |
