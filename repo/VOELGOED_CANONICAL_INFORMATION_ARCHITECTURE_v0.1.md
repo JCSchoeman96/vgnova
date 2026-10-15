@@ -1,7 +1,7 @@
 # Voelgoed Canonical Information Architecture & Content Model
 **Version:** 0.1
 **Status:** LOCKED BASELINE
-**Date:** 2026-10-12
+**Date:** 2026-10-15
 
 > This document is the canonical baseline for the Voelgoed rebuild. It consolidates the architecture decisions that have been accepted and supersedes conflicting earlier proposals where they differ from the decisions below.
 
@@ -51,7 +51,7 @@ The entity that creates the relationship owns that relationship. Other pages que
 | Learning | `/leer/` | Masteriyo | LOCKED |
 | Shop | `/winkel/` | WooCommerce | LOCKED |
 | Events | `/events/` | Tickera | LOCKED |
-| Broadcasts | `/uitsendings/` | `broadcast` CPT | LOCKED |
+| Voelgoed Live | `/voelgoed-live/` | ACF CPT `uitsending` | Public brand and root are LOCKED; series paths remain undecided |
 | Podcasts | `/podsending/` | `podcast_episode` CPT | LOCKED |
 | Competitions | `/kompetisies/` | Competition CPT(s) | LOCKED |
 | People | `/mense/` | `person` CPT | LOCKED |
@@ -140,7 +140,7 @@ The same conceptual topic hierarchy should connect:
 - Masteriyo courses
 - WooCommerce products
 - Tickera events
-- broadcasts
+- Uitsending episodes
 - podcasts
 - people/expertise
 - competitions where relevant
@@ -163,7 +163,7 @@ They should function as rich landing pages containing, where relevant:
 - products;
 - upcoming events;
 - podcasts;
-- broadcasts;
+- Voelgoed Live episodes;
 - membership CTA;
 - curated featured content.
 
@@ -220,7 +220,7 @@ Use this rule:
 
 - Standalone written/video/audio editorial item → `/content/`
 - Recurring audio programme/series → `/podsending/`
-- Recurring broadcast/video programme/series → `/uitsendings/`
+- Voelgoed Live episodes and programmes → `/voelgoed-live/` public namespace
 - Learning material/course → `/leer/`
 
 A podcast that also has a video recording remains one Podcast Episode. Do not create a duplicate Video post merely because the episode is available on YouTube.
@@ -295,7 +295,7 @@ Examples:
 - Performer at an event
 - Host of a podcast
 - Guest on a podcast
-- Presenter of a broadcast
+- Presenter of a Voelgoed Live episode
 - Instructor on a course
 
 **Speaker is not a permanent identity.**
@@ -312,7 +312,7 @@ Role: Speaker
 Podcast B:
 Role: Guest
 
-Broadcast C:
+Uitsending C:
 Role: Presenter
 ```
 
@@ -346,7 +346,7 @@ Possible sections:
 - Latest articles
 - Videos/audio
 - Podcast appearances
-- Broadcast appearances
+- Voelgoed Live appearances
 - Products
 - Previous events
 - Replay links
@@ -371,7 +371,7 @@ COURSES
 LATEST CONTENT
 [Automatically queried]
 
-PODCASTS & BROADCASTS
+PODCASTS & VOELGOED LIVE
 [Automatically queried]
 
 PAST EVENTS
@@ -588,7 +588,7 @@ hosts → Person[]
 guests → Person[]
 ```
 
-## Broadcasts
+## Uitsending
 
 ```text
 presenters → Person[]
@@ -621,43 +621,17 @@ If a relationship later needs substantial relationship-specific metadata, it may
 
 ---
 
-# 11. Broadcast Architecture
+# 11. Uitsending domain entity and Voelgoed Live brand
 
-Create one CPT:
+The internal domain entity is `Uitsending`. Its durable WordPress identifier is the ACF CPT key `uitsending`.
 
-```text
-broadcast
-```
+The public department brand is Voelgoed Live. Its canonical public root is `/voelgoed-live/`. Keep this namespace. The internal identifier stays independent of the brand, so a future brand change can update public labels, routes, rewrites, navigation, SEO presentation, and redirects without renaming the entity or database model.
 
-Each Broadcast record is an individual episode.
+Do not rename the CPT to `voelgoed-live`. Do not add a second public archive for the same episodes.
 
-Do **not** create separate Broadcast and Episode CPTs.
+The staging runtime currently registers `uitsending` with the public rewrite base and archive `voelgoed-live`. The source-controlled ACF definition and runtime record should remain aligned through the documented Git and Novamira workflows.
 
-Create:
-
-```text
-broadcast_series
-```
-
-Example:
-
-```text
-/uitsendings/
-/uitsendings/reeks/twintig-twintig/
-/uitsendings/twintig-twintig-episode-42/
-```
-
-Typical Broadcast data may include:
-
-- series;
-- episode number;
-- broadcast date;
-- presenters;
-- guests;
-- video/embed URL;
-- transcript/show notes;
-- related topic;
-- related content/products/events.
+Voelgoed Live includes programmes or series. `20-Twintig` is a known example. The exact series model, episode relationships, and permalink scheme beneath `/voelgoed-live/` remain open for a dedicated broadcast architecture decision. This document does not approve a taxonomy, rewrite, CPT, or template change for that layer.
 
 ---
 
@@ -892,7 +866,7 @@ Examples:
 - Article says who authored it.
 - Event Participation says which Person is appearing at which Event.
 - Podcast says who hosted/guested.
-- Broadcast says who presented/guested.
+- Uitsending says who presented or guested.
 - Course says who teaches it.
 - Product says who created/endorsed it.
 
@@ -946,7 +920,7 @@ Artikels
 Video's
 Oudio
 Podsendings
-Uitsendings
+Voelgoed Live
 
 Leefstyl & Vennote
 Kompetisies
@@ -987,7 +961,7 @@ Inhoud
   Video
   Oudio
   Podsendings
-  Uitsendings
+  Voelgoed Live
 
 Leer
 Events
@@ -1013,7 +987,7 @@ My rekening
     ┌─────────┼────────────┐                        │
     │         │            │                        │
  Content    Leer         Winkel                 Nuwe Jy
- Events     Podcasts     Broadcasts             Geloof
+ Events     Podcasts     Voelgoed Live           Geloof
  People     Competitions Membership              Self
                                                 etc.
 ```
@@ -1027,7 +1001,7 @@ PERSON
   ├── Course instructor
   ├── Product creator / endorser
   ├── Podcast host / guest
-  ├── Broadcast presenter / guest
+  ├── Uitsending presenter / guest
   └── Event participation
           ├── Event
           ├── Contextual role

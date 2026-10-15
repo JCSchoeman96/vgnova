@@ -1,7 +1,7 @@
 # Voelgoed Taxonomy, Discovery & User-Facing Information Architecture
 **Version:** 0.1
 **Status:** LOCKED BASELINE
-**Date:** 2026-10-13
+**Date:** 2026-10-15
 **Companion to:** `VOELGOED_CANONICAL_INFORMATION_ARCHITECTURE_v0.1.md`
 
 > This document locks the user-facing taxonomy and discovery principles for the Voelgoed rebuild.
@@ -73,7 +73,7 @@ Sluit aan
 These map to the appropriate entity/content systems:
 
 ```text
-Lees / Kyk / Luister → Editorial content, broadcasts, podcasts
+Lees / Kyk / Luister → Editorial content, Voelgoed Live episodes, podcasts
 Leer               → Masteriyo
 Events             → Tickera
 Koop               → WooCommerce
@@ -121,7 +121,7 @@ They should be reusable across:
 
 - editorial content;
 - podcasts;
-- broadcasts;
+- Voelgoed Live episodes;
 - courses;
 - products;
 - events;
@@ -751,7 +751,7 @@ It should be able to surface:
 - articles;
 - videos;
 - podcasts;
-- broadcasts;
+- Voelgoed Live episodes;
 - people/experts;
 - courses;
 - relevant events;
@@ -776,7 +776,8 @@ Preferred mapping:
 | `editorial_collection` | Reeks |
 | `person` | Mense |
 | `podcast_series` | Podsendingsreeks |
-| `broadcast_series` | Program / Reeks |
+| `uitsending` | Voelgoed Live |
+| Programme / series (model undecided) | Program / Reeks in Voelgoed Live |
 | Membership level | Actual membership/product name |
 | Commercial taxonomy | Usually not exposed as taxonomy; use clear disclosure such as `Geborg` |
 
@@ -870,7 +871,7 @@ with items such as:
 Lees
 Video's
 Podsendings
-Uitsendings
+Voelgoed Live
 Alle inhoud
 ```
 
