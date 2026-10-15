@@ -6,7 +6,9 @@ This audit covers the current local rebuild's standard WordPress `post` records.
 
 **This manifest covers the current local corpus only. It is not the production-corpus migration manifest.**
 
-The corpus contains eight standard posts across all statuses. Seven are published and in scope for editorial review; one is in trash and excluded. Six published posts need an editorial identity or content review before a format can be proposed. Post 641 is a confirmed QA fixture. No post received a confident `article`, `video`, or `audio` proposal.
+The corpus contains eight standard posts across all statuses. Seven are published and in scope for disposition; one is in trash and excluded. Of the published posts, five are documented Task 2 local proof objects, one is a confirmed QA fixture, and post 375 remains unresolved. There are currently zero verified genuine editorial posts in this small local corpus.
+
+The Task 2 proof set also included product 523, which is outside this post-only audit. Repository records describe 514, 516, 518, 519, 521, 523, and 641 as the seven local proof objects. Post 641 is retained as `QA_FIXTURE` because its title and body independently identify its QA role. The other five in-scope Task 2 proof posts use the allowed `SYSTEM_TEST` disposition.
 
 ## Corpus counts by status
 
@@ -31,20 +33,20 @@ Trash record 513, “Jou oggend-routine vir meer rustigheid” (`oggend-routine-
 |---|---:|
 | `EDITORIAL` | 0 |
 | `QA_FIXTURE` | 1 |
-| `SYSTEM_TEST` | 0 |
+| `SYSTEM_TEST` | 5 |
 | `ENTITY_REVIEW` | 0 |
-| `NEEDS_REVIEW` | 6 |
+| `NEEDS_REVIEW` | 1 |
 | Proposed `article` | 0 |
 | Proposed `video` | 0 |
 | Proposed `audio` | 0 |
-| Proposed `NEEDS_REVIEW` | 6 |
-| `NOT_APPLICABLE` | 1 |
-| Confidence `HIGH` | 1 |
+| Proposed `NEEDS_REVIEW` | 1 |
+| `NOT_APPLICABLE` | 6 |
+| Confidence `HIGH` | 6 |
 | Confidence `MEDIUM` | 0 |
-| Confidence `LOW` | 6 |
-| `review_required = YES` | 7 |
+| Confidence `LOW` | 1 |
+| `review_required = YES` | 1 |
 
-Confidence counts describe the row's disposition or format assessment. The one `HIGH` row is the confirmed QA fixture, not a format classification.
+Confidence counts describe the row's disposition or format assessment. The six `HIGH` rows establish five known local proof/test objects and one QA fixture; none is a format classification. `review_required` means editorial-format or content-identity review. Lifecycle decisions for test fixtures are separate.
 
 ## High-confidence format proposals
 
@@ -54,26 +56,33 @@ There are no high-confidence `article`, `video`, or `audio` proposals. The avail
 |---|---|---|---|
 | — | None | — | No in-scope post has a sufficiently established editorial identity and primary experience for a high-confidence format proposal. |
 
-## Ambiguous and non-editorial records
+## Unresolved record
 
 | Post ID | Disposition / proposal | Reason |
 |---:|---|---|
 | 375 | `NEEDS_REVIEW` / `NEEDS_REVIEW`, LOW | Pseudo-Latin title and Lorem ipsum body suggest demo or placeholder content. No explicit QA marker or tracked provenance was found, so its purpose and editorial identity remain unresolved. |
-| 514 | `NEEDS_REVIEW` / `NEEDS_REVIEW`, LOW | Published local proof object with one short self-care lead and explicit example-image copy; this does not establish whether it is a real editorial item or a migration fixture. |
-| 516 | `NEEDS_REVIEW` / `NEEDS_REVIEW`, LOW | Published local proof object with one short sentence and explicit example-image copy; this does not establish whether it is a real editorial item or a migration fixture. |
-| 518 | `NEEDS_REVIEW` / `NEEDS_REVIEW`, LOW | Published local proof object with one short sentence and explicit example-image copy; this does not establish whether it is a real editorial item or a migration fixture. |
-| 519 | `NEEDS_REVIEW` / `NEEDS_REVIEW`, LOW | Published local proof object with one short budgeting sentence and explicit example-image copy; a format cannot be inferred from its topic or featured image. |
-| 521 | `NEEDS_REVIEW` / `NEEDS_REVIEW`, LOW | Published local proof object with a short lede; its ACF lede includes display instructions, not substantive article text. |
-| 641 | `QA_FIXTURE` / `NOT_APPLICABLE`, HIGH | Title, excerpt, and opening paragraph explicitly call this a temporary QA article for featured-content routing. It remains untouched; any cleanup is a separate decision. |
+
+Post 375 is the only post that needs editorial identity or format review. Its placeholder signals are strong, but the repository does not provide the explicit Task 2 proof provenance recorded for the other objects.
 
 No post showed a positive sign of being a disguised event, course, product, person profile, Voelgoed Live episode, or podcast episode. No `ENTITY_REVIEW` disposition was needed.
 
-The six `NEEDS_REVIEW` records are not being silently treated as articles. Their current topics and legacy categories were recorded as evidence only and were not changed or re-evaluated.
+## Known local proof and QA fixtures
+
+| Post ID | Disposition / proposal | Confidence | Format review | Evidence and lifecycle note |
+|---:|---|---|---|---|
+| 514 | `SYSTEM_TEST` / `NOT_APPLICABLE` | HIGH | NO | Task 2 documentation includes this post in its controlled local proof set. Its short example copy is consistent with that role. Cleanup or retention is a separate decision. |
+| 516 | `SYSTEM_TEST` / `NOT_APPLICABLE` | HIGH | NO | Task 2 documentation includes this post in its controlled local proof set. Its short example copy is consistent with that role. Cleanup or retention is a separate decision. |
+| 518 | `SYSTEM_TEST` / `NOT_APPLICABLE` | HIGH | NO | Task 2 documentation includes this post in its controlled local proof set. Its short example copy is consistent with that role. Cleanup or retention is a separate decision. |
+| 519 | `SYSTEM_TEST` / `NOT_APPLICABLE` | HIGH | NO | Task 2 documentation includes this post in its controlled local proof set. Task 3C's `content_topic` review is a separate dimension. Cleanup or retention is a separate decision. |
+| 521 | `SYSTEM_TEST` / `NOT_APPLICABLE` | HIGH | NO | Task 2 documentation includes this post in its controlled local proof set. Its short example copy and display-guidance ACF value are consistent with that role. Cleanup or retention is a separate decision. |
+| 641 | `QA_FIXTURE` / `NOT_APPLICABLE` | HIGH | NO | Title, excerpt, and opening paragraph explicitly identify a temporary featured-content QA article. Cleanup or retention is a separate decision. |
+
+The repository provenance is recorded in [Task 2 Current State](POST_TASK_2_CURRENT_STATE.md), [Content Topic Seed Editorial Review](CONTENT_TOPIC_SEED_EDITORIAL_REVIEW.md), and [Task 3C Current State](POST_TASK_3C_CURRENT_STATE.md). In this audit, `SYSTEM_TEST` means a controlled local migration-proof object, not a production editorial item. Existing topic/category values are recorded only as evidence; no topic review or changes were made.
 
 ## Evidence summary
 
 - Post 375 contains pseudo-Latin title/body text, ordinary text blocks, and one featured image. No audio or video embed was found.
-- Posts 514, 516, 518, 519, and 521 contain short proof copy with explicit example-image wording, plus featured images. Their bodies do not establish complete editorial experiences.
+- Posts 514, 516, 518, 519, and 521 are controlled Task 2 local proof objects. Their short example copy and featured images do not make them production editorial records.
 - Post 521's `article_lede` ACF value is display guidance, not article content.
 - Post 641's title, excerpt, and opening text identify it as QA content; it is excluded from format proposals.
 - The reviewed published posts had no audio/video embeds, media shortcodes, or media-led content. Incidental featured images do not establish format.
@@ -93,6 +102,6 @@ Before and after the audit, runtime `editorial_format` relationships were 0 and 
 
 ## Enforcement and next scope
 
-**Can `editorial_format` safely become globally required? NOT YET.** Six published records have unresolved editorial identity or insufficient content for a confident format, and the QA fixture still needs a separately recorded cleanup decision. No high-confidence format proposal is ready for a write task.
+**Can `editorial_format` safely become globally required? NOT YET.** The local standard-post corpus contains five known Task 2 proof objects and one QA fixture, plus unresolved post 375. There are zero verified genuine editorial posts against which the required-format workflow has been migration-tested. A globally required field would also affect retained proof and QA records while they remain standard posts.
 
-Recommended next step: conduct editorial review of posts 375, 514, 516, 518, 519, and 521; record a separate cleanup decision for 641; then prepare a write task limited to records confirmed as genuine editorial content. Do not create collection terms until recurring local or verified historical installments establish membership.
+Recommended next step: resolve the provenance and disposition of post 375; separately decide whether to retain or remove proof objects 514, 516, 518, 519, 521, and QA fixture 641; keep `editorial_collection` empty; and do not assign formats until the local standard-post corpus contains verified genuine editorial records. No proof or QA object was deleted or changed in Task 4C.
