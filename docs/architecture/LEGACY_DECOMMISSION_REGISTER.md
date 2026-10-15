@@ -2,7 +2,7 @@
 
 **Status:** Active governance register
 **Inspection date:** 2026-10-15
-**Repository baseline:** `origin/main` at `9b4de54c2857855ca915baf3b9b8e4bbede99834`
+**Repository baseline:** origin/main after PR #7 merge at 0154c291bbdcd58397a82028a365f37293d2a24b
 **Runtime:** WordPress at `localhost:10039`, inspected through read-only Novamira abilities
 
 This register is the authoritative ledger for architecture that must stay, adapt, migrate, or leave. It tracks live legacy systems and future replacements so a replacement can be completed before its consumers or data are removed.
@@ -58,15 +58,15 @@ Do not remove an item before its removal gate passes. If a task finds a new bloc
 | Field | Record |
 |---|---|
 | Current state | `CURRENT LEGACY`. The ACF taxonomy is active with 13 terms, 8 relationships across 7 objects, and attachments to `post`, `product`, `tc_events`, `mto-course`, `medewerker`, `uitsending`, `kompetisie`, `kompetisie_entry`, `testimonial`, and `team_member`. |
-| Target state | Migrate each term and relationship to its correct semantic, format, collection, commercial, person, access, campaign, or editorial-control model. Keep the taxonomy until every term and consumer has a verified destination. |
+| Target state | Migrate each term and relationship to its correct topic, editorial, commercial, person/relationship, access, campaign, or editorial-control destination. Task 4A approves editorial_format and editorial_collection as post-only target dimensions; editorial_flag and campaign_context remain deferred. Keep the taxonomy until every term and consumer has a verified destination. |
 | Lifecycle status | `MIGRATE` |
 | Why it exists | It is the existing cross-content classification taxonomy. |
 | Why it is legacy or why it is KEEP | It combines seven semantic pillars with Leefstyl commercial terms and other historical classifications. It remains live and has assigned relationships. |
-| Replacement | `content_topic` for semantic subjects. Use the appropriate editorial, commercial, person, access, campaign, or flag model for other meanings. The exact replacement for each non-topic dimension remains subject to its own architecture decision. |
-| Dependencies / consumers | Current object-type attachments; Bricks archive conditions, filters, and queries; article display helpers; Featured Content Manager; Vennoot mapping and display selection; FluentSnippets; HappyFiles synchronization; legacy `kompetisie_entry`, `testimonial`, and `team_member` attachments. |
-| Removal gate | Inventory all terms, relationships, and registered attachments. Approve a term-by-term migration map. Migrate data and every identified template, snippet, integration, merchandising, partner, and folder consumer. Confirm no read or write consumer still requires the taxonomy. Preserve rollback evidence before detaching or deleting anything. |
+| Replacement | content_topic for semantic subjects; editorial_format and editorial_collection as defined in [Editorial Dimensions Architecture](EDITORIAL_DIMENSIONS_ARCHITECTURE.md); PMPro/existing access systems for access; a later commercial model for partner classifications. editorial_flag and campaign_context remain deferred. The term-by-term mapping is in [Legacy Editorial Classification Mapping](LEGACY_EDITORIAL_CLASSIFICATION_MAPPING.md). |
+| Dependencies / consumers | Current object-type attachments; Bricks archive conditions, filters, and queries; FluentSnippets 2-vg-article-dynamic-tags.php, 3-shortcode-voelgoed-vennoot-block.php, 4-taxonomy-posts-hide.php, and 6-taxonomy-posts-happyfiles.php; Featured Content Manager; Vennoot mapping and display selection; HappyFiles synchronization; legacy kompetisie_entry, testimonial, and team_member attachments. |
+| Removal gate | Inventory all terms, relationships, and registered attachments. Approve a term-by-term migration map. Migrate data and every identified template, snippet, integration, merchandising, partner, and folder consumer. Confirm no read or write consumer still requires the taxonomy. Preserve the Leefstyl parent/child structure and rollback evidence before detaching or deleting anything; the active HappyFiles synchronization can flatten category parents. |
 | Planned phase | Content classification and consumer migration, after each replacement dimension is ready. |
-| Evidence / notes | The live taxonomy is ACF-managed. The current `content_topic` has 55 terms, 7 roots, and 7 relationships across 7 objects. See [Task 3C current state](POST_TASK_3C_CURRENT_STATE.md), [topic migration report](CONTENT_TOPIC_LOCAL_MIGRATION_REPORT.md), and [local mapping contract](CONTENT_CATEGORY_TO_TOPIC_LOCAL_MAPPING.md). |
+| Evidence / notes | Read-only Novamira inspection confirms an active ACF-managed, public, hierarchical taxonomy with rewrite slug content_category: seven topic-root terms plus Leefstyl and its five commercial children, with 8 relationships across 7 objects. The current content_topic has 55 terms, 7 roots, and 7 relationships across 7 objects. The article helper reads the first content_category term for featured-field selection; the partner shortcode reads partner mappings and overrides; the category UI snippet keeps this taxonomy as the post classification UI; the HappyFiles snippet syncs category terms/assignments and can flatten parent relationships. See [Task 3C current state](POST_TASK_3C_CURRENT_STATE.md), [topic migration report](CONTENT_TOPIC_LOCAL_MIGRATION_REPORT.md), [local mapping contract](CONTENT_CATEGORY_TO_TOPIC_LOCAL_MAPPING.md), [editorial dimensions architecture](EDITORIAL_DIMENSIONS_ARCHITECTURE.md), and [legacy editorial classification mapping](LEGACY_EDITORIAL_CLASSIFICATION_MAPPING.md). |
 
 ### 2. `content_topic`
 
@@ -117,7 +117,7 @@ Do not remove an item before its removal gate passes. If a task finds a new bloc
 
 | Field | Record |
 |---|---|
-| Current state | `CURRENT LEGACY`. `content_category` contains Leefstyl with Aanlyn Onderwys, Doen Goed, Finansies, Natuurlik Gesond, and Vakansie beneath it. These terms are absent from `content_topic`. |
+| Current state | CURRENT LEGACY. content_category contains Leefstyl (leefstyl) with Aanlyn Onderwys (aanlyn-onderwys), Doen Goed (doen-goed), Finansies (finansies), Natuurlik Gesond (natuurlik-gesond), and Vakansie (vakansie) beneath it. These terms are absent from content_topic. |
 | Target state | Migrate commercial and partner meaning into an appropriate commercial model. Keep a separate semantic topic for each item where its subject is known. |
 | Lifecycle status | `DEFER` |
 | Why it exists | The legacy Leefstyl branch grouped commercial verticals and partner content. |
@@ -126,7 +126,7 @@ Do not remove an item before its removal gate passes. If a task finds a new bloc
 | Dependencies / consumers | `content_category`; `vennoot_kategorie`; `linked_vennoot_kategorie`; Featured Content Manager field `featured_leefstyl`; Vennoot display selection; `hf_cat_post`; article, product, and partner content. |
 | Removal gate | Approve a commercial model and mappings. Resolve each content and partner relationship. Rehome merchandising and HappyFiles consumers. Verify all template, snippet, and archive dependencies before retiring any Leefstyl term. |
 | Planned phase | Commercial and partner model design, followed by data and consumer migration. |
-| Evidence / notes | The live taxonomy has 13 terms. The five Leefstyl child terms have mapping values to `vennoot_kategorie`; `natuurlik-gesond` has one current `content_category` relationship. The root is not a topic pillar. |
+| Evidence / notes | Runtime confirms 13 content_category terms. The five Leefstyl children have corresponding partner mapping values in vennoot_kategorie; natuurlik-gesond has one current content_category relationship. The root is not a topic pillar. The exact destination remains subject to the later commercial model. |
 
 ### 6. Partner and commercial classification mappings
 
@@ -138,10 +138,10 @@ Do not remove an item before its removal gate passes. If a task finds a new bloc
 | Why it exists | It connects partner profiles and commercial categories to relevant editorial displays. |
 | Why it is legacy or why it is KEEP | The partner entity remains useful. The term mapping and display logic depend on the legacy category system and need to move with it. |
 | Replacement | A documented partner/commercial model with equivalent required relationships and display behavior. Its schema is not approved here. |
-| Dependencies / consumers | Seven published `vennoot` profiles; ACF group `Kategorie Vennoot Mapping`; ACF group `Partner Display Override`; direct `vennoot_kategorie` assignments; Vennoot block selection; `content_category`; featured partner content. |
+| Dependencies / consumers | Seven published vennoot profiles; ACF group Kategorie Vennoot Mapping; ACF group Partner Display Override; direct vennoot_kategorie assignments; Vennoot block selection in 3-shortcode-voelgoed-vennoot-block.php; content_category; featured partner content. |
 | Removal gate | Define the replacement and import/export mapping. Rehome partner-category assignments and all manual overrides. Verify content blocks and all matching logic before removing `linked_vennoot_kategorie` or its consumers. |
 | Planned phase | Partner and commercial architecture, then consumer migration. |
-| Evidence / notes | Current mappings include Aanlyn Onderwys to Aanlyn Onderwys, Doen Goed to Doen Goed, Finansies to Finansies, Natuurlik Gesond to Natuurlik Gesond, and Vakansie to Vakansie. |
+| Evidence / notes | Runtime vennoot_kategorie terms are Aanlyn Onderwys, Doen Goed, Finansies, Geldgeheime, Natuurlik Gesond, Onderwys, and Vakansie. Current legacy mappings include Aanlyn Onderwys to Aanlyn Onderwys, Doen Goed to Doen Goed, Finansies to Finansies, Natuurlik Gesond to Natuurlik Gesond, and Vakansie to Vakansie. The shortcode reads linked_vennoot_kategorie, manual_vennoot, and hide_vennoot_blok. |
 
 ### 7. Featured Content Manager
 
@@ -151,12 +151,12 @@ Do not remove an item before its removal gate passes. If a task finds a new bloc
 | Target state | Adapt to the approved topic-aware priority: item override, exact-topic curated content, automatic exact-topic match, parent-topic fallback, then global fallback. |
 | Lifecycle status | `ADAPT` |
 | Why it exists | It provides global manual featured selections for each old pillar. |
-| Why it is legacy or why it is KEEP | The manager is still useful as a global fallback. Its fields reflect the old pillar list and include `featured_leefstyl`. |
+| Why it is legacy or why it is KEEP | The manager is still useful as a global fallback. Its fields reflect the old pillar list and include featured_leefstyl. The active article helper reads the first content_category term and maps only the seven topic-root slugs to featured fields; it does not map leefstyl. |
 | Replacement | Topic-aware featured-content selection and global fallback controls. The future field schema and UI are not designed here. |
 | Dependencies / consumers | ACF options page `featured-content-manager`; fields `featured_nuwe_jy`, `featured_geloof`, `featured_self`, `featured_werk_geld`, `featured_ouerskap`, `featured_huwelik`, `featured_mensstories`, and `featured_leefstyl`; Bricks featured-content components and queries. |
 | Removal gate | Implement and verify all priority levels. Migrate the three current selections and decide how to handle the five empty selections. Verify Bricks output, global fallback, and editor controls before removing old fields. |
 | Planned phase | Merchandising design and implementation, then value and consumer migration. |
-| Evidence / notes | Current values are post IDs 542, 534, and 531 for Nuwe Jy, Geloof, and Self. The other five fields are empty. The Task 3C snapshot says topic-based merchandising has not started. |
+| Evidence / notes | Read-only Novamira inspection confirms current values are post IDs 542, 534, and 531 for Nuwe Jy, Geloof, and Self. The other five fields are empty. These ACF fields are Post Object relationships, not editorial flags. The article helper also exposes featured-field dynamic tags. The Task 3C snapshot says topic-based merchandising has not started. |
 
 ### 8. Inactive content-category sidebar promo group
 
@@ -169,9 +169,9 @@ Do not remove an item before its removal gate passes. If a task finds a new bloc
 | Why it is legacy or why it is KEEP | The group is inactive and tied to the legacy taxonomy. Current values and template consumers have not been audited. |
 | Replacement | Topic-aware merchandising, if needed. No replacement is required if no current consumer remains. |
 | Dependencies / consumers | ACF group `group_vg_content_category_promo`; any Bricks template, shortcode, or snippet reading `category_promo_item`, `category_promo_label`, or `category_promo_cta_text`. |
-| Removal gate | Read current stored values and search active Bricks templates, code, and content output for all three fields. If no requirement remains, record the evidence before deleting the group. |
+| Removal gate | Read current stored values and search active Bricks templates, code, and content output for all three fields. Confirm behavior of the vg_category_promo_* dynamic-tag aliases before changing the helper. If no requirement remains, record the evidence before deleting the group. |
 | Planned phase | Merchandising consumer inventory. |
-| Evidence / notes | Novamira reports the group as inactive, with 3 fields and `content_category` term location. Values and front-end output were not read during this inspection. |
+| Evidence / notes | Read-only Novamira reports the group as inactive, with 3 fields and content_category term location. Values were not read. The active article helper aliases vg_category_promo_* dynamic tags to Featured Content Manager fields and does not read category_promo_item, category_promo_label, or category_promo_cta_text; Bricks consumers still require review. |
 
 ### 9. Topic-aware layered merchandising
 
@@ -214,9 +214,9 @@ Do not remove an item before its removal gate passes. If a task finds a new bloc
 | Why it is legacy or why it is KEEP | The post folder sync couples administrative organization to `content_category`. The folders remain useful and are not semantic taxonomy terms. |
 | Replacement | A reviewed folder mapping that preserves media and editorial workflows without depending on retired semantic categories. |
 | Dependencies / consumers | FluentSnippets `6-taxonomy-posts-happyfiles.php`; `content_category`; `hf_cat_post`; `hf_cat_uitsending`; media folder selections and content editors. |
-| Removal gate | Inspect the active snippet and compare folder assignments before changing sync. Preserve files and folder assignments. Verify editor workflows and all migrated content before disabling the sync or retiring a folder. |
+| Removal gate | Inspect the active snippet and compare folder assignments before changing sync. Preserve files, folder assignments, and the Leefstyl parent/child structure. The current sync helper may set content_category and HappyFiles terms to parent 0, so verify its effects before running it during any later migration. Verify editor workflows and all migrated content before disabling the sync or retiring a folder. |
 | Planned phase | Content-category consumer migration and separate media-folder review. |
-| Evidence / notes | Task 1 current-state documentation records the post sync. Runtime folders include `Content Categories`, `Uitsending Series`, and `Uitsending Types` under `hf_cat_uitsending`. |
+| Evidence / notes | Task 1 current-state documentation records the post sync. Read-only inspection of 6-taxonomy-posts-happyfiles.php confirms bidirectional term/assignment sync and parent-flattening logic. Runtime folders include Content Categories, Uitsending Series, and Uitsending Types under hf_cat_uitsending. |
 
 ### 12. `medewerker` CPT
 
