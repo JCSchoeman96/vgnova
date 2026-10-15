@@ -32,7 +32,7 @@ Documentation for the **Voelgoed** WordPress staging site managed through **Nova
 
 ## What this project is
 
-Voelgoed is an Afrikaans women's wellness platform being rebuilt as **one Bricks-based WordPress site**, consolidating content from three legacy sites (articles, LearnDash courses, WooCommerce shop). Staging is the source of truth for structure; this folder holds **plans, backups, and agent guidance**—not the WordPress codebase itself (that lives in Local's `app/public`).
+Voelgoed is an Afrikaans women's wellness platform being rebuilt as **one Bricks-based WordPress site**, consolidating content from three legacy sites (articles, LearnDash courses, WooCommerce shop). This Git repository is canonical for source-controlled architecture and code, including the Platform Core module in `site-code/`. The Local WordPress installation is derived runtime state and may also contain database-managed content and configuration. Use Novamira MCP to inspect WordPress, with WP-CLI or the local shell for verification and fallback. This README records a staging snapshot last inspected on 5 June 2026; check the runtime before relying on its current-state details.
 
 **Non-negotiables (see `AGENTS.md`):**
 

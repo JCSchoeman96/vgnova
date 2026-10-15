@@ -8,6 +8,18 @@
 
 This project manages a WordPress Local Flywheel staging site through Novamira MCP in Cursor. For a staging snapshot of URLs, CPTs, field groups, and editor flows, see [`README.md`](README.md).
 
+## Source of truth and runtime access
+
+The Git repository is canonical for source-controlled architecture and code. The local WordPress installation is derived runtime state and may also contain database-managed content and configuration. Inspect the runtime before describing live state; do not treat runtime-only edits as source-controlled architecture.
+
+Use Novamira MCP as the primary WordPress runtime interface. Use WP-CLI or the local shell for read-only verification and as a fallback. Direct SQL writes are exceptional and require a documented reason and explicit task scope.
+
+Local runtime references:
+
+- Site host: `localhost:10039`
+- WordPress root: `/home/jcschoeman96/Local Sites/voelgoed-novamira/app/public/`
+- SQL directory: `/home/jcschoeman96/Local Sites/voelgoed-novamira/app/sql/`
+
 ## Rules
 - Prefer Novamira MCP for WordPress inspection and changes.
 - Inspect before editing: understand templates, components, globals, variables, and dynamic data first.
@@ -35,7 +47,7 @@ This project manages a WordPress Local Flywheel staging site through Novamira MC
 ### End Goal
 
 One unified WordPress site — `voelgoed.co.za` — with:
-- **500+ articles** across 8 pillar content categories
+- **500+ articles** classified against seven canonical semantic topic pillars, with commercial classifications kept separate
 - **15 courses** (LMS — Masteriyo on staging; legacy source was LearnDash)
 - **50+ products** (WooCommerce)
 - **Events** (Tickera `tc_events` + `event_category` taxonomy — 8 event-type terms)
@@ -46,9 +58,11 @@ One unified WordPress site — `voelgoed.co.za` — with:
 - **FluentCRM** email automation
 - **Schema-rich structured data** for SEO
 
-### The 8 Pillar Categories (`content_category` taxonomy)
+### Canonical topic pillars and legacy categories
 
-`nuwe-jy` · `geloof` · `ouerskap` · `werk-geld` · `self` · `huwelik` · `mensstories` · `leefstyl`
+The seven canonical semantic pillars live in `content_topic`: `nuwe-jy`, `geloof`, `self`, `werk-geld`, `ouerskap`, `huwelik`, and `mensstories`.
+
+`content_category` is the current legacy taxonomy. It remains attached to live content until its terms, relationships, and consumers pass the gates in [`docs/architecture/LEGACY_DECOMMISSION_REGISTER.md`](docs/architecture/LEGACY_DECOMMISSION_REGISTER.md). `Leefstyl` and its child terms are commercial classifications, not canonical `content_topic` pillars.
 
 
 ## Theme & Plugin Stack
@@ -156,11 +170,11 @@ These are **locked** — do not re-debate or propose alternatives:
 
 | Decision | Detail |
 |---|---|
-| **8 pillar categories** | `content_category` taxonomy on posts, courses, `tc_events`, medewerkers (optional) |
+| **Topic pillars** | Seven canonical roots in `content_topic`, owned by Voelgoed Platform Core. `content_category` remains live legacy until its migration gates pass. |
 | **Relationships** | ACF relationship fields — never taxonomy cross-linking |
 | **Medewerkers** | Single CPT (`medewerker`) + `medewerker_rol` / `medewerker_groep` taxonomies — NOT WordPress users; **no** legacy `mentor` CPT or `/mentor/` URLs |
 | **Events** | Tickera `tc_events` + `event_category` taxonomy — NOT separate CPTs per type |
-| **Voelgoed Live** | ACF CPT `uitsending` — public Voelgoed Live episodes; internal key stays `uitsending` |
+| **Voelgoed Live** | Internal domain entity and CPT key: `uitsending`. Public brand: Voelgoed Live. Canonical public root: `/voelgoed-live/`. The public brand does not determine the internal identifier. |
 | **Competitions** | Separate CPT (`competition`) + child CPT (`competition_entry`) |
 | **No-code first** | Native WordPress → Bricks UI → ACF UI before any code |
 | **Naming convention** | `snake_case` for ACF fields, `BEM` for CSS classes, `data-attributes` for JS hooks |
@@ -260,7 +274,7 @@ $bio = get_field('medewerker_kort_bio', get_the_ID());
 10. Product archive (`/winkel/`)
 11. Product single
 12. Voelgoed Live archive (`/voelgoed-live/`)
-13. Voelgoed Live series hub (`/voelgoed-live/reeks/{series}/`)
+13. Voelgoed Live series hub (permalink to be decided)
 14. Voelgoed Live single (`/voelgoed-live/{slug}/`)
 15. Competition archive
 16. Competition single + entry pages
@@ -298,6 +312,21 @@ $bio = get_field('medewerker_kort_bio', get_the_ID());
 - ❌ Override ACSS variables with hardcoded hex values or px values
 - ❌ Reintroduce `mentor` CPT, mentor-only ACF groups, or `/mentor/` URL redirects for “migration compatibility”
 - ❌ Use taxonomy terms to link medewerkers to events/products (use ACF relationship fields only)
+
+## Legacy cleanup obligation
+
+When a task touches legacy or superseded architecture, remove it only after the replacement and every consumer are verified. If a blocker prevents removal, update the [Legacy Decommission Register](docs/architecture/LEGACY_DECOMMISSION_REGISTER.md) with the exact blocker and removal gate. Do not leave newly obsolete architecture undocumented.
+
+Use this lifecycle:
+
+1. Discover the legacy item and its consumers.
+2. Design the replacement.
+3. Implement the replacement.
+4. Migrate data.
+5. Migrate consumers.
+6. Verify the replacement and migrated consumers.
+7. Decommission the legacy item.
+8. Verify removal.
 
 ---
 
