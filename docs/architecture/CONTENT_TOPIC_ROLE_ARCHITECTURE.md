@@ -49,11 +49,13 @@ The service derives state from current direct relationships, the Primary referen
 
 `NOT_APPLICABLE` is used for medarbeiders and any future person model. It does not imply that the object's expertise topic relationships are reviewed.
 
-## 6. Task 2 provenance
+## 6. Task 2 provenance and lifecycle
 
-The role service reads `vgpc_content_topic_migration_local_v1` to identify migration seeds. It does not edit or delete that option and does not claim ownership of its relationships.
+The role service reads `vgpc_content_topic_migration_local_v1` to identify migration seeds. It does not edit or delete that option and does not claim ownership of its relationships. The option remains the historical answer to which seven canonical relationships Task 2 created.
 
-Task 2 rollback continues to remove only the relationships in its record. If rollback removes a Primary relationship, the relationship hook clears that Primary. It does not choose a replacement. A remaining non-seed topic leaves the object in `NEEDS_REVIEW`; no remaining topic leaves it `UNCLASSIFIED`.
+The separate `vgpc_content_topic_migration_local_v1_lifecycle` option records whether the local proof migration is active or retired. Task 3C retired it after checking its migration ID, reviewed fingerprint, and all seven original relationships. Retirement does not change the provenance record or classification state. An object may remain `MIGRATION_SEED` while it still has an original recorded Direct Topic and no Primary.
+
+Once retired, Task 2 apply and rollback both refuse with `vgpc_topic_migration_retired`. Editorial replacement has superseded rollback-to-seed semantics. The original rollback behavior remains described by its Task 2 report and applies only to an active, unretired proof.
 
 ## 7. Hierarchy rules
 
@@ -92,7 +94,7 @@ The service does not require Primary at save time. Posts follow a soft editorial
 
 ## 11. Removed or deleted Primary terms
 
-When WordPress removes the Primary term relationship, Platform Core clears the Primary reference. This includes direct editor changes and Task 2 rollback. It does not promote another term.
+When WordPress removes the Primary term relationship, Platform Core clears the Primary reference. This includes direct editor changes. It does not promote another term.
 
 When a term is deleted from `content_topic`, Platform Core clears references to it. No replacement is selected. Read and validation methods fail closed if they encounter a stale reference before cleanup runs.
 
@@ -130,4 +132,4 @@ This task does not connect the service to Bricks templates. Future Bricks integr
 
 ## 14. Migration compatibility and non-goals
 
-Task 3 adds role infrastructure only. It does not change the seven Task 2 relationships, choose Primary Topics for them, or change the Task 2 migration record. It does not edit `content_category`, infer classifications, change templates or URLs, or start Task 3B.
+Task 3C applies the two architecture-approved HIGH-confidence classifications: object 519 uses `begroting-geldbestuur`, and product 523 uses `oefening-fiksheid`. Each is the only Direct Topic and is also Primary; its canonical ancestors are Effective Topics. The five remaining Task 2 seeds are unchanged. `content_category`, templates, and URLs are unchanged. See the Task 3C current-state snapshot for the exact live state and checks.

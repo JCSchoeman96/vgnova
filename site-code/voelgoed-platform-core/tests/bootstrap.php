@@ -537,7 +537,9 @@ function is_wp_error(mixed $thing): bool
 
 function get_option(string $option, mixed $default = false): mixed
 {
-    return $GLOBALS['vgpc_test_options'][$option] ?? $default;
+    return array_key_exists($option, $GLOBALS['vgpc_test_options'])
+        ? $GLOBALS['vgpc_test_options'][$option]
+        : $default;
 }
 
 function update_option(string $option, mixed $value, mixed $autoload = null): bool
