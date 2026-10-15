@@ -1,0 +1,78 @@
+{
+    "key": "group_vg_editorial_classification",
+    "title": "Editorial Classification",
+    "fields": [
+        {
+            "key": "field_vg_editorial_format",
+            "label": "Formaat",
+            "name": "editorial_format",
+            "aria-label": "",
+            "type": "taxonomy",
+            "instructions": "Kies een formaat. Laat leeg totdat die bestaande inhoud hersien is.",
+            "required": 0,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "50",
+                "class": "",
+                "id": ""
+            },
+            "taxonomy": "editorial_format",
+            "add_term": 0,
+            "save_terms": 1,
+            "load_terms": 1,
+            "return_format": "id",
+            "field_type": "radio",
+            "multiple": 0,
+            "allow_null": 1,
+            "default_value": [],
+            "bidirectional_target": []
+        },
+        {
+            "key": "field_vg_editorial_collection",
+            "label": "Versameling",
+            "name": "editorial_collection",
+            "aria-label": "",
+            "type": "taxonomy",
+            "instructions": "Kies slegs goedgekeurde redaksionele versamelings. Geen waardes is tans goedgekeur nie.",
+            "required": 0,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "50",
+                "class": "",
+                "id": ""
+            },
+            "taxonomy": "editorial_collection",
+            "add_term": 0,
+            "save_terms": 1,
+            "load_terms": 1,
+            "return_format": "id",
+            "field_type": "multi_select",
+            "multiple": 1,
+            "allow_null": 1,
+            "default_value": [],
+            "bidirectional_target": []
+        }
+    ],
+    "location": [
+        [
+            {
+                "param": "post_type",
+                "operator": "==",
+                "value": "post"
+            }
+        ]
+    ],
+    "menu_order": 0,
+    "position": "normal",
+    "style": "default",
+    "label_placement": "top",
+    "instruction_placement": "label",
+    "hide_on_screen": [],
+    "active": true,
+    "description": "",
+    "show_in_rest": false,
+    "display_title": "",
+    "allow_ai_access": false,
+    "ai_description": "",
+    "modified": 1792050972
+}
