@@ -7,6 +7,8 @@
 
 This register is the authoritative ledger for architecture that must stay, adapt, migrate, or leave. It tracks live legacy systems and future replacements so a replacement can be completed before its consumers or data are removed.
 
+This register tracks decommission lifecycle and does not replace the canonical architecture documents as the source of target architecture. Locked canonical architecture documents govern approved target architecture. If a register entry conflicts with a canonical architecture decision, the canonical document takes precedence and the register must be corrected.
+
 The register describes source and runtime evidence. It does not authorize WordPress writes. The Task 1 through Task 3C current-state files remain historical snapshots and are not rewritten when the live architecture changes.
 
 ## State labels
@@ -220,15 +222,15 @@ Do not remove an item before its removal gate passes. If a task finds a new bloc
 
 | Field | Record |
 |---|---|
-| Current state | `CURRENT CANONICAL`. The public ACF CPT has 5 published profiles and uses `/medewerkers/` for archive and single URLs. |
-| Target state | Keep as the current public profile model unless a later Person architecture task finds a material technical reason to adapt it. |
-| Lifecycle status | `KEEP` |
+| Current state | `TEMPORARY TRANSITIONAL`. The current ACF CPT has 5 published profiles and uses `/medewerkers/` for archive and single URLs. |
+| Target state | Preserve existing profiles and consumers while the dedicated Person architecture task defines the migration and normalization mechanics. Do not create a parallel Person system. Keep `/mense/` as the approved canonical People destination unless a later explicit architecture decision changes it. |
+| Lifecycle status | `ADAPT` |
 | Why it exists | It provides one public contributor profile model for current staging work. |
-| Why it is legacy or why it is KEEP | It is the live MVP profile entity and replaces the old mentor-only pattern. The future Person direction must not trigger a blind rename or a parallel CPT. |
-| Replacement | None currently approved. The dedicated Person architecture phase will decide whether this entity fulfills the broader model. |
+| Why it is legacy or why it is KEEP | It is the functioning runtime profile implementation, while the canonical IA defines a broader Person entity and the `/mense/` destination. Its continued operation does not make it permanently exempt from that architecture. |
+| Replacement | The approved canonical Person model and `/mense/` area. Exact migration and normalization mechanics remain for the Person architecture task. |
 | Dependencies / consumers | `medewerker_rol`; `medewerker_groep`; profile ACF fields; `content_topic` expertise terms; event and product relationship fields; Voelgoed Live hosts and guests; Bricks profile templates and query helpers. |
-| Removal gate | No removal planned. Any future adaptation must map every profile, relationship, URL, template, and search consumer before change. |
-| Planned phase | Ongoing MVP use; review during Person architecture. |
+| Removal gate | Do not remove or rename `medewerker` until the approved migration maps and verifies every profile, relationship, URL, template, and consumer. |
+| Planned phase | Dedicated Person architecture, followed by profile and consumer migration. |
 | Evidence / notes | Runtime has five published profiles. `medewerker` is an ACF-managed CPT with the `/medewerkers/` archive. |
 
 ### 13. `medewerker_rol` and `medewerker_groep`
@@ -430,16 +432,16 @@ Do not remove an item before its removal gate passes. If a task finds a new bloc
 
 | Field | Record |
 |---|---|
-| Current state | `CURRENT CANONICAL`. Masteriyo singles use `/leer/{slug}/`; the course archive is `/kursusse/`. |
-| Target state | Keep the separate single and archive paths. |
-| Lifecycle status | `KEEP` |
+| Current state | `TEMPORARY TRANSITIONAL`. Current Masteriyo singles use `/leer/{slug}/`; the runtime archive uses `/kursusse/`. |
+| Target state | Keep current URLs unchanged now. Converge the archive or hub with the canonical Learning area `/leer/` through a dedicated Learning/URL task, including redirects if needed. |
+| Lifecycle status | `ADAPT` |
 | Why it exists | Masteriyo owns the course entity and learning state. |
-| Why it is legacy or why it is KEEP | Both paths are configured and correspond to current single and archive use. |
-| Replacement | None. |
+| Why it is legacy or why it is KEEP | The canonical IA locks `/leer/` as the Learning area. `/kursusse/` is current runtime state, not an approved permanent archive route. |
+| Replacement | The final course archive or hub under the canonical `/leer/` area. The implementation and redirect requirements remain for the Learning/URL task. |
 | Dependencies / consumers | Masteriyo `mto-course`; course links; Bricks templates; navigation; SEO and redirects from the legacy LMS site. |
-| Removal gate | No removal planned. Any future route change requires a separate migration and redirect plan. |
-| Planned phase | Ongoing use. |
-| Evidence / notes | The live post-type registry reports single rewrite `leer` and archive `kursusse`. |
+| Removal gate | No runtime URL change is authorized here. Design and implement the final archive or hub, inventory affected links, and verify redirects and course flows before changing the runtime archive. Keep current course singles during that work. |
+| Planned phase | Dedicated Learning/URL task. |
+| Evidence / notes | The canonical IA names `/leer/` as the Learning area. The live post-type registry reports single rewrite `leer` and archive `kursusse`. |
 
 ### 27. Shop routes `/winkel/` and `/produkte/`
 
@@ -490,15 +492,15 @@ Do not remove an item before its removal gate passes. If a task finds a new bloc
 
 | Field | Record |
 |---|---|
-| Current state | `FUTURE / NOT YET IMPLEMENTED`. The current public profile CPT is `medewerker`, with `/medewerkers/` archive and single URLs. |
-| Target state | Decide the Person model and public route before any URL migration. |
+| Current state | `FUTURE / NOT YET IMPLEMENTED`. The canonical IA approves the People area at `/mense/` and the canonical Person entity. The current runtime profile implementation is `medewerker`, with `/medewerkers/` archive and single URLs. |
+| Target state | Implement the approved Person destination at `/mense/`. Define the exact migration and normalization mechanics from `medewerker` in the dedicated Person architecture task. |
 | Lifecycle status | `DEFER` |
-| Why it exists | The canonical IA proposes a broad Person destination. |
-| Why it is legacy or why it is KEEP | `/mense/` is not a live route. Current contributor profiles use `/medewerkers/`. |
-| Replacement | The future Person architecture may retain `medewerker` or approve another model. No CPT rename is approved here. |
+| Why it exists | It is the approved public destination for the canonical Person model. |
+| Why it is legacy or why it is KEEP | `/mense/` has not been implemented in the runtime. The route and Person direction are approved; migration mechanics are not yet designed. |
+| Replacement | The canonical Person entity and `/mense/` destination defined by the locked IA. |
 | Dependencies / consumers | Five published profiles; event and product relations; Voelgoed Live hosts and guests; Bricks profile pages; inbound links; SEO. |
-| Removal gate | Approve the person model and route, inventory profile links, migrate relations and consumers, and create verified redirects before changing public URLs. |
-| Planned phase | Person architecture and route planning. |
+| Removal gate | Design the profile and relationship migration from `medewerker`; map and verify profiles, relations, templates, consumers, inbound links, and redirects before changing runtime URLs. The `/mense/` destination does not need re-approval unless a later explicit architecture decision changes it. |
+| Planned phase | Person architecture and migration planning; `/mense/` is already approved. |
 | Evidence / notes | Runtime ACF CPT and rewrite configuration report `medewerker` and `medewerkers`; no published page with slug `mense` was found. |
 
 ### 31. Competition route `/kompetisies/`
@@ -537,8 +539,8 @@ Counts below include each numbered entry once.
 
 | Lifecycle status | Count |
 |---|---:|
-| `KEEP` | 8 |
-| `ADAPT` | 6 |
+| `KEEP` | 6 |
+| `ADAPT` | 8 |
 | `MIGRATE` | 1 |
 | `DEFER` | 15 |
 | `READY_TO_REMOVE` | 0 |

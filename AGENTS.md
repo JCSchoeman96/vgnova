@@ -51,7 +51,7 @@ One unified WordPress site — `voelgoed.co.za` — with:
 - **15 courses** (LMS — Masteriyo on staging; legacy source was LearnDash)
 - **50+ products** (WooCommerce)
 - **Events** (Tickera `tc_events` + `event_category` taxonomy — 8 event-type terms)
-- **Medewerkers** (`medewerker` CPT) — one public profile model for all contributors
+- **People** — canonical Person model in the `/mense/` area; current profiles remain in `medewerker` during a separately approved migration
 - **Tickera** ticketing for live events
 - **Paid Memberships Pro** for gated content
 - **Full GA4 + GTM + Meta Pixel** tracking
@@ -172,13 +172,13 @@ These are **locked** — do not re-debate or propose alternatives:
 |---|---|
 | **Topic pillars** | Seven canonical roots in `content_topic`, owned by Voelgoed Platform Core. `content_category` remains live legacy until its migration gates pass. |
 | **Relationships** | ACF relationship fields — never taxonomy cross-linking |
-| **Medewerkers** | Single CPT (`medewerker`) + `medewerker_rol` / `medewerker_groep` taxonomies — NOT WordPress users; **no** legacy `mentor` CPT or `/mentor/` URLs |
+| **People** | The canonical Person entity and public destination are defined in the information architecture at `/mense/`. The current `medewerker` implementation stays operational until a separately approved migration maps and verifies profiles, relationships, URLs, and consumers. Do not create a parallel Person implementation or reintroduce the legacy `mentor` CPT or `/mentor/` URLs. |
 | **Events** | Tickera `tc_events` + `event_category` taxonomy — NOT separate CPTs per type |
 | **Voelgoed Live** | Internal domain entity and CPT key: `uitsending`. Public brand: Voelgoed Live. Canonical public root: `/voelgoed-live/`. The public brand does not determine the internal identifier. |
 | **Competitions** | Separate CPT (`competition`) + child CPT (`competition_entry`) |
 | **No-code first** | Native WordPress → Bricks UI → ACF UI before any code |
 | **Naming convention** | `snake_case` for ACF fields, `BEM` for CSS classes, `data-attributes` for JS hooks |
-| **URL structure** | `/content/slug`, `/events/slug`, `/kursusse/slug`, `/medewerkers/slug` etc. |
+| **URL structure** | `/content/slug`, `/events/slug`, `/leer/slug`, `/mense/slug` etc. Follow the canonical IA and record transitional runtime routes separately. |
 
 ---
 
@@ -187,18 +187,20 @@ These are **locked** — do not re-debate or propose alternatives:
 | CPT | Slug | Archive URL | Notes |
 |---|---|---|---|
 | `post` (default) | — | `/content/{slug}/` | Standard articles (permalink prefix `/content/`) |
-| `medewerker` | `medewerkers` | `/medewerkers/` | Public contributors — roles via `medewerker_rol`, groups via `medewerker_groep` |
+| `medewerker` | `medewerkers` | `/medewerkers/` | Current runtime profile implementation; retain until the approved Person migration maps and verifies profiles, relationships, URLs, and consumers |
 | `uitsending` | `voelgoed-live` | `/voelgoed-live/` | Voelgoed Live episodes; internal key stays `uitsending` |
 | `kompetisie` | `kompetisies` | `/kompetisie/` | Inspirasie Vrou etc. |
 | `kompetisie_inskrywing` | `inskrywing` | Under parent | Competition entries |
 | `vennoot` | (under `/content/`) | No archive | Sponsors/partners |
 | `team_member`, `testimonial` | default | No public archive | Internal/profile use |
 
-**Plugin CPTs (not ACF):** `tc_events` (Tickera, `/events/`), `mto-course` (Masteriyo, singles `/leer/`, archive `/kursusse/`), `product` (WooCommerce, singles `/winkel/`, shop `/produkte/`).
+**Plugin CPTs (not ACF):** `tc_events` (Tickera, `/events/`), `mto-course` (Masteriyo, current singles `/leer/{slug}/`, runtime archive `/kursusse/`), `product` (WooCommerce, singles `/winkel/`, shop `/produkte/`).
 
-### Medewerkers (current MVP — fresh rebuild)
+The canonical Learning area is `/leer/`. Keep the current Masteriyo URLs unchanged during this documentation phase. Treat `/kursusse/` as a transitional runtime archive. A dedicated Learning/URL task must decide the final archive or hub implementation and any redirect requirements. This guidance does not authorize rewrite changes.
 
-Staging treats medewerkers as a **greenfield** model. Do not recreate the old `mentor` CPT, mentor ACF groups, `/mentor/` rewrites, or compatibility redirects.
+### Medewerker (current runtime implementation)
+
+The live profile implementation is `medewerker`. Keep its profiles and consumers operational while the approved canonical Person model and `/mense/` destination are implemented through a separately approved migration. Do not create a parallel Person system or remove or rename `medewerker` before profiles, relationships, URLs, and consumers are mapped and verified. Do not recreate the old `mentor` CPT, mentor ACF groups, `/mentor/` rewrites, or compatibility redirects.
 
 | Piece | Detail |
 |-------|--------|
@@ -269,7 +271,7 @@ $bio = get_field('medewerker_kort_bio', get_the_ID());
 5. Article single
 6. Event archive (`/events/`)
 7. Event single
-8. Course archive (`/kursusse/`)
+8. Course archive or hub (canonical area `/leer/`; runtime archive `/kursusse/` pending the Learning/URL task)
 9. Course single
 10. Product archive (`/winkel/`)
 11. Product single
