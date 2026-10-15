@@ -7,13 +7,13 @@
 
 ## Source/runtime ownership
 
-ACF Pro owns the two taxonomy definitions and the `Editorial Classification` field group. The Git source is the repository-backed ACF Local JSON directory:
+ACF Pro owns the two taxonomy definitions and the `Editorial Classification` field group. Git Local JSON is the canonical source-controlled representation, and the WordPress database holds the runtime ACF records. ACF JSON synchronization is the explicit bridge between them; Git changes do not automatically update an existing database copy. The repository-backed ACF Local JSON directory is:
 
 ```text
 site-code/editorial-dimensions/acf-json/
 ```
 
-The active theme path `/home/jcschoeman96/Local Sites/voelgoed-novamira/app/public/wp-content/themes/bricks-child/acf-json` is symlinked to that directory. Novamira reported the ACF records as database-sourced (`source: db`). ACF API payloads were compared to the tracked JSON: taxonomy registration properties match; field group location and source-defined field properties match. ACF's generated record IDs/timestamps and runtime-derived field properties (`prefix`, `value`, `menu_order`, `id`, `class`, `parent`, `_name`, `_valid`) are not JSON configuration properties.
+The active theme path `/home/jcschoeman96/Local Sites/voelgoed-novamira/app/public/wp-content/themes/bricks-child/acf-json` is symlinked to that directory. Novamira reported the ACF records as database-sourced (`source: db`). ACF API payloads were compared to the tracked JSON: taxonomy registration properties match; field group location and source-defined field properties match. ACF's generated record IDs/timestamps and runtime-derived field properties (`prefix`, `value`, `menu_order`, `id`, `class`, `parent`, `_name`, `_valid`) are not JSON configuration properties. The three Task 4B JSON keys are currently in sync. The global ACF status also reported unrelated pending records, so setup uses targeted sync commands for the Task 4B keys only.
 
 Tracked implementation files:
 
@@ -43,7 +43,7 @@ Tracked implementation files:
 | Terms | `article`, `video`, `audio` | None |
 | Relationships | 0 | 0 |
 
-The format term labels are `Artikel`, `Video`, and `Oudio`, respectively. The collection term count is zero. No default format exists. Both ACF controls load and save taxonomy terms.
+The format term labels are `Artikel`, `Video`, and `Oudio`, respectively. The collection term count is zero. No default format exists. Both ACF controls load and save taxonomy terms. WordPress taxonomy relationships are the authoritative classification; ACF may also persist field values in post meta, which downstream classification code must not use as canonical data.
 
 The ACF field group is active on standard posts only. Browser inspection showed one `Editorial Classification` area, three single-select format choices, an empty multi-select collection control, no inline term creation controls, and no duplicate native taxonomy panels. Browser save with no format selected succeeded. The QA assignment check confirmed selecting `video` replaced `article`.
 

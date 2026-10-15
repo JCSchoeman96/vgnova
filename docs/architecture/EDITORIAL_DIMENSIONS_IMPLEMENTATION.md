@@ -19,11 +19,68 @@ The active Bricks Child theme's ACF JSON directory is:
 /home/jcschoeman96/Local Sites/voelgoed-novamira/app/public/wp-content/themes/bricks-child/acf-json
 ```
 
-That directory is a symlink to this repository module's `site-code/editorial-dimensions/acf-json/`. ACF Local JSON reads and writes through that path. On a fresh checkout, create the target directory and link the active theme's `acf-json` directory to the repository-backed folder before syncing or editing these definitions in ACF. The JSON files were generated through the ACF-managed definition workflow, not hand-written.
+That directory is a symlink to this repository module's `site-code/editorial-dimensions/acf-json/`. ACF Local JSON reads and writes through that path. ACF Pro owns the definitions, Git Local JSON is their canonical source-controlled representation, and the WordPress database holds the runtime records. The ACF JSON sync command is the explicit bridge between Git files and those database records. A file changing in Git does not update an existing database record until ACF sync runs.
 
-At verification time ACF's runtime records reported `source: db`. Git remains canonical through the tracked Local JSON files; the current ACF database records are the runtime copy. ACF's runtime taxonomy payloads and the JSON files matched for all persisted registration properties. The field group location and every source-defined field property also matched. ACF adds runtime metadata when it loads fields (`ID`, `prefix`, `value`, `menu_order`, `id`, `class`, `parent`, `_name`, `_valid`); these are generated record/runtime values, not source configuration. The database `ID`, ACF validity marker, and modification timestamp are likewise excluded from the parity comparison.
+At verification time ACF's runtime records reported `source: db`. ACF's runtime taxonomy payloads and the JSON files matched for all persisted registration properties. The field group location and every source-defined field property also matched. ACF adds runtime metadata when it loads fields (`ID`, `prefix`, `value`, `menu_order`, `id`, `class`, `parent`, `_name`, `_valid`); these are generated record/runtime values, not source configuration. The database `ID`, ACF validity marker, and modification timestamp are likewise excluded from the parity comparison.
 
-This follows ACF's Local JSON workflow for field groups and ACF-managed taxonomies. See [ACF Local JSON](https://www.advancedcustomfields.com/resources/local-json/) and [WP-CLI JSON export](https://www.advancedcustomfields.com/resources/wp-acf-json-export/).
+### Fresh-environment setup
+
+Use this order for a new Local or staging checkout. Run WP-CLI commands from the WordPress root. Set `VG_REPO_ROOT` to the checkout root and `VG_WP_ROOT` to the WordPress root.
+
+1. Check out the Git revision that contains the three tracked JSON files listed above.
+2. Make the active theme's `acf-json` path point to the repository folder. If the path does not exist, create the symlink. If it already exists, verify that it resolves to the repository folder and repair it before continuing if it does not.
+
+   ```sh
+   ACF_JSON_LINK="$VG_WP_ROOT/wp-content/themes/bricks-child/acf-json"
+   ACF_JSON_SOURCE="$VG_REPO_ROOT/site-code/editorial-dimensions/acf-json"
+   mkdir -p "$VG_WP_ROOT/wp-content/themes/bricks-child"
+
+   if [ -L "$ACF_JSON_LINK" ]; then
+     test "$(readlink -f "$ACF_JSON_LINK")" = "$(readlink -f "$ACF_JSON_SOURCE")" || exit 1
+   elif [ ! -e "$ACF_JSON_LINK" ]; then
+     ln -s "$ACF_JSON_SOURCE" "$ACF_JSON_LINK"
+   else
+     printf '%s\n' "Inspect the existing acf-json directory before continuing." >&2
+     exit 1
+   fi
+
+   test "$(readlink -f "$ACF_JSON_LINK")" = "$(readlink -f "$ACF_JSON_SOURCE")"
+   ```
+
+   This creates the link only when the destination is absent. If a directory or a link to a different location exists, stop and inspect it. Preserve any unique JSON files before correcting the path.
+3. Check the ACF JSON state, then dry-run and sync only the two taxonomy records and the editorial field group. Apply each sync only when its dry-run identifies the expected key and intended `Create` or `Update` action. If a key is missing or the proposed action is unexpected, stop and fix the JSON path or source before continuing. If ACF reports that a key is already in sync, no sync is needed for that key.
+
+   ```sh
+   wp acf json status --type=taxonomy --detailed
+   wp acf json status --type=field-group --detailed
+
+   wp acf json sync --type=taxonomy --key=taxonomy_editorial_format --dry-run
+   wp acf json sync --type=taxonomy --key=taxonomy_editorial_collection --dry-run
+   wp acf json sync --type=field-group --key=group_vg_editorial_classification --dry-run
+
+   # After reviewing all dry-runs, apply only keys that showed the expected Create or Update action.
+   wp acf json sync --type=taxonomy --key=taxonomy_editorial_format
+   wp acf json sync --type=taxonomy --key=taxonomy_editorial_collection
+   wp acf json sync --type=field-group --key=group_vg_editorial_classification
+   ```
+
+   Skip an apply command for any key already in sync. The installed ACF CLI returns "No syncable item found" for an already-synced key, with a non-zero exit status. Do not run an unfiltered sync as part of this setup. It could apply unrelated pending ACF JSON records.
+4. Verify both taxonomies register before running the seeder:
+
+   ```sh
+   wp eval 'foreach (["editorial_format", "editorial_collection"] as $taxonomy) { if (! taxonomy_exists($taxonomy)) { WP_CLI::error("Taxonomy not registered: " . $taxonomy); } } WP_CLI::success("Both editorial taxonomies are registered.");'
+   ```
+
+   If either taxonomy is missing, stop and correct the ACF JSON path or sync result. Do not run the seeder before registration succeeds.
+5. Seed only the approved format terms:
+
+   ```sh
+   wp eval-file "$VG_REPO_ROOT/site-code/editorial-dimensions/seed-editorial-format-terms.php"
+   ```
+
+6. Verify final source/runtime parity. `wp acf json status` must show the three Task 4B records as in sync. Compare the runtime ACF taxonomy and field-group properties with the tracked JSON, excluding generated runtime IDs and metadata described above. Confirm the term state is `article`, `video`, and `audio` for `editorial_format`, with no `editorial_collection` terms or editorial post relationships.
+
+The `wp acf json status` and targeted `sync` commands use ACF Pro's WP-CLI JSON workflow, available in ACF 6.8 and later. This environment runs ACF Pro 6.8.1 and WP-CLI 2.12.0. The targeted dry-run commands were accepted here and reported the Task 4B records already in sync, so no database sync was run during this documentation revision. See [ACF Local JSON](https://www.advancedcustomfields.com/resources/local-json/), [WP-CLI JSON status](https://www.advancedcustomfields.com/resources/wp-acf-json-status/), and [WP-CLI JSON sync](https://www.advancedcustomfields.com/resources/wp-acf-json-sync/).
 
 ## Taxonomy configuration
 
@@ -48,7 +105,9 @@ One ACF group named **Editorial Classification** is located only on `post`.
 - **Formaat** is an ACF taxonomy field using a radio control. It loads and saves `editorial_format` relationships, returns term IDs, has no default, is not required, and has inline term creation disabled.
 - **Versameling** is an ACF taxonomy field using a multi-select control. It loads and saves `editorial_collection` relationships, returns term IDs, is optional, and has inline term creation disabled.
 
-The fields store taxonomy relationships rather than a separate post-meta classification. The blank format state is intentional. The eventual one-format invariant is not globally enforced until the existing corpus has been reviewed and backfilled. There is no automatic `article` assignment or inference from content or legacy categories.
+The authoritative classification source is the WordPress taxonomy relationship. `Save Terms` (`save_terms = 1`) writes the selected terms to the post's taxonomy relationship, and `Load Terms` (`load_terms = 1`) loads the post's taxonomy terms into the ACF control, as described in [ACF's Taxonomy field documentation](https://www.advancedcustomfields.com/resources/taxonomy/). ACF may also persist its normal field value in post meta. That meta is implementation residue or cache, not a second authoritative classification system. Downstream code and queries must use `tax_query`, `get_the_terms()`, `wp_get_object_terms()`, or equivalent WordPress taxonomy APIs. Do not query ACF post-meta values as the canonical editorial classification.
+
+The blank format state is intentional. The eventual one-format invariant is not globally enforced until the existing corpus has been reviewed and backfilled. There is no automatic `article` assignment or inference from content or legacy categories.
 
 The WordPress core `post_format` taxonomy was left untouched.
 
