@@ -105,7 +105,10 @@ function editorial_dimensions_test_add_term(string $name, string $slug, string $
 
 function editorial_dimensions_test_reset(): void
 {
-    $GLOBALS['vg_editorial_dimensions_test_taxonomies'] = ['editorial_format' => true];
+    $GLOBALS['vg_editorial_dimensions_test_taxonomies'] = [
+        'editorial_format' => true,
+        'editorial_collection' => true,
+    ];
     $GLOBALS['vg_editorial_dimensions_test_terms'] = [];
     $GLOBALS['vg_editorial_dimensions_test_next_term_id'] = 100;
     $GLOBALS['vg_editorial_dimensions_test_insert_calls'] = [];
@@ -232,6 +235,26 @@ $tests = [
         editorial_dimensions_test_assert_same([], $result['created'], 'A repeat run must not create terms.');
         editorial_dimensions_test_assert_same(['article', 'video', 'audio'], $result['existing'], 'A repeat run must recognize each approved term.');
         editorial_dimensions_test_assert_same(3, count($GLOBALS['vg_editorial_dimensions_test_terms']), 'A repeat run must not duplicate terms.');
+    },
+    'rerunning after a partial seed creates only the missing approved terms' => static function (): void {
+        editorial_dimensions_test_reset();
+        editorial_dimensions_test_add_term('Artikel', 'article');
+
+        $result = vg_seed_editorial_format_terms();
+
+        editorial_dimensions_test_assert_same(['video', 'audio'], $result['created'], 'A partial seed must create only the remaining approved slugs.');
+        editorial_dimensions_test_assert_same(['article'], $result['existing'], 'A partial seed must preserve the approved existing term.');
+        editorial_dimensions_test_assert_same(3, count($GLOBALS['vg_editorial_dimensions_test_terms']), 'A partial rerun must finish with exactly three format terms.');
+    },
+    'the seeder does not create editorial collection terms' => static function (): void {
+        editorial_dimensions_test_reset();
+
+        vg_seed_editorial_format_terms();
+
+        editorial_dimensions_test_assert_same([], get_terms([
+            'taxonomy' => 'editorial_collection',
+            'hide_empty' => false,
+        ]), 'The format seeder must leave editorial_collection empty.');
     },
     'a same-slug term with a different name stops without rewriting it' => static function (): void {
         editorial_dimensions_test_reset();

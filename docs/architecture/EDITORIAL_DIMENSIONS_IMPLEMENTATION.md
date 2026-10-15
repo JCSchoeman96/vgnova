@@ -37,7 +37,7 @@ Both taxonomies are flat, ACF-owned, and attached to `post` only. They have `pub
 | `video` | Video |
 | `audio` | Oudio |
 
-The source-controlled seeder is `site-code/editorial-dimensions/seed-editorial-format-terms.php`. Run it in WP-CLI with `wp eval-file /path/to/vgnova/site-code/editorial-dimensions/seed-editorial-format-terms.php`. It is idempotent, creates no post relationships, and stops without changing terms if it finds a same-slug/name conflict or any unapproved format term. It never seeds `editorial_collection`.
+The source-controlled seeder is `site-code/editorial-dimensions/seed-editorial-format-terms.php`. Run it in WP-CLI with `wp eval-file /path/to/vgnova/site-code/editorial-dimensions/seed-editorial-format-terms.php`. It is idempotent, creates no post relationships, and stops without changing terms if it finds a same-slug/name conflict or any unapproved format term. If a run stops after some approved terms were created, a rerun recognizes those terms and creates only the missing approved ones. It never seeds `editorial_collection`.
 
 `editorial_collection` currently has no terms. Future terms require a reviewed collection list and must be created through the governed ACF/WordPress term-management workflow. Editors cannot add either taxonomy's terms from the post editor.
 
@@ -71,7 +71,9 @@ The final runtime check confirmed that post `1222` no longer exists and both edi
 
 ## Tests and verification
 
-The standalone automated coverage is in `site-code/editorial-dimensions/tests/run-editorial-dimensions-tests.php`. It checks taxonomy and field-group configuration, post-only scope, disabled public routing, ACF field cardinality and requiredness, no default, inline term governance, conflict handling, idempotent format seeding, and the absence of relationship writes or unrelated ACF definitions.
+The standalone automated coverage is in `site-code/editorial-dimensions/tests/run-editorial-dimensions-tests.php`. It checks taxonomy and field-group configuration, post-only scope, disabled public routing, ACF field cardinality and requiredness, no default, inline term governance, conflict handling, complete and partial rerun behavior, empty collection seeding, and the absence of relationship writes or unrelated ACF definitions.
+
+The standalone test runner uses PHP 8 syntax. The staging runtime used for this verification runs PHP 8.5.3.
 
 Commands run for this task:
 
