@@ -23,10 +23,14 @@ The active site seeds terms through `wp vg-content-topic-setup`. That command
 creates only missing canonical terms, stops on slug or parent conflicts, and
 flushes rewrite rules once after successful setup.
 
-## Local content topic migration proof
+## Task 2 local content topic proof
 
-`wp vg-content-topic-migrate` prints a read-only report by default. Review the
-manifest and fingerprint before applying it:
+`wp vg-content-topic-migrate` prints a read-only report by default. The Task 2
+local proof migration is now retired after editorial review. Its historical
+record remains in `vgpc_content_topic_migration_local_v1`; the separate
+`vgpc_content_topic_migration_local_v1_lifecycle` option records retirement.
+
+While active, the command supported this controlled flow:
 
 ```sh
 wp vg-content-topic-migrate --format=json
@@ -35,8 +39,24 @@ wp vg-content-topic-migrate --format=json
 wp vg-content-topic-migrate --rollback --format=json
 ```
 
-The apply command requires the source fingerprint from the reviewed dry run.
-If the legacy terms, assignments, canonical tree, or object types change before
-apply, it stops without writing. The migration records only canonical
-relationships it creates. Rollback removes those recorded relationships and
-leaves legacy category data and unrelated topic assignments in place.
+The explicit retirement command is:
+
+```sh
+wp vg-content-topic-migrate --retire --fingerprint=<reviewed-fingerprint> --format=json
+```
+
+Retirement requires the Task 2 record, its reviewed fingerprint, and all seven
+recorded canonical relationships to match the original manifest. It writes a
+separate lifecycle marker and leaves the historical record unchanged. Repeating
+retirement is safe. After retirement, dry run remains read-only and reports
+`lifecycle: retired`; apply and rollback both fail with
+`vgpc_topic_migration_retired` because editorial classification supersedes
+rollback-to-seed behavior. `MIGRATION_SEED` continues to derive from the
+historical record and current Direct Topics, so retirement alone does not mark
+the five unreviewed objects as reviewed.
+
+The apply command required the source fingerprint from the reviewed dry run.
+If the legacy terms, assignments, canonical tree, or object types changed
+before apply, it stopped without writing. The migration recorded only
+canonical relationships it created. Rollback removed those recorded
+relationships and left legacy category data and unrelated topic assignments in place.

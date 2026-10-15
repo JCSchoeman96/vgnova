@@ -9,7 +9,9 @@ defined('ABSPATH') || exit;
  * Plans and applies the small, reviewed content_category to content_topic proof.
  *
  * The default WP-CLI command is read-only. Apply requires the fingerprint printed
- * by the reviewed dry run, and rollback removes only rows recorded by this run.
+ * by the reviewed dry run. The Task 2 local proof can be explicitly retired after
+ * review; its historical record remains as provenance and cannot then be applied
+ * or rolled back.
  */
 final class ContentTopicMigration
 {
@@ -19,6 +21,18 @@ final class ContentTopicMigration
     private const TARGET_TAXONOMY = ContentTopicTaxonomy::TAXONOMY;
     private const MIGRATION_ID = 'content-topic-local-v1';
     private const RECORD_OPTION = 'vgpc_content_topic_migration_local_v1';
+    private const LIFECYCLE_OPTION = 'vgpc_content_topic_migration_local_v1_lifecycle';
+    private const RETIREMENT_REASON = 'editorial classification supersedes local migration seeds';
+
+    private const EXPECTED_CREATED_RELATIONSHIPS = [
+        [514, 'nuwe-jy'],
+        [516, 'geloof'],
+        [518, 'ouerskap'],
+        [519, 'werk-geld'],
+        [521, 'mensstories'],
+        [523, 'nuwe-jy'],
+        [641, 'self'],
+    ];
 
     private const LEGACY_OBJECT_TYPES = [
         'post',
@@ -95,11 +109,23 @@ final class ContentTopicMigration
             return $plan;
         }
 
+        $plan['lifecycle'] = $this->lifecycle_status();
+        if ($plan['lifecycle'] === 'retired') {
+            $plan['lifecycle_message'] = 'The local proof migration is retired and has been superseded by editorial classification. This report is read-only; apply and rollback are disabled.';
+        } elseif ($plan['lifecycle'] === 'conflict') {
+            $plan['lifecycle_message'] = 'A conflicting lifecycle marker exists; apply, retirement, and rollback are disabled.';
+        }
+
         return $plan;
     }
 
     public function apply(string $expected_fingerprint): array|\WP_Error
     {
+        $lifecycle_error = $this->lifecycle_guard_error();
+        if ($lifecycle_error) {
+            return $lifecycle_error;
+        }
+
         if ($expected_fingerprint === '') {
             return new \WP_Error('vgpc_topic_migration_fingerprint_required', 'Apply requires the fingerprint printed by the reviewed dry run.');
         }
@@ -210,6 +236,11 @@ final class ContentTopicMigration
 
     public function rollback(): array|\WP_Error
     {
+        $lifecycle_error = $this->lifecycle_guard_error();
+        if ($lifecycle_error) {
+            return $lifecycle_error;
+        }
+
         $record = get_option(self::RECORD_OPTION, false);
         if (! is_array($record) || ($record['migration'] ?? null) !== self::MIGRATION_ID) {
             return new \WP_Error('vgpc_topic_migration_record_missing', 'No valid local content topic migration record exists. Nothing was changed.');
@@ -257,12 +288,114 @@ final class ContentTopicMigration
         ];
     }
 
+    /**
+     * Retire the Task 2 local proof after validating its provenance and seven
+     * original canonical relationships. Repeated calls preserve the first marker.
+     */
+    public function retire(string $expected_fingerprint): array|\WP_Error
+    {
+        if ($expected_fingerprint === '') {
+            return new \WP_Error('vgpc_topic_migration_retire_fingerprint_required', 'Retirement requires the reviewed Task 2 fingerprint.');
+        }
+
+        $record = get_option(self::RECORD_OPTION, false);
+        if (! is_array($record)) {
+            return new \WP_Error('vgpc_topic_migration_retire_record_missing', 'The Task 2 historical migration record is missing; retirement stopped without changes.');
+        }
+        if (($record['migration'] ?? null) !== self::MIGRATION_ID) {
+            return new \WP_Error('vgpc_topic_migration_retire_record_conflict', 'The historical record does not identify the expected Task 2 migration; retirement stopped without changes.');
+        }
+        if (! is_string($record['source_fingerprint'] ?? null) || ! hash_equals((string) $record['source_fingerprint'], $expected_fingerprint)) {
+            return new \WP_Error('vgpc_topic_migration_retire_fingerprint_mismatch', 'The supplied fingerprint does not match the Task 2 historical record; retirement stopped without changes.');
+        }
+
+        $missing_marker = new \stdClass();
+        $marker = get_option(self::LIFECYCLE_OPTION, $missing_marker);
+        if ($this->is_valid_retirement_marker($marker)) {
+            return [
+                'mode' => 'retire',
+                'lifecycle' => 'retired',
+                'already_retired' => true,
+                'migration' => self::MIGRATION_ID,
+                'retired_at' => $marker['retired_at'],
+            ];
+        }
+        if ($marker !== $missing_marker) {
+            return new \WP_Error('vgpc_topic_migration_lifecycle_conflict', 'A conflicting lifecycle marker already exists; retirement did not replace it.');
+        }
+
+        $plan = $this->build_plan();
+        if (is_wp_error($plan)) {
+            return new \WP_Error('vgpc_topic_migration_retire_preflight_failed', 'Task 2 retirement preflight failed: ' . $plan->get_error_message());
+        }
+        if (($record['source_fingerprint'] ?? null) !== $plan['fingerprint'] || ! hash_equals($plan['fingerprint'], $expected_fingerprint)) {
+            return new \WP_Error('vgpc_topic_migration_retire_fingerprint_mismatch', 'The current source fingerprint differs from the reviewed Task 2 fingerprint; retirement stopped without changes.');
+        }
+        if ($plan['blockers'] !== []) {
+            return new \WP_Error('vgpc_topic_migration_retire_preflight_failed', 'Task 2 retirement preflight failed: ' . implode(' ', $plan['blockers']));
+        }
+
+        $manifest = $this->validate_retirement_relationships($record);
+        if (is_wp_error($manifest)) {
+            return $manifest;
+        }
+        $record_verification = $this->verify_record_relationships($record, $plan);
+        if (is_wp_error($record_verification)) {
+            return new \WP_Error('vgpc_topic_migration_retire_relationship_drift', 'The seven recorded Task 2 relationships are not intact; retirement stopped without changes.');
+        }
+
+        $lifecycle = [
+            'status' => 'retired',
+            'reason' => self::RETIREMENT_REASON,
+            'retired_at' => gmdate('c'),
+            'migration' => self::MIGRATION_ID,
+        ];
+        $added = function_exists('add_option')
+            ? add_option(self::LIFECYCLE_OPTION, $lifecycle, '', false)
+            : update_option(self::LIFECYCLE_OPTION, $lifecycle, false);
+        $saved_marker = get_option(self::LIFECYCLE_OPTION, null);
+        if (! $added || $saved_marker !== $lifecycle) {
+            if ($this->is_valid_retirement_marker($saved_marker)) {
+                return [
+                    'mode' => 'retire',
+                    'lifecycle' => 'retired',
+                    'already_retired' => true,
+                    'migration' => self::MIGRATION_ID,
+                    'retired_at' => $saved_marker['retired_at'],
+                ];
+            }
+
+            return new \WP_Error('vgpc_topic_migration_lifecycle_write_failed', 'The retirement marker could not be saved and verified; the historical migration record was preserved.');
+        }
+
+        return [
+            'mode' => 'retire',
+            'lifecycle' => 'retired',
+            'already_retired' => false,
+            'migration' => self::MIGRATION_ID,
+            'retired_at' => $lifecycle['retired_at'],
+        ];
+    }
+
+    /** Return active, retired, or conflict without changing either option. */
+    public function lifecycle_status(): string
+    {
+        $missing_marker = new \stdClass();
+        $marker = get_option(self::LIFECYCLE_OPTION, $missing_marker);
+        if ($marker === $missing_marker) {
+            return 'active';
+        }
+
+        return $this->is_valid_retirement_marker($marker) ? 'retired' : 'conflict';
+    }
+
     public function command(array $args, array $assoc_args): void
     {
         $apply = isset($assoc_args['apply']);
         $rollback = isset($assoc_args['rollback']);
-        if ($apply && $rollback) {
-            \WP_CLI::error('Choose either --apply or --rollback.');
+        $retire = isset($assoc_args['retire']);
+        if ((int) $apply + (int) $rollback + (int) $retire > 1) {
+            \WP_CLI::error('Choose only one of --apply, --rollback, or --retire.');
         }
 
         $format = (string) ($assoc_args['format'] ?? 'table');
@@ -270,11 +403,17 @@ final class ContentTopicMigration
             \WP_CLI::error('Format must be table or json.');
         }
 
-        $result = $rollback
+        if ($retire && ! isset($assoc_args['fingerprint'])) {
+            \WP_CLI::error('Retirement requires --fingerprint=<reviewed-fingerprint>.');
+        }
+
+        $result = $retire
+            ? $this->retire((string) ($assoc_args['fingerprint'] ?? ''))
+            : ($rollback
             ? $this->rollback()
             : ($apply
                 ? $this->apply((string) ($assoc_args['fingerprint'] ?? ''))
-                : $this->dry_run());
+                : $this->dry_run()));
 
         if (is_wp_error($result)) {
             \WP_CLI::error($result->get_error_message());
@@ -647,6 +786,12 @@ final class ContentTopicMigration
 
     private function print_table(array $result): void
     {
+        if (isset($result['lifecycle'])) {
+            \WP_CLI::line('Lifecycle: ' . $result['lifecycle']);
+            if (isset($result['lifecycle_message'])) {
+                \WP_CLI::line((string) $result['lifecycle_message']);
+            }
+        }
         if (isset($result['objects'])) {
             foreach ($result['objects'] as $object) {
                 \WP_CLI::line(sprintf(
@@ -685,5 +830,79 @@ final class ContentTopicMigration
     private static function EXPECTED_OBJECT_TYPES(): array
     {
         return [514 => 'post', 516 => 'post', 518 => 'post', 519 => 'post', 521 => 'post', 523 => 'product', 641 => 'post'];
+    }
+
+    private function validate_retirement_relationships(array $record): true|\WP_Error
+    {
+        $recorded = $record['created_relationships'] ?? null;
+        if (! is_array($recorded) || count($recorded) !== count(self::EXPECTED_CREATED_RELATIONSHIPS)) {
+            return new \WP_Error('vgpc_topic_migration_retire_relationship_drift', 'The historical record does not contain all seven original Task 2 relationships.');
+        }
+
+        $rows = [];
+        foreach ($recorded as $row) {
+            if (! is_array($row)) {
+                return new \WP_Error('vgpc_topic_migration_retire_relationship_drift', 'The historical record contains an invalid Task 2 relationship row.');
+            }
+            $object_id = (int) ($row['object_id'] ?? 0);
+            $slug = (string) ($row['term_slug'] ?? '');
+            $term = get_term_by('slug', $slug, self::TARGET_TAXONOMY);
+            if (! $term || (int) ($row['term_id'] ?? 0) !== (int) $term->term_id) {
+                return new \WP_Error('vgpc_topic_migration_retire_relationship_drift', 'A recorded Task 2 relationship no longer resolves to its original canonical term.');
+            }
+            $assigned = wp_get_object_terms($object_id, self::TARGET_TAXONOMY, ['fields' => 'ids']);
+            if (is_wp_error($assigned) || ! in_array((int) $term->term_id, array_map('intval', $assigned), true)) {
+                return new \WP_Error('vgpc_topic_migration_retire_relationship_drift', 'A recorded Task 2 relationship is no longer assigned; retirement stopped without changes.');
+            }
+            $rows[] = [$object_id, $slug];
+        }
+
+        usort($rows, static fn (array $left, array $right): int => ($left[0] <=> $right[0]) ?: strcmp($left[1], $right[1]));
+        $expected = self::EXPECTED_CREATED_RELATIONSHIPS;
+        usort($expected, static fn (array $left, array $right): int => ($left[0] <=> $right[0]) ?: strcmp($left[1], $right[1]));
+        if ($rows !== $expected) {
+            return new \WP_Error('vgpc_topic_migration_retire_relationship_drift', 'The historical record differs from the seven approved Task 2 relationships.');
+        }
+
+        return true;
+    }
+
+    private function is_valid_retirement_marker(mixed $marker): bool
+    {
+        if (! is_array($marker)) {
+            return false;
+        }
+
+        $keys = array_keys($marker);
+        $expected_keys = ['migration', 'reason', 'retired_at', 'status'];
+        sort($keys);
+        sort($expected_keys);
+        if (
+            $keys !== $expected_keys
+            || ($marker['status'] ?? null) !== 'retired'
+            || ($marker['reason'] ?? null) !== self::RETIREMENT_REASON
+            || ($marker['migration'] ?? null) !== self::MIGRATION_ID
+            || ! is_string($marker['retired_at'] ?? null)
+        ) {
+            return false;
+        }
+
+        return \DateTimeImmutable::createFromFormat(\DateTimeInterface::ATOM, $marker['retired_at']) !== false;
+    }
+
+    private function lifecycle_guard_error(): ?\WP_Error
+    {
+        $status = $this->lifecycle_status();
+        if ($status === 'retired') {
+            return new \WP_Error(
+                'vgpc_topic_migration_retired',
+                'The local proof migration has been retired and superseded by editorial classification; apply and rollback are disabled.'
+            );
+        }
+        if ($status === 'conflict') {
+            return new \WP_Error('vgpc_topic_migration_lifecycle_conflict', 'A conflicting lifecycle marker exists; apply and rollback are disabled.');
+        }
+
+        return null;
     }
 }

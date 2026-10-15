@@ -25,6 +25,7 @@ final class ContentTopicRolesTest
         }
 
         register_taxonomy('content_category', ['post', 'product'], ['hierarchical' => true]);
+        $legacy_pillar_term = vgpc_test_add_term('Nuwe Jy', 'nuwe-jy', 0, 'content_category');
         $commercial_term = vgpc_test_add_term('Natuurlik Gesond', 'natuurlik-gesond', 0, 'content_category');
 
         $post_types = [
@@ -70,7 +71,10 @@ final class ContentTopicRolesTest
             ];
         }
         $GLOBALS['vgpc_test_relationships']['content_topic'][700] = [$this->term_ids['gesondheid']];
-        $GLOBALS['vgpc_test_relationships']['content_category'][523] = [(int) $commercial_term->term_id];
+        $GLOBALS['vgpc_test_relationships']['content_category'][523] = [
+            (int) $legacy_pillar_term->term_id,
+            (int) $commercial_term->term_id,
+        ];
 
         update_option('vgpc_content_topic_migration_local_v1', [
             'migration' => 'content-topic-local-v1',
@@ -96,6 +100,14 @@ final class ContentTopicRolesTest
         vgpc_test_true(! is_wp_error($terms), $method . ' must return topic terms.');
 
         return array_map(static fn (object $term): string => $term->slug, $terms);
+    }
+
+    private function legacy_category_slugs(int $object_id): array
+    {
+        $terms = wp_get_object_terms($object_id, 'content_category', ['fields' => 'slugs']);
+        vgpc_test_true(! is_wp_error($terms), 'Legacy category relationships must be readable.');
+
+        return $terms;
     }
 
     private function acf_save(ContentTopicRoles $roles, int $object_id, int|string|null $primary_term_id): void
@@ -482,6 +494,74 @@ final class ContentTopicRolesTest
         vgpc_test_same(['nuwe-jy'], $this->topic_slugs($roles, 523), 'Product 523 must retain only its canonical topic in the topic API.');
         vgpc_test_same(['nuwe-jy'], $this->topic_slugs($roles, 523, 'get_effective_topics'), 'Effective Topics must not include a commercial category.');
         vgpc_test_true(! in_array('natuurlik-gesond', $this->topic_slugs($roles, 523, 'get_effective_topics'), true), 'content_category must never become an Effective Topic.');
+    }
+
+    public function test_unreviewed_task2_seeds_remain_seeds_after_lifecycle_retirement(): void
+    {
+        $roles = $this->fixture();
+        update_option('vgpc_content_topic_migration_local_v1_lifecycle', [
+            'status' => 'retired',
+            'reason' => 'editorial classification supersedes local migration seeds',
+            'retired_at' => '2026-10-15T10:00:00+00:00',
+            'migration' => 'content-topic-local-v1',
+        ], false);
+
+        foreach ([514, 516, 518, 521, 641] as $object_id) {
+            vgpc_test_same('MIGRATION_SEED', $roles->get_classification_state($object_id), 'Retiring Task 2 rollback must not mark an unreviewed seed as reviewed.');
+        }
+    }
+
+    public function test_reviewed_classification_is_unaffected_by_lifecycle_retirement(): void
+    {
+        $roles = $this->fixture();
+        update_option('vgpc_content_topic_migration_local_v1_lifecycle', [
+            'status' => 'retired',
+            'reason' => 'editorial classification supersedes local migration seeds',
+            'retired_at' => '2026-10-15T10:00:00+00:00',
+            'migration' => 'content-topic-local-v1',
+        ], false);
+
+        $result = $roles->set_primary_topic(519, $this->term_id('begroting-geldbestuur'));
+        vgpc_test_true($result === true, 'The role API must accept a valid Primary after retirement.');
+        wp_remove_object_terms(519, $this->term_id('werk-geld'), 'content_topic');
+
+        vgpc_test_same('begroting-geldbestuur', $roles->get_primary_topic(519)->slug, 'The approved specific term must remain Primary after retirement.');
+        vgpc_test_same('REVIEWED', $roles->get_classification_state(519), 'A valid Primary must remain reviewed after lifecycle retirement.');
+    }
+
+    public function test_519_uses_the_specific_topic_and_infers_its_ancestors(): void
+    {
+        $roles = $this->fixture();
+
+        $result = $roles->set_primary_topic(519, $this->term_id('begroting-geldbestuur'));
+        vgpc_test_true($result === true, 'The approved budget topic must be accepted as Primary.');
+        wp_remove_object_terms(519, $this->term_id('werk-geld'), 'content_topic');
+
+        vgpc_test_same(['begroting-geldbestuur'], $this->topic_slugs($roles, 519), 'Object 519 must store only the specific Direct Topic.');
+        vgpc_test_same('begroting-geldbestuur', $roles->get_primary_topic(519)->slug, 'Object 519 must use the specific topic as Primary.');
+        vgpc_test_same([], $this->topic_slugs($roles, 519, 'get_secondary_topics'), 'Object 519 must have no Secondary Topics.');
+        vgpc_test_same(['begroting-geldbestuur', 'geld', 'werk-geld'], $this->topic_slugs($roles, 519, 'get_effective_topics'), 'Object 519 must infer both ancestors as Effective Topics.');
+        vgpc_test_same([], $roles->get_hierarchy_warnings(519), 'Object 519 must not keep a redundant parent Direct Topic.');
+        vgpc_test_same('REVIEWED', $roles->get_classification_state(519), 'Object 519 must be reviewed after the approved classification.');
+    }
+
+    public function test_523_keeps_legacy_commercial_categories_out_of_semantic_topics(): void
+    {
+        $roles = $this->fixture();
+        $legacy_before = $this->legacy_category_slugs(523);
+
+        $result = $roles->set_primary_topic(523, $this->term_id('oefening-fiksheid'));
+        vgpc_test_true($result === true, 'The approved exercise topic must be accepted as Primary.');
+        wp_remove_object_terms(523, $this->term_id('nuwe-jy'), 'content_topic');
+
+        vgpc_test_same(['oefening-fiksheid'], $this->topic_slugs($roles, 523), 'Object 523 must store only the specific Direct Topic.');
+        vgpc_test_same('oefening-fiksheid', $roles->get_primary_topic(523)->slug, 'Object 523 must use the specific topic as Primary.');
+        vgpc_test_same([], $this->topic_slugs($roles, 523, 'get_secondary_topics'), 'Object 523 must have no Secondary Topics.');
+        vgpc_test_same(['oefening-fiksheid', 'nuwe-jy'], $this->topic_slugs($roles, 523, 'get_effective_topics'), 'Object 523 must infer only its canonical pillar ancestor.');
+        vgpc_test_true(! in_array('natuurlik-gesond', $this->topic_slugs($roles, 523), true), 'The legacy commercial term must not become a Direct Topic.');
+        vgpc_test_true(! in_array('natuurlik-gesond', $this->topic_slugs($roles, 523, 'get_effective_topics'), true), 'The legacy commercial term must not become an Effective Topic.');
+        vgpc_test_same($legacy_before, $this->legacy_category_slugs(523), 'Object 523 content_category relationships must remain unchanged.');
+        vgpc_test_same('REVIEWED', $roles->get_classification_state(523), 'Object 523 must be reviewed after the approved classification.');
     }
 
     public function test_editor_status_and_admin_notice_identify_unreviewed_seed_content(): void
