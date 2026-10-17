@@ -2,8 +2,8 @@
 
 **Status:** Active governance register
 **Inspection date:** 2026-10-17
-**Repository baseline:** origin/main after PR #10 merge at 8796ca0c1467856a61e1d0b5a4c05e21e815a21a
-**Runtime:** WordPress at `localhost:10039`, inspected through the read-only Novamira CLI profile vgnova; the attached MCP endpoint targeted `localhost:10059` and was not used for this runtime audit
+**Repository baseline:** origin/main after PR #11 merge at d77c4515ec42ba6af294e7372906084630e1e52a
+**Runtime:** WordPress at `localhost:10039`, inspected and updated through the Novamira CLI profile `vgnova`; the attached MCP endpoint targeted `localhost:10059` and was not used
 
 This register is the authoritative ledger for architecture that must stay, adapt, migrate, or leave. It tracks live legacy systems and future replacements so a replacement can be completed before its consumers or data are removed.
 
@@ -537,16 +537,16 @@ Do not remove an item before its removal gate passes. If a task finds a new bloc
 
 | Field | Record |
 |---|---|
-| Current state | `TEMPORARY TRANSITIONAL`. The audit set contains four Task 2 SYSTEM_TEST posts eligible for a controlled removal pass (514, 516, 518, and 519), trashed duplicate 513, two Task 2 proof objects with active Bricks template preview references (521 and product 523), the active Featured Content Manager QA article 641, and unresolved placeholder 375. |
+| Current state | `TEMPORARY TRANSITIONAL`. Task 4E permanently removed the approved READY_TO_REMOVE set (513, 514, 516, 518, and 519). The remaining audit set is 521 and product 523 with active Bricks template preview references, the active Featured Content Manager QA article 641, and unresolved placeholder 375. |
 | Target state | Do not keep published local QA records indefinitely. Remove only objects whose individual gates are complete; replace editor previews and the Featured Content Manager test strategy first. Resolve the source of 375. |
-| Lifecycle status | `DEFER` for the grouped inventory because its members have different gates. The per-object manifest records `READY_TO_REMOVE`, `DEFER_REMOVAL`, and `NEEDS_PROVENANCE` decisions. |
-| Why it exists | Task 2 used seven local objects to prove the content_topic migration. Post 641 was also created to test Self Featured Content routing. Post 513 is a trashed duplicate of 514; post 375 is an older unresolved Lorem-style placeholder. |
+| Lifecycle status | `DEFER` for the grouped inventory because its members have different gates. Task 4D recommendations remain preserved in the manifest; the separate Task 4E result record records removal and retained state. |
+| Why it exists | Task 2 used seven local objects to prove the content_topic migration. Post 641 was also created to test Self Featured Content routing. Post 513 was a trashed duplicate of 514. Post 375 is an older unresolved Lorem-style placeholder. |
 | Why it is legacy or why it is KEEP | These records are not verified editorial content. Historical migration evidence and taxonomy/role tests are preserved in source-controlled reports and synthetic tests, so those records do not require the live posts. Post 641 remains a current manual integration target; 521 and 523 remain Bricks editor preview inputs. |
 | Replacement | Source-controlled Platform Core tests and historical reports preserve migration and topic behavior. A repeatable or automatically cleaned test must replace 641's live Featured Content Manager → Bricks scenario. Bricks preview records 521 and 523 need other preview targets. No replacement is required for the retired migration record. |
 | Dependencies / consumers | Historical option `vgpc_content_topic_migration_local_v1` refers to the seven Task 2 objects as provenance. Bricks template Posts (372) previews post 521; Article Card (690) previews product 523. Post 641's `content_category=self` assignment currently renders Featured Content Manager product 531. No other exact object references or ACF post-object relationships were found. |
-| Removal gate | Follow [Local Fixture Decommission Manifest](LOCAL_FIXTURE_DECOMMISSION_MANIFEST.csv). A separate controlled pass may remove only 513, 514, 516, 518, and 519. Replace and verify preview IDs before removing 521 or 523. Keep 641 until its live FCM integration test can be reproduced elsewhere. Establish provenance before removing 375. Leave all media attachments for separate review. Do not remove content_category or content_topic based on relationship counts. |
-| Planned phase | Task 4E may remove only the READY_TO_REMOVE set. Preview migration, FCM test replacement, and 375 provenance are separate gates. |
-| Evidence / notes | All current 8 content_category relationships and 7 content_topic relationships belong to the seven Task 2 proof objects. Removing only the READY set would leave 4 legacy-category relationships across 3 objects and 3 topic relationships across 3 objects; after all seven proof objects pass their gates, those relationships would reach zero while the 13 and 55 terms and active consumers remain. The retired migration record remains valid and unchanged. See [Local Fixture Lifecycle Audit](LOCAL_FIXTURE_LIFECYCLE_AUDIT.md) and [Post Task 4D Current State](POST_TASK_4D_CURRENT_STATE.md). |
+| Removal gate | Task 4E removed only 513, 514, 516, 518, and 519 through WordPress. Replace and verify preview IDs before removing 521 or 523. Keep 641 until its live FCM integration test can be reproduced elsewhere. Establish provenance before removing 375. Leave all media attachments for separate review. Do not remove `content_category` or `content_topic` based on relationship counts. |
+| Planned phase | Task 4F should address the deferred preview and FCM consumers and the unresolved provenance gate as separate decisions. No further fixture removal is authorized by Task 4E. |
+| Evidence / notes | Task 4E removed 513, 514, 516, 518, and 519; 521, 523, and 641 remain deferred, and 375 remains `NEEDS_PROVENANCE`. The runtime now has 4 `content_category` relationships across 3 objects and 3 `content_topic` relationships across 3 objects; the 13 and 55 terms and active consumers remain. The retired migration record and marker are unchanged. The five associated attachments remain with `post_parent=0`. See [Task 4E fixture removal report](TASK_4E_FIXTURE_REMOVAL_REPORT.md), [Post Task 4E Current State](POST_TASK_4E_CURRENT_STATE.md), [Task 4E result record](LOCAL_FIXTURE_REMOVAL_RESULT.csv), [Local Fixture Lifecycle Audit](LOCAL_FIXTURE_LIFECYCLE_AUDIT.md), and [Post Task 4D Current State](POST_TASK_4D_CURRENT_STATE.md). |
 
 ## Current lifecycle totals
 
