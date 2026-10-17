@@ -1,0 +1,8 @@
+object_id,post_exists_before,relationship_before,cleanup_authority,cleanup_result,relationship_after,post_exists_after,taxonomy,term_id,term_taxonomy_id,notes
+1,false,PRESENT,TASK_4H_ORPHAN_CONFIRMED_READY_TO_CLEAN,REMOVED_VIA_WP_API,ABSENT,false,category,1,1,"term=voelgoed; term_order=0"
+513,false,PRESENT,TASK_4H_ORPHAN_CONFIRMED_READY_TO_CLEAN,REMOVED_VIA_WP_API,ABSENT,false,category,1,1,"term=voelgoed; term_order=0"
+514,false,PRESENT,TASK_4H_ORPHAN_CONFIRMED_READY_TO_CLEAN,REMOVED_VIA_WP_API,ABSENT,false,category,1,1,"term=voelgoed; term_order=0"
+516,false,PRESENT,TASK_4H_ORPHAN_CONFIRMED_READY_TO_CLEAN,REMOVED_VIA_WP_API,ABSENT,false,category,1,1,"term=voelgoed; term_order=0"
+518,false,PRESENT,TASK_4H_ORPHAN_CONFIRMED_READY_TO_CLEAN,REMOVED_VIA_WP_API,ABSENT,false,category,1,1,"term=voelgoed; term_order=0"
+519,false,PRESENT,TASK_4H_ORPHAN_CONFIRMED_READY_TO_CLEAN,REMOVED_VIA_WP_API,ABSENT,false,category,1,1,"term=voelgoed; term_order=0"
+375,true,PRESENT,PROTECTED_LIVE_RELATIONSHIP,UNCHANGED,PRESENT,true,category,1,1,"publish; slug=integer-maximus-sapien-in-bibendum; modified=2026-05-20 15:15:58; term_order=0"

@@ -2,8 +2,8 @@
 
 **Status:** Active governance register
 **Inspection date:** 2026-10-17
-**Repository baseline:** origin/main after PR #14 merge at 860cbefad36c9eaf8f47cbe9a72ab0e60b6a834e
-**Runtime:** Local WordPress at localhost:10039, inspected read-only through the Novamira MCP profile VGNova; local shell and SQL were used only for read-only verification
+**Repository baseline:** origin/main after Task 4H merge at 72b0b8b36f8e5457ee8fc172117b5049388307e0
+**Runtime:** Local WordPress at localhost:10039, inspected through the Novamira MCP profile VGNova. Task 4I removed six approved taxonomy relationships through the WordPress API; SQL was used only for read-only verification.
 
 This register is the authoritative ledger for architecture that must stay, adapt, migrate, or leave. It tracks live legacy systems and future replacements so a replacement can be completed before its consumers or data are removed.
 
@@ -545,23 +545,24 @@ Do not remove an item before its removal gate passes. If a task finds a new bloc
 | Replacement | Source-controlled Platform Core tests and historical reports preserve migration and topic behavior. site-code/runtime-tests/fcm-self-featured-integration.py replaces the persistent 641 test role with a repeatable, automatically cleaned Self article to Featured Content Manager to Bricks test. Templates 372 and 690 use Bricks' supported empty-preview state. |
 | Dependencies / consumers | The historical option vgpc_content_topic_migration_local_v1 retains the original Task 2 IDs as provenance. Templates 372 and 690 have no templatePreviewPostId. The automated test creates its own temporary Self article. Task 4H found no current inbound relationship, Bricks preview, Featured Content Manager value, menu link, embedded permalink, snippet reference or source hard-code for 375. Attachment 154 is shared with published event 166. |
 | Removal gate | Post 375 is classified DEMO_OR_IMPORT_PLACEHOLDER with MEDIUM classification confidence and lifecycle NEEDS_PROVENANCE with HIGH confidence that the gate remains open. Close the specific origin and purpose question and independently review attachment 154 before any removal decision. If later approved, remove 375 through the WordPress deletion API, verify the post is absent, then clean its detached core category row through the WordPress taxonomy API. Keep attachment 154 because event 166 uses it. Do not remove content_category or content_topic based on zero relationship counts. |
-| Planned phase | A separately reviewed Task 4I may clean the six confirmed core category orphan rows in entry 34. Post 375 remains out of mutation scope until its provenance gate is closed. |
-| Evidence / notes | Task 4G removed only 521, 523, and 641; content_category retains 13 terms with 0 relationships and content_topic retains 55 terms and 7 roots with 0 relationships. HappyFiles retains 15 terms with 0 relationships. Product totals fell from 21 to 20. Attachments 522, 524, and 153 survive; 153 remains shared with event 167. Both Bricks preview IDs remain absent with unchanged conditions/elements. The post-deletion FCM test passed twice and left no temporary objects. The migration dry run is retired with baseline_matches=false; record and marker hashes remain unchanged. Task 4H finds post 375 unresolved despite placeholder evidence. See [Task 4H residue report](LOCAL_RESIDUE_INTEGRITY_AUDIT.md), [post 375 provenance record](POST_375_PROVENANCE_AUDIT.md), [Task 4G report](TASK_4G_FIXTURE_REMOVAL_REPORT.md), [Task 4G result record](TASK_4G_FIXTURE_REMOVAL_RESULT.csv), [Post Task 4G Current State](POST_TASK_4G_CURRENT_STATE.md), and the historical [Task 4F report](FIXTURE_DEPENDENCY_REPLACEMENT_REPORT.md), [Post Task 4F Current State](POST_TASK_4F_CURRENT_STATE.md), [Task 4E report](TASK_4E_FIXTURE_REMOVAL_REPORT.md), and [local fixture audit](LOCAL_FIXTURE_LIFECYCLE_AUDIT.md). |
+| Planned phase | Task 4I removed the six confirmed core category orphan rows in entry 34. Post 375 remains out of mutation scope until its provenance gate is closed. |
+| Evidence / notes | Task 4G removed only 521, 523, and 641; content_category retains 13 terms with 0 relationships and content_topic retains 55 terms and 7 roots with 0 relationships. HappyFiles retains 15 terms with 0 relationships. Product totals fell from 21 to 20. Attachments 522, 524, and 153 survive; 153 remains shared with event 167. Both Bricks preview IDs remain absent with unchanged conditions/elements. The post-deletion FCM test passed twice and left no temporary objects. The migration dry run is retired with baseline_matches=false; record and marker hashes remain unchanged. Task 4H finds post 375 unresolved despite placeholder evidence. Task 4I removed only the six separately approved core category relationships; post 375 and attachment 154 remain unchanged. See [Task 4H residue report](LOCAL_RESIDUE_INTEGRITY_AUDIT.md), [post 375 provenance record](POST_375_PROVENANCE_AUDIT.md), [Task 4G report](TASK_4G_FIXTURE_REMOVAL_REPORT.md), [Task 4G result record](TASK_4G_FIXTURE_REMOVAL_RESULT.csv), [Post Task 4G Current State](POST_TASK_4G_CURRENT_STATE.md), and the historical [Task 4F report](FIXTURE_DEPENDENCY_REPLACEMENT_REPORT.md), [Post Task 4F Current State](POST_TASK_4F_CURRENT_STATE.md), [Task 4E report](TASK_4E_FIXTURE_REMOVAL_REPORT.md), and [local fixture audit](LOCAL_FIXTURE_LIFECYCLE_AUDIT.md). |
 
 ### 34. Detached WordPress core category relationships
 
 | Field | Record |
 |---|---|
-| Current state | TEMPORARY TRANSITIONAL. WordPress core category exists and the voelgoed term has seven relationship rows: one to live post 375 and six to absent post IDs 1, 513, 514, 516, 518 and 519. The taxonomy is not registered to post. |
-| Target state | Remove only the six relationships whose object rows are absent. Preserve the category taxonomy, the voelgoed term, and post 375's live relationship unless a later independent decision removes 375. |
-| Lifecycle status | READY_TO_REMOVE |
+| Current state | HISTORICAL PROVENANCE. The six confirmed detached relationships have been removed. Core category remains unregistered to post, and term voelgoed has one live relationship to post 375. |
+| Target state | Keep the category taxonomy and term voelgoed. Preserve post 375's live relationship unless a later independent provenance decision changes its lifecycle. |
+| Lifecycle status | REMOVED |
 | Why it exists | Previously deleted or trashed objects left relationships behind because the runtime unregisters core category from post. |
-| Why it is legacy or why it is KEEP | These six rows have no corresponding current post objects or live consumers. Their historical provenance is separately documented; the database relationships are objectively orphaned. |
-| Replacement | None. This is an integrity cleanup of detached relationships, not a taxonomy migration or category-term removal. |
-| Dependencies / consumers | The historical migration option retains IDs 514, 516, 518 and 519 as provenance, but no current consumer uses those IDs to render or manage content. No live post row, relationship field, Bricks value, content link, FluentSnippet or source hard-code depends on these six category relationships. Preserve the migration option unchanged. Post 375's distinct live relationship is retained. |
-| Removal gate | In local runtime only, preflight that each object is absent and that exactly the expected category / term-taxonomy 1 relationship exists. Call wp_delete_object_term_relationships($object_id, 'category') for each approved ID. Verify all six rows are gone, category and term voelgoed remain, post 375 retains its relationship, and no unrelated taxonomy or term changed. Do not use direct SQL writes. |
-| Planned phase | Task 4I, after its independent preflight and review. |
-| Evidence / notes | Task 4H's full orphan scan returned exactly six rows, all taxonomy category and term voelgoed. ID 1 is a known legacy WordPress Hello world! sample from the June 9 SQL backup, trashed and absent in current runtime. ID 513 is a duplicate of Task 2 fixture 514. IDs 514, 516, 518 and 519 are Task 2 proof fixtures removed in Task 4E. Each row is ORPHAN_CONFIRMED, READY_TO_CLEAN, confidence HIGH. See [Core Category Orphan Manifest](CORE_CATEGORY_ORPHAN_MANIFEST.csv) and [Local Residue Integrity Audit](LOCAL_RESIDUE_INTEGRITY_AUDIT.md). |
+| Why it is legacy or why it is KEEP | The six removed rows had no corresponding current post objects or live consumers. Their historical provenance is separately documented. |
+| Replacement | None. This was an integrity cleanup of detached relationships, not a taxonomy migration or category-term removal. |
+| Dependencies / consumers | The historical migration option retains IDs 514, 516, 518 and 519 as provenance. No current consumer uses the removed relationships. Post 375's distinct live relationship remains. |
+| Removal gate | Complete. The six approved rows are absent and the global orphan relationship scan returns 0. The category taxonomy, term voelgoed, and post 375's live relationship remain. No further post or term cleanup is authorized by this entry. |
+| Planned phase | Task 4I complete. Post 375 remains separately gated by its provenance decision in entry 33. |
+| Evidence / notes | Task 4H's full orphan scan returned exactly six rows, all taxonomy category and term voelgoed. ID 1 is a known legacy WordPress Hello world! sample from the June 9 SQL backup, trashed and absent in current runtime. ID 513 is a duplicate of Task 2 fixture 514. IDs 514, 516, 518 and 519 are Task 2 proof fixtures removed in Task 4E. Each row was ORPHAN_CONFIRMED, READY_TO_CLEAN, confidence HIGH. Task 4I rechecked all six absent post rows and exact relationship fields, then removed only those relationships through wp_delete_object_term_relationships(). The global orphan scan now returns 0. One live relationship remains for post 375; the category taxonomy and term voelgoed remain, with stored term count 0. Post 375 remains published and NEEDS_PROVENANCE. See [Core Category Orphan Manifest](CORE_CATEGORY_ORPHAN_MANIFEST.csv), [Task 4I cleanup report](TASK_4I_CORE_CATEGORY_CLEANUP_REPORT.md), [Task 4I result record](TASK_4I_CORE_CATEGORY_CLEANUP_RESULT.csv), and [Post Task 4I Current State](POST_TASK_4I_CURRENT_STATE.md). |
+
 ## Current lifecycle totals
 
 Counts below include each numbered entry once.
@@ -572,7 +573,7 @@ Counts below include each numbered entry once.
 | `ADAPT` | 8 |
 | `MIGRATE` | 1 |
 | `DEFER` | 16 |
-| `READY_TO_REMOVE` | 1 |
-| `REMOVED` | 0 |
+| `READY_TO_REMOVE` | 0 |
+| `REMOVED` | 1 |
 | `VERIFIED` | 1 |
 | `RETIRED` | 1 |
