@@ -40,7 +40,9 @@ Post 375 remains `post / publish`, slug `integer-maximus-sapien-in-bibendum`, mo
 
 After deletion, product 523 has no post metadata, product taxonomy relationships, or `wc_product_meta_lookup` row. The three requested content taxonomies have zero relationships and zero related objects. Their terms remain unchanged.
 
-A read-only check found one detached core `category=voelgoed` relationship row each for deleted post IDs 521 and 641. The current runtime does not register core `category` for object type `post`; the standard deletion API left these legacy rows. No separate relationship or taxonomy cleanup was performed. This does not change the zero counts for `content_category`, `content_topic`, or `hf_cat_post`.
+Normal `wp_delete_post()` left detached core `category=voelgoed` relationships for deleted IDs 521 and 641 because `category` was not registered to `post`. A guarded post-delete correction called `wp_delete_object_term_relationships()` for only those two object IDs. Both rows are now absent. The `category` taxonomy and `voelgoed` term remain; the term count changed from 8 before correction to 0 after. The initial global orphan scan found eight `category` rows. After correction, six remain on IDs 1, 513, 514, 516, 518, and 519; these unrelated rows were not changed. This is not a claim that all orphan relationships in the database were removed.
+
+The protected post 375 remains `post / publish`, with the same slug and modified timestamp. It has no `content_category`, `content_topic`, HappyFiles, editorial-format, editorial-collection, or Primary Topic relationship. Its existing core `category=voelgoed` relationship remains; the correction addressed only IDs 521 and 641.
 
 ## Product 523 commerce preflight
 
@@ -87,6 +89,8 @@ The post-deletion invocation of `python3 site-code/runtime-tests/fcm-self-featur
 
 Each run returned HTTP 200 and rendered two matching featured cards. All eight FCM options were unchanged.
 
+After the narrow core category correction, the integration test passed again: the fixture-free baseline probe passed; runs 1 and 2 passed with temporary posts 1247 and 1248; both temporary posts, relationships, and metadata were removed; and persistent state was restored. The `featured_self` target remained 531, and the integration output confirmed the options and migration provenance were unchanged.
+
 The pre-deletion run also passed twice, using temporary IDs 1243 and 1244, and restored the baseline before deletion.
 
 ## Migration provenance
@@ -108,6 +112,8 @@ Only `wp vg-content-topic-migrate --format=json` was run; apply, rollback, and r
 
 - Permanently deleted: posts 521 and 641; product 523.
 - Temporary test posts: 1243, 1244, 1245, and 1246; all were deleted by the integration test.
+- Post-delete taxonomy API correction: removed only the core `category` relationships for absent IDs 521 and 641. Six unrelated orphan `category` rows were found and left unchanged.
+- Latest FCM regression posts: 1247 and 1248; both were deleted by the integration test.
 - Media deleted: 0.
 - Taxonomy terms deleted: 0.
 - FCM option values changed: 0.

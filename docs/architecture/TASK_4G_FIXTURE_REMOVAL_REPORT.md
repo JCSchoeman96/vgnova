@@ -147,7 +147,15 @@ Protected post 375 remains published as `integer-maximus-sapien-in-bibendum`, wi
 
 The remaining published standard-post ID is explicitly 375. The 20 remaining product IDs are 525, 527, 529, 531, 642, 765, 767, 768, 842, 844, 845, 846, 905, 908, 911, 914, 917, 920, 923, and 1186. Product 523 has no remaining product taxonomy relationships, post metadata, or `wc_product_meta_lookup` row. The successful WP-CLI output names only the three authorized deletions.
 
-The requested content taxonomies and HappyFiles have zero persistent relationships. A separate read-only integrity check found one remaining core `category=voelgoed` relationship row each for now-absent post IDs 521 and 641. The runtime no longer registers the core `category` taxonomy for object type `post`; the normal deletion API did not clear those detached legacy rows. No extra cleanup or taxonomy change was performed. These rows are outside `content_category`, `content_topic`, and `hf_cat_post`, whose required counts are all zero.
+The requested content taxonomies and HappyFiles have zero persistent relationships. Normal `wp_delete_post()` left two detached core `category=voelgoed` relationships because the `category` taxonomy was not registered to `post` and was therefore omitted from its taxonomy cleanup. The initial orphan scan found eight core `category` rows in total, including the two for deleted IDs 521 and 641.
+
+### Post-deletion core category relationship correction
+
+Before correction, both exact rows were rechecked: object IDs 521 and 641 were absent; each row had `term_taxonomy_id=1`, taxonomy `category`, `term_id=1`, slug `voelgoed`, and name `Voelgoed`. The global orphan scan found eight rows, all in `category`; the six unrelated rows belonged to IDs 1, 513, 514, 516, 518, and 519.
+
+A guarded WordPress runtime operation verified `home_url('/')` was `http://localhost:10039/` and called `wp_delete_object_term_relationships(521, 'category')` and `wp_delete_object_term_relationships(641, 'category')`. Both target relationship queries are now empty. The `category` taxonomy and term `voelgoed` (term ID 1) remain. Its reported term count changed from 8 before correction to 0 after correction.
+
+The post-correction orphan scan found six remaining `category` rows, on IDs 1, 513, 514, 516, 518, and 519. They match the unrelated rows from the pre-correction scan and were left unchanged. This correction does not claim that the database has no other orphan term relationships. No category term or taxonomy was deleted.
 
 ### Bricks, media, and routes
 
@@ -181,6 +189,8 @@ The required post-deletion command `python3 site-code/runtime-tests/fcm-self-fea
 
 The test exercised its own temporary Self article after all three persistent fixtures were absent.
 
+After the core category correction, the integration test passed again with fixture-free baseline PASS, run 1 PASS (temporary post 1247), run 2 PASS (temporary post 1248), and persistent state restored. Both temporary posts and their relationships/meta were removed; the persistent category, topic, and HappyFiles fixture relationship counts remained zero. The live `featured_self` target remained 531 and the options and migration provenance were unchanged.
+
 ### Migration dry run and preserved provenance
 
 The read-only command `wp vg-content-topic-migrate --format=json` returned exit 0 with:
@@ -197,6 +207,7 @@ The command reported that apply and rollback remain disabled for the retired pro
 ### Runtime impact
 
 - Persistent objects permanently deleted: 3 (two posts, one product).
+- Detached core `category` relationships removed through the WordPress taxonomy API: 2 (object IDs 521 and 641); six unrelated orphan rows were left unchanged.
 - Media deleted: 0.
 - Taxonomy terms deleted: 0.
 - FCM options changed: 0.
