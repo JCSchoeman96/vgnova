@@ -117,36 +117,15 @@ function vg_task4f_migration_hashes(): array
     ];
 }
 
-function vg_task4f_content_object_snapshot(int $post_id): array
-{
-    $post = get_post($post_id);
-    if (! $post) {
-        return ['id' => $post_id, 'exists' => false];
-    }
-
-    return [
-        'id' => $post_id,
-        'exists' => true,
-        'post_type' => $post->post_type,
-        'status' => $post->post_status,
-        'title' => $post->post_title,
-        'slug' => $post->post_name,
-        'modified' => $post->post_modified,
-        'content_category' => vg_task4f_term_slugs($post_id, 'content_category'),
-        'content_topic' => vg_task4f_term_slugs($post_id, 'content_topic'),
-        'primary_topic' => (string) get_post_meta($post_id, '_vg_primary_content_topic', true),
-    ];
-}
-
 function vg_task4f_snapshot(): array
 {
     global $wpdb;
 
     $post_counts = wp_count_posts('post');
-    $product = get_post(523);
     $featured_self = get_field('featured_self', 'featured-content-manager');
     $featured_id = vg_task4f_post_reference_id($featured_self);
     $featured_post = $featured_id ? get_post($featured_id) : null;
+    $self_term = get_term_by('slug', 'self', 'content_category');
     $post_status_counts = [];
     foreach (['publish', 'draft', 'private', 'pending', 'future', 'trash'] as $status) {
         $post_status_counts[$status] = (int) ($post_counts->{$status} ?? 0);
@@ -167,22 +146,13 @@ function vg_task4f_snapshot(): array
     return [
         'posts' => [
             'status_counts' => $post_status_counts,
-            'objects' => [
-                375 => vg_task4f_content_object_snapshot(375),
-                521 => vg_task4f_content_object_snapshot(521),
-                641 => vg_task4f_content_object_snapshot(641),
-            ],
-            'product_523' => $product ? [
-                'exists' => true,
-                'post_type' => $product->post_type,
-                'status' => $product->post_status,
-                'title' => $product->post_title,
-                'slug' => $product->post_name,
-                'content_category' => vg_task4f_term_slugs(523, 'content_category'),
-                'content_topic' => vg_task4f_term_slugs(523, 'content_topic'),
-                'primary_topic' => (string) get_post_meta(523, '_vg_primary_content_topic', true),
-            ] : ['exists' => false],
         ],
+        'fixture_presence' => [
+            '521' => (bool) get_post(521),
+            '523' => (bool) get_post(523),
+            '641' => (bool) get_post(641),
+        ],
+        'content_category_self_exists' => $self_term instanceof WP_Term,
         'taxonomies' => [
             'content_category' => vg_task4f_taxonomy_stats('content_category'),
             'content_topic' => vg_task4f_taxonomy_stats('content_topic'),
@@ -221,6 +191,9 @@ $task4f_created_post_id = 0;
 try {
     vg_task4f_assert_local_runtime();
 
+    if (! function_exists('get_field')) {
+        throw new RuntimeException('ACF is unavailable; cannot read Featured Content Manager options.');
+    }
     if (! function_exists('vg_article_get_featured_content_post_id')) {
         throw new RuntimeException('The active Featured Content Manager article helper is not loaded.');
     }

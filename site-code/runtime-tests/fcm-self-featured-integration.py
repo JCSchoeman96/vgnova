@@ -24,6 +24,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 import uuid
+from copy import deepcopy
 from html.parser import HTMLParser
 from pathlib import Path
 from typing import Any
@@ -33,19 +34,8 @@ ROOT = Path(__file__).resolve().parents[2]
 RUNTIME_HELPER = Path(__file__).with_name("fcm-self-featured-runtime.php")
 EXPECTED_SITE = "http://localhost:10039/"
 EXPECTED_QA_TITLE = "[QA][AUTOMATED] Self Featured Content Integration"
-EXPECTED_POST_COUNTS = {"publish": 3, "trash": 0}
-EXPECTED_CONTENT_CATEGORY = {
-    "terms": 13,
-    "roots": 8,
-    "relationships": 4,
-    "objects": 3,
-}
-EXPECTED_CONTENT_TOPIC = {
-    "terms": 55,
-    "roots": 7,
-    "relationships": 3,
-    "objects": 3,
-}
+EXPECTED_CONTENT_CATEGORY_TREE = {"terms": 13, "roots": 8}
+EXPECTED_CONTENT_TOPIC_TREE = {"terms": 55, "roots": 7}
 EXPECTED_EDITORIAL_FORMAT = {
     "terms": 3,
     "roots": 3,
@@ -61,6 +51,16 @@ EXPECTED_EDITORIAL_COLLECTION = {
 EXPECTED_MIGRATION_HASHES = {
     "record_sha256": "605344b12ef63f8106b7a9c4f35c86934cb01f3decb65bb41e1c06fc0d7f7f95",
     "marker_sha256": "915049ef7fb936c7a0aa5548154f8c8e69452fbb589224fbb8868b3a472999d3",
+}
+EXPECTED_FEATURED_OPTION_KEYS = {
+    "featured_nuwe_jy",
+    "featured_geloof",
+    "featured_self",
+    "featured_werk_geld",
+    "featured_ouerskap",
+    "featured_huwelik",
+    "featured_mensstories",
+    "featured_leefstyl",
 }
 
 
@@ -138,45 +138,87 @@ def invoke_runtime(action: str, *, slug: str = "", run_id: str = "") -> dict[str
     return result
 
 
-def assert_baseline(snapshot: dict[str, Any]) -> None:
+def assert_infrastructure(snapshot: dict[str, Any]) -> None:
     posts = snapshot["posts"]
     statuses = posts["status_counts"]
-    for status, expected in EXPECTED_POST_COUNTS.items():
-        if statuses.get(status) != expected:
-            fail(f"Unexpected standard post count for {status}: {statuses.get(status)} (expected {expected}).")
+    if not isinstance(statuses, dict) or not {"publish", "trash"}.issubset(statuses):
+        fail("The standard-post status snapshot is unavailable.")
+    if any(type(count) is not int or count < 0 for count in statuses.values()):
+        fail("The standard-post status snapshot contains an invalid count.")
 
-    for object_id, expected_type, expected_status in [
-        ("375", "post", "publish"),
-        ("521", "post", "publish"),
-        ("641", "post", "publish"),
-    ]:
-        item = posts["objects"][object_id]
-        if not item.get("exists") or item["post_type"] != expected_type or item["status"] != expected_status:
-            fail(f"Fixture post {object_id} differs from the required pre-test state.")
+    taxonomies = snapshot["taxonomies"]
+    required_taxonomies = {
+        "content_category",
+        "content_topic",
+        "hf_cat_post",
+        "editorial_format",
+        "editorial_collection",
+    }
+    if not required_taxonomies.issubset(taxonomies):
+        fail("One or more required taxonomy snapshots are unavailable.")
+    for taxonomy, stats in taxonomies.items():
+        if not isinstance(stats, dict) or any(
+            type(stats.get(key)) is not int or stats[key] < 0
+            for key in ("terms", "roots", "relationships", "objects")
+        ):
+            fail(f"The {taxonomy} statistics are incomplete or invalid.")
 
-    product = posts["product_523"]
-    if not product.get("exists") or product["post_type"] != "product" or product["status"] != "publish" or product["slug"] != "welstand-pakket":
-        fail("Protected product 523 differs from the required pre-test state.")
+    category_tree = taxonomies["content_category"]
+    if {key: category_tree[key] for key in EXPECTED_CONTENT_CATEGORY_TREE} != EXPECTED_CONTENT_CATEGORY_TREE:
+        fail("The content_category taxonomy or Self classification tree differs from the required architecture.")
+    if snapshot.get("content_category_self_exists") is not True:
+        fail("The existing content_category=self term is unavailable.")
 
-    if snapshot["taxonomies"]["content_category"] != EXPECTED_CONTENT_CATEGORY:
-        fail("content_category baseline differs from the required 13 terms / 4 relationships / 3 objects.")
-    if snapshot["taxonomies"]["content_topic"] != EXPECTED_CONTENT_TOPIC:
-        fail("content_topic baseline differs from the required 55 terms / 3 relationships / 3 objects.")
+    topic_tree = taxonomies["content_topic"]
+    if {key: topic_tree[key] for key in EXPECTED_CONTENT_TOPIC_TREE} != EXPECTED_CONTENT_TOPIC_TREE:
+        fail("The canonical content_topic taxonomy tree differs from the required architecture.")
+
     if snapshot["taxonomies"]["editorial_format"] != EXPECTED_EDITORIAL_FORMAT:
-        fail("editorial_format baseline differs from the required 3 terms and 0 relationships.")
+        fail("editorial_format is not in the expected migration-safe, unassigned state.")
     if snapshot["taxonomies"]["editorial_collection"] != EXPECTED_EDITORIAL_COLLECTION:
         fail("editorial_collection baseline differs from the required empty state.")
     if snapshot["migration"] != EXPECTED_MIGRATION_HASHES:
         fail("The historical migration record or retirement marker differs from the locked baseline.")
     if snapshot["qa_residuals"]:
-        fail("A post matching the automated QA identity already exists; cleanup it before running this test.")
+        fail("A post matching the automated QA identity already exists; clean it up before running this test.")
 
+    options = snapshot["featured_options"]
+    if set(options) != EXPECTED_FEATURED_OPTION_KEYS:
+        fail("The Featured Content Manager options are unavailable or do not match the locked fields.")
     target = snapshot.get("featured_self_target")
-    configured_id = snapshot["featured_options"]["featured_self"]["value"]
+    configured_id = options["featured_self"]["value"]
+    if type(configured_id) is not int or configured_id <= 0:
+        fail("The current featured_self option is empty or invalid.")
     if not target or target["id"] != configured_id or target["status"] != "publish":
         fail("The configured featured_self value does not resolve to a published object.")
     if target["post_type"] not in {"product", "mto-course", "tc_events"}:
         fail("The configured featured_self object has an unsupported post type.")
+
+
+def fixture_free_snapshot_probe(snapshot: dict[str, Any]) -> dict[str, Any]:
+    """Prove fixture absence and zeroed fixture relationships are not preconditions."""
+    simulated = deepcopy(snapshot)
+    presence = simulated.get("fixture_presence")
+    if not isinstance(presence, dict) or not {"521", "523", "641"}.issubset(presence):
+        fail("The snapshot lacks fixture-presence diagnostics needed for the fixture-free simulation.")
+
+    published_fixtures_removed = sum(
+        1 for object_id in ("521", "641") if presence[object_id] is True
+    )
+    simulated["posts"]["status_counts"]["publish"] -= published_fixtures_removed
+    if simulated["posts"]["status_counts"]["publish"] < 0:
+        fail("The fixture-free simulation produced a negative published-post count.")
+    for object_id in ("521", "523", "641"):
+        simulated["fixture_presence"][object_id] = False
+    if any(simulated["fixture_presence"][object_id] is not False for object_id in ("521", "523", "641")):
+        fail("The synthetic fixture-free state still reports a Task 4G object as present.")
+
+    for taxonomy in ("content_category", "content_topic", "hf_cat_post"):
+        simulated["taxonomies"][taxonomy]["relationships"] = 0
+        simulated["taxonomies"][taxonomy]["objects"] = 0
+
+    assert_infrastructure(simulated)
+    return simulated
 
 
 class CardContent(HTMLParser):
@@ -348,11 +390,20 @@ def main() -> int:
 
     try:
         baseline = invoke_runtime("snapshot")["snapshot"]
-        assert_baseline(baseline)
+        assert_infrastructure(baseline)
+        fixture_free = fixture_free_snapshot_probe(baseline)
         results = [run_one(1, baseline), run_one(2, baseline)]
         print(json.dumps({
             "site": EXPECTED_SITE,
             "status": "PASS",
+            "fixture_free_baseline_probe": "PASS",
+            "fixture_free_simulation": {
+                "fixture_presence": fixture_free["fixture_presence"],
+                "published_standard_posts": fixture_free["posts"]["status_counts"]["publish"],
+                "content_category": fixture_free["taxonomies"]["content_category"],
+                "content_topic": fixture_free["taxonomies"]["content_topic"],
+                "happyfiles": fixture_free["taxonomies"]["hf_cat_post"],
+            },
             "runs": results,
             "baseline": {
                 "published_standard_posts": baseline["posts"]["status_counts"]["publish"],

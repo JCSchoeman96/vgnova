@@ -4,7 +4,7 @@
 
 Task 4F started from fresh `origin/main` at `9f5434d7dede5d0dbae62d1a6589d9bd7431b91` (PR #12) in the isolated branch `chore/replace-fixture-dependencies`. Runtime work used Novamira profile `vgnova`, verified as `http://localhost:10039/`.
 
-No existing fixture object was deleted, trashed, or reclassified. Posts 375, 521, and 641 remain published; product 523 remains published. Temporary posts 1235 and 1236 existed only during their respective test runs and were deleted by WordPress API cleanup.
+No existing fixture object was deleted, trashed, or reclassified. Posts 375, 521, and 641 remain published; product 523 remains published. Temporary posts 1241 and 1242 existed only during their respective test runs and were deleted by WordPress API cleanup.
 
 The source-controlled Bricks maintenance script is [replace-fixture-template-previews.php](../../site-code/runtime-tests/replace-fixture-template-previews.php). The source-controlled integration test is [fcm-self-featured-integration.py](../../site-code/runtime-tests/fcm-self-featured-integration.py), with its WordPress actions in [fcm-self-featured-runtime.php](../../site-code/runtime-tests/fcm-self-featured-runtime.php). No Bricks export/deployment convention existed in the repository, so the guarded WordPress API script records the smallest reproducible settings change.
 
@@ -79,12 +79,16 @@ The runner invokes WordPress actions through Novamira profile `vgnova` and refus
 
 The test reads the current `featured_self` ACF option and resolves the configured object's title and permalink on every run. It does not encode product ID 531 or its current title in the test contract. The current runtime value was 531, resolving to published product `Slaapmasker Deluxe` at `/winkel/slaapmasker-deluxe/`.
 
+The runtime snapshot contains standard-post status counts, taxonomy statistics, all Featured Content Manager values, the resolved `featured_self` target, the preserved migration hashes, automated-QA residuals, and optional presence flags for 521, 523, and 641. It does not inspect post 375. Those presence flags are diagnostic only: the infrastructure validator does not require them to be true. Persistent relationship and object counts are taken from the pre-run snapshot and must match it exactly after cleanup. The validator keeps the `content_category` and `content_topic` term/tree invariants, checks that `content_category=self` exists, requires `editorial_format` to remain unassigned, and requires `editorial_collection` to remain empty.
+
+Before the live runs, the test built a deterministic synthetic fixture-free snapshot from the live pre-run snapshot: it marked 521, 523, and 641 absent, reduced the published-post count by any present standard-post fixtures, and set `content_category`, `content_topic`, and HappyFiles relationships/objects to zero. It retained the taxonomy trees, live FCM target, editorial dimensions, and migration hashes. The probe verifies those simulated absences, then passes the snapshot to the infrastructure validator (`fixture_free_baseline_probe: PASS`). This is an in-memory compatibility probe and did not mutate WordPress. The integration test remains usable after removal of 521, 523, and 641.
+
 The test calls the active helper function and requests the temporary article's normal permalink. It requires HTTP success, the active Bricks Posts template marker, the Featured Content Block marker, and at least one rendered card containing both the current configured title and permalink. Each run produced two matching featured cards, reflecting the two active placements in the article template.
 
 | Run | Temporary ID / slug | HTTP | Card matches | Cleanup | Persistent counts/options |
 |---|---|---:|---:|---|---|
-| 1 | 1235 / `qa-automated-self-featured-integration-6adb8dabacdb479da5fcb02e53e95bed` | 200 | 2 | PASS; post, taxonomy relationships, and meta absent | Restored exactly |
-| 2 | 1236 / `qa-automated-self-featured-integration-d9a9c828c18045c48faa855ff6b2074d` | 200 | 2 | PASS; post, taxonomy relationships, and meta absent | Restored exactly |
+| 1 | 1241 / `qa-automated-self-featured-integration-400ada45ffc34f73bbdabc16eaa363c7` | 200 | 2 | PASS; post, taxonomy relationships, and meta absent | Restored exactly |
+| 2 | 1242 / `qa-automated-self-featured-integration-0f97bce0c06c4ecab643d054b4f6f25b` | 200 | 2 | PASS; post, taxonomy relationships, and meta absent | Restored exactly |
 
 Creation and rendering are protected by Python `try/finally` teardown and SIGINT/SIGTERM handlers. The WordPress helper also deletes a partially created post if an assertion fails during creation. Cleanup uses `wp_delete_post()` and verifies no matching post row, any taxonomy relationship, or post meta remains. After both runs there were no objects matching the automated QA identity, no temporary HappyFiles relationship, no editorial relationship, no post count change, and no `featured_*` option change. The migration record and marker hashes also matched their pre-test values after both runs.
 
@@ -98,7 +102,7 @@ The active production FluentSnippet `2-vg-article-dynamic-tags.php` was not chan
 |---:|---|---|
 | 521 | Template 372 no longer refers to it; real post output is unchanged | `READY_TO_REMOVE` |
 | 523 | Template 690 no longer refers to it; product page is unchanged | `READY_TO_REMOVE` |
-| 641 | Two source-controlled end-to-end test runs pass and clean themselves | `READY_TO_REMOVE` |
+| 641 | The test accepts the synthetic fixture-free state; two live runs pass and clean themselves | `READY_TO_REMOVE` |
 | 375 | Not inspected for provenance or modified | `NEEDS_PROVENANCE` |
 
 The grouped fixture inventory remains `DEFER` because 375 is unresolved. Task 4F did not delete any of these four objects. Task 4G may review controlled removal of 521, 523, and 641 while leaving 375.
