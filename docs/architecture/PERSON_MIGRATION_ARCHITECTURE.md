@@ -38,7 +38,7 @@ The mapping below identifies current sources and open review. It does not author
 | Voelgoed profile metadata | Current ACF title, short bio, and profile status | `EXISTING_TRANSFORM` | Preserve originals and separate mixed status meanings |
 | Visibility / lifecycle | WordPress post status plus `medewerker_profiel_status` | `EXISTING_TRANSFORM` | Map publication/access, search indexing, and lifecycle independently |
 
-No `MISSING_REQUIRED` fact was observed in the current five-profile corpus. New profile requirements must be decided in the Person implementation task; do not invent values to fill gaps.
+No concept is classified `MISSING_REQUIRED` at this stage because canonical Person field requiredness has not yet been designed. New profile requirements must be decided in the Person implementation task; do not invent values to fill gaps.
 
 ## Classification mapping
 
