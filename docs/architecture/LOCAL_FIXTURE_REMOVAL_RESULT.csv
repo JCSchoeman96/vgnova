@@ -1,0 +1,10 @@
+object_id,task_4d_recommendation,task_4e_result,post_task_4e_state,attachment_id,notes
+375,NEEDS_PROVENANCE,UNCHANGED,post:publish,154,Provenance unresolved; protected and untouched
+513,READY_TO_REMOVE,REMOVED,absent,569,Permanently deleted; attachment preserved with post_parent 0
+514,READY_TO_REMOVE,REMOVED,absent,515,Permanently deleted; attachment preserved with post_parent 0
+516,READY_TO_REMOVE,REMOVED,absent,517,Permanently deleted; attachment preserved with post_parent 0
+518,READY_TO_REMOVE,REMOVED,absent,567,Permanently deleted; attachment preserved with post_parent 0
+519,READY_TO_REMOVE,REMOVED,absent,520,Permanently deleted; attachment preserved with post_parent 0
+521,DEFER_REMOVAL,UNCHANGED,post:publish,522,Bricks Posts template 372 preview target remains
+523,DEFER_REMOVAL,UNCHANGED,product:publish,524,Bricks Article Card template 690 preview target remains
+641,DEFER_REMOVAL,UNCHANGED,post:publish,153,Featured Content Manager Self QA path remains active
