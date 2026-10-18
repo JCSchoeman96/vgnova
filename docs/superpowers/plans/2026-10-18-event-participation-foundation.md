@@ -1787,9 +1787,9 @@ selected Event had legacy people before QA:
 0
 
 QA Person created:
-1310 (temporary)
+1318 (temporary)
 QA participation created:
-1311 (temporary)
+1319 (temporary; tracked ID 1319)
 duplicate attempt rejected:
 PASS
 QA Person hard-deleted:
@@ -1877,6 +1877,9 @@ Person foundation:
 Editorial Dimensions:
 11/11
 
+QA cleanup/setup regressions:
+4/4
+
 PHP lint:
 PASS
 
@@ -1899,10 +1902,10 @@ persistent event_role terms:
 4
 
 temporary QA Person:
-10 created / 10 hard-deleted
+12 created / 12 hard-deleted
 
 temporary QA participation:
-11 created / 11 hard-deleted (one duplicate from the failed query was separately verified and removed)
+13 created / 13 hard-deleted (one duplicate from the failed query was separately verified and removed)
 
 legacy WordPress content writes:
 0

@@ -44,4 +44,4 @@ if (($token_setup['failure'] ?? null) !== 'token generation failed' || ($token_s
     exit(1);
 }
 
-fwrite(STDOUT, "PASS QA setup failures are reported before mutation.\n");
+fwrite(STDOUT, "QA setup failure regression: 1/1 passed.\n");

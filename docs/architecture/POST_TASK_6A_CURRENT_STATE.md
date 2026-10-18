@@ -54,7 +54,7 @@ The default Novamira MCP profile resolved to a different installation (`DanOptic
 
 ## QA run and cleanup
 
-The final runtime QA run after the round 4 review fixes passed on 2026-10-18 using published Event 151. It created temporary Person 1310 and participation 1311, checked the approved roles `paneellid` and `spreker`, used display order 17, verified title updates after changing the Person title, and verified trashing a participation while its Person endpoint was trashed followed by restoration and republishing.
+The pre-revision runtime QA run after the round 4 review fixes passed on 2026-10-18 using published Event 151. It created temporary Person 1310 and participation 1311, checked the approved roles `paneellid` and `spreker`, used display order 17, verified title updates after changing the Person title, and verified trashing a participation while its Person endpoint was trashed followed by restoration and republishing.
 
 | QA check | Result |
 |---|---|
@@ -79,8 +79,8 @@ After cleanup, Person count and Event Participation count were both zero. Person
 | Targeted ACF definition syncs | 3 | Persistent canonical schema active |
 | Approved `event_role` term creation | 4 | Persistent vocabulary active |
 | Platform Core PHP classes and bootstrap deployment | 5 classes plus bootstrap integration | Runtime copy matches source module |
-| Temporary QA Person | 10 | All ten hard-deleted and verified absent |
-| Temporary QA participation | 11 | Ten ownership-marked rows hard-deleted by QA; one duplicate from the failed query was individually verified and hard-deleted |
+| Temporary QA Person | 12 | All twelve hard-deleted and verified absent |
+| Temporary QA participation | 13 | Twelve ownership-marked rows hard-deleted by QA; one duplicate from the failed query was individually verified and hard-deleted |
 | Legacy profile, event, product, relationship, Bricks, or FluentSnippet writes | 0 | Protected state unchanged |
 
 ## Regression checks
@@ -93,12 +93,14 @@ After cleanup, Person count and Event Participation count were both zero. Person
 | Person Foundation tests | 10 passed |
 | Editorial Dimensions tests | 11 passed |
 | QA setup failure reporting regression check | 1 passed |
+| QA cleanup ownership regressions | 3 passed |
+| QA cleanup/setup regressions | 4/4 |
 | PHP lint for changed PHP files | Passed |
 | Shared ACF JSON parsing | 9 files parsed |
 
 The Task 6A Platform Core suite adds 65 tests to the prior 67-test Content Topic suite, for 132 tests across those two standalone runners. Earlier reviews found that same-post edits could interleave, duplicate checks could use stale WordPress/ACF caches, and invalid endpoints could block retirement. Later reviews found that a failed candidate post read could be mistaken for no duplicate, title sync could restore a stale status after a trash operation, creation with `future` status had no scheduled date, and endpoint title reads could use stale post objects after a lock wait. The repository now fails closed on candidate read errors while skipping genuinely missing candidates; title sync takes a scoped participation lock before reading status or endpoints, refreshes the pair and both endpoint posts after acquiring the lock, and preserves locks owned by an outer save; and the service rejects `future` creation because it has no schedule-date input. Existing `future` rows still reserve their Event × Person pair. Regression tests cover those findings along with cached prechecks, endpoint status changes, different-pair edits, overlapping trash transitions, fresh endpoint titles after lock waits, and retirement with invalid endpoints.
 
-The first post-review staging QA attempt exposed an incorrect escaped newline in the fresh duplicate query and left temporary participation 1282 behind after its duplicate attempt. The remaining row was tied to the failed run's unique QA title token and was hard-deleted after its Event and missing Person IDs were checked against the clean baseline. Subsequent guarded QA runs passed; the final run above reported zero Persons and participations, no token, and unchanged protected runtime state. The staging database is MySQL 8.0.35; a cross-version compatibility matrix was not run. The Task 7 runtime QA setup boundary was also re-reviewed and fixed so token generation or service construction failures return JSON before mutation.
+The first post-review staging QA attempt exposed an incorrect escaped newline in the fresh duplicate query and left temporary participation 1282 behind after its duplicate attempt. The remaining row was tied to the failed run's unique QA title token and was hard-deleted after its Event and missing Person IDs were checked against the clean baseline. Subsequent guarded QA runs passed. Two guarded review-correction runs passed on 2026-10-18. The first used Event 151, temporary Person 1314, and tracked participation 1315. After tightening a cleanup read failure to fail closed, the final run used Event 151, temporary Person 1318, and tracked participation 1319. Both reported zero remaining Persons or participations, no run token, zero Person taxonomy and `event_role` relationships, no cleanup errors, and unchanged protected state and Event. A read-only post-run count confirmed Person 0, `event_participation` 0, Person taxonomy relationships 0, `event_role` relationships 0, and exactly 4 `event_role` terms. The staging database is MySQL 8.0.35; a cross-version compatibility matrix was not run. The Task 7 runtime QA setup boundary was also re-reviewed and fixed so token generation or service construction failures return JSON before mutation.
 
 ## Legacy and migration state
 

@@ -98,3 +98,5 @@ Run it inside the loaded WordPress runtime with `wp eval-file`; it creates and
 removes only uniquely owned temporary Person and participation records. The
 setup failure boundary has a standalone regression check at
 `site-code/runtime-tests/tests/run-event-participation-qa-setup-tests.php`.
+Created-record ownership and failure-safe cleanup have focused regressions at
+`site-code/runtime-tests/tests/run-event-participation-qa-cleanup-tests.php`.

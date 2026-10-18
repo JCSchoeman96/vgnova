@@ -18,6 +18,7 @@ if (! defined('ABSPATH')) {
 }
 
 require_once __DIR__ . '/event-participation-qa-setup.php';
+require_once __DIR__ . '/event-participation-qa-ownership.php';
 
 function vg_event_participation_qa_check(bool $condition, string $message): void
 {
@@ -324,14 +325,16 @@ if ($setup['failure'] !== null) {
 
 $token = $setup['token'];
 $owner = $setup['owner'];
+$person_slug = 'ep-qa-' . strtolower(str_replace('-', '', $token));
 $person_id = 0;
 $participation_id = 0;
+$owned_participations = [];
 $qa_failure = null;
 $cleanup_failures = [];
 $result = [];
 $service = $setup['service'];
 try {
-    $inserted = wp_insert_post(['post_type' => 'person', 'post_status' => 'publish', 'post_title' => $owner, 'post_name' => 'ep-qa-' . strtolower(str_replace('-', '', $token)), 'meta_input' => ['_vg_task_6a_qa_owner' => $owner]], true);
+    $inserted = wp_insert_post(['post_type' => 'person', 'post_status' => 'publish', 'post_title' => $owner, 'post_name' => $person_slug, 'meta_input' => ['_vg_task_6a_qa_owner' => $owner]], true);
     if (is_wp_error($inserted)) {
         throw new RuntimeException('Could not create QA Person: ' . $inserted->get_error_message());
     }
@@ -343,8 +346,7 @@ try {
         throw new RuntimeException('Could not create QA participation: ' . $created->get_error_message());
     }
     $participation_id = (int) $created;
-    vg_event_participation_qa_check($participation_id > 0, 'Service returned an invalid participation ID.');
-    vg_event_participation_qa_check(update_post_meta($participation_id, '_vg_task_6a_qa_owner', $owner) !== false, 'Could not write QA participation ownership marker.');
+    vg_event_participation_qa_track_participation($owned_participations, $participation_id, $qa_event_id, $person_id, $owner);
 
     $repo = new EventParticipationRepository();
     vg_event_participation_qa_check((int) get_field(EventParticipationRepository::EVENT_FIELD, $participation_id) === $qa_event_id, 'Event endpoint did not persist.');
@@ -359,6 +361,9 @@ try {
     vg_event_participation_qa_check(! is_post_publicly_viewable(get_post($participation_id)), 'Published Event Participation must not be publicly viewable.');
 
     $duplicate = $service->create($qa_event_id, $person_id, [], 1, 'publish');
+    if (! is_wp_error($duplicate)) {
+        vg_event_participation_qa_track_participation($owned_participations, (int) $duplicate, $qa_event_id, $person_id, $owner);
+    }
     vg_event_participation_qa_check(
         is_wp_error($duplicate) && $duplicate->get_error_code() === 'duplicate_event_participation',
         'Duplicate Event/Person pair was not rejected with duplicate_event_participation.'
@@ -408,23 +413,7 @@ try {
 } catch (Throwable $error) {
     $qa_failure = $error;
 } finally {
-    foreach ([['id' => $participation_id, 'type' => EventParticipationRepository::POST_TYPE], ['id' => $person_id, 'type' => 'person']] as $owned) {
-        $id = (int) $owned['id'];
-        if ($id <= 0) {
-            continue;
-        }
-        try {
-            $post = get_post($id);
-            if (! ($post instanceof WP_Post) || $post->post_type !== $owned['type'] || get_post_meta($id, '_vg_task_6a_qa_owner', true) !== $owner) {
-                throw new RuntimeException('Cleanup refused because the QA ownership marker did not match.');
-            }
-            if (! wp_delete_post($id, true) || get_post($id) !== null || vg_event_participation_qa_meta_count($id) !== 0 || vg_event_participation_qa_relationship_count($id) !== 0) {
-                throw new RuntimeException('QA record cleanup did not remove the post, metadata, and term relationships.');
-            }
-        } catch (Throwable $error) {
-            $cleanup_failures[] = ['id' => $id, 'message' => $error->getMessage()];
-        }
-    }
+    $cleanup_failures = vg_event_participation_qa_cleanup_owned_records($owned_participations, $person_id, $owner, $person_slug);
 }
 $audit_failures = [];
 $audit = static function (string $name, callable $assertion) use (&$audit_failures): void {
@@ -496,6 +485,7 @@ $report = wp_json_encode([
     'result' => $failures === [] ? 'PASS' : 'FAIL',
     'qa' => $result,
     'cleanup' => [
+        'tracked_participation_ids' => array_map('intval', array_keys($owned_participations)),
         'persons_remaining' => $remaining_persons,
         'participations_remaining' => $remaining_participations,
         'run_token_found' => $token_found,
