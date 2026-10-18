@@ -11,11 +11,20 @@ $role_seeder_file = dirname(__DIR__) . '/includes/Event/EventRoleSeeder.php';
 if (is_file($role_seeder_file)) {
     require_once $role_seeder_file;
 }
+$service_file = dirname(__DIR__) . '/includes/Event/EventParticipationService.php';
+if (is_file($service_file)) {
+    require_once $service_file;
+}
 
 require_once __DIR__ . '/EventParticipationRepositoryTest.php';
 require_once __DIR__ . '/EventRoleSeederTest.php';
+require_once __DIR__ . '/EventParticipationServiceTest.php';
 
-$test_suites = [new EventParticipationRepositoryTest(), new EventRoleSeederTest()];
+$test_suites = [
+    new EventParticipationRepositoryTest(),
+    new EventRoleSeederTest(),
+    new EventParticipationServiceTest(),
+];
 $passed = 0;
 $failed = 0;
 

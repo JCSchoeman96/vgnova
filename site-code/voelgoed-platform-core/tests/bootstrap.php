@@ -67,9 +67,14 @@ $GLOBALS['vgpc_test_insert_count'] = 0;
 $GLOBALS['vgpc_test_rewrite_flush_count'] = 0;
 $GLOBALS['vgpc_test_force_suffix_next_insert'] = false;
 $GLOBALS['vgpc_test_posts'] = [];
+$GLOBALS['vgpc_test_next_post_id'] = 5000;
+$GLOBALS['vgpc_test_insert_post_calls'] = [];
+$GLOBALS['vgpc_test_delete_post_calls'] = [];
 $GLOBALS['vgpc_test_relationships'] = [];
 $GLOBALS['vgpc_test_meta'] = [];
 $GLOBALS['vgpc_test_field_groups'] = [];
+$GLOBALS['vgpc_test_update_field_calls'] = [];
+$GLOBALS['vgpc_test_fail_update_field_name'] = null;
 $GLOBALS['vgpc_test_filters'] = [];
 $GLOBALS['vgpc_test_screen'] = null;
 $GLOBALS['vgpc_test_set_term_calls'] = 0;
@@ -86,9 +91,14 @@ function vgpc_test_reset(): void
     $GLOBALS['vgpc_test_rewrite_flush_count'] = 0;
     $GLOBALS['vgpc_test_force_suffix_next_insert'] = false;
     $GLOBALS['vgpc_test_posts'] = [];
+    $GLOBALS['vgpc_test_next_post_id'] = 5000;
+    $GLOBALS['vgpc_test_insert_post_calls'] = [];
+    $GLOBALS['vgpc_test_delete_post_calls'] = [];
     $GLOBALS['vgpc_test_relationships'] = [];
     $GLOBALS['vgpc_test_meta'] = [];
     $GLOBALS['vgpc_test_field_groups'] = [];
+    $GLOBALS['vgpc_test_update_field_calls'] = [];
+    $GLOBALS['vgpc_test_fail_update_field_name'] = null;
     $GLOBALS['vgpc_test_filters'] = [];
     $GLOBALS['vgpc_test_screen'] = null;
     $GLOBALS['vgpc_test_set_term_calls'] = 0;
@@ -232,6 +242,48 @@ function get_term(int $term_id, string $taxonomy = ''): object|false
 function get_post(int $post_id): object|false
 {
     return $GLOBALS['vgpc_test_posts'][$post_id] ?? false;
+}
+
+function wp_insert_post(array $postarr, bool $wp_error = false): int|WP_Error
+{
+    $GLOBALS['vgpc_test_insert_post_calls'][] = $postarr;
+    $post_id = (int) $GLOBALS['vgpc_test_next_post_id']++;
+    while (isset($GLOBALS['vgpc_test_posts'][$post_id])) {
+        $post_id = (int) $GLOBALS['vgpc_test_next_post_id']++;
+    }
+
+    $GLOBALS['vgpc_test_posts'][$post_id] = (object) array_merge($postarr, [
+        'ID' => $post_id,
+        'post_type' => (string) ($postarr['post_type'] ?? 'post'),
+        'post_status' => (string) ($postarr['post_status'] ?? 'draft'),
+        'post_title' => (string) ($postarr['post_title'] ?? ''),
+    ]);
+
+    return $post_id;
+}
+
+function wp_delete_post(int $post_id, bool $force_delete = false): object|false
+{
+    $GLOBALS['vgpc_test_delete_post_calls'][] = [
+        'post_id' => $post_id,
+        'force_delete' => $force_delete,
+    ];
+    $post = get_post($post_id);
+    if (! $post) {
+        return false;
+    }
+
+    if (! $force_delete) {
+        $post->post_status = 'trash';
+        return $post;
+    }
+
+    unset($GLOBALS['vgpc_test_posts'][$post_id], $GLOBALS['vgpc_test_meta'][$post_id]);
+    foreach ($GLOBALS['vgpc_test_relationships'] as $taxonomy => $relationships) {
+        unset($GLOBALS['vgpc_test_relationships'][$taxonomy][$post_id]);
+    }
+
+    return $post;
 }
 
 function get_post_type(int|object|null $post = null): string|false
@@ -460,6 +512,16 @@ function update_field(string|int $selector, mixed $value, int|string|false $post
 
     $post_id = (int) $post_id;
     $field_name = (string) $field['name'];
+    $GLOBALS['vgpc_test_update_field_calls'][] = [
+        'selector' => (string) $selector,
+        'field_name' => $field_name,
+        'value' => $value,
+        'post_id' => $post_id,
+    ];
+    if ($GLOBALS['vgpc_test_fail_update_field_name'] === $field_name) {
+        return false;
+    }
+
     $value = apply_filters('acf/update_value/key=' . $field['key'], $value, $post_id, $field);
     if ($value === null) {
         return true;
