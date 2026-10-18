@@ -91,9 +91,9 @@ final class ContentTopicTaxonomyTest
         $taxonomy->register_taxonomy();
         $definition = get_taxonomy('content_topic');
         vgpc_test_same(
-            ['post', 'mto-course', 'product', 'tc_events', 'medewerker', 'uitsending', 'kompetisie'],
+            ['post', 'mto-course', 'product', 'tc_events', 'medewerker', 'uitsending', 'kompetisie', 'person'],
             $definition->object_type,
-            'Only the seven approved object types may be attached.'
+            'Only the eight approved object types may be attached.'
         );
         vgpc_test_same(true, $definition->hierarchical, 'The taxonomy must be hierarchical.');
         vgpc_test_same(true, $definition->public, 'The taxonomy must be public.');

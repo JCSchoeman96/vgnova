@@ -524,7 +524,7 @@ final class ContentTopicRoles
             'medewerker' => ['primary_supported' => false, 'primary_requirement' => 'not_applicable', 'editorial_policy' => 'content_topic terms represent expertise or subject associations.'],
             'uitsending' => ['primary_supported' => true, 'primary_requirement' => 'optional', 'editorial_policy' => 'Optional.'],
             'kompetisie' => ['primary_supported' => true, 'primary_requirement' => 'optional', 'editorial_policy' => 'Optional.'],
-            'person' => ['primary_supported' => false, 'primary_requirement' => 'not_applicable', 'editorial_policy' => 'If introduced, content_topic terms represent expertise or subject associations.'],
+            'person' => ['primary_supported' => false, 'primary_requirement' => 'not_applicable', 'editorial_policy' => 'Direct content_topic assignments represent Person expertise or relevance.'],
         ];
     }
 

@@ -5,6 +5,8 @@
 **WordPress:** 7.1.3
 **ACF Pro:** 6.8.1
 
+> **Superseded setup note (Task 5B):** At the time of this snapshot, the source-controlled ACF Local JSON files lived in `site-code/editorial-dimensions/acf-json/`. Task 5B later moved those three definitions to `site-code/acf-json/` without configuration changes. The path below records the Task 4B state when captured; for current setup instructions, use [Editorial Dimensions Implementation](EDITORIAL_DIMENSIONS_IMPLEMENTATION.md) and [Person Foundation Implementation](PERSON_FOUNDATION_IMPLEMENTATION.md).
+
 ## Source/runtime ownership
 
 ACF Pro owns the two taxonomy definitions and the `Editorial Classification` field group. Git Local JSON is the canonical source-controlled representation, and the WordPress database holds the runtime ACF records. ACF JSON synchronization is the explicit bridge between them; Git changes do not automatically update an existing database copy. The repository-backed ACF Local JSON directory is:

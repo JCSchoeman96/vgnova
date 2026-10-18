@@ -117,7 +117,7 @@ function editorial_dimensions_test_reset(): void
 
 function editorial_dimensions_test_load_json(string $filename): array
 {
-    $path = dirname(__DIR__) . '/acf-json/' . $filename;
+    $path = dirname(__DIR__, 2) . '/acf-json/' . $filename;
     if (! is_file($path)) {
         throw new RuntimeException('Missing source-controlled ACF Local JSON file: ' . $path);
     }
@@ -195,18 +195,21 @@ $tests = [
         editorial_dimensions_test_assert_same(1, (int) ($collection['save_terms'] ?? 0), 'Collection selections must save taxonomy relationships.');
         editorial_dimensions_test_assert_same(1, (int) ($collection['load_terms'] ?? 0), 'Collection selections must load taxonomy relationships.');
     },
-    'only the two taxonomies and one classification field group are source-controlled' => static function (): void {
-        $files = glob(dirname(__DIR__) . '/acf-json/*.json') ?: [];
+    'the shared source contains the editorial and Person ACF definitions' => static function (): void {
+        $files = glob(dirname(__DIR__, 2) . '/acf-json/*.json') ?: [];
         $actual = array_map('basename', $files);
         sort($actual);
         $expected = [
+            'group_vg_person_details.json',
             'group_vg_editorial_classification.json',
             'taxonomy_editorial_collection.json',
             'taxonomy_editorial_format.json',
+            'taxonomy_person_type.json',
+            'post_type_person.json',
         ];
         sort($expected);
 
-        editorial_dimensions_test_assert_same($expected, $actual, 'Task 4B must not add flag, campaign, or unrelated ACF definitions.');
+        editorial_dimensions_test_assert_same($expected, $actual, 'The shared ACF JSON directory must contain only the approved editorial and Person definitions.');
     },
     'seeds only the three approved format terms and assigns no posts' => static function (): void {
         editorial_dimensions_test_reset();
