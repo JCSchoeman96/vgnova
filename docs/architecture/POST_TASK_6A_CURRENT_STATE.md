@@ -117,7 +117,7 @@ See [Event Participation implementation](EVENT_PARTICIPATION_IMPLEMENTATION.md) 
 - Date: 2026-10-18
 - Task 6A PR: [#20](https://github.com/JCSchoeman96/vgnova/pull/20)
 - Merge commit and stable main HEAD: `797c19597a39812df9d06090340ca60b1173cc37`
-- Documentation PR: Pending creation, to remain open for independent review.
+- Documentation PR: [#21](https://github.com/JCSchoeman96/vgnova/pull/21), open and unmerged for independent review.
 
 Task 6A-S moved the active ACF Local JSON symlink from the removed Task 6A worktree to the repository's stable `main` checkout. This was the only WordPress runtime change. WordPress data writes: **0**.
 
