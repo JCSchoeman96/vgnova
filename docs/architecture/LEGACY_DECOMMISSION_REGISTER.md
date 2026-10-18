@@ -1,9 +1,9 @@
 # Legacy decommission register
 
 **Status:** Active governance register
-**Inspection date:** 2026-10-17
-**Repository baseline:** origin/main after Task 4H merge at 72b0b8b36f8e5457ee8fc172117b5049388307e0
-**Runtime:** Local WordPress at localhost:10039, inspected through the Novamira MCP profile VGNova. Task 4I removed six approved taxonomy relationships through the WordPress API; SQL was used only for read-only verification.
+**Inspection date:** 2026-10-18
+**Repository baseline:** origin/main at 33aae1f7d2c564ccb4117dbefafeeda83a676e66
+**Runtime:** Local WordPress at localhost:10039, inspected through Novamira. Task 5C used read-only runtime APIs and SELECT statements only; WordPress writes = 0.
 
 This register is the authoritative ledger for architecture that must stay, adapt, migrate, or leave. It tracks live legacy systems and future replacements so a replacement can be completed before its consumers or data are removed.
 
@@ -230,8 +230,8 @@ Do not remove an item before its removal gate passes. If a task finds a new bloc
 | Replacement | The approved canonical Person model and `/mense/` area. The architecture mapping is defined; profile eligibility and migration authority remain unresolved per record. |
 | Dependencies / consumers | Three profile ACF fields; `medewerker_rol` and `medewerker_groep`; attached `content_topic` and `content_category` (zero profile assignments); `event_medewerkers` (2 edges); `produk_medewerkers` (3 edges); empty `broadcast_hosts`/`broadcast_guests` fields; Bricks templates 772, 773, 774, 124, and 1127, shared card 6b463f, and FluentSnippets query helper. |
 | Removal gate | Do not remove or rename `medewerker` until the approved migration maps and verifies every profile, relationship, URL, template, and consumer. |
-| Planned phase | Task 5B Person foundation without legacy profile copies; Task 5C per-profile provenance decisions; domain consumer migration only for approved source data. |
-| Evidence / notes | Task 5A found all five profiles share the same creation timestamp, Pexels-style placeholder images, short bios duplicated in excerpt and content, and Mentor / Voelgoed Mentor assignments. Event 763 is named `Test Event`; linked products include QA/trash records. No repository/import/source provenance establishes the five profiles as genuine Voelgoed source data. These are caution indicators, not proof they are fixtures. All five decisions remain `DEFER`; no profile or dependent relationship is approved for automatic migration. Task 5B activated `/mense/` and verified its archive and a temporary single while leaving all legacy records and edges unchanged; persistent Person records remain 0. See `PERSON_CURRENT_STATE_AUDIT.md`, `PERSON_PROFILE_MIGRATION_MANIFEST.csv`, `PERSON_MIGRATION_ARCHITECTURE.md`, and the [Post-Task 5B snapshot](POST_TASK_5B_CURRENT_STATE.md). |
+| Planned phase | Task 5B Person foundation without legacy profile copies; Task 5C read-only per-profile provenance decisions completed; Task 5D only for independently approved MIGRATE rows if any are authorized later; domain consumer migration only for approved source data. |
+| Evidence / notes | Task 5C independently decided 753–757 DEFER (MIGRATE=0; DO_NOT_MIGRATE=0; DEFER=5). No authoritative source-origin artifact was found; QA/rebuild indicators do not prove the profiles themselves are fixtures. The five event/product edges were independently marked EXCLUDE and remain present. Photos are Pexels stock without a subject link and are OMIT separately from profile identity. No Person targets exist; Person count is 0. See PERSON_PROFILE_PROVENANCE_AUDIT.md, PERSON_PROFILE_PROVENANCE_EVIDENCE.csv, PERSON_RELATIONSHIP_PROVENANCE.csv, PERSON_PROFILE_MIGRATION_MANIFEST.csv, and POST_TASK_5C_CURRENT_STATE.md. |
 
 ### 13. `medewerker_rol` and `medewerker_groep`
 
@@ -246,7 +246,7 @@ Do not remove an item before its removal gate passes. If a task finds a new bloc
 | Dependencies / consumers | Profile archive filters, Bricks templates, profile records, event relationships, Voelgoed Live host/guest relationships, and any query helpers using these terms. |
 | Removal gate | Review every term and assignment against its domain. Migrate contextual values to verified relationship records, confirm whether `Voelgoed Mentor` is actual programme membership, and verify profile filters/templates before removing either taxonomy. Do not mechanically seed all terms into `person_type`. |
 | Planned phase | Person and relationship architecture, followed by role migration. |
-| Evidence / notes | Current term IDs, observed people, destinations, confidence, and rationale are in `PERSON_LEGACY_CLASSIFICATION_MAPPING.csv`. Mentor is the only approved initial vocabulary concept. All five current assignments remain unapproved pending per-profile provenance and editorial review. |
+| Evidence / notes | Current term IDs, observed people, destinations, confidence, and rationale are in `PERSON_LEGACY_CLASSIFICATION_MAPPING.csv`. Mentor is the only approved initial vocabulary concept. Task 5C leaves all five Mentor assignments DEFER and all five Voelgoed Mentor assignments DEFER. The available Mentor person_type term does not validate them. |
 
 ### 14. `team_member` and `team_department`
 
@@ -267,16 +267,16 @@ Do not remove an item before its removal gate passes. If a task finds a new bloc
 
 | Field | Record |
 |---|---|
-| Current state | `FUTURE / NOT YET IMPLEMENTED`. The canonical IA calls for one `person` model. Runtime has no `person` CPT and no `event_participation`. Platform Core's Person role policy already sets Primary Topic to NOT_APPLICABLE and topics to expertise/relevance, while the `content_topic` registration allowlist does not yet attach Person. |
+| Current state | CURRENT CANONICAL / FOUNDATION ACTIVE. The ACF Pro Person model and /mense/ routes are present. Platform Core policy defines Person expertise/relevance through content_topic and Primary Topic as NOT_APPLICABLE. Runtime has 0 persistent Person records, 1 Mentor person_type term, 0 Person term assignments, and 0 Person content_topic relationships. |
 | Target state | Use one canonical Person entity. Store roles in the relationship context where the role depends on an event, article, course, product, episode, or programme. |
 | Lifecycle status | `DEFER` |
 | Why it exists | This target resolves duplicate person representations and distinguishes a person's profile from their role in a specific item. |
-| Why it is legacy or why it is KEEP | The Person architecture and field/relationship mapping are ready for implementation. The current five `medewerker` profiles are not approved for migration: all remain `DEFER` pending evidence about identity, source, demo/QA status, photos, biographies, classifications, and linked relationships. The Person foundation must not depend on copying them. |
+| Why it is legacy or why it is KEEP | The foundation is active; the five local medewerker profiles remain DEFER. Person existence does not authorize profile migration. |
 | Replacement | The approved Person entity and migration contract defined by the canonical IA and Task 5A; implement the Person foundation in Task 5B and relationship structures in their owning domain phases. |
 | Dependencies / consumers | `medewerker`; `team_member`; author and expert links; event participation; course instructors; product creators or endorsers; podcast hosts and guests; Voelgoed Live hosts and guests. |
 | Removal gate | Implement the canonical Person entity and topic attachment; map every source ID, field, classification, URL, and relationship. Migrate and verify consumers by domain. Remove legacy structures only after route/SEO verification, zero active consumers, and retained rollback evidence. |
-| Planned phase | Task 5B: implement Person foundation without legacy data; Task 5C: decide `MIGRATE`, `DO_NOT_MIGRATE`, or `DEFER` per profile; then migrate approved relationships domain by domain. |
-| Evidence / notes | Task 5A found no topic assignments on the five profiles and no Person CPT. `ContentTopicRoles.php` already defines the Person non-primary policy; `ContentTopicTaxonomyTest.php` and `ContentTopicRolesTest.php` need assertions when Person is introduced. Person architecture is ready; data provenance is unresolved. See `PERSON_MIGRATION_ARCHITECTURE.md` and `PERSON_PROFILE_MIGRATION_MANIFEST.csv`. |
+| Planned phase | Task 5C completed read-only; Task 5D only for approved MIGRATE rows if any; then domain relationship phases. |
+| Evidence / notes | Current Task 5C corpus: MIGRATE=0, DO_NOT_MIGRATE=0, DEFER=5. No profile is ready to create as a Person. See the migration manifest, provenance audit, relationship ledger, and Post-Task 5C snapshot. |
 
 ### 16. Event field `event_medewerkers`
 
@@ -291,13 +291,13 @@ Do not remove an item before its removal gate passes. If a task finds a new bloc
 | Dependencies / consumers | Tickera event editors and singles; ACF group `Event Medewerkers`; `medewerker` profiles; event templates and query loops; product event links and auto-fill. |
 | Removal gate | Design and implement the relationship model. Resolve provenance for each event-person pair and migrate only approved edges with reviewed contextual roles. Verify event and profile pages, queries, and product auto-fill before disabling/removing the field. |
 | Planned phase | Task 6A+ event participation design and migration, after Task 5B foundation and Task 5C profile eligibility decisions. |
-| Evidence / notes | ACF group `Event Medewerkers` has one multi-value relationship to `medewerker`. Event 763 (`Test Event`) links profiles 753 and 757, but both edges are `PENDING_PROVENANCE`; neither is approved for automatic migration. No contextual role field is present. |
+| Evidence / notes | ACF group Event Medewerkers has one multi-value relationship to medewerker. Event 763 links profiles 753 and 757. Task 5C marks both edges EXCLUDE because the explicit test/QA title/slug and sparse event fields support that edge decision. Both source relationships remain unchanged. |
 
 ### 17. Event participation model
 
 | Field | Record |
 |---|---|
-| Current state | `FUTURE / NOT YET IMPLEMENTED`. No `event_participation` model is registered. Task 5A observed two event-person edges; both are `PENDING_PROVENANCE`, not approved migration data. |
+| Current state | FUTURE / NOT YET IMPLEMENTED. No event_participation model is registered. Task 5C classified both current event 763 edges as EXCLUDE from migration. |
 | Target state | Provide the canonical Event-to-Person participation relationship and the contextual metadata approved for event programming and display. |
 | Lifecycle status | `DEFER` |
 | Why it exists | It is the planned path for contextual event roles rather than treating each role as a global person identity. |
@@ -306,7 +306,7 @@ Do not remove an item before its removal gate passes. If a task finds a new bloc
 | Dependencies / consumers | Tickera `tc_events`; `event_medewerkers`; `medewerker`; event profiles, schedules, templates, and products sourced from events. |
 | Removal gate | Approve participation fields and queries; build and verify the target; classify every event edge, migrate only approved edges, and explicitly resolve excluded or deferred pairs; update templates and the product copy workflow; then verify no consumer depends on the old field. |
 | Planned phase | Event relationship architecture. |
-| Evidence / notes | Task 5A confirms 1/17 published events with people and two edges without contextual metadata. Event 763 and both linked profiles require provenance approval before either edge is migrated. The current ACF field remains the simple relationship. |
+| Evidence / notes | Event 763 links profiles 753 and 757. Task 5C excludes both edges because the source event is explicitly a test/QA record. This edge decision does not classify either profile as a fixture. The current ACF field remains the simple relationship. |
 
 ### 18. Product event and person relationships
 
@@ -321,7 +321,7 @@ Do not remove an item before its removal gate passes. If a task finds a new bloc
 | Dependencies / consumers | WooCommerce product editor; ACF group `Medewerker Produkte`; `produk_bron_event`; `produk_medewerkers`; `event_medewerkers`; FluentSnippets `9-acf-product-copy.php`; Bricks product templates. |
 | Removal gate | Reconcile every source-event and product-person edge across all statuses. Migrate only provenance-approved edges and explicitly resolve exclusions/deferred pairs. Replace the copy helper and query helper atomically with field retargeting; verify source mapping, empty-field copy, manual-selection preservation, Bricks displays, and editor flow before disabling/removing old fields or snippets. |
 | Planned phase | After Task 6A+ event participation and Person relation design; migrate products and automation together. |
-| Evidence / notes | Product 767 (published) links event 763 and profile 753; product 768 (trash) links event 763 and profiles 753/757. These three product-person edges are `PENDING_PROVENANCE`; none is approved for automatic migration. Product 765 (trash) links event 763. The product, source event, and linked Person must each pass provenance review before an edge is migrated. Current helper is published, active on all pages, hooks `acf/save_post` priority 20; no copy provenance field exists. |
+| Evidence / notes | Product 767 links event 763 and profile 753; product 768 links event 763 and profiles 753/757. Task 5C excludes all three product-person edges based on explicit QA titles, the QA source event, missing commerce setup, and no order references; the trash state on 768 is not used alone. Product 765 (trash) links event 763 without a profile edge. Current helper remains published and active; no copy provenance field exists. No record was changed. |
 
 ### 19. Internal entity `uitsending`
 
@@ -500,7 +500,7 @@ Do not remove an item before its removal gate passes. If a task finds a new bloc
 | Replacement | None. Keep `/mense/` as the canonical People route. |
 | Dependencies / consumers | `person`, `person_type`, Person `content_topic` expertise, five migration-unresolved profiles, event and product relations, Voelgoed Live hosts and guests, future Bricks profile pages, inbound links, and SEO. |
 | Legacy redirect gate | Do not redirect `/medewerkers/` or its singles until every profile decision and relation is resolved; migrate and verify only approved records and edges; then verify templates, consumers, internal links, canonicals, and indexing behavior. |
-| Planned phase | Task 5B foundation is active with zero persistent Person records; Task 5C provenance decisions; later consumer and presentation work only for approved data. |
+| Planned phase | Task 5B foundation is active with zero persistent Person records; Task 5C provenance decisions completed with 0 MIGRATE and 5 DEFER; Task 5D is not required by the current corpus; later consumer and presentation work only for independently approved data. |
 | Evidence / notes | The Task 5A collision review found no route collision; Task 5B activated `/mense/` and verified a temporary single at HTTP 200. Cleanup restored persistent Person posts and Person relationships to zero. `/medewerkers/` remains active with no redirects. See [Person Foundation Implementation](PERSON_FOUNDATION_IMPLEMENTATION.md) and the [Post-Task 5B snapshot](POST_TASK_5B_CURRENT_STATE.md). |
 
 ### 31. Competition route `/kompetisies/`
