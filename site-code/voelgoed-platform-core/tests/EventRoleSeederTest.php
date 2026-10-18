@@ -144,7 +144,10 @@ final class EventRoleSeederTest
 
     public function test_inserted_term_is_verified_against_its_requested_slug(): void
     {
-        $seeder = $this->seeder_with_taxonomy();
+        vgpc_test_reset();
+        $this->register_taxonomy();
+        $existing_term = vgpc_test_add_term('Paneellid', 'paneellid', 0, 'event_role');
+        $seeder = new EventRoleSeeder();
         $GLOBALS['vgpc_test_force_suffix_next_insert'] = true;
 
         $error = $this->assert_throws(
@@ -154,7 +157,12 @@ final class EventRoleSeederTest
 
         vgpc_test_true(str_contains($error->getMessage(), 'did not retain'), 'The failed insert verification must be reported.');
         vgpc_test_same(1, $GLOBALS['vgpc_test_insert_count'], 'Verification must happen after the first insert.');
-        vgpc_test_same('spreker-2', $this->terms()[0]->slug, 'The fixture must confirm WordPress returned an altered slug.');
+        vgpc_test_same(
+            [$existing_term],
+            $this->terms(),
+            'A failed insert verification must delete only the term created by that attempt.'
+        );
+        vgpc_test_same(false, get_term_by('slug', 'spreker-2', 'event_role'), 'The altered term slug must not remain after a failed verification.');
     }
 
     public function test_register_adds_and_runs_the_wp_cli_command(): void

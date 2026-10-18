@@ -123,10 +123,26 @@ final class EventRoleSeeder
                 || ! $term_by_slug
                 || (int) $term_by_slug->term_id !== $term_id
             ) {
-                throw new \RuntimeException(sprintf(
+                $verification_message = sprintf(
                     'The created event_role term "%s" did not retain its approved name and slug.',
                     $slug
-                ));
+                );
+                if ($term_id <= 0) {
+                    throw new \RuntimeException(
+                        $verification_message . ' Cleanup was not attempted because WordPress returned no usable term ID.'
+                    );
+                }
+
+                $cleanup_result = wp_delete_term($term_id, self::TAXONOMY);
+                $remaining_term = get_term($term_id, self::TAXONOMY);
+                if (is_wp_error($cleanup_result) || $remaining_term) {
+                    $cleanup_error = is_wp_error($cleanup_result)
+                        ? $cleanup_result->get_error_message()
+                        : 'WordPress still returns the term after deletion.';
+                    throw new \RuntimeException($verification_message . ' Cleanup failed: ' . $cleanup_error);
+                }
+
+                throw new \RuntimeException($verification_message . ' The term created by this attempt was removed.');
             }
 
             $created[] = $slug;
