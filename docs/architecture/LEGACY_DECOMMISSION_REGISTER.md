@@ -72,16 +72,16 @@ Do not remove an item before its removal gate passes. If a task finds a new bloc
 
 | Field | Record |
 |---|---|
-| Current state | `CURRENT CANONICAL`. The hierarchical taxonomy has 55 terms, 7 roots, and 0 runtime relationships. Platform Core owns registration and seed logic in `site-code/voelgoed-platform-core/`. |
+| Current state | `CURRENT CANONICAL`. The hierarchical taxonomy has 55 terms, 7 roots, and 0 runtime relationships after Task 5B QA. Platform Core owns registration and seed logic in `site-code/voelgoed-platform-core/`; the supported object types include both `medewerker` and `person`. |
 | Target state | Keep as the shared semantic topic taxonomy. |
 | Lifecycle status | `KEEP` |
 | Why it exists | It classifies what content is about across the supported Voelgoed entities. |
 | Why it is legacy or why it is KEEP | It is the approved canonical semantic model. It does not contain Leefstyl or commercial categories. |
 | Replacement | None. Keep `content_topic` as the semantic source. |
-| Dependencies / consumers | Platform Core taxonomy setup and role services; Primary Topic field; content classification; future cross-entity discovery and merchandising. It is attached to `post`, `mto-course`, `product`, `tc_events`, `medewerker`, `uitsending`, and `kompetisie`. |
+| Dependencies / consumers | Platform Core taxonomy setup and role services; Primary Topic field; content classification; future cross-entity discovery and merchandising. It is attached to `post`, `mto-course`, `product`, `tc_events`, `medewerker`, `uitsending`, `kompetisie`, and `person`. |
 | Removal gate | Not a removal candidate. Preserve the seven-root topic policy and change the registration only through a separately reviewed architecture task. |
 | Planned phase | Ongoing canonical use. |
-| Evidence / notes | `content_topic` is registered by source-controlled Platform Core, not ACF. It had 7 relationships across 7 objects before the Task 4G fixture removals; it now retains the canonical 55-term, 7-root tree with 0 relationships and 0 objects. The zero current assignments do not change its canonical status. The current tree and implementation are documented in [Task 3C current state](POST_TASK_3C_CURRENT_STATE.md) and [Content Topic implementation](CONTENT_TOPIC_ROLE_ARCHITECTURE.md). |
+| Evidence / notes | `content_topic` is registered by source-controlled Platform Core, not ACF. Task 5B added `person` to its supported object types without changing the 55-term, 7-root tree or existing assignments. Runtime QA left 0 Person topic relationships. The current tree and implementation are documented in [Task 3C current state](POST_TASK_3C_CURRENT_STATE.md), [Content Topic implementation](CONTENT_TOPIC_ROLE_ARCHITECTURE.md), and the [Post-Task 5B snapshot](POST_TASK_5B_CURRENT_STATE.md). |
 
 ### 3. Primary Topic role infrastructure
 
@@ -91,7 +91,7 @@ Do not remove an item before its removal gate passes. If a task finds a new bloc
 | Target state | Keep the role service and its validation contract. |
 | Lifecycle status | `KEEP` |
 | Why it exists | It identifies the main topic for navigation, reporting, and downstream discovery without duplicating direct taxonomy membership. |
-| Why it is legacy or why it is KEEP | This is the implemented canonical role layer. `post`, `mto-course`, `product`, `tc_events`, `uitsending`, and `kompetisie` support Primary Topic. `medewerker` does not. |
+| Why it is legacy or why it is KEEP | This is the implemented canonical role layer. `post`, `mto-course`, `product`, `tc_events`, `uitsending`, and `kompetisie` support Primary Topic. `medewerker` and `person` do not; Person classification is `NOT_APPLICABLE`. |
 | Replacement | None. Consumers should use the Platform Core role API. |
 | Dependencies / consumers | `ContentTopicRoles`, editor notices, post classifications, and future Bricks or merchandising integrations. |
 | Removal gate | Not a removal candidate. Any future change must preserve the direct-topic invariant and verify current classifications. |
@@ -222,16 +222,16 @@ Do not remove an item before its removal gate passes. If a task finds a new bloc
 
 | Field | Record |
 |---|---|
-| Current state | `TEMPORARY TRANSITIONAL`. ACF Pro registers `medewerker` from a database-backed definition (`post_type_medewerker`, ID 741); no source-controlled registration was found. It is public, queryable, REST-visible, supports title/editor/thumbnail/excerpt/revisions, and uses the `/medewerkers/` archive/single base. Runtime has 5 published profiles and no draft, private, or trash profiles. |
-| Target state | Keep the current profiles and consumers operational while implementing the canonical Person foundation and resolving data provenance separately. The five current profiles are inventory records, not an approved migration corpus. Do not create a parallel Person system. Keep `/mense/` as the approved canonical People destination. |
+| Current state | `TEMPORARY TRANSITIONAL`. ACF Pro registers `medewerker` from a database-backed definition (`post_type_medewerker`, ID 741); no source-controlled registration was found. It is public, queryable, REST-visible, supports title/editor/thumbnail/excerpt/revisions, and uses the `/medewerkers/` archive/single base. Runtime has 5 published profiles and no draft, private, or trash profiles. Task 5B added the canonical ACF Local JSON `person` model alongside it without copying any profile. |
+| Target state | Keep the current profiles and consumers operational while resolving provenance separately and migrating only approved records and relationships later. The five current profiles are inventory records, not an approved migration corpus. Keep `/mense/` as the canonical People destination. |
 | Lifecycle status | `ADAPT` |
 | Why it exists | It provides one public contributor profile model for current staging work. |
-| Why it is legacy or why it is KEEP | It is the functioning runtime profile implementation, while the canonical IA defines a broader Person entity and the `/mense/` destination. Its continued operation does not make it permanently exempt from that architecture. |
+| Why it is legacy or why it is KEEP | It is the functioning transitional profile implementation alongside the canonical Person entity and `/mense/` destination. Its continued operation does not make it permanently exempt from the approved migration architecture. |
 | Replacement | The approved canonical Person model and `/mense/` area. The architecture mapping is defined; profile eligibility and migration authority remain unresolved per record. |
 | Dependencies / consumers | Three profile ACF fields; `medewerker_rol` and `medewerker_groep`; attached `content_topic` and `content_category` (zero profile assignments); `event_medewerkers` (2 edges); `produk_medewerkers` (3 edges); empty `broadcast_hosts`/`broadcast_guests` fields; Bricks templates 772, 773, 774, 124, and 1127, shared card 6b463f, and FluentSnippets query helper. |
 | Removal gate | Do not remove or rename `medewerker` until the approved migration maps and verifies every profile, relationship, URL, template, and consumer. |
 | Planned phase | Task 5B Person foundation without legacy profile copies; Task 5C per-profile provenance decisions; domain consumer migration only for approved source data. |
-| Evidence / notes | Task 5A found all five profiles share the same creation timestamp, Pexels-style placeholder images, short bios duplicated in excerpt and content, and Mentor / Voelgoed Mentor assignments. Event 763 is named `Test Event`; linked products include QA/trash records. No repository/import/source provenance establishes the five profiles as genuine Voelgoed source data. These are caution indicators, not proof they are fixtures. All five decisions are `DEFER`; no profile or dependent relationship is approved for automatic migration. The archive and five singles return 200 and self-canonicalize; `/mense/` is available and currently 404. See `PERSON_CURRENT_STATE_AUDIT.md`, `PERSON_PROFILE_MIGRATION_MANIFEST.csv`, and `PERSON_MIGRATION_ARCHITECTURE.md`. |
+| Evidence / notes | Task 5A found all five profiles share the same creation timestamp, Pexels-style placeholder images, short bios duplicated in excerpt and content, and Mentor / Voelgoed Mentor assignments. Event 763 is named `Test Event`; linked products include QA/trash records. No repository/import/source provenance establishes the five profiles as genuine Voelgoed source data. These are caution indicators, not proof they are fixtures. All five decisions remain `DEFER`; no profile or dependent relationship is approved for automatic migration. Task 5B activated `/mense/` and verified its archive and a temporary single while leaving all legacy records and edges unchanged; persistent Person records remain 0. See `PERSON_CURRENT_STATE_AUDIT.md`, `PERSON_PROFILE_MIGRATION_MANIFEST.csv`, `PERSON_MIGRATION_ARCHITECTURE.md`, and the [Post-Task 5B snapshot](POST_TASK_5B_CURRENT_STATE.md). |
 
 ### 13. `medewerker_rol` and `medewerker_groep`
 
@@ -492,16 +492,16 @@ Do not remove an item before its removal gate passes. If a task finds a new bloc
 
 | Field | Record |
 |---|---|
-| Current state | `FUTURE / NOT YET IMPLEMENTED`. The canonical IA approves the `person` entity and `/mense/`. Runtime remains `medewerker` at `/medewerkers/`. Task 5A collision checks found no page, rewrite, taxonomy route, Bricks route, redirect, menu, or internal URL collision; `/mense/` currently returns 404. |
-| Target state | Implement the approved Person destination at `/mense/` using a staged foundation and provenance-gated profile and consumer migration. |
-| Lifecycle status | `DEFER` |
+| Current state | `CURRENT CANONICAL / FOUNDATION ACTIVE`. ACF Pro registers `person` from shared Local JSON with archive `/mense/` and singles `/mense/{slug}/`. Runtime QA returned HTTP 200 for both routes; no persistent Person record remains. `medewerker` continues at `/medewerkers/`. |
+| Target state | Keep `/mense/` as the canonical Person destination. Add discovery and production presentation only through separately scoped work; migrate profiles and consumers only after provenance approval. |
+| Lifecycle status | `KEEP` |
 | Why it exists | It is the approved public destination for the canonical Person model. |
-| Why it is legacy or why it is KEEP | The canonical destination is approved but not yet implemented. Runtime currently exposes the transitional archive and singles; no redirect or Person record exists. |
-| Replacement | The canonical Person entity and `/mense/` destination defined by the locked IA. |
-| Dependencies / consumers | Five published profiles; event and product relations; Voelgoed Live hosts and guests; Bricks profile pages; inbound links; SEO. |
-| Removal gate | Resolve every profile decision and copy/verify only `MIGRATE` profiles. Migrate only provenance-approved relationships; verify templates, consumers, internal links, canonicals, and indexing behavior before redirects. Verify equivalent single destinations and then redirect archive/singles. The `/mense/` destination does not need re-approval. |
-| Planned phase | Task 5B Person foundation without legacy profile copies; Task 5C provenance decisions; later routes only after eligible records and consumers are verified. `/mense/` is already approved. |
-| Evidence / notes | `/mense/` is available but currently 404. The five legacy singles return 200 with self-canonical URLs; no robots meta or `X-Robots-Tag` was observed. See Task 5A current-state audit and migration contract. |
+| Why it is legacy or why it is KEEP | This is the approved canonical Person destination. It now coexists with the transitional `/medewerkers/` route; the active route does not imply profile migration approval or a redirect. |
+| Replacement | None. Keep `/mense/` as the canonical People route. |
+| Dependencies / consumers | `person`, `person_type`, Person `content_topic` expertise, five migration-unresolved profiles, event and product relations, Voelgoed Live hosts and guests, future Bricks profile pages, inbound links, and SEO. |
+| Legacy redirect gate | Do not redirect `/medewerkers/` or its singles until every profile decision and relation is resolved; migrate and verify only approved records and edges; then verify templates, consumers, internal links, canonicals, and indexing behavior. |
+| Planned phase | Task 5B foundation is active with zero persistent Person records; Task 5C provenance decisions; later consumer and presentation work only for approved data. |
+| Evidence / notes | The Task 5A collision review found no route collision; Task 5B activated `/mense/` and verified a temporary single at HTTP 200. Cleanup restored persistent Person posts and Person relationships to zero. `/medewerkers/` remains active with no redirects. See [Person Foundation Implementation](PERSON_FOUNDATION_IMPLEMENTATION.md) and the [Post-Task 5B snapshot](POST_TASK_5B_CURRENT_STATE.md). |
 
 ### 31. Competition route `/kompetisies/`
 

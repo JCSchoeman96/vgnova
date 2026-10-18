@@ -23,6 +23,7 @@ final class ContentTopicTaxonomy
         'medewerker',
         'uitsending',
         'kompetisie',
+        'person',
     ];
 
     private const REWRITE_SETUP_OPTION = 'vgpc_content_topic_rewrite_flushed_v1';

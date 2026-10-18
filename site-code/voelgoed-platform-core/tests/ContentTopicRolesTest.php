@@ -42,6 +42,7 @@ final class ContentTopicRolesTest
             703 => 'kompetisie',
             704 => 'medewerker',
             705 => 'post',
+            706 => 'person',
         ];
         foreach ($post_types as $object_id => $post_type) {
             $GLOBALS['vgpc_test_posts'][$object_id] = (object) [
@@ -71,6 +72,7 @@ final class ContentTopicRolesTest
             ];
         }
         $GLOBALS['vgpc_test_relationships']['content_topic'][700] = [$this->term_ids['gesondheid']];
+        $GLOBALS['vgpc_test_relationships']['content_topic'][706] = [$this->term_ids['gesondheid']];
         $GLOBALS['vgpc_test_relationships']['content_category'][523] = [
             (int) $legacy_pillar_term->term_id,
             (int) $commercial_term->term_id,
@@ -468,10 +470,29 @@ final class ContentTopicRolesTest
             vgpc_test_same('optional', $policy[$post_type]['primary_requirement'], $post_type . ' Primary must remain optional.');
         }
         vgpc_test_same(false, $policy['medewerker']['primary_supported'], 'People must not support a Primary role.');
+        vgpc_test_same(false, $policy['person']['primary_supported'], 'Canonical Person must not support a Primary role.');
         vgpc_test_same(true, $roles->set_primary_topic(704, $this->term_id('geloof')) instanceof WP_Error, 'The setter must reject Primary for people.');
         vgpc_test_same('NOT_APPLICABLE', $roles->get_classification_state(704), 'People must not receive a Primary review state.');
         vgpc_test_true(is_wp_error($roles->get_secondary_topics(704)), 'Person expertise topics must not be reported as Secondary Topics.');
-        vgpc_test_same(['post', 'mto-course', 'product', 'tc_events', 'medewerker', 'uitsending', 'kompetisie'], ContentTopicTaxonomy::OBJECT_TYPES, 'The Task 2 taxonomy attachment policy must remain unchanged.');
+        vgpc_test_same(['post', 'mto-course', 'product', 'tc_events', 'medewerker', 'uitsending', 'kompetisie', 'person'], ContentTopicTaxonomy::OBJECT_TYPES, 'The Task 2 object-type policy must expand only by person.');
+    }
+
+    public function test_person_topics_are_expertise_with_ancestors_and_no_primary_state(): void
+    {
+        $roles = $this->fixture();
+
+        vgpc_test_same(['gesondheid'], $this->topic_slugs($roles, 706), 'Person Direct Topics must remain the assigned expertise term.');
+        vgpc_test_same(['gesondheid', 'nuwe-jy'], $this->topic_slugs($roles, 706, 'get_effective_topics'), 'Person Effective Topics must include the canonical ancestor.');
+        vgpc_test_same('NOT_APPLICABLE', $roles->get_classification_state(706), 'Person must not enter editorial Primary classification.');
+        vgpc_test_true(is_wp_error($roles->set_primary_topic(706, $this->term_id('gesondheid'))), 'The Primary setter must reject Person.');
+        vgpc_test_same(false, metadata_exists('post', 706, ContentTopicRoles::PRIMARY_META_KEY), 'A rejected Person Primary must not persist.');
+
+        $group = $GLOBALS['vgpc_test_field_groups']['group_vg_content_topic_roles'];
+        $locations = array_map(
+            static fn (array $location): string => (string) ($location[0]['value'] ?? ''),
+            $group['location'] ?? []
+        );
+        vgpc_test_true(! in_array('person', $locations, true), 'The Primary Topic field group must not target Person.');
     }
 
     public function test_primary_changes_never_rewrite_the_task2_migration_record(): void
