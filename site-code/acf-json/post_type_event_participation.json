@@ -66,7 +66,13 @@
     "taxonomies": [],
     "has_archive": false,
     "has_archive_slug": "",
-    "rewrite": false,
+    "rewrite": {
+        "permalink_rewrite": "no_permalink",
+        "slug": "",
+        "with_front": false,
+        "feeds": false,
+        "pages": true
+    },
     "query_var": false,
     "query_var_name": "",
     "can_export": true,
@@ -74,5 +80,5 @@
     "register_meta_box_cb": "",
     "enter_title_here": "Event Participation title",
     "show_in_graphql": false,
-    "modified": 1792302137
+    "modified": 1792331841
 }
