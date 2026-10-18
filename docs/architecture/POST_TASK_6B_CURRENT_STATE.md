@@ -62,6 +62,7 @@ The Event 763 relationship remains serialized on the Event under `event_medewerk
 | Current returned object | `medewerker`; zero matches for Event 763 |
 | Local card / modal | `2c59af` / `afc060`; no shared Card 6b463f instance |
 | Dynamic tags | `{featured_image}`, `{post_title}`, `{acf_medewerker_titel}`, `{mb_people_title}`, `{post_content}`; the query also uses `{post_id}` |
+| Task 6C interaction | Intentionally retire participant card/modal elements `2c59af`, `30255d`, `afc060`, and `fdca1f`; replace them with a card linking to the canonical Person permalink. Do not carry legacy modal content, `{mb_people_title}`, `{post_content}`, or social `#` placeholders. Keep static introduction `3c88cc` unless separately approved. |
 | Current empty behavior | No explicit empty message or section condition; the loop yields no cards while the surrounding section stays visible |
 | Canonical replacement | `event_participation[]`, ordered by display order ascending then participation ID ascending; resolve Person from `event_participation_person` |
 | Readiness | `READY_FOR_CUTOVER` in Task 6C, with canonical-only query and whole-section hide on zero rows |
@@ -72,7 +73,7 @@ The separate product loop `cxqfiw` remains outside the Event participant cutover
 
 Card `6b463f` expects a `medewerker` post and renders featured image, post title, `medewerker_titel`, `medewerker_kort_bio`, and `{post_url}`. It remains `KEEP_LEGACY`; it is not safe for a canonical Person object without modification. Its consumers are Templates 773, 124, and 1127, not 774.
 
-The active helper `10-vg-bricks-medewerker-queries.php` is published, runs on all pages, and has SHA-256 `e1b7c014cd15a673d663426403a2024a21a1286075c355015f4e217d7e498fa2`. Its six modes have separate lifecycle decisions in the [consumer audit](EVENT_CONSUMER_MIGRATION_AUDIT.md#query-mode-inventory) and [migration map](EVENT_CONSUMER_MIGRATION_MAP.csv). Only the Event people mode may retire after 6C and a source-wide caller check. Product modes remain for the later product phase.
+The active helper `10-vg-bricks-medewerker-queries.php` is published, runs on all pages, and has SHA-256 `e1b7c014cd15a673d663426403a2024a21a1286075c355015f4e217d7e498fa2`. Its six modes have separate lifecycle decisions in the [consumer audit](EVENT_CONSUMER_MIGRATION_AUDIT.md#query-mode-inventory) and [migration map](EVENT_CONSUMER_MIGRATION_MAP.csv). Only the individual `event_medewerkers` mode may retire after a fresh runtime-wide and repository-wide caller check across all Bricks templates/components, active FluentSnippets/runtime helper code, repository source, Git history, and documented references. Keep the helper and its other five modes. Product modes remain for the later product phase.
 
 ## Readiness counts
 
@@ -91,7 +92,9 @@ Counts below are based on each migration-map row's single primary `readiness_sta
 
 ## Task 6C boundary
 
-Task 6C should add the source-controlled Platform Core Bricks Event Participation query, add a new Event Participant Card, replace only the participant loop in Template 774, hide the complete participant section when the canonical query is empty, and retire the unused legacy Event people helper mode only if a source-wide caller check passes.
+Task 6C should add the source-controlled Platform Core Bricks Event Participation query, add a new Event Participant Card, replace only the participant loop in Template 774, hide the complete participant section when the canonical query is empty, intentionally replace the local modal interaction with the canonical Person permalink card, and remove only the unused `event_medewerkers` helper mode if the runtime-wide and repository-wide caller check passes.
+
+Task 6B's design does not authorize Task 6C implementation. Approve the Task 6C written specification and implementation plan before implementation; then use agent implementation followed by independent review.
 
 Task 6C does not include Templates 772 or 773, shared Card 6b463f, Product 124, product fields or automation, profile migration, legacy Event-edge migration, redirects, or broadcast consumers. `event_medewerkers` stays stored and unchanged until all consumers and write paths are migrated and the field-removal gate passes.
 

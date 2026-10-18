@@ -103,6 +103,12 @@ Therefore, for the current Event 763 data, the legacy Bricks loop returns zero r
 
 The Event Single template also has a separate event-product loop: element `cxqfiw`, `post_type=[product]`, `posts_per_page=-1`, meta query `_event_name={post_id}`, `orderby=[_default]`, with card element `uxxitx` (`Event Card Price Grid`). This is not the participant loop or the helper's `event_products` mode. It remains a product consumer and is out of scope for Task 6C.
 
+### Task 6C participant interaction decision
+
+The current participant interaction is a local card (`2c59af`) whose trigger (`30255d`) opens the modal (`afc060`) and body (`fdca1f`). The modal contains duplicate image and title output, `{mb_people_title}`, `{post_content}`, and social links that point to `#`. The trigger has no canonical Person permalink.
+
+Task 6C will intentionally retire this participant-specific local card/modal interaction and replace it with the canonical Event Participant Card. The new card will link to the canonical Person permalink and render the Person image and title, optional professional title, and optional `event_role`. It will not carry `{mb_people_title}`, `{post_content}`, the legacy modal, or social placeholder links. This intentionally replaces opening a modal with linking to the canonical Person profile. Keep the static introduction under `3c88cc` unchanged unless separately approved. Hide the complete participant section when the canonical result is empty.
+
 ### Event Single dependency audit
 
 “Direct” means the token, query, or element occurs in Template 774 itself. “Indirect” means the element is not in 774 but is an identified shared/runtime dependency of another audited consumer. No use is inferred from the global Bricks tag registry.
@@ -165,14 +171,14 @@ The helper resolves the current object from Bricks context, applies mode-specifi
 
 | Mode | Input object and source | Returned object | Ordering and empty behavior | Current Bricks consumer | Decision |
 |---|---|---|---|---|---|
-| `event_medewerkers` | `tc_events`; `get_field('event_medewerkers', event_id)` | `medewerker` | Preserves the ACF relationship order with `post__in`/`orderby=post__in`; empty/invalid gives `post__in=[0]` | None found in the 27 scanned Bricks templates. Template 774 has a separate native query. | Readiness `RETIRE`; lifecycle `RETIRE_AFTER_6C`, after a source-wide caller check |
+| `event_medewerkers` | `tc_events`; `get_field('event_medewerkers', event_id)` | `medewerker` | Preserves the ACF relationship order with `post__in`/`orderby=post__in`; empty/invalid gives `post__in=[0]` | None found in the 27 scanned Bricks templates. Template 774 has a separate native query. | Readiness `RETIRE`; lifecycle `RETIRE_AFTER_6C`, after a runtime-wide and repository-wide caller check |
 | `event_products` | `tc_events`; `produk_bron_event` | `product` | Meta query on source Event; no explicit order; invalid context gives an empty result | None found; 774 uses `_event_name` directly | `KEEP_LEGACY`; lifecycle `REPLACE_LATER` with product migration |
 | `medewerker_events` | `medewerker`; reverse ACF meta lookup on `event_medewerkers` | `tc_events` | Date descending; no matches gives an empty result | Template 772, element `vgms23` | `KEEP_LEGACY`; blocker `BLOCKED_BY_DATA`; lifecycle `REPLACE_LATER` |
 | `medewerker_products` | `medewerker`; reverse lookup on `produk_medewerkers` | `product` | Date descending; no matches gives an empty result | Template 772, element `vgms33` | `KEEP_LEGACY`; blocker `BLOCKED_BY_DATA`; lifecycle `REPLACE_LATER` |
 | `product_medewerkers` | `product`; `get_field('produk_medewerkers', product_id)` | `medewerker` | Preserves ACF relationship order with `post__in`/`orderby=post__in`; empty/invalid gives an empty result | Template 124, element `vgpr03` | `KEEP_LEGACY`; lifecycle `REPLACE_LATER` with product migration |
 | `product_source_event` | `product`; `get_field('produk_bron_event', product_id)` | `tc_events` | Relationship result; empty/invalid gives an empty result | Template 124, element `vgpr13` | `KEEP_LEGACY`; lifecycle `REPLACE_LATER` with product migration |
 
-The legacy Event people mode and Template 774's native loop are distinct. Retiring the helper mode does not delete `event_medewerkers`, change its ACF definition, or remove another consumer. The field and source values remain until the full read/write removal gate passes.
+The legacy Event people mode and Template 774's native loop are distinct. Only the individual `event_medewerkers` mode may be removed; do not retire the helper or its other five modes. Before removing it, Task 6C must repeat a runtime-wide and repository-wide caller check across all Bricks templates, all Bricks components, active FluentSnippets and runtime helper code, repository source, and Git history and documented references. The 27-template Bricks scan in Task 6B is discovery evidence, not the final deletion gate. Retiring this helper mode does not delete `event_medewerkers`, change its ACF definition, or remove another consumer. The field and source values remain until the full read/write removal gate passes.
 
 ## Source-control and history cross-check
 
@@ -185,7 +191,7 @@ Repository and Git-history searches covered the requested names and IDs, includi
 
 The search did not find a source-controlled legacy helper or Bricks component that Task 6C can edit directly. The new query integration belongs in the Platform Core module, while the targeted Bricks edit will be made through the runtime builder only in Task 6C.
 
-## Reverse Person/Event consumer
+## Person-to-Event reverse consumer
 
 Template 772 is the current Medewerker Single. Its reverse-event section uses element/query `vgms23`, query mode `medewerker_events`, and loop object type `post`. The helper receives the current `medewerker`, searches the legacy `event_medewerkers` source, and returns `tc_events` ordered by date descending. The section is `.vg-medewerker-events`. The helper returns no rows when there are no matching Events; no section-level empty condition was found.
 
@@ -234,7 +240,7 @@ The machine-readable row-by-row decisions are in [Event Consumer Migration Map](
 
 There are four `KEEP_LEGACY` consumers with `blocking_reason=BLOCKED_BY_DATA`: the two Template 772 query modes, Template 772 profile consumer, and Template 773 archive. These are not double-counted as primary states.
 
-Event Single 774 is `READY_FOR_CUTOVER` despite zero canonical records. The canonical repository query contract exists, no source Event edge is approved for migration, the new component can render an empty set, and Task 6C can hide the enclosing section. Cutover does not require changes to Templates 772, 773, or 124. Task 6C must QA the query with temporary owned canonical data and verify empty output before cleanup.
+Event Single 774 is `READY_FOR_CUTOVER` despite zero canonical records. The canonical repository query contract exists, no source Event edge is approved for migration, the new component can render an empty set, and Task 6C can hide the enclosing section. Cutover does not require changes to Templates 772, 773, or 124. Task 6C must QA the query with temporary owned canonical data and verify empty output before cleanup. The new permalink card intentionally replaces the current participant modal; the modal's legacy profile content and placeholder links are not part of the canonical contract.
 
 ## Task 6C exact scope
 
@@ -245,7 +251,8 @@ Event Single 774 is `READY_FOR_CUTOVER` despite zero canonical records. The cano
 - Change the participant loop in Bricks Event Single 774 to return `event_participation` records for the current `tc_events` object.
 - Reuse Platform Core ordering and resolve the Person relationship for fields and canonical URL.
 - Hide the complete participant section for an empty canonical result.
-- Remove the legacy Event people helper mode only if a source-wide caller audit finds no other dependency.
+- Remove only the `event_medewerkers` helper mode after a fresh runtime-wide and repository-wide caller check. Check all Bricks templates, all Bricks components, active FluentSnippets and runtime helper code, repository source, Git history, and documented references. Keep the other five helper modes unchanged.
+- Intentionally retire the participant-specific local card/modal elements (`2c59af`, `30255d`, `afc060`, and `fdca1f`) and replace them with the canonical Person permalink card. Do not carry forward `{mb_people_title}`, `{post_content}`, the legacy modal, or `#` social placeholder links. Keep the static introduction under `3c88cc` unless separately approved.
 - Run controlled QA with temporary owned Person and Event Participation data, then verify both counts return to zero and all protected state remains unchanged.
 
 ### Explicit non-scope
@@ -255,6 +262,8 @@ Event Single 774 is `READY_FOR_CUTOVER` despite zero canonical records. The cano
 - Profile or legacy Event-edge migration; redirects or route changes.
 - Deleting or changing `event_medewerkers` or its current values.
 - Broadcast/Uitsending migration.
+
+The Task 6B design and this scope do not authorize Task 6C implementation. Before Task 6C starts, its written specification and implementation plan must receive approval. Agent implementation and independent review follow those approvals.
 
 ## Remaining blockers
 

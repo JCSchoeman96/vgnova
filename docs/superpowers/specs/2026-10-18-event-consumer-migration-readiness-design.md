@@ -44,6 +44,12 @@ When the canonical query returns no rows, hide the entire participant section. D
 
 The current 774 participant loop queries `medewerker` posts using `_event_medewerkers` as a post-meta key. Runtime metadata confirms the relationship value is stored on Event 763 under `event_medewerkers`; `_event_medewerkers` stores the ACF field key on the Event, not a reverse edge on each profile. A read-only query against `medewerker` therefore returns no matches for Event 763. The existing section has no empty-result condition and remains visible with its static content. Task 6C must replace the loop and hide the whole participant section for zero canonical rows.
 
+### Task 6C participant interaction decision
+
+The current loop uses a local card (`2c59af`) and trigger (`30255d`) that opens modal `afc060` with body `fdca1f`. The modal contains duplicate image/title output, `{mb_people_title}`, `{post_content}`, and social placeholder links to `#`. The trigger has no canonical Person permalink.
+
+Task 6C will intentionally retire these participant-specific card/modal elements and replace them with the canonical Event Participant Card. The new card links to the canonical Person permalink and renders the Person image and title, optional professional title, and optional `event_role`. Do not carry forward `{mb_people_title}`, `{post_content}`, the legacy modal, or social placeholder links. This intentionally replaces opening a modal with linking to the canonical Person profile. Preserve the static introduction under `3c88cc` unless separately approved. Continue hiding the full participant section when the canonical query returns no rows.
+
 Cutover does not delete or alter `event_medewerkers`, profile records, or source relationships. The field remains until all remaining read/write consumers are migrated and its decommission gate passes.
 
 ## Consumer decisions
@@ -51,7 +57,7 @@ Cutover does not delete or alter `event_medewerkers`, profile records, or source
 | Consumer | Task 6B decision |
 |---|---|
 | Event Single 774 participant loop | `READY_FOR_CUTOVER`; replace with a canonical `event_participation[]` loop in 6C |
-| Legacy `event_medewerkers` Bricks helper mode | `RETIRE_AFTER_6C` after verifying no remaining callers |
+| Legacy `event_medewerkers` Bricks helper mode | `RETIRE_AFTER_6C` only after a fresh runtime-wide and repository-wide caller check |
 | New canonical query and Event Participant Card | Design for 6C; neither exists in runtime yet |
 | Medewerker Single 772 reverse-event and reverse-product sections | `KEEP_LEGACY`; blocker `BLOCKED_BY_DATA` |
 | Medewerker Archive 773 | `KEEP_LEGACY`; blocker `BLOCKED_BY_DATA` |
@@ -60,7 +66,7 @@ Cutover does not delete or alter `event_medewerkers`, profile records, or source
 | Voelgoed Live 1127 host and guest loops | `NOT_APPLICABLE` to 6B; both relationship fields have zero populated edges |
 | Event 763 source edges | `EXCLUDE`; leave unchanged |
 
-Each query mode is assessed separately. The active helper contains `event_medewerkers`, `event_products`, `medewerker_events`, `medewerker_products`, `product_medewerkers`, and `product_source_event`; only the first may retire after 6C. Product-related modes remain for a later product phase. Reverse profile queries remain legacy while profile provenance and canonical Person data are unresolved.
+Each query mode is assessed separately. The active helper contains `event_medewerkers`, `event_products`, `medewerker_events`, `medewerker_products`, `product_medewerkers`, and `product_source_event`; only the individual `event_medewerkers` mode may retire after 6C. Before removing it, Task 6C must check all Bricks templates, all Bricks components, active FluentSnippets and runtime helper code, repository source, Git history, and documented references. The 27-template Task 6B scan is initial evidence; repeat the full caller check before removal. Keep the helper and its five other modes unchanged. Product-related modes remain for a later product phase. Reverse profile queries remain legacy while profile provenance and canonical Person data are unresolved.
 
 ## Task 6C scope
 
@@ -70,7 +76,8 @@ Each query mode is assessed separately. The active helper contains `event_medewe
 - Add a new Event Participant Card whose input is an `event_participation` object.
 - Replace the Event Single 774 participant query with the canonical query.
 - Hide the complete participant section when the canonical result is empty.
-- Retire the legacy Event people helper mode only after checking for remaining callers.
+- Retire only the `event_medewerkers` helper mode after the runtime-wide and repository-wide caller check above passes. Keep the complete helper and its other five modes.
+- Intentionally replace the participant card/modal interaction with the canonical Person permalink card. Do not carry over the legacy modal, `{mb_people_title}`, `{post_content}`, or social placeholder links. Keep the static introduction unless separately approved.
 - QA with temporary, task-owned Person and Event Participation records, then remove and verify those records.
 
 ### Out of scope
@@ -83,3 +90,5 @@ Each query mode is assessed separately. The active helper contains `event_medewe
 ## Readiness conclusion
 
 Event Single 774 can cut over while persistent Person and Event Participation counts are zero. Task 6C must verify the canonical query with temporary owned QA records, verify the empty state, use canonical data only, and leave no QA records behind. No legacy Event edge is approved for migration. The expected persistent participant output for Event 763 is zero.
+
+This Task 6B design records the proposed Task 6C boundary; it does not authorize Task 6C implementation. Before implementation starts, approve the Task 6C written specification and implementation plan. Agent implementation and independent review follow those approvals.
