@@ -5,7 +5,16 @@ use Voelgoed\PlatformCore\Event\EventParticipationRepository;
 use Voelgoed\PlatformCore\Event\EventParticipationService;
 
 if (! defined('ABSPATH')) {
-    throw new RuntimeException('Run this integration check inside the loaded WordPress runtime.');
+    echo json_encode([
+        'result' => 'FAIL',
+        'phase' => 'bootstrap',
+        'mutation_started' => false,
+        'failures' => [[
+            'phase' => 'bootstrap',
+            'message' => 'Run this integration check inside the loaded WordPress runtime.',
+        ]],
+    ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR) . PHP_EOL;
+    exit(1);
 }
 
 function vg_event_participation_qa_check(bool $condition, string $message): void
@@ -134,6 +143,7 @@ function vg_event_participation_qa_snapshot(): array
         vg_event_participation_qa_ids(get_field('event_medewerkers', 763)),
         vg_event_participation_qa_terms(763, 'event_category'),
         vg_event_participation_qa_terms(763, 'content_topic'),
+        $event->post_title,
     ];
     $products = [];
     foreach ([767, 768] as $id) {
@@ -272,6 +282,7 @@ try {
         vg_event_participation_qa_ids(get_field('event_medewerkers', $qa_event_id)),
         vg_event_participation_qa_terms($qa_event_id, 'event_category'),
         vg_event_participation_qa_terms($qa_event_id, 'content_topic'),
+        $qa_event->post_title,
     ];
     vg_event_participation_qa_check($before['event'][3] === [753, 757], 'Legacy Event 763 baseline does not match.');
 } catch (Throwable $error) {
@@ -329,7 +340,10 @@ try {
     vg_event_participation_qa_check(! is_post_publicly_viewable(get_post($participation_id)), 'Published Event Participation must not be publicly viewable.');
 
     $duplicate = $service->create($qa_event_id, $person_id, [], 1, 'publish');
-    vg_event_participation_qa_check(is_wp_error($duplicate), 'Duplicate Event/Person pair was accepted.');
+    vg_event_participation_qa_check(
+        is_wp_error($duplicate) && $duplicate->get_error_code() === 'duplicate_event_participation',
+        'Duplicate Event/Person pair was not rejected with duplicate_event_participation.'
+    );
     vg_event_participation_qa_check($repo->live_participations_for_event($qa_event_id) === [$participation_id], 'Duplicate attempt created a second valid participation.');
     $private_update = wp_update_post(['ID' => $participation_id, 'post_status' => 'private'], true);
     vg_event_participation_qa_check($private_update === $participation_id, 'Could not temporarily change the QA participation to private.');
@@ -438,6 +452,7 @@ $audit('qa_event_unchanged', static function () use ($qa_event_id, $qa_event_bef
         vg_event_participation_qa_ids(get_field('event_medewerkers', $qa_event_id)),
         vg_event_participation_qa_terms($qa_event_id, 'event_category'),
         vg_event_participation_qa_terms($qa_event_id, 'content_topic'),
+        $qa_event_after->post_title,
     ];
     vg_event_participation_qa_check($qa_event_before === $qa_event_after_state, 'The selected QA Event changed during QA.');
     $qa_event_unchanged = true;
