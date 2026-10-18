@@ -41,7 +41,11 @@ $tests = [
         event_participation_test_assert_same(true, $config['show_ui'] ?? null, 'The CPT must have an admin UI.');
         event_participation_test_assert_same(true, $config['show_in_rest'] ?? null, 'The CPT must support the REST API.');
         event_participation_test_assert_same(false, $config['has_archive'] ?? null, 'The CPT must not have an archive.');
-        event_participation_test_assert_same(false, $config['rewrite'] ?? null, 'The CPT must not register a public permalink.');
+        event_participation_test_assert_same(
+            'no_permalink',
+            $config['rewrite']['permalink_rewrite'] ?? null,
+            'ACF must disable CPT permalinks using its no_permalink setting.'
+        );
         event_participation_test_assert_same(false, $config['query_var'] ?? null, 'The CPT must not register a query variable.');
         event_participation_test_assert_same(['title'], $config['supports'] ?? null, 'The CPT must support only the title.');
     },
