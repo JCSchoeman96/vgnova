@@ -286,6 +286,12 @@ final class EventParticipationAdmin
                 return;
             }
 
+            $event_is_valid = $this->repository->is_valid_event_fresh($stored_pair['event_id']);
+            $person_is_valid = $this->repository->is_valid_person_fresh($stored_pair['person_id']);
+            if (! $event_is_valid || ! $person_is_valid) {
+                return;
+            }
+
             $title = $this->service->title_for_pair($stored_pair['event_id'], $stored_pair['person_id']);
             if (is_wp_error($title) || get_the_title($participation_id) === $title) {
                 return;

@@ -442,6 +442,40 @@ final class EventParticipationAdminTest
         do_action('shutdown');
     }
 
+    public function test_title_sync_uses_fresh_endpoint_titles_after_waiting_for_participation_lock(): void
+    {
+        $admin = $this->fixture();
+        $admin->register();
+        $this->add_endpoint(101, 'tc_events', 'Original Event title');
+        $this->add_endpoint(201, 'person', 'Original Person title');
+        $this->add_participation(301, 'publish', 101, 201, 'Old derived title');
+        $GLOBALS['vgpc_test_enable_query_cache'] = true;
+        get_post(101);
+        get_post(201);
+        $GLOBALS['wpdb']->get_var_handler = function (string $query): string {
+            if ($query === 'SELECT GET_LOCK(%s, %d)') {
+                // Another request changes both endpoint titles while this sync waits.
+                $GLOBALS['vgpc_test_posts'][101] = clone $GLOBALS['vgpc_test_posts'][101];
+                $GLOBALS['vgpc_test_posts'][101]->post_title = 'Second Event title';
+                $GLOBALS['vgpc_test_posts'][201] = clone $GLOBALS['vgpc_test_posts'][201];
+                $GLOBALS['vgpc_test_posts'][201]->post_title = 'New Person title';
+            }
+
+            return '1';
+        };
+
+        wp_update_post(['ID' => 101, 'post_title' => 'First Event title'], true);
+
+        vgpc_test_same('Second Event title', $GLOBALS['vgpc_test_posts'][101]->post_title, 'The competing Event title change must be present after title sync waits.');
+        vgpc_test_same('New Person title', $GLOBALS['vgpc_test_posts'][201]->post_title, 'The competing Person title change must be present after title sync waits.');
+        vgpc_test_same(
+            'Second Event title — New Person title',
+            get_the_title(301),
+            'Title sync must clear cached endpoint posts before deriving the participation title.'
+        );
+        do_action('shutdown');
+    }
+
     public function test_nested_acf_save_does_not_release_outer_title_sync_locks(): void
     {
         $admin = $this->fixture();

@@ -1787,9 +1787,9 @@ selected Event had legacy people before QA:
 0
 
 QA Person created:
-1306 (temporary)
+1310 (temporary)
 QA participation created:
-1307 (temporary)
+1311 (temporary)
 duplicate attempt rejected:
 PASS
 QA Person hard-deleted:
@@ -1863,13 +1863,13 @@ Event Participation foundation:
 3/3
 
 Platform Core Event Participation:
-64/64
+65/65
 
 existing Platform Core Content Topic:
 67/67
 
 Platform Core combined:
-67 + 64 = 131
+67 + 65 = 132
 
 Person foundation:
 10/10

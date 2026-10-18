@@ -72,7 +72,7 @@ The Event Participation implementation lives in `includes/Event/`:
 - `EventParticipationRepository` reads canonical relationships and rechecks candidate pairs with fresh post data plus ACF values while a write lock is held.
 - `EventParticipationPairLock` serializes writes for the same Event × Person pair and concurrent edits to one existing participation. Scoped operations release only locks they acquire, in reverse order.
 - `EventParticipationService` validates and creates participations under the pair lock. It rejects `future` status because creation accepts no scheduled publication date.
-- `EventParticipationAdmin` locks existing participations before reading stored endpoints, rechecks pairs before writes, allows retirement with invalid endpoints, and derives titles under a scoped lock after refreshing the participation endpoints.
+- `EventParticipationAdmin` locks existing participations before reading stored endpoints, rechecks pairs before writes, allows retirement with invalid endpoints, and derives titles under a scoped lock after refreshing the participation endpoints and their post caches.
 - `EventRoleSeeder` seeds the approved `event_role` vocabulary on request.
 
 Run the focused checks with:
