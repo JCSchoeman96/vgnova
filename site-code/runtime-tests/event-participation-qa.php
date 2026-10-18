@@ -208,70 +208,89 @@ function vg_event_participation_qa_token_exists(string $token): bool
     return $post_matches > 0 || $meta_matches > 0;
 }
 
-vg_event_participation_qa_check(class_exists(EventParticipationService::class), 'Platform Core EventParticipationService is not loaded.');
-foreach ([EventParticipationRepository::POST_TYPE, 'person'] as $type) {
-    vg_event_participation_qa_check(post_type_exists($type), 'Required post type ' . $type . ' is not registered.');
-}
-vg_event_participation_qa_check(taxonomy_exists('event_role'), 'Required event_role taxonomy is not registered.');
-$participation_type = get_post_type_object(EventParticipationRepository::POST_TYPE);
-vg_event_participation_qa_check($participation_type instanceof WP_Post_Type, 'Event Participation post type object is missing.');
-vg_event_participation_qa_check(
-    ! $participation_type->public
-        && ! $participation_type->publicly_queryable
-        && $participation_type->exclude_from_search
-        && $participation_type->show_in_rest
-        && ! $participation_type->has_archive
-        && $participation_type->rewrite === false,
-    'Event Participation must remain private, non-queryable, excluded from search, REST-enabled, without an archive or rewrite.'
-);
-$role_taxonomy = get_taxonomy('event_role');
-$role_object_types = is_object($role_taxonomy) ? (array) $role_taxonomy->object_type : [];
-sort($role_object_types);
-vg_event_participation_qa_check($role_object_types === [EventParticipationRepository::POST_TYPE], 'event_role must be attached only to event_participation.');
-vg_event_participation_qa_check(vg_event_participation_qa_post_count('person') === 0, 'Persistent Person count must be zero before QA.');
-vg_event_participation_qa_check(vg_event_participation_qa_post_count(EventParticipationRepository::POST_TYPE) === 0, 'Persistent participation count must be zero before QA.');
-$role_vocab = vg_event_participation_qa_vocab('event_role');
-$role_by_slug = [];
-foreach ($role_vocab as $term) {
-    $role_by_slug[$term['slug']] = $term;
-}
-$expected_roles = ['fasiliteerder' => 'Fasiliteerder', 'gas' => 'Gas', 'paneellid' => 'Paneellid', 'spreker' => 'Spreker'];
-$actual_roles = array_column($role_vocab, 'name', 'slug');
-ksort($actual_roles);
-vg_event_participation_qa_check($actual_roles === $expected_roles, 'event_role must contain exactly the four approved terms.');
-vg_event_participation_qa_check(vg_event_participation_qa_ids(get_field('event_medewerkers', 763)) === [753, 757], 'Event 763 must retain its exact legacy relationships 753 and 757.');
-vg_event_participation_qa_check(vg_event_participation_qa_ids(get_field('produk_bron_event', 767)) === [763] && vg_event_participation_qa_ids(get_field('produk_medewerkers', 767)) === [753], 'Product 767 relationships differ from the approved baseline.');
-vg_event_participation_qa_check(vg_event_participation_qa_ids(get_field('produk_bron_event', 768)) === [763] && vg_event_participation_qa_ids(get_field('produk_medewerkers', 768)) === [753, 757], 'Product 768 relationships differ from the approved baseline.');
-$candidates = get_posts(['post_type' => 'tc_events', 'post_status' => 'publish', 'numberposts' => -1, 'fields' => 'ids', 'orderby' => 'ID', 'order' => 'ASC']);
-$qa_event_id = 0;
-foreach ($candidates as $candidate_id) {
-    $candidate_id = (int) $candidate_id;
-    $candidate = get_post($candidate_id);
-    if (
-        $candidate_id !== 763
-        && $candidate instanceof WP_Post
-        && $candidate->post_type === 'tc_events'
-        && $candidate->post_status === 'publish'
-        && vg_event_participation_qa_ids(get_field('event_medewerkers', $candidate_id)) === []
-    ) {
-        $qa_event_id = $candidate_id;
-        break;
+$preflight_failure = null;
+try {
+    vg_event_participation_qa_check(class_exists(EventParticipationService::class), 'Platform Core EventParticipationService is not loaded.');
+    foreach ([EventParticipationRepository::POST_TYPE, 'person'] as $type) {
+        vg_event_participation_qa_check(post_type_exists($type), 'Required post type ' . $type . ' is not registered.');
     }
+    vg_event_participation_qa_check(taxonomy_exists('event_role'), 'Required event_role taxonomy is not registered.');
+    $participation_type = get_post_type_object(EventParticipationRepository::POST_TYPE);
+    vg_event_participation_qa_check($participation_type instanceof WP_Post_Type, 'Event Participation post type object is missing.');
+    vg_event_participation_qa_check(
+        ! $participation_type->public
+            && ! $participation_type->publicly_queryable
+            && $participation_type->exclude_from_search
+            && $participation_type->show_in_rest
+            && ! $participation_type->has_archive
+            && $participation_type->rewrite === false,
+        'Event Participation must remain private, non-queryable, excluded from search, REST-enabled, without an archive or rewrite.'
+    );
+    $role_taxonomy = get_taxonomy('event_role');
+    $role_object_types = is_object($role_taxonomy) ? (array) $role_taxonomy->object_type : [];
+    sort($role_object_types);
+    vg_event_participation_qa_check($role_object_types === [EventParticipationRepository::POST_TYPE], 'event_role must be attached only to event_participation.');
+    vg_event_participation_qa_check(vg_event_participation_qa_post_count('person') === 0, 'Persistent Person count must be zero before QA.');
+    vg_event_participation_qa_check(vg_event_participation_qa_post_count(EventParticipationRepository::POST_TYPE) === 0, 'Persistent participation count must be zero before QA.');
+    $role_vocab = vg_event_participation_qa_vocab('event_role');
+    $role_by_slug = [];
+    foreach ($role_vocab as $term) {
+        $role_by_slug[$term['slug']] = $term;
+    }
+    $expected_roles = ['fasiliteerder' => 'Fasiliteerder', 'gas' => 'Gas', 'paneellid' => 'Paneellid', 'spreker' => 'Spreker'];
+    $actual_roles = array_column($role_vocab, 'name', 'slug');
+    ksort($actual_roles);
+    vg_event_participation_qa_check($actual_roles === $expected_roles, 'event_role must contain exactly the four approved terms.');
+    vg_event_participation_qa_check(vg_event_participation_qa_ids(get_field('event_medewerkers', 763)) === [753, 757], 'Event 763 must retain its exact legacy relationships 753 and 757.');
+    vg_event_participation_qa_check(vg_event_participation_qa_ids(get_field('produk_bron_event', 767)) === [763] && vg_event_participation_qa_ids(get_field('produk_medewerkers', 767)) === [753], 'Product 767 relationships differ from the approved baseline.');
+    vg_event_participation_qa_check(vg_event_participation_qa_ids(get_field('produk_bron_event', 768)) === [763] && vg_event_participation_qa_ids(get_field('produk_medewerkers', 768)) === [753, 757], 'Product 768 relationships differ from the approved baseline.');
+    $candidates = get_posts(['post_type' => 'tc_events', 'post_status' => 'publish', 'numberposts' => -1, 'fields' => 'ids', 'orderby' => 'ID', 'order' => 'ASC']);
+    $qa_event_id = 0;
+    foreach ($candidates as $candidate_id) {
+        $candidate_id = (int) $candidate_id;
+        $candidate = get_post($candidate_id);
+        if (
+            $candidate_id !== 763
+            && $candidate instanceof WP_Post
+            && $candidate->post_type === 'tc_events'
+            && $candidate->post_status === 'publish'
+            && vg_event_participation_qa_ids(get_field('event_medewerkers', $candidate_id)) === []
+        ) {
+            $qa_event_id = $candidate_id;
+            break;
+        }
+    }
+    vg_event_participation_qa_check($qa_event_id > 0, 'No published QA Event with empty event_medewerkers was found.');
+    $qa_event = get_post($qa_event_id);
+    vg_event_participation_qa_check($qa_event instanceof WP_Post && $qa_event->ID !== 763, 'The QA Event must be a published Event other than Event 763.');
+    $before = vg_event_participation_qa_snapshot();
+    $qa_event_before = [
+        $qa_event->post_type,
+        $qa_event->post_status,
+        $qa_event->post_name,
+        $qa_event->post_modified,
+        vg_event_participation_qa_ids(get_field('event_medewerkers', $qa_event_id)),
+        vg_event_participation_qa_terms($qa_event_id, 'event_category'),
+        vg_event_participation_qa_terms($qa_event_id, 'content_topic'),
+    ];
+    vg_event_participation_qa_check($before['event'][3] === [753, 757], 'Legacy Event 763 baseline does not match.');
+} catch (Throwable $error) {
+    $preflight_failure = $error;
 }
-vg_event_participation_qa_check($qa_event_id > 0, 'No published QA Event with empty event_medewerkers was found.');
-$qa_event = get_post($qa_event_id);
-vg_event_participation_qa_check($qa_event instanceof WP_Post && $qa_event->ID !== 763, 'The QA Event must be a published Event other than Event 763.');
-$before = vg_event_participation_qa_snapshot();
-$qa_event_before = [
-    $qa_event->post_type,
-    $qa_event->post_status,
-    $qa_event->post_name,
-    $qa_event->post_modified,
-    vg_event_participation_qa_ids(get_field('event_medewerkers', $qa_event_id)),
-    vg_event_participation_qa_terms($qa_event_id, 'event_category'),
-    vg_event_participation_qa_terms($qa_event_id, 'content_topic'),
-];
-vg_event_participation_qa_check($before['event'][3] === [753, 757], 'Legacy Event 763 baseline does not match.');
+if ($preflight_failure instanceof Throwable) {
+    $preflight_report = wp_json_encode([
+        'result' => 'FAIL',
+        'phase' => 'preflight',
+        'mutation_started' => false,
+        'failures' => [['phase' => 'preflight', 'message' => $preflight_failure->getMessage()]],
+    ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
+    if (defined('WP_CLI') && WP_CLI) {
+        \WP_CLI::line($preflight_report);
+        \WP_CLI::error('Event Participation runtime QA preflight failed.', 1);
+    }
+    echo $preflight_report . PHP_EOL;
+    throw new RuntimeException('Event Participation runtime QA preflight failed.');
+}
 
 $token = gmdate('YmdHis') . '-' . bin2hex(random_bytes(8));
 $owner = '[QA][AUTOMATED] ' . $token;
