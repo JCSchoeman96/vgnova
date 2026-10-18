@@ -1,8 +1,8 @@
 # Canonical Person Migration Architecture
 
-**Task:** Voelgoed Task 5A design contract
-**Status:** Person architecture ready for implementation; current `medewerker` corpus not approved for migration
-**Runtime writes:** 0
+**Task:** Voelgoed Person architecture and migration sequencing (Tasks 5A–5D)
+**Status:** Person foundation active; current five-profile corpus remains deferred pending source-origin evidence
+**Task 5C runtime writes:** 0
 
 ## Locked target
 
@@ -21,14 +21,9 @@ This design preserves the current `medewerker` runtime until its records and eve
 
 ## Architecture readiness and data readiness
 
-```text
-Person architecture: READY FOR IMPLEMENTATION
-Current medewerker corpus: NOT YET APPROVED FOR MIGRATION
-```
+Person foundation Task 5B was completed without copying any current medewerker record. Task 5C completed a read-only provenance review. Profiles 753–757 are each DEFER because no authoritative source-origin artifact establishes that the local records are genuine source content, while circumstantial QA/rebuild evidence is insufficient to prove that the profiles themselves are fixtures. The profile photo decisions and five current event/product edge decisions are recorded separately in PERSON_PROFILE_PROVENANCE_AUDIT.md and its CSV ledgers.
 
-Task 5B can implement the Person foundation without creating a Person from any current `medewerker` record. The foundation must be verifiable with temporary or reproducible test data. The five current records and their dependent event/product edges remain unresolved because the runtime and repository evidence does not establish whether they are genuine source content or local demo/QA data.
-
-All five profile decisions are currently `DEFER`. Task 5A does not authorize canonical duplication of any of them. A real-world-looking name, a profile's published status, or a canonical IA example is not migration authority by itself.
+Task 5C does not authorize canonical duplication. A real-world-looking name, published status, plausible profession, or canonical IA example is not migration authority by itself. Task 5D is not required by the current corpus because there are zero MIGRATE rows.
 
 ## Field-level mapping contract
 
@@ -78,21 +73,21 @@ The initial `person_type` vocabulary may include `Mentor` in Task 5B. Creating t
 | Courses | No Person relation found | Decide instructor/expert relation separately; Masteriyo remains course owner | No current course Person edges to migrate |
 | Editorial | `post_author → wp_users`; no profile relationship fields | Design author, additional author, expert, and reviewer links separately | Do not reinterpret WordPress users as Person records |
 
-Do not implement the permanent direct conversion `event_medewerkers → Person[]`. The source list lacks contextual information and the canonical architecture requires `event_participation`. The two observed edges on event 763 (`763 → 753` and `763 → 757`) are `PENDING_PROVENANCE`; neither is approved for migration. Migrate an edge only after the event and its Person record are individually approved as genuine data. Any role field remains unresolved until reviewed.
+Do not implement the permanent direct conversion from event_medewerkers to a bare Person list. The source list lacks contextual information and the canonical architecture requires event_participation. Task 5C classifies event 763's edges to profiles 753 and 757 as EXCLUDE from migration because the event is explicitly named Test Event and has a QA slug with no contextual participation detail. The source edges remain present and unchanged. The exclusion does not classify either Person profile as a fixture.
 
-The three observed product-person edges are also `PENDING_PROVENANCE`: product 767 to profile 753, and product 768 to profiles 753 and 757. Approval requires provenance for the product, source event where applicable, and linked Person. Product 768 is trashed and must not become canonical data by virtue of its current relationship. Product-to-Person migration remains downstream of event participation and the atomic automation change described below.
+Task 5C classifies the three observed product-person edges as EXCLUDE from migration: product 767 to profile 753, and product 768 to profiles 753 and 757. Their QA titles, source event 763, missing commerce setup, and lack of order references support excluding these edges; product 768's trash status is not used alone. The source fields remain unchanged. Product-to-Person migration remains downstream of event participation and atomic replacement of the current copy automation.
 
-The consumer inventory separates `architecture_dependency` from `current_data_migration_decision`. A `YES` architecture dependency identifies a real schema or consumer that must be addressed for the canonical model. `PENDING_PROVENANCE` means the current source record or edge has not been approved for copying; it is not a migration instruction. `NOT_APPLICABLE` means the dependency currently has no data edge to migrate. In particular, the event and product relationship dependencies remain real even though their observed edges are not approved.
+The consumer inventory separates architecture dependencies from current-data migration decisions. The event and product schemas remain real architecture dependencies. Task 5C's five currently known event/product edges are EXCLUDE from migration and remain unchanged; a future edge discovery requires its own provenance review.
 
 ## Migration phases
 
-1. **Task 5B — Person foundation only.** Implement canonical `person`, `/mense/` routes, the profile schema, and the `person_type` taxonomy with Mentor as the initial vocabulary concept through ACF Pro. Update the source-controlled `content_topic` object-type allowlist and role/taxonomy tests so Person expertise/relevance is supported and Primary Topic remains `NOT_APPLICABLE`. Keep all existing consumers operating. Do not copy or require any current `medewerker` record. Verify the foundation with temporary or reproducible test data.
-2. **Task 5C — Provenance and per-profile eligibility.** Review each current profile and assign exactly one decision: `MIGRATE`, `DO_NOT_MIGRATE`, or `DEFER`. Require evidence of genuine identity and origin, local demo/QA status, photo and biography provenance, editorial validity of classifications, and whether linked relationships are genuine or test data. Migrate only `MIGRATE` records using deterministic legacy-ID mapping. Record exclusions and unresolved cases without creating Person records. Re-inventory and fingerprint sources immediately before any approved migration.
-3. **Task 6A+ — Event participation model.** Define the `event_participation` junction and contextual fields. Migrate only edges whose event and Person have both passed provenance review; the current two edges on event 763 remain `PENDING_PROVENANCE`. Verify event/profile views and never derive a contextual role from global profile labels.
-4. **Then — Product relationships and automation.** Migrate only product-person edges whose product, source event where applicable, and Person are approved. Replace the current copy snippet and query helper atomically with field retargeting so product saves resolve canonical Person IDs through approved event participation. Verify the empty-field copy path and manual-selection preservation path.
-5. **Later — Uitsending, podcast, and course relationships.** Recheck episodes and courses at that time. Migrate only populated, provenance-approved links; design host/guest and instructor relationships with each domain owner.
-6. **Later — Editorial Person relationships.** Define article authorship, contributors, and review relationships separately from WordPress account authorship.
-7. **Final Person decommission task.** Inventory all statuses and consumers; freeze legacy writes; account for every profile as migrated or explicitly excluded; verify relations, templates, routes, search behavior, and inbound links; redirect old archive and singles to verified targets; remove `medewerker` only after the zero-consumer gate passes.
+1. **Task 5B — Person foundation.** Completed without copying any current medewerker profile. Canonical person, /mense/, profile fields, and the initial person_type=Mentor vocabulary are present. Person Primary Topic remains unsupported and classification is NOT_APPLICABLE.
+2. **Task 5C — Read-only provenance and migration eligibility.** Completed. Each current profile has exactly one decision and confidence. Profiles 753–757 are all DEFER; their field decisions are recorded separately. The two event edges and three product edges are each EXCLUDE. No Person record or relationship was created.
+3. **Task 5D — Deterministic migration of independently approved MIGRATE rows.** Not started and not required by the current corpus, which has zero MIGRATE decisions. If a separately approved decision later creates a MIGRATE row, Task 5D must re-fingerprint immediately before writes; stop if source facts drift; create only approved Person records; copy only fields marked COPY; record deterministic legacy-ID-to-Person-ID mappings; and retain medewerker during the dual-run. Keep target IDs/slugs blank until each approved row is migrated.
+4. **Task 6A+ — Event participation model.** Define the event_participation junction and contextual fields. The two current event 763 edges are EXCLUDE and remain unchanged. Future edges may migrate only after their event, Person, and edge each have independent approval.
+5. **Then — Product relationships and automation.** Product-person migration remains downstream of event participation and atomic replacement of the current copy snippet/query helper. Product saves must resolve approved canonical Person IDs through approved event participation. Verify empty-field copy and manual-selection preservation paths.
+6. **Later — Uitsending, podcast, course, and editorial relationships.** Recheck current records and define each domain's contextual relationships separately from WordPress account authorship.
+7. **Final Person decommission task.** Inventory all statuses and consumers; freeze legacy writes; account for every profile as migrated or explicitly excluded; resolve every remaining DEFER; verify relations, templates, routes, search behavior, and inbound links; redirect old archive/singles only to verified targets; remove medewerker only after the zero-consumer gate passes.
 
 ### Why products follow event participation
 
@@ -104,7 +99,7 @@ Keep `medewerker` available and unmodified while the Person foundation is implem
 
 `legacy_medewerker_id`, `legacy_slug`, `legacy_title`, `target_person_id`, `target_slug`, `migration_state`.
 
-The current profile inventory also records `migration_decision`, `target_person_id`, `target_slug`, and `migration_state`. All five current decisions are `DEFER`; target IDs and slugs are blank and migration state is `NOT_STARTED`. The manifest is an inventory, not a list of approved migration rows.
+The current profile inventory records migration_decision, decision_confidence, provenance_summary, both Task 5A and Task 5C source fingerprints, fingerprint comparison, target_person_id, target_slug, and migration_state. All five profile decisions are DEFER; target IDs/slugs remain blank and migration state remains NOT_STARTED. Task 5A and Task 5C digests differ, but no source-fact change was found; Task 5A's byte-level normalization recipe was not retained, so the old fingerprint is preserved and not silently replaced. The manifest is an inventory, not a list of approved migration rows.
 
 Use the legacy numeric ID as the primary lookup key. Slug can be a secondary verification attribute after uniqueness checks. Never match only by title. Record one row per legacy record, including `DO_NOT_MIGRATE` and `DEFER` outcomes, so retries remain deterministic. Leave `target_person_id` and `target_slug` empty until that row is approved and migrated.
 
@@ -145,13 +140,18 @@ Task 5A meets none of the removal gates. The register must remain transitional/d
 
 ## Explicit non-actions
 
-This document does not create `person`, `person_type`, or `event_participation`; it does not create fields, copy profiles, alter links, update snippets, change Bricks, modify routes, or write migration provenance.
+Task 5C was read-only. It did not create or modify Person records, person_type, event_participation, fields, profile values, links, snippets, Bricks data, routes, or redirects. Task 5D has not started.
+
 
 ## Related evidence
 
 - [Current-state audit](PERSON_CURRENT_STATE_AUDIT.md)
 - [Profile migration manifest](PERSON_PROFILE_MIGRATION_MANIFEST.csv)
+- [Profile provenance audit](PERSON_PROFILE_PROVENANCE_AUDIT.md)
+- [Profile evidence ledger](PERSON_PROFILE_PROVENANCE_EVIDENCE.csv)
+- [Relationship provenance](PERSON_RELATIONSHIP_PROVENANCE.csv)
 - [Legacy classification mapping](PERSON_LEGACY_CLASSIFICATION_MAPPING.csv)
 - [Consumer inventory](PERSON_CONSUMER_INVENTORY.csv)
 - [Decommission register](LEGACY_DECOMMISSION_REGISTER.md)
 - [Post-Task 5A snapshot](POST_TASK_5A_CURRENT_STATE.md)
+- [Post-Task 5C snapshot](POST_TASK_5C_CURRENT_STATE.md)
