@@ -17,6 +17,8 @@ if (! defined('ABSPATH')) {
     exit(1);
 }
 
+require_once __DIR__ . '/event-participation-qa-setup.php';
+
 function vg_event_participation_qa_check(bool $condition, string $message): void
 {
     if (! $condition) {
@@ -303,14 +305,31 @@ if ($preflight_failure instanceof Throwable) {
     throw new RuntimeException('Event Participation runtime QA preflight failed.');
 }
 
-$token = gmdate('YmdHis') . '-' . bin2hex(random_bytes(8));
-$owner = '[QA][AUTOMATED] ' . $token;
+$setup = vg_event_participation_qa_initialize(
+    static fn (): string => gmdate('YmdHis') . '-' . bin2hex(random_bytes(8)),
+    static fn (): EventParticipationService => new EventParticipationService()
+);
+if ($setup['failure'] !== null) {
+    $setup_report = wp_json_encode(
+        vg_event_participation_qa_setup_failure_report($setup['failure']),
+        JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE | JSON_THROW_ON_ERROR
+    );
+    if (defined('WP_CLI') && WP_CLI) {
+        \WP_CLI::line($setup_report);
+        \WP_CLI::error('Event Participation runtime QA setup failed.', 1);
+    }
+    echo $setup_report . PHP_EOL;
+    throw new RuntimeException('Event Participation runtime QA setup failed.');
+}
+
+$token = $setup['token'];
+$owner = $setup['owner'];
 $person_id = 0;
 $participation_id = 0;
 $qa_failure = null;
 $cleanup_failures = [];
 $result = [];
-$service = new EventParticipationService();
+$service = $setup['service'];
 try {
     $inserted = wp_insert_post(['post_type' => 'person', 'post_status' => 'publish', 'post_title' => $owner, 'post_name' => 'ep-qa-' . strtolower(str_replace('-', '', $token)), 'meta_input' => ['_vg_task_6a_qa_owner' => $owner]], true);
     if (is_wp_error($inserted)) {
