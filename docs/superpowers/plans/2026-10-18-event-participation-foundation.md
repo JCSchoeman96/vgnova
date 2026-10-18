@@ -6,7 +6,7 @@
 
 **Architecture:** ACF Pro Local JSON owns the `event_participation` CPT, `event_role` taxonomy, and participation fields. Voelgoed Platform Core owns relationship validation, uniqueness, canonical queries, administrative title behavior, and the supported programmatic write path. Legacy `event_medewerkers`, Bricks consumers, and product automation continue unchanged in parallel.
 
-**Tech Stack:** WordPress, ACF Pro Local JSON, PHP, Voelgoed Platform Core, WP-CLI/runtime QA, Git worktrees.
+**Tech Stack:** WordPress, ACF Pro Local JSON, PHP, Voelgoed Platform Core, Novamira MCP runtime operations, WP-CLI through Novamira, Git worktrees.
 
 **Spec:** `docs/superpowers/specs/2026-10-18-event-participation-foundation-design.md`
 
@@ -14,6 +14,8 @@
 
 - Baseline must be `origin/main` at `cd1e6c8304b21f768610e56e79714f0e29e9adfd`.
 - Work only in isolated branch/worktree `feat/event-participation-6a`.
+- Reuse `.worktrees/feat-event-participation-6a` when it exists, has the expected branch, is clean, and has the exact required merge base. Do not create a duplicate worktree.
+- Use Novamira MCP as the primary WordPress runtime interface. Inspect runtime state before changes. Run WP-CLI through Novamira's `novamira/run-wp-cli` ability when needed. Use local shell only as a documented fallback when Novamira cannot perform the operation, and record the reason. Do not use direct SQL writes.
 - `tc_events` remains the canonical Event object.
 - `person` remains the canonical Person object.
 - `event_participation` is non-public infrastructure with zero persistent records at task end.
@@ -60,7 +62,6 @@ site-code/acf-json/group_vg_event_participation_details.json
 Create:
 
 ```text
-site-code/event-participation/seed-event-role-terms.php
 site-code/event-participation/tests/run-event-participation-foundation-tests.php
 ```
 
@@ -72,10 +73,13 @@ Create:
 site-code/voelgoed-platform-core/includes/Event/EventParticipationRepository.php
 site-code/voelgoed-platform-core/includes/Event/EventParticipationService.php
 site-code/voelgoed-platform-core/includes/Event/EventParticipationAdmin.php
+site-code/voelgoed-platform-core/includes/Event/EventRoleSeeder.php
 
 site-code/voelgoed-platform-core/tests/EventParticipationRepositoryTest.php
 site-code/voelgoed-platform-core/tests/EventParticipationServiceTest.php
 site-code/voelgoed-platform-core/tests/EventParticipationAdminTest.php
+site-code/voelgoed-platform-core/tests/EventRoleSeederTest.php
+site-code/voelgoed-platform-core/tests/run-event-role-seeder-tests.php
 site-code/voelgoed-platform-core/tests/run-event-participation-tests.php
 ```
 
@@ -258,7 +262,26 @@ It must use the shared service/repository logic rather than implementing a secon
 
 ---
 
-# Task 1: Establish Worktree and Commit Approved Design/Plan
+## EventRoleSeeder
+
+Namespace:
+
+```php
+Voelgoed\PlatformCore\Event
+```
+
+Public interface:
+
+```php
+public function register(): void;
+public function seed_event_role_terms(): array;
+```
+
+`register()` registers `wp vg-event-role-setup` when WP-CLI is available. The seeding method returns role slugs in `created` and `existing` lists.
+
+---
+
+# Task 1: Establish or Reuse Worktree and Commit Approved Design/Plan
 
 **Files:**
 - Create: approved design file
@@ -279,9 +302,15 @@ cd1e6c8304b21f768610e56e79714f0e29e9adfd
 
 If different, STOP and report the new `main` state.
 
-- [ ] **Step 2: Create isolated worktree**
+- [ ] **Step 2: Reuse or create isolated worktree**
 
-Use the repository's standard worktree workflow.
+Reuse the existing worktree if it is present at:
+
+```text
+.worktrees/feat-event-participation-6a
+```
+
+Verify branch name, clean status, and exact merge base before reuse. Create a worktree only if none exists and the branch is not already checked out elsewhere.
 
 Branch:
 
@@ -298,16 +327,16 @@ git merge-base HEAD origin/main
 
 Expected clean and exact baseline.
 
-- [ ] **Step 4: Save the approved design and this plan**
+- [ ] **Step 4: Record user approval and save the approved design and this plan**
 
-Do not reinterpret either document.
+The user approved execution of Task 6A on 2026-10-18. Update the design status from pending final review to approved for implementation. Preserve its architecture and scope. Apply only the design-aligned corrections recorded in this plan review.
 
 - [ ] **Step 5: Commit**
 
 ```bash
 git add docs/superpowers/specs/2026-10-18-event-participation-foundation-design.md \
         docs/superpowers/plans/2026-10-18-event-participation-foundation.md
-git commit -m "docs: lock event participation foundation design"
+git commit -m "docs: finalize event participation implementation plan"
 ```
 
 ---
@@ -428,10 +457,12 @@ field_vg_event_participation_display_order
 Recommended editor labels:
 
 ```text
-Eventdeelname / Eventdeelnames
-Eventrol / Eventrolle
-Eventdeelname Besonderhede
+Event Participation / Event Participations
+Event Role / Event Roles
+Event Participation Details
 ```
+
+Use `Event Participation Details` as the field group title to match the approved design.
 
 Do not create any public route.
 
@@ -478,13 +509,16 @@ git commit -m "feat: define event participation ACF schema"
 # Task 3: Controlled `event_role` Seeder
 
 **Files:**
-- Create: `site-code/event-participation/seed-event-role-terms.php`
-- Modify: Task 6A foundation test runner
+- Create: `site-code/voelgoed-platform-core/includes/Event/EventRoleSeeder.php`
+- Create: `site-code/voelgoed-platform-core/tests/EventRoleSeederTest.php`
+- Create: `site-code/voelgoed-platform-core/tests/run-event-role-seeder-tests.php`
+
+The seeder is Platform Core-owned source. Register its WP-CLI command through the Platform Core plugin. Do not use a standalone seeder file outside the module or create a competing taxonomy definition.
 
 **Interface:**
 
 ```php
-function vg_seed_event_role_terms(): array;
+public function seed_event_role_terms(): array;
 ```
 
 Approved vocabulary:
@@ -517,10 +551,10 @@ missing taxonomy fails
 - [ ] **Step 2: Run and confirm failure**
 
 ```bash
-php site-code/event-participation/tests/run-event-participation-foundation-tests.php
+php site-code/voelgoed-platform-core/tests/run-event-role-seeder-tests.php
 ```
 
-- [ ] **Step 3: Implement `vg_seed_event_role_terms()`**
+- [ ] **Step 3: Implement `EventRoleSeeder::seed_event_role_terms()`**
 
 Follow the proven Person seeder pattern:
 
@@ -533,26 +567,35 @@ Follow the proven Person seeder pattern:
 7. return `created` and `existing`;
 8. never call `wp_set_object_terms`.
 
-WP-CLI execution:
+The command reports the returned `created` and `existing` lists and exits with an error on a seeding conflict.
+
+Register the CLI command from the Platform Core plugin bootstrap during Task 6. Run the command through Novamira's `novamira/run-wp-cli` ability:
 
 ```bash
-wp eval-file /path/to/site-code/event-participation/seed-event-role-terms.php
+wp vg-event-role-setup
 ```
 
-- [ ] **Step 4: Run tests**
+- [ ] **Step 4: Run seeder and schema tests**
 
-Expected all foundation tests PASS.
+```bash
+php site-code/voelgoed-platform-core/tests/run-event-role-seeder-tests.php
+php site-code/event-participation/tests/run-event-participation-foundation-tests.php
+```
+
+Expected all seeder and schema tests PASS.
 
 - [ ] **Step 5: PHP lint**
 
 ```bash
-php -l site-code/event-participation/seed-event-role-terms.php
+php -l site-code/voelgoed-platform-core/includes/Event/EventRoleSeeder.php
 ```
 
 - [ ] **Step 6: Commit**
 
 ```bash
-git add site-code/event-participation
+git add site-code/voelgoed-platform-core/includes/Event/EventRoleSeeder.php \
+        site-code/voelgoed-platform-core/tests/EventRoleSeederTest.php \
+        site-code/voelgoed-platform-core/tests/run-event-role-seeder-tests.php
 git commit -m "feat: add controlled event role vocabulary"
 ```
 
@@ -566,6 +609,8 @@ git commit -m "feat: add controlled event role vocabulary"
   - `tests/EventParticipationRepositoryTest.php`
   - `tests/run-event-participation-tests.php`
 - Modify: `tests/bootstrap.php`
+
+The combined Event Participation runner must also include `EventRoleSeederTest.php`.
 
 **Produces:** canonical read/query contract used by Service, Admin, QA and future consumers.
 
@@ -590,6 +635,7 @@ participations_for_person returns publish only
 
 people_for_event returns valid person IDs only
 events_for_person returns valid tc_events IDs only
+events_for_person orders by display_order ASC then participation ID ASC
 
 malformed endpoint relationships are omitted
 
@@ -815,18 +861,21 @@ Add source/runtime bootstrap requirements for:
 includes/Event/EventParticipationRepository.php
 includes/Event/EventParticipationService.php
 includes/Event/EventParticipationAdmin.php
+includes/Event/EventRoleSeeder.php
 ```
 
 Add:
 
 ```php
 use Voelgoed\PlatformCore\Event\EventParticipationAdmin;
+use Voelgoed\PlatformCore\Event\EventRoleSeeder;
 ```
 
 and component registration:
 
 ```text
 event_participation_admin
+event_role_seeder
 ```
 
 Do not register Repository or Service as lifecycle components if they have no `register()` lifecycle.
@@ -838,6 +887,7 @@ Document:
 ```text
 Event Participation source files
 new test command
+wp vg-event-role-setup seeder command
 runtime deployment requirement
 ```
 
@@ -902,24 +952,27 @@ candidate QA Event:
 At minimum:
 
 ```text
-profiles 753–757
-event 763
-products 767/768
-content_topic 55 / 7
-Person count
-participation count
+profiles 753–757 and their protected profile fields
+attachments 558, 560, 562, 564, and 566
+event 763 and both excluded legacy event_medewerkers relationships
+products 767/768, produk_bron_event, and produk_medewerkers
+content_topic vocabulary and protected relationships
+Person count and person_type/content_topic relationships
+participation count and event_role relationships
 event_role vocabulary
-selected QA Event
+selected QA Event ID, status, slug, modified value, event_medewerkers, and relevant taxonomy relationships
 ```
 
 - [ ] **Step 3: Implement owned QA record creation**
 
-Create temporary Person with two independent markers:
+Create a temporary Person and participation. Both records must carry an ownership marker with the unique run token:
 
 ```text
 [QA][AUTOMATED]
 unique run token
 ```
+
+Include the marker in the Person title and store it in `_vg_task_6a_qa_owner` post meta on both records. The participation title remains derived. The QA marker is temporary ownership metadata, not a canonical ACF field.
 
 Use canonical `EventParticipationService::create()` to create participation.
 
@@ -931,6 +984,8 @@ Paneellid
 ```
 
 and non-zero display order.
+
+After creation, write the QA marker to participation post meta. Do not use direct post meta writes for canonical Event, Person, role, or display-order values.
 
 - [ ] **Step 4: Verify runtime contract**
 
@@ -945,6 +1000,7 @@ multiple roles PASS
 display order PASS
 derived title PASS
 non-public participation routing PASS
+invalid or trashed endpoint IDs rejected by the shared validator
 ```
 
 - [ ] **Step 5: Prove duplicate rejection**
@@ -981,7 +1037,7 @@ QA participation
 QA Person
 ```
 
-Ensure none remains in Trash.
+Ensure neither record remains in any post status. Scan for the run token in posts and post meta, verify the deleted IDs have no remaining post meta or term relationships, and confirm no matching record remains in Trash. Do not select records for deletion by title alone.
 
 - [ ] **Step 8: Compare protected snapshots**
 
@@ -1058,6 +1114,7 @@ STOP
 This is a temporary **pre-merge review/runtime dependency**.
 
 Do not copy JSON into the theme.
+Record the original and new link targets. Use Novamira for runtime inspection and execution when its PHP ability can safely perform the filesystem operation. If it cannot create or verify the symlink, use the local shell as a documented fallback and record the unavailable operation.
 
 - [ ] **Step 6: Verify resolved symlink target**
 
@@ -1066,6 +1123,16 @@ Record exact before/after targets.
 - [ ] **Step 7: Do not remove worktree after this point**
 
 The runtime now depends on it until post-merge Task 6A-S.
+
+Recovery if any step in Tasks 8 through 11 stops before runtime QA passes:
+
+1. Run guarded QA cleanup for any records owned by the failed run.
+2. Restore the recorded original `acf-json` symlink target.
+3. Restore the runtime plugin files from the Task 9 snapshot.
+4. If Task 10 synced definitions or created terms, remove only definitions and terms proven absent in the pre-change snapshot, after confirming no participation records or relationships reference them. If seeding stopped after partial inserts, remove only approved terms proven to have been created during this run and still unassigned. Use Novamira. Stop if any unexpected content or relationship exists.
+5. Verify the original symlink target and runtime plugin hashes.
+
+If Task 11 passes, leave the feature-worktree symlink in place for the open, unmerged review branch. Task 6A-S must stabilize it after merge.
 
 ---
 
@@ -1088,9 +1155,11 @@ includes/Plugin.php
 
 and confirm new Event files do not already contain divergent runtime-only architecture.
 
+Use Novamira to inspect and read the runtime files first. Check whether `novamira/execute-php` can safely copy the source files. Novamira's file-write ability restricts PHP files outside its sandbox. If the MCP abilities cannot perform the copy safely, use the local filesystem as a documented fallback and record the limitation.
+
 - [ ] **Step 2: Deploy source Event classes**
 
-Copy the three source-controlled Event classes into the corresponding runtime plugin `includes/Event/`.
+Copy the four source-controlled Event classes into the corresponding runtime plugin `includes/Event/`.
 
 - [ ] **Step 3: Apply the source-controlled integration patch semantically**
 
@@ -1118,7 +1187,15 @@ and restore runtime files from the snapshot before further action.
 
 - [ ] **Step 1: Read ACF JSON status**
 
-Check exactly:
+Through Novamira's `novamira/run-wp-cli` ability, run:
+
+```bash
+wp acf json status --detailed --format=json
+```
+
+Record pending definitions for the three Task 6A keys and any unrelated pending definitions separately. Member Perk definitions remain untouched.
+
+Check exactly these keys:
 
 ```text
 post_type_event_participation
@@ -1132,7 +1209,23 @@ Member Perk definitions remain untouched.
 
 - [ ] **Step 2: Targeted sync only the three Task 6A definitions**
 
-No unrestricted sync.
+Run each command through Novamira's `novamira/run-wp-cli` ability:
+
+```bash
+wp acf json sync --key=post_type_event_participation --dry-run
+wp acf json sync --key=taxonomy_event_role --dry-run
+wp acf json sync --key=group_vg_event_participation_details --dry-run
+```
+
+Review those three dry-run results. Then sync only the named keys:
+
+```bash
+wp acf json sync --key=post_type_event_participation
+wp acf json sync --key=taxonomy_event_role
+wp acf json sync --key=group_vg_event_participation_details
+```
+
+Do not run `wp acf json sync` without `--key`. If targeted sync is unavailable, stop and report the capability issue rather than syncing unrelated definitions.
 
 - [ ] **Step 3: Verify ACF registration**
 
@@ -1151,13 +1244,13 @@ event_role attached only event_participation
 
 - [ ] **Step 4: Seed Event roles once**
 
-Run:
+Run the Platform Core command through Novamira's `novamira/run-wp-cli` ability:
 
 ```bash
-wp eval-file <feature-worktree>/site-code/event-participation/seed-event-role-terms.php
+wp vg-event-role-setup
 ```
 
-Expected created:
+Record the actual `created` and `existing` lists. Do not assume all four terms are new. The final vocabulary must be exactly:
 
 ```text
 spreker
@@ -1174,6 +1267,8 @@ Expected:
 created: none
 existing: all four
 ```
+
+Invoke both WP-CLI runs through Novamira's `novamira/run-wp-cli` ability. If that ability cannot run the required command, document the failure and use the approved fallback.
 
 - [ ] **Step 6: Verify exact vocabulary**
 
@@ -1332,9 +1427,9 @@ Expected clean.
 
 **Files:**
 - Create:
-  - `EVENT_PARTICIPATION_IMPLEMENTATION.md`
-  - `POST_TASK_6A_CURRENT_STATE.md`
-  - `IMPLEMENTATION_LEDGER.md`
+  - `docs/architecture/EVENT_PARTICIPATION_IMPLEMENTATION.md`
+  - `docs/architecture/POST_TASK_6A_CURRENT_STATE.md`
+  - `docs/architecture/IMPLEMENTATION_LEDGER.md`
 - Update:
   - Person migration architecture
   - consumer inventory

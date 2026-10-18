@@ -4,7 +4,7 @@
 |---|---|
 | Task | Voelgoed Task 6A |
 | Date | 2026-10-18 |
-| Status | Approved in principle. Written specification pending final review. |
+| Status | Approved for implementation after user approval on 2026-10-18. |
 | Base | `main` at `cd1e6c8304b21f768610e56e79714f0e29e9adfd` |
 
 ## Purpose
