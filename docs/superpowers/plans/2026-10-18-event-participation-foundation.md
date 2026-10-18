@@ -1899,10 +1899,10 @@ persistent event_role terms:
 4
 
 temporary QA Person:
-8 created / 8 hard-deleted
+10 created / 10 hard-deleted
 
 temporary QA participation:
-9 created / 9 hard-deleted (one duplicate from the failed query was separately verified and removed)
+11 created / 11 hard-deleted (one duplicate from the failed query was separately verified and removed)
 
 legacy WordPress content writes:
 0
