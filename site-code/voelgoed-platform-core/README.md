@@ -63,6 +63,10 @@ relationships and left legacy category data and unrelated topic assignments in p
 
 ## Event Participation foundation
 
+The source contract, runtime state, legacy boundary, and post-merge Local JSON
+stabilization gate are documented in
+[`docs/architecture/EVENT_PARTICIPATION_IMPLEMENTATION.md`](../../docs/architecture/EVENT_PARTICIPATION_IMPLEMENTATION.md).
+
 The Event Participation implementation lives in `includes/Event/`:
 
 - `EventParticipationRepository` reads canonical relationships and duplicate pairs.
@@ -87,3 +91,9 @@ Runtime deployment is separate from changes to this source directory. Apply
 classes before expecting the admin hooks or seeder command to be available.
 Sync only the three Task 6A ACF JSON keys using the documented targeted procedure;
 do not run a global ACF JSON sync.
+
+The guarded staging check is `site-code/runtime-tests/event-participation-qa.php`.
+Run it inside the loaded WordPress runtime with `wp eval-file`; it creates and
+removes only uniquely owned temporary Person and participation records. The
+setup failure boundary has a standalone regression check at
+`site-code/runtime-tests/tests/run-event-participation-qa-setup-tests.php`.

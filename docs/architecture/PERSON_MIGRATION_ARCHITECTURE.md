@@ -1,7 +1,7 @@
 # Canonical Person Migration Architecture
 
 **Task:** Voelgoed Person architecture and migration sequencing (Tasks 5A–5D)
-**Status:** Person foundation active; current five-profile corpus remains deferred pending source-origin evidence
+**Status:** Person and Event Participation foundations active; the five-profile corpus remains deferred pending source-origin evidence
 **Task 5C runtime writes:** 0
 
 ## Locked target
@@ -66,14 +66,14 @@ The initial `person_type` vocabulary may include `Mentor` in Task 5B. Creating t
 
 | Domain | Current model | Target approach | Dependency |
 |---|---|---|---|
-| Event participation | `tc_events.event_medewerkers → medewerker[]` | `event_participation` between event and Person, with reviewed contextual role and any required session/schedule/display metadata | Design/build this before event consumer migration |
+| Event participation | `tc_events.event_medewerkers → medewerker[]` | Implemented `event_participation` junction between Event and Person with contextual `event_role` terms and display order | Foundation available; migrate approved edges and consumers only after data review |
 | Product people | `product.produk_medewerkers → medewerker[]` | Product-to-Person relation after eligible Person records exist; preserve manual/copy provenance if available | Migrate after event participation and update product copy automation atomically |
 | Voelgoed Live | `broadcast_hosts`, `broadcast_guests` → `medewerker[]` | Episode-specific presenter/guest relationships to Person | Later broadcast-domain migration; current fields are empty |
 | Podcast-like episodes | Same current `uitsending` fields; no populated relationships | Later episode `hosts` / `guests` if a podcast episode model is approved | No usable current relationship data found |
 | Courses | No Person relation found | Decide instructor/expert relation separately; Masteriyo remains course owner | No current course Person edges to migrate |
 | Editorial | `post_author → wp_users`; no profile relationship fields | Design author, additional author, expert, and reviewer links separately | Do not reinterpret WordPress users as Person records |
 
-Do not implement the permanent direct conversion from event_medewerkers to a bare Person list. The source list lacks contextual information and the canonical architecture requires event_participation. Task 5C classifies event 763's edges to profiles 753 and 757 as EXCLUDE from migration because the event is explicitly named Test Event and has a QA slug with no contextual participation detail. The source edges remain present and unchanged. The exclusion does not classify either Person profile as a fixture.
+Do not implement the permanent direct conversion from event_medewerkers to a bare Person list. The source list lacks contextual information and the canonical architecture requires event_participation. Task 6A implemented and activated that foundation, including four controlled contextual roles and deterministic display order. It did not migrate any event edge. Task 5C classifies event 763's edges to profiles 753 and 757 as EXCLUDE from migration because the event is explicitly named Test Event and has a QA slug with no contextual participation detail. The source edges remain present and unchanged. The exclusion does not classify either Person profile as a fixture.
 
 Task 5C classifies the three observed product-person edges as EXCLUDE from migration: product 767 to profile 753, and product 768 to profiles 753 and 757. Their QA titles, source event 763, missing commerce setup, and lack of order references support excluding these edges; product 768's trash status is not used alone. The source fields remain unchanged. Product-to-Person migration remains downstream of event participation and atomic replacement of the current copy automation.
 
@@ -84,8 +84,8 @@ The consumer inventory separates architecture dependencies from current-data mig
 1. **Task 5B — Person foundation.** Completed without copying any current medewerker profile. Canonical person, /mense/, profile fields, and the initial person_type=Mentor vocabulary are present. Person Primary Topic remains unsupported and classification is NOT_APPLICABLE.
 2. **Task 5C — Read-only provenance and migration eligibility.** Completed. Each current profile has exactly one decision and confidence. Profiles 753–757 are all DEFER; their field decisions are recorded separately. The two event edges and three product edges are each EXCLUDE. No Person record or relationship was created.
 3. **Task 5D — Deterministic migration of independently approved MIGRATE rows.** Not started and not required by the current corpus, which has zero MIGRATE decisions. If a separately approved decision later creates a MIGRATE row, Task 5D must re-fingerprint immediately before writes; stop if source facts drift; create only approved Person records; copy only fields marked COPY; record deterministic legacy-ID-to-Person-ID mappings; and retain medewerker during the dual-run. Keep target IDs/slugs blank until each approved row is migrated.
-4. **Task 6A+ — Event participation model.** Define the event_participation junction and contextual fields. The two current event 763 edges are EXCLUDE and remain unchanged. Future edges may migrate only after their event, Person, and edge each have independent approval.
-5. **Then — Product relationships and automation.** Product-person migration remains downstream of event participation and atomic replacement of the current copy snippet/query helper. Product saves must resolve approved canonical Person IDs through approved event participation. Verify empty-field copy and manual-selection preservation paths.
+4. **Task 6A — Event Participation foundation.** Completed. The `event_participation` junction, `event_role` vocabulary, validation, query API, and title behavior are implemented. No current event edge was migrated. The two Event 763 edges are EXCLUDE and remain unchanged. Any future edge may migrate only after its Event, Person, and relationship each have independent approval.
+5. **Then — Event consumers and product relationships.** Event Single 774 and the Medewerker reverse-event query remain legacy consumers. Product-person migration remains downstream of eligible Event and Person data and atomic replacement of the current copy snippet/query helper. Product saves must resolve approved canonical Person IDs through approved event participation. Verify empty-field copy and manual-selection preservation paths.
 6. **Later — Uitsending, podcast, course, and editorial relationships.** Recheck current records and define each domain's contextual relationships separately from WordPress account authorship.
 7. **Final Person decommission task.** Inventory all statuses and consumers; freeze legacy writes; account for every profile as migrated or explicitly excluded; resolve every remaining DEFER; verify relations, templates, routes, search behavior, and inbound links; redirect old archive/singles only to verified targets; remove medewerker only after the zero-consumer gate passes.
 
@@ -140,7 +140,7 @@ The current state still does not satisfy the medewerker removal gates: five prof
 
 ## Explicit non-actions
 
-Task 5C was read-only. It did not create or modify Person records, person_type, event_participation, fields, profile values, links, snippets, Bricks data, routes, or redirects. Task 5D has not started.
+Task 5C was read-only. It did not create or modify Person records, person_type, event_participation, fields, profile values, links, snippets, Bricks data, routes, or redirects. Task 6A added the source-controlled foundation and seeded four `event_role` terms, but created no persistent Person or participation records and migrated no legacy edge. Task 5D has not started.
 
 
 ## Related evidence
@@ -155,3 +155,5 @@ Task 5C was read-only. It did not create or modify Person records, person_type, 
 - [Decommission register](LEGACY_DECOMMISSION_REGISTER.md)
 - [Post-Task 5A snapshot](POST_TASK_5A_CURRENT_STATE.md)
 - [Post-Task 5C snapshot](POST_TASK_5C_CURRENT_STATE.md)
+- [Event Participation implementation](EVENT_PARTICIPATION_IMPLEMENTATION.md)
+- [Post-Task 6A snapshot](POST_TASK_6A_CURRENT_STATE.md)

@@ -282,31 +282,31 @@ Do not remove an item before its removal gate passes. If a task finds a new bloc
 
 | Field | Record |
 |---|---|
-| Current state | `TEMPORARY TRANSITIONAL`. Active ACF field `event_medewerkers` is a multi-value relationship from Tickera `tc_events` to `medewerker`. There are 17 published events; one has two linked profiles, and 16 have none. |
+| Current state | `TEMPORARY TRANSITIONAL`. Active ACF field `event_medewerkers` is a multi-value relationship from Tickera `tc_events` to `medewerker`. There are 17 published events; one has two linked profiles, and 16 have none. The canonical Event Participation foundation is now available, but the field and its current values remain unchanged. |
 | Target state | Evaluate each observed pair and migrate only provenance-approved event/person edges to `event_participation`, which can represent event-specific role and participation metadata. |
 | Lifecycle status | `ADAPT` |
 | Why it exists | It links event records to the public contributor profiles involved in the event. |
 | Why it is legacy or why it is KEEP | The simple list stores no role, session, appearance time, display order, featured status, or replay destination. Profile-level role/group terms were a global workaround and cannot reliably represent event-specific roles. |
 | Replacement | `event_participation`. Do not permanently map the field to a bare Person list and do not infer contextual roles from `Mentor` or the profile title. |
 | Dependencies / consumers | Tickera event editors and singles; ACF group `Event Medewerkers`; `medewerker` profiles; event templates and query loops; product event links and auto-fill. |
-| Removal gate | Design and implement the relationship model. Resolve provenance for each event-person pair and migrate only approved edges with reviewed contextual roles. Verify event and profile pages, queries, and product auto-fill before disabling/removing the field. |
-| Planned phase | Task 6A+ event participation design and migration, after Task 5B foundation and Task 5C profile eligibility decisions. |
+| Removal gate | Resolve provenance for each event-person pair and migrate only approved edges with reviewed contextual roles. Verify Event Single 774, the Medewerker reverse-event query, and product auto-fill against approved targets before disabling/removing the field. Keep the field active while those legacy consumers remain. |
+| Planned phase | Task 6A foundation complete; event data and consumer migration remains gated by individual provenance approval. |
 | Evidence / notes | ACF group Event Medewerkers has one multi-value relationship to medewerker. Event 763 links profiles 753 and 757. Task 5C marks both edges EXCLUDE because the explicit test/QA title/slug and sparse event fields support that edge decision. Both source relationships remain unchanged. |
 
 ### 17. Event participation model
 
 | Field | Record |
 |---|---|
-| Current state | FUTURE / NOT YET IMPLEMENTED. No event_participation model is registered. Task 5C classified both current event 763 edges as EXCLUDE from migration. |
+| Current state | CURRENT CANONICAL / FOUNDATION ACTIVE. ACF registers the non-public `event_participation` CPT, `event_role` taxonomy, and four-field details group. Platform Core provides pair validation, canonical writes and queries, administrative title behavior, and the controlled role seeder. Runtime has 0 persistent participations, exactly 4 approved role terms, and 0 role relationships. Task 5C classified both current Event 763 edges as EXCLUDE from migration. |
 | Target state | Provide the canonical Event-to-Person participation relationship and the contextual metadata approved for event programming and display. |
-| Lifecycle status | `DEFER` |
+| Lifecycle status | `KEEP` |
 | Why it exists | It is the planned path for contextual event roles rather than treating each role as a global person identity. |
-| Why it is legacy or why it is KEEP | It is the approved future relationship direction. The current list is insufficient to store event roles and other participation facts; a direct list conversion would lose that distinction. |
-| Replacement | The designed and implemented `event_participation` contract, with event/person mapping and contextual role handling. |
+| Why it is legacy or why it is KEEP | This is the approved canonical relationship model. The legacy list remains insufficient to store event roles and participation order; a direct list conversion would lose that distinction. |
+| Replacement | None. `event_participation` is the canonical relationship model. |
 | Dependencies / consumers | Tickera `tc_events`; `event_medewerkers`; `medewerker`; event profiles, schedules, templates, and products sourced from events. |
-| Removal gate | Approve participation fields and queries; build and verify the target; classify every event edge, migrate only approved edges, and explicitly resolve excluded or deferred pairs; update templates and the product copy workflow; then verify no consumer depends on the old field. |
-| Planned phase | Event relationship architecture. |
-| Evidence / notes | Event 763 links profiles 753 and 757. Task 5C excludes both edges because the source event is explicitly a test/QA record. This edge decision does not classify either profile as a fixture. The current ACF field remains the simple relationship. |
+| Removal gate | The foundation is implemented. Resolve the five DEFER Person profiles before any edge migration; classify every event edge and migrate only approved edges; update Event Single 774, the Medewerker reverse-event query, and the product copy workflow; then verify routes, templates, and all consumers before removing the old field. |
+| Planned phase | Task 6A foundation complete; event data and consumer migration not started. |
+| Evidence / notes | Event 763 links profiles 753 and 757. Task 5C excludes both edges because the source event is explicitly a test/QA record. This edge decision does not classify either profile as a fixture. Task 6A created no participation records and did not change the current ACF field or consumers. |
 
 ### 18. Product event and person relationships
 
@@ -320,7 +320,7 @@ Do not remove an item before its removal gate passes. If a task finds a new bloc
 | Replacement | Product-to-Person relationships and editor automation that resolves canonical Person IDs from the event participation model, preserving the current no-overwrite behavior for manual selections. |
 | Dependencies / consumers | WooCommerce product editor; ACF group `Medewerker Produkte`; `produk_bron_event`; `produk_medewerkers`; `event_medewerkers`; FluentSnippets `9-acf-product-copy.php`; Bricks product templates. |
 | Removal gate | Reconcile every source-event and product-person edge across all statuses. Migrate only provenance-approved edges and explicitly resolve exclusions/deferred pairs. Replace the copy helper and query helper atomically with field retargeting; verify source mapping, empty-field copy, manual-selection preservation, Bricks displays, and editor flow before disabling/removing old fields or snippets. |
-| Planned phase | After Task 6A+ event participation and Person relation design; migrate products and automation together. |
+| Planned phase | Task 6A foundation complete; migrate products and automation together only after event and Person data eligibility is resolved. |
 | Evidence / notes | Product 767 links event 763 and profile 753; product 768 links event 763 and profiles 753/757. Task 5C excludes all three product-person edges based on explicit QA titles, the QA source event, missing commerce setup, and no order references; the trash state on 768 is not used alone. Product 765 (trash) links event 763 without a profile edge. Current helper remains published and active; no copy provenance field exists. No record was changed. |
 
 ### 19. Internal entity `uitsending`
