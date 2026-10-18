@@ -200,9 +200,12 @@ $tests = [
         $actual = array_map('basename', $files);
         sort($actual);
         $expected = [
+            'group_vg_event_participation_details.json',
             'group_vg_person_details.json',
             'group_vg_editorial_classification.json',
+            'post_type_event_participation.json',
             'taxonomy_editorial_collection.json',
+            'taxonomy_event_role.json',
             'taxonomy_editorial_format.json',
             'taxonomy_person_type.json',
             'post_type_person.json',

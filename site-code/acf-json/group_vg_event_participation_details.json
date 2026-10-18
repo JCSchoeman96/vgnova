@@ -1,0 +1,122 @@
+{
+    "key": "group_vg_event_participation_details",
+    "title": "Event Participation Details",
+    "fields": [
+        {
+            "key": "field_vg_event_participation_event",
+            "label": "Event Participation: Event",
+            "name": "event_participation_event",
+            "aria-label": "",
+            "type": "post_object",
+            "instructions": "",
+            "required": 1,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "50",
+                "class": "",
+                "id": ""
+            },
+            "post_type": [
+                "tc_events"
+            ],
+            "taxonomy": "",
+            "return_format": "id",
+            "multiple": 0,
+            "allow_null": 0,
+            "bidirectional_target": [],
+            "ui": 1
+        },
+        {
+            "key": "field_vg_event_participation_person",
+            "label": "Event Participation: Person",
+            "name": "event_participation_person",
+            "aria-label": "",
+            "type": "post_object",
+            "instructions": "",
+            "required": 1,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "50",
+                "class": "",
+                "id": ""
+            },
+            "post_type": [
+                "person"
+            ],
+            "taxonomy": "",
+            "return_format": "id",
+            "multiple": 0,
+            "allow_null": 0,
+            "bidirectional_target": [],
+            "ui": 1
+        },
+        {
+            "key": "field_vg_event_participation_roles",
+            "label": "Event Participation: Roles",
+            "name": "event_participation_roles",
+            "aria-label": "",
+            "type": "taxonomy",
+            "instructions": "Choose the approved roles this Person has for this Event.",
+            "required": 0,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "100",
+                "class": "",
+                "id": ""
+            },
+            "taxonomy": "event_role",
+            "add_term": 0,
+            "save_terms": 1,
+            "load_terms": 1,
+            "return_format": "id",
+            "field_type": "multi_select",
+            "multiple": 1,
+            "allow_null": 0,
+            "default_value": [],
+            "bidirectional_target": []
+        },
+        {
+            "key": "field_vg_event_participation_display_order",
+            "label": "Event Participation: Display Order",
+            "name": "event_participation_display_order",
+            "aria-label": "",
+            "type": "number",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "25",
+                "class": "",
+                "id": ""
+            },
+            "default_value": 0,
+            "min": 0,
+            "max": "",
+            "step": "1",
+            "prepend": "",
+            "append": ""
+        }
+    ],
+    "location": [
+        [
+            {
+                "param": "post_type",
+                "operator": "==",
+                "value": "event_participation"
+            }
+        ]
+    ],
+    "menu_order": 0,
+    "position": "normal",
+    "style": "default",
+    "label_placement": "top",
+    "instruction_placement": "label",
+    "hide_on_screen": [],
+    "active": true,
+    "description": "Event-specific relationship details for a Person.",
+    "show_in_rest": false,
+    "display_title": "",
+    "allow_ai_access": false,
+    "ai_description": "",
+    "modified": 1792302137
+}
