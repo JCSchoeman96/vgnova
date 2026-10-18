@@ -66,9 +66,11 @@ $GLOBALS['vgpc_test_next_term_id'] = 1000;
 $GLOBALS['vgpc_test_insert_count'] = 0;
 $GLOBALS['vgpc_test_rewrite_flush_count'] = 0;
 $GLOBALS['vgpc_test_force_suffix_next_insert'] = false;
+$GLOBALS['vgpc_test_fail_next_term_delete'] = false;
 $GLOBALS['vgpc_test_posts'] = [];
 $GLOBALS['vgpc_test_next_post_id'] = 5000;
 $GLOBALS['vgpc_test_insert_post_calls'] = [];
+$GLOBALS['vgpc_test_update_post_calls'] = [];
 $GLOBALS['vgpc_test_delete_post_calls'] = [];
 $GLOBALS['vgpc_test_relationships'] = [];
 $GLOBALS['vgpc_test_meta'] = [];
@@ -90,9 +92,11 @@ function vgpc_test_reset(): void
     $GLOBALS['vgpc_test_insert_count'] = 0;
     $GLOBALS['vgpc_test_rewrite_flush_count'] = 0;
     $GLOBALS['vgpc_test_force_suffix_next_insert'] = false;
+    $GLOBALS['vgpc_test_fail_next_term_delete'] = false;
     $GLOBALS['vgpc_test_posts'] = [];
     $GLOBALS['vgpc_test_next_post_id'] = 5000;
     $GLOBALS['vgpc_test_insert_post_calls'] = [];
+    $GLOBALS['vgpc_test_update_post_calls'] = [];
     $GLOBALS['vgpc_test_delete_post_calls'] = [];
     $GLOBALS['vgpc_test_relationships'] = [];
     $GLOBALS['vgpc_test_meta'] = [];
@@ -262,6 +266,26 @@ function wp_insert_post(array $postarr, bool $wp_error = false): int|WP_Error
     return $post_id;
 }
 
+function wp_update_post(array $postarr, bool $wp_error = false): int|WP_Error
+{
+    $post_id = (int) ($postarr['ID'] ?? 0);
+    $post = get_post($post_id);
+    if (! $post) {
+        return $wp_error ? new WP_Error('invalid_post', 'The requested post does not exist.') : 0;
+    }
+
+    $before = clone $post;
+    foreach ($postarr as $key => $value) {
+        if ($key !== 'ID') {
+            $post->{$key} = $value;
+        }
+    }
+    $GLOBALS['vgpc_test_update_post_calls'][] = $postarr;
+    do_action('post_updated', $post_id, $post, $before);
+
+    return $post_id;
+}
+
 function wp_delete_post(int $post_id, bool $force_delete = false): object|false
 {
     $GLOBALS['vgpc_test_delete_post_calls'][] = [
@@ -291,6 +315,13 @@ function get_post_type(int|object|null $post = null): string|false
     $post = is_object($post) ? $post : get_post((int) $post);
 
     return $post->post_type ?? false;
+}
+
+function get_post_status(int|object|null $post = null): string|false
+{
+    $post = is_object($post) ? $post : get_post((int) $post);
+
+    return $post->post_status ?? false;
 }
 
 function get_the_title(int|object $post = 0): string
@@ -415,12 +446,18 @@ function wp_insert_term(string $name, string $taxonomy, array $args = []): array
     );
     $term->description = (string) ($args['description'] ?? '');
     ++$GLOBALS['vgpc_test_insert_count'];
+    do_action('created_term', $term->term_id, $term->term_id + 10000, $taxonomy, $args);
 
     return ['term_id' => $term->term_id, 'term_taxonomy_id' => $term->term_id + 10000];
 }
 
 function wp_delete_term(int $term_id, string $taxonomy): bool
 {
+    if ($GLOBALS['vgpc_test_fail_next_term_delete']) {
+        $GLOBALS['vgpc_test_fail_next_term_delete'] = false;
+        return false;
+    }
+
     $term = get_term($term_id, $taxonomy);
     if (! $term) {
         return false;

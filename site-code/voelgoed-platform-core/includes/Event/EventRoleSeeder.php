@@ -95,6 +95,7 @@ final class EventRoleSeeder
         }
 
         $created = [];
+        $created_term_ids = [];
         $existing = [];
         foreach (self::APPROVED_TERMS as $slug => $name) {
             if (isset($existing_by_slug[$slug])) {
@@ -104,14 +105,17 @@ final class EventRoleSeeder
 
             $inserted = wp_insert_term($name, self::TAXONOMY, ['slug' => $slug]);
             if (is_wp_error($inserted)) {
-                throw new \RuntimeException(sprintf(
+                throw $this->exception_after_cleanup(sprintf(
                     'Could not create event_role term "%s": %s',
                     $slug,
                     $inserted->get_error_message()
-                ));
+                ), $created_term_ids);
             }
 
             $term_id = is_array($inserted) ? (int) ($inserted['term_id'] ?? 0) : 0;
+            if ($term_id > 0) {
+                $created_term_ids[] = $term_id;
+            }
             $created_term = $term_id > 0 ? get_term($term_id, self::TAXONOMY) : false;
             $term_by_slug = get_term_by('slug', $slug, self::TAXONOMY);
             if (
@@ -128,30 +132,89 @@ final class EventRoleSeeder
                     $slug
                 );
                 if ($term_id <= 0) {
-                    throw new \RuntimeException(
-                        $verification_message . ' Cleanup was not attempted because WordPress returned no usable term ID.'
+                    throw $this->exception_after_cleanup(
+                        $verification_message . ' Cleanup was not attempted for this insert because WordPress returned no usable term ID.',
+                        $created_term_ids
                     );
                 }
 
-                $cleanup_result = wp_delete_term($term_id, self::TAXONOMY);
-                $remaining_term = get_term($term_id, self::TAXONOMY);
-                if (is_wp_error($cleanup_result) || $remaining_term) {
-                    $cleanup_error = is_wp_error($cleanup_result)
-                        ? $cleanup_result->get_error_message()
-                        : 'WordPress still returns the term after deletion.';
-                    throw new \RuntimeException($verification_message . ' Cleanup failed: ' . $cleanup_error);
-                }
-
-                throw new \RuntimeException($verification_message . ' The term created by this attempt was removed.');
+                throw $this->exception_after_cleanup($verification_message, $created_term_ids);
             }
 
             $created[] = $slug;
+        }
+
+        $final_terms = get_terms([
+            'taxonomy' => self::TAXONOMY,
+            'hide_empty' => false,
+        ]);
+        if (is_wp_error($final_terms) || ! is_array($final_terms)) {
+            $read_error = is_wp_error($final_terms)
+                ? $final_terms->get_error_message()
+                : 'WordPress returned an invalid result.';
+            throw $this->exception_after_cleanup(
+                'Could not verify the final event_role vocabulary: ' . $read_error,
+                $created_term_ids
+            );
+        }
+
+        $final_by_slug = [];
+        foreach ($final_terms as $final_term) {
+            $final_slug = (string) ($final_term->slug ?? '');
+            if (
+                ($final_term->taxonomy ?? null) !== self::TAXONOMY
+                || array_key_exists($final_slug, $final_by_slug)
+            ) {
+                throw $this->exception_after_cleanup(
+                    'The final event_role vocabulary does not match the exact approved vocabulary.',
+                    $created_term_ids
+                );
+            }
+
+            $final_by_slug[$final_slug] = (string) ($final_term->name ?? '');
+        }
+
+        $expected_by_slug = self::APPROVED_TERMS;
+        ksort($final_by_slug);
+        ksort($expected_by_slug);
+        if ($final_by_slug !== $expected_by_slug) {
+            throw $this->exception_after_cleanup(
+                'The final event_role vocabulary does not match the exact approved vocabulary.',
+                $created_term_ids
+            );
         }
 
         return [
             'created' => $created,
             'existing' => $existing,
         ];
+    }
+
+    /**
+     * Build a seeding error after removing only terms created by this attempt.
+     *
+     * @param list<int> $created_term_ids
+     */
+    private function exception_after_cleanup(string $message, array $created_term_ids): \RuntimeException
+    {
+        $cleanup_errors = [];
+        foreach (array_reverse(array_unique($created_term_ids)) as $term_id) {
+            $delete_result = wp_delete_term($term_id, self::TAXONOMY);
+            $remaining_term = get_term($term_id, self::TAXONOMY);
+            if (is_wp_error($remaining_term) || $remaining_term) {
+                $cleanup_errors[] = sprintf(
+                    'Could not remove term ID %d%s',
+                    $term_id,
+                    is_wp_error($delete_result) ? ': ' . $delete_result->get_error_message() : '.'
+                );
+            }
+        }
+
+        if ($cleanup_errors) {
+            $message .= ' Cleanup failed: ' . implode(' ', $cleanup_errors);
+        }
+
+        return new \RuntimeException($message);
     }
 
     /** Run the seeder through the registered WP-CLI command. */

@@ -163,6 +163,68 @@ final class EventRoleSeederTest
             'A failed insert verification must delete only the term created by that attempt.'
         );
         vgpc_test_same(false, get_term_by('slug', 'spreker-2', 'event_role'), 'The altered term slug must not remain after a failed verification.');
+
+        $retry_result = $seeder->seed_event_role_terms();
+        vgpc_test_same(['spreker', 'fasiliteerder', 'gas'], $retry_result['created'], 'A retry after cleanup must create the remaining approved roles.');
+        vgpc_test_same(['paneellid'], $retry_result['existing'], 'A retry after cleanup must preserve the original approved role.');
+        $retry_terms = $this->terms_by_slug();
+        $expected_terms = self::APPROVED_TERMS;
+        ksort($retry_terms);
+        ksort($expected_terms);
+        vgpc_test_same($expected_terms, $retry_terms, 'A retry after cleanup must restore the exact approved vocabulary.');
+    }
+
+    public function test_seed_rechecks_exact_vocabulary_after_inserts(): void
+    {
+        $seeder = $this->seeder_with_taxonomy();
+        $injected = false;
+        add_action(
+            'created_term',
+            static function (int $term_id, int $term_taxonomy_id, string $taxonomy) use (&$injected): void {
+                if ($taxonomy !== 'event_role' || $injected) {
+                    return;
+                }
+
+                $injected = true;
+                vgpc_test_add_term('Aanbieder', 'aanbieder', 0, 'event_role');
+            },
+            10,
+            3
+        );
+
+        $error = $this->assert_throws(
+            static fn () => $seeder->seed_event_role_terms(),
+            'The seeder must reject an unexpected term added during seeding.'
+        );
+
+        vgpc_test_true(str_contains($error->getMessage(), 'exact approved vocabulary'), 'The final vocabulary mismatch must be reported.');
+        vgpc_test_same(
+            ['aanbieder' => 'Aanbieder'],
+            $this->terms_by_slug(),
+            'A final vocabulary mismatch must remove only terms created by the seeder call.'
+        );
+    }
+
+    public function test_cleanup_failure_is_reported_without_deleting_preexisting_roles(): void
+    {
+        vgpc_test_reset();
+        $this->register_taxonomy();
+        $existing_term = vgpc_test_add_term('Paneellid', 'paneellid', 0, 'event_role');
+        $GLOBALS['vgpc_test_force_suffix_next_insert'] = true;
+        $GLOBALS['vgpc_test_fail_next_term_delete'] = true;
+        $seeder = new EventRoleSeeder();
+
+        $error = $this->assert_throws(
+            static fn () => $seeder->seed_event_role_terms(),
+            'A failed owned-term cleanup must be reported.'
+        );
+
+        vgpc_test_true(str_contains($error->getMessage(), 'Cleanup failed'), 'A failed cleanup must appear in the seeder error.');
+        vgpc_test_same(
+            [$existing_term, get_term_by('slug', 'spreker-2', 'event_role')],
+            $this->terms(),
+            'A cleanup failure must leave the existing role and report the failed attempt-owned term.'
+        );
     }
 
     public function test_register_adds_and_runs_the_wp_cli_command(): void
