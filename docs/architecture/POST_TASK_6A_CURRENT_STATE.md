@@ -5,6 +5,8 @@
 **Base:** `main` at `cd1e6c8304b21f768610e56e79714f0e29e9adfd`
 **Runtime:** Local staging at `http://localhost:10039/`
 
+> **Historical pre-merge capture.** The branch, base, Task 6A outcome, and feature-worktree ACF path below record the review state before PR #20 merged. The final post-merge stabilization state appears in the section at the end.
+
 ## Task outcome
 
 The canonical Event Participation foundation is implemented in source and active on the local staging site. This task did not migrate legacy profiles, Event-person links, or product-person links, and did not change Bricks or FluentSnippets consumers.
@@ -109,3 +111,94 @@ Event 763 still has its two `event_medewerkers` links to profiles 753 and 757; t
 Event Single 774, the Medewerker reverse-event query, and the product copy automation remain legacy consumers. The source ACF fields and consumers remain active. All five current profile records remain `DEFER`; product and event consumer migration remains gated on separately approved provenance decisions.
 
 See [Event Participation implementation](EVENT_PARTICIPATION_IMPLEMENTATION.md) for the source contract and [Person migration architecture](PERSON_MIGRATION_ARCHITECTURE.md) for current Person eligibility and downstream gates.
+
+## Post-merge Task 6A-S stabilization
+
+- Date: 2026-10-18
+- Task 6A PR: [#20](https://github.com/JCSchoeman96/vgnova/pull/20)
+- Merge commit and stable main HEAD: `797c19597a39812df9d06090340ca60b1173cc37`
+- Documentation PR: [#21](https://github.com/JCSchoeman96/vgnova/pull/21), open and unmerged for independent review.
+
+Task 6A-S moved the active ACF Local JSON symlink from the removed Task 6A worktree to the repository's stable `main` checkout. This was the only WordPress runtime change. WordPress data writes: **0**.
+
+### ACF source path and file parity
+
+| Check | Result |
+|---|---|
+| Old symlink target | `/home/jcschoeman96/projects/current/vgnova/.worktrees/feat-event-participation-6a/site-code/acf-json` |
+| New symlink target | `/home/jcschoeman96/projects/current/vgnova/site-code/acf-json` |
+| Resolved target after feature-worktree removal | `/home/jcschoeman96/projects/current/vgnova/site-code/acf-json` |
+| Shared ACF files | 9/9 SHA-256 matches between the approved feature head and merged main |
+
+The matching files and hashes are:
+
+| ACF JSON file | SHA-256 in both trees |
+|---|---|
+| `group_vg_editorial_classification.json` | `ec32c95f75b9b1c6599b09312fa0b71a9806044277c0cd7865519df37ace7030` |
+| `group_vg_person_details.json` | `d37ec3c5d908dd6497fd953319375b641a1534574e83b600eff0bfc702be8e95` |
+| `post_type_person.json` | `222dc1839d2a0ffe891aadd4c84fc68a41cbb6cb72667c57ad14cdac4abe583a` |
+| `taxonomy_editorial_collection.json` | `a6bb5c6a4d3b8ba3639e6288405c3b913e683c917e041b0d0c2b9735f34e41b4` |
+| `taxonomy_editorial_format.json` | `90ad05e7cba39ea9f0f5e57f36e23990cc5074c25a83e2ad1f2c7273b8d22234` |
+| `taxonomy_person_type.json` | `d32dba47956594771ce12e5b0eb6c4b61a866d7a90dcce679a777ffc57d9b8c2` |
+| `group_vg_event_participation_details.json` | `09232c12e7d7cce7ee7c66c9fef4c699410297315112b883ca82b01d842d71c7` |
+| `post_type_event_participation.json` | `e42dab60911974f762d68bc17fca8a151e92511a14e33f3972074ec75b1a6a2c` |
+| `taxonomy_event_role.json` | `e9794d6b6f6be6ff563f5e13c0328d91fa29988434b0d3ed3c0d35834330a895` |
+
+### Deployed Platform Core parity
+
+The active plugin remained enabled after the worktree was removed. WordPress loaded all five Event Participation classes. Each deployed file matched the merged-main source byte-for-byte:
+
+| Event class | Runtime/source SHA-256 |
+|---|---|
+| `EventParticipationRepository.php` | `77c853606d9cdefbb5db4a9c77476bf2c74c0a62bc1e6081d10e1391851eff7f` |
+| `EventParticipationPairLock.php` | `95107d2db6c3e713c6685cd0c13aa7fe4764f89b7ac37596843e436f74e9c49c` |
+| `EventParticipationService.php` | `4075158d9a6ab4b4079f5722bb9a2736190eb779dfd2ae1282e9c9bf74362600` |
+| `EventParticipationAdmin.php` | `bbdbea299e6712f84d574ea5d5a25c517f2917920d36858f6bf8bf92b5e3b9f9` |
+| `EventRoleSeeder.php` | `9b0396bf9b2e4b3515fb0b2bd5224e03e501fd964efe80e03cd3f1a76f98c4e6` |
+
+Merged `integration.patch` contains the five Event component includes and their bootstrap registration.
+
+### ACF runtime status and canonical state
+
+The ACF Local JSON status check showed the three Task 6A definitions in sync. The detailed pending list contained only the existing Member Perk definitions `group_vgmp_perk_details` and `group_vgmp_options`; both remained untouched. The ACF runtime schemas matched the source configuration after excluding generated ACF metadata and empty runtime defaults.
+
+| Definition | Runtime status |
+|---|---|
+| `post_type_event_participation` | IN_SYNC |
+| `taxonomy_event_role` | IN_SYNC |
+| `group_vg_event_participation_details` | IN_SYNC |
+
+Read-only runtime checks after worktree removal confirmed:
+
+| Runtime state | Result |
+|---|---|
+| `event_participation` registered | Yes |
+| `event_participation` public / publicly queryable / archive / rewrite | `false` / `false` / `false` / `false` |
+| Persistent Person records | 0 |
+| Persistent `event_participation` records | 0 |
+| `event_role` terms / relationships | 4 / 0: `spreker`, `paneellid`, `fasiliteerder`, `gas` |
+| Person `person_type` relationships | 0 |
+| Person `content_topic` relationships | 0 |
+| `content_topic` terms / roots | 55 / 7 |
+
+### Protected legacy state and worktree cleanup
+
+Profiles 753–757 remain present and retain their reviewed values. Each remains `DEFER`. Event 763 retains `event_medewerkers` values `[753, 757]`. Product 767 retains `produk_bron_event=763` and `produk_medewerkers=[753]`. Product 768 retains `produk_bron_event=763` and `produk_medewerkers=[753, 757]`. No canonical Person or Event Participation relationship was created for these excluded edges. Bricks and FluentSnippets were not changed, and no legacy migration ran.
+
+The Task 6A worktree and its local branch were removed after all source, runtime, and regression gates passed. The active ACF symlink still resolves to `site-code/acf-json/` in the stable main checkout. The runtime no longer depends on the Task 6A worktree. WordPress continued to load from `http://localhost:10039/` after removal.
+
+### Task 6A-S regression gate
+
+| Check | Result |
+|---|---:|
+| Event Participation | 65/65 |
+| Event Role Seeder | 13/13 |
+| Content Topic | 67/67 |
+| ACF schema | 3/3 |
+| Person Foundation | 10/10 |
+| Editorial Dimensions | 11/11 |
+| QA cleanup | 3/3 |
+| QA setup | 1/1 |
+| PHP lint across the affected source and test modules | PASS |
+| ACF JSON parse | 9/9 |
+| `git diff --check` | PASS |
