@@ -22,6 +22,112 @@ if (! class_exists('WP_Error')) {
     }
 }
 
+final class VGPC_TestWpdb
+{
+    public string $posts = 'wp_posts';
+
+    public string $postmeta = 'wp_postmeta';
+
+    public string $last_error = '';
+
+    /** @var list<array{query:string,args:list<mixed>}> */
+    public array $queries = [];
+
+    /** @var callable|null */
+    public $get_var_handler = null;
+
+    /** @var callable|null */
+    public $get_col_handler = null;
+
+    /** @var callable|null */
+    public $get_row_handler = null;
+
+    /** @param list<mixed> $args */
+    public function prepare(string $query, mixed ...$args): array
+    {
+        return ['query' => $query, 'args' => $args];
+    }
+
+    /** @param array{query:string,args:list<mixed>} $statement */
+    public function get_var(array $statement): mixed
+    {
+        $this->queries[] = $statement;
+        if (is_callable($this->get_var_handler)) {
+            return ($this->get_var_handler)($statement['query'], $statement['args']);
+        }
+
+        return '1';
+    }
+
+    /** @param array{query:string,args:list<mixed>} $statement */
+    public function get_col(array $statement): array
+    {
+        if (is_callable($this->get_col_handler)) {
+            return ($this->get_col_handler)($statement['query'], $statement['args']);
+        }
+
+        if (! str_contains($statement['query'], 'SELECT DISTINCT participation.ID')) {
+            return [];
+        }
+
+        $args = $statement['args'];
+        $event_field_index = array_search('event_participation_event', $args, true);
+        $person_field_index = array_search('event_participation_person', $args, true);
+        if (! is_int($event_field_index) || ! is_int($person_field_index)) {
+            return [];
+        }
+        $event_id = (string) ($args[$event_field_index + 1] ?? '');
+        $person_id = (string) ($args[$person_field_index + 1] ?? '');
+        $post_type_index = array_search('event_participation', $args, true);
+        $post_type = is_int($post_type_index) ? (string) $args[$post_type_index] : '';
+        $statuses = ['publish', 'draft', 'pending', 'private', 'future'];
+        $exclude_id = str_contains($statement['query'], 'participation.ID <> %d')
+            ? (int) end($args)
+            : 0;
+
+        $matches = [];
+        foreach ($GLOBALS['vgpc_test_posts'] as $post_id => $post) {
+            if (
+                ($post->post_type ?? null) !== $post_type
+                || ! in_array((string) ($post->post_status ?? ''), $statuses, true)
+                || (int) $post_id === $exclude_id
+            ) {
+                continue;
+            }
+            if (
+                (string) ($GLOBALS['vgpc_test_meta'][$post_id]['event_participation_event'] ?? '') === $event_id
+                && (string) ($GLOBALS['vgpc_test_meta'][$post_id]['event_participation_person'] ?? '') === $person_id
+            ) {
+                $matches[] = (int) $post_id;
+            }
+        }
+        sort($matches, SORT_NUMERIC);
+        return $matches;
+    }
+
+    /** @param array{query:string,args:list<mixed>} $statement */
+    public function get_row(array $statement): object|null
+    {
+        if (is_callable($this->get_row_handler)) {
+            return ($this->get_row_handler)($statement['query'], $statement['args']);
+        }
+
+        $args = $statement['args'];
+        if (str_contains($statement['query'], 'FROM wp_posts')) {
+            $post = $GLOBALS['vgpc_test_posts'][(int) ($args[0] ?? 0)] ?? null;
+            return is_object($post)
+                ? (object) ['post_type' => $post->post_type ?? '', 'post_status' => $post->post_status ?? '']
+                : null;
+        }
+        if (str_contains($statement['query'], 'FROM wp_postmeta')) {
+            $value = $GLOBALS['vgpc_test_meta'][(int) ($args[0] ?? 0)][(string) ($args[1] ?? '')] ?? null;
+            return $value === null ? null : (object) ['meta_value' => $value];
+        }
+
+        return null;
+    }
+}
+
 if (! class_exists('WP_CLI')) {
     class WP_CLI
     {
@@ -66,14 +172,29 @@ $GLOBALS['vgpc_test_next_term_id'] = 1000;
 $GLOBALS['vgpc_test_insert_count'] = 0;
 $GLOBALS['vgpc_test_rewrite_flush_count'] = 0;
 $GLOBALS['vgpc_test_force_suffix_next_insert'] = false;
+$GLOBALS['vgpc_test_fail_next_term_delete'] = false;
 $GLOBALS['vgpc_test_posts'] = [];
+$GLOBALS['vgpc_test_next_post_id'] = 5000;
+$GLOBALS['vgpc_test_insert_post_calls'] = [];
+$GLOBALS['vgpc_test_update_post_calls'] = [];
+$GLOBALS['vgpc_test_delete_post_calls'] = [];
 $GLOBALS['vgpc_test_relationships'] = [];
 $GLOBALS['vgpc_test_meta'] = [];
 $GLOBALS['vgpc_test_field_groups'] = [];
+$GLOBALS['vgpc_test_update_field_calls'] = [];
+$GLOBALS['vgpc_test_fail_update_field_name'] = null;
 $GLOBALS['vgpc_test_filters'] = [];
 $GLOBALS['vgpc_test_screen'] = null;
 $GLOBALS['vgpc_test_set_term_calls'] = 0;
 $GLOBALS['vgpc_test_fail_set_term_call'] = null;
+$GLOBALS['vgpc_test_fail_get_post_id'] = null;
+$GLOBALS['vgpc_test_acf_save_during_update'] = false;
+$GLOBALS['vgpc_test_acf_save_release_counts'] = [];
+$GLOBALS['vgpc_test_apply_wp_update_filter'] = false;
+$GLOBALS['vgpc_test_enable_query_cache'] = false;
+$GLOBALS['vgpc_test_get_posts_cache'] = [];
+$GLOBALS['vgpc_test_get_post_cache'] = [];
+$GLOBALS['vgpc_test_get_field_cache'] = [];
 
 function vgpc_test_reset(): void
 {
@@ -85,14 +206,30 @@ function vgpc_test_reset(): void
     $GLOBALS['vgpc_test_insert_count'] = 0;
     $GLOBALS['vgpc_test_rewrite_flush_count'] = 0;
     $GLOBALS['vgpc_test_force_suffix_next_insert'] = false;
+    $GLOBALS['vgpc_test_fail_next_term_delete'] = false;
     $GLOBALS['vgpc_test_posts'] = [];
+    $GLOBALS['vgpc_test_next_post_id'] = 5000;
+    $GLOBALS['vgpc_test_insert_post_calls'] = [];
+    $GLOBALS['vgpc_test_update_post_calls'] = [];
+    $GLOBALS['vgpc_test_delete_post_calls'] = [];
     $GLOBALS['vgpc_test_relationships'] = [];
     $GLOBALS['vgpc_test_meta'] = [];
     $GLOBALS['vgpc_test_field_groups'] = [];
+    $GLOBALS['vgpc_test_update_field_calls'] = [];
+    $GLOBALS['vgpc_test_fail_update_field_name'] = null;
     $GLOBALS['vgpc_test_filters'] = [];
     $GLOBALS['vgpc_test_screen'] = null;
     $GLOBALS['vgpc_test_set_term_calls'] = 0;
     $GLOBALS['vgpc_test_fail_set_term_call'] = null;
+$GLOBALS['vgpc_test_fail_get_post_id'] = null;
+$GLOBALS['vgpc_test_acf_save_during_update'] = false;
+$GLOBALS['vgpc_test_acf_save_release_counts'] = [];
+$GLOBALS['vgpc_test_apply_wp_update_filter'] = false;
+    $GLOBALS['vgpc_test_enable_query_cache'] = false;
+    $GLOBALS['vgpc_test_get_posts_cache'] = [];
+    $GLOBALS['vgpc_test_get_post_cache'] = [];
+    $GLOBALS['vgpc_test_get_field_cache'] = [];
+    $GLOBALS['wpdb'] = new VGPC_TestWpdb();
     WP_CLI::$commands = [];
     WP_CLI::$messages = [];
     $_POST = [];
@@ -114,6 +251,13 @@ function vgpc_test_true(bool $condition, string $message): void
 {
     if (! $condition) {
         throw new RuntimeException($message);
+    }
+}
+
+if (! function_exists('wp_die')) {
+    function wp_die(string $message = '', string $title = '', array $args = []): never
+    {
+        throw new RuntimeException('wp_die: ' . $message);
     }
 }
 
@@ -231,7 +375,113 @@ function get_term(int $term_id, string $taxonomy = ''): object|false
 
 function get_post(int $post_id): object|false
 {
-    return $GLOBALS['vgpc_test_posts'][$post_id] ?? false;
+    if ((int) ($GLOBALS['vgpc_test_fail_get_post_id'] ?? 0) === $post_id) {
+        $GLOBALS['wpdb']->last_error = 'Injected candidate post read failure.';
+        return false;
+    }
+
+    if (
+        ! empty($GLOBALS['vgpc_test_enable_query_cache'])
+        && array_key_exists($post_id, $GLOBALS['vgpc_test_get_post_cache'])
+    ) {
+        return $GLOBALS['vgpc_test_get_post_cache'][$post_id];
+    }
+
+    $post = $GLOBALS['vgpc_test_posts'][$post_id] ?? false;
+    if (! empty($GLOBALS['vgpc_test_enable_query_cache'])) {
+        $GLOBALS['vgpc_test_get_post_cache'][$post_id] = $post;
+    }
+
+    return $post;
+}
+
+function clean_post_cache(int $post_id): void
+{
+    unset($GLOBALS['vgpc_test_get_post_cache'][$post_id]);
+}
+
+function acf_flush_value_cache(int|string $post_id = 0, string $field_name = ''): void
+{
+    $cache_key = $field_name . ':' . (string) $post_id;
+    unset($GLOBALS['vgpc_test_get_field_cache'][$cache_key]);
+}
+
+function wp_insert_post(array $postarr, bool $wp_error = false): int|WP_Error
+{
+    $GLOBALS['vgpc_test_insert_post_calls'][] = $postarr;
+    $post_id = (int) $GLOBALS['vgpc_test_next_post_id']++;
+    while (isset($GLOBALS['vgpc_test_posts'][$post_id])) {
+        $post_id = (int) $GLOBALS['vgpc_test_next_post_id']++;
+    }
+
+    $GLOBALS['vgpc_test_posts'][$post_id] = (object) array_merge($postarr, [
+        'ID' => $post_id,
+        'post_type' => (string) ($postarr['post_type'] ?? 'post'),
+        'post_status' => (string) ($postarr['post_status'] ?? 'draft'),
+        'post_title' => (string) ($postarr['post_title'] ?? ''),
+    ]);
+
+    return $post_id;
+}
+
+function wp_update_post(array $postarr, bool $wp_error = false): int|WP_Error
+{
+    $post_id = (int) ($postarr['ID'] ?? 0);
+    $post = get_post($post_id);
+    if (! $post) {
+        return $wp_error ? new WP_Error('invalid_post', 'The requested post does not exist.') : 0;
+    }
+
+    $before = clone $post;
+    $update_data = array_merge(get_object_vars($post), $postarr);
+    if (! empty($GLOBALS['vgpc_test_apply_wp_update_filter'])) {
+        $update_data = apply_filters('wp_insert_post_data', $update_data, $postarr);
+    }
+    foreach ($update_data as $key => $value) {
+        if ($key !== 'ID') {
+            $post->{$key} = $value;
+        }
+    }
+    $GLOBALS['vgpc_test_update_post_calls'][] = $postarr;
+    if (! empty($GLOBALS['vgpc_test_acf_save_during_update'])) {
+        $release_count_before = count(array_filter(
+            $GLOBALS['wpdb']->queries,
+            static fn (array $query): bool => $query['query'] === 'SELECT RELEASE_LOCK(%s)'
+        ));
+        do_action('acf/save_post', $post_id);
+        $release_count_after = count(array_filter(
+            $GLOBALS['wpdb']->queries,
+            static fn (array $query): bool => $query['query'] === 'SELECT RELEASE_LOCK(%s)'
+        ));
+        $GLOBALS['vgpc_test_acf_save_release_counts'][] = $release_count_after - $release_count_before;
+    }
+    do_action('post_updated', $post_id, $post, $before);
+
+    return $post_id;
+}
+
+function wp_delete_post(int $post_id, bool $force_delete = false): object|false
+{
+    $GLOBALS['vgpc_test_delete_post_calls'][] = [
+        'post_id' => $post_id,
+        'force_delete' => $force_delete,
+    ];
+    $post = get_post($post_id);
+    if (! $post) {
+        return false;
+    }
+
+    if (! $force_delete) {
+        $post->post_status = 'trash';
+        return $post;
+    }
+
+    unset($GLOBALS['vgpc_test_posts'][$post_id], $GLOBALS['vgpc_test_meta'][$post_id]);
+    foreach ($GLOBALS['vgpc_test_relationships'] as $taxonomy => $relationships) {
+        unset($GLOBALS['vgpc_test_relationships'][$taxonomy][$post_id]);
+    }
+
+    return $post;
 }
 
 function get_post_type(int|object|null $post = null): string|false
@@ -239,6 +489,13 @@ function get_post_type(int|object|null $post = null): string|false
     $post = is_object($post) ? $post : get_post((int) $post);
 
     return $post->post_type ?? false;
+}
+
+function get_post_status(int|object|null $post = null): string|false
+{
+    $post = is_object($post) ? $post : get_post((int) $post);
+
+    return $post->post_status ?? false;
 }
 
 function get_the_title(int|object $post = 0): string
@@ -363,12 +620,18 @@ function wp_insert_term(string $name, string $taxonomy, array $args = []): array
     );
     $term->description = (string) ($args['description'] ?? '');
     ++$GLOBALS['vgpc_test_insert_count'];
+    do_action('created_term', $term->term_id, $term->term_id + 10000, $taxonomy, $args);
 
     return ['term_id' => $term->term_id, 'term_taxonomy_id' => $term->term_id + 10000];
 }
 
 function wp_delete_term(int $term_id, string $taxonomy): bool
 {
+    if ($GLOBALS['vgpc_test_fail_next_term_delete']) {
+        $GLOBALS['vgpc_test_fail_next_term_delete'] = false;
+        return false;
+    }
+
     $term = get_term($term_id, $taxonomy);
     if (! $term) {
         return false;
@@ -443,12 +706,25 @@ function vgpc_test_acf_field_name(string $selector): ?string
 
 function get_field(string|int $selector, int|string|false $post_id = false, bool $format_value = true): mixed
 {
+    $cache_key = (string) $selector . ':' . (string) $post_id;
+    if (
+        ! empty($GLOBALS['vgpc_test_enable_query_cache'])
+        && array_key_exists($cache_key, $GLOBALS['vgpc_test_get_field_cache'])
+    ) {
+        return $GLOBALS['vgpc_test_get_field_cache'][$cache_key];
+    }
+
     $field_name = vgpc_test_acf_field_name((string) $selector);
     if ($field_name === null) {
         return null;
     }
 
-    return $GLOBALS['vgpc_test_meta'][(int) $post_id][$field_name] ?? null;
+    $value = $GLOBALS['vgpc_test_meta'][(int) $post_id][$field_name] ?? null;
+    if (! empty($GLOBALS['vgpc_test_enable_query_cache'])) {
+        $GLOBALS['vgpc_test_get_field_cache'][$cache_key] = $value;
+    }
+
+    return $value;
 }
 
 function update_field(string|int $selector, mixed $value, int|string|false $post_id = false): bool
@@ -460,6 +736,16 @@ function update_field(string|int $selector, mixed $value, int|string|false $post
 
     $post_id = (int) $post_id;
     $field_name = (string) $field['name'];
+    $GLOBALS['vgpc_test_update_field_calls'][] = [
+        'selector' => (string) $selector,
+        'field_name' => $field_name,
+        'value' => $value,
+        'post_id' => $post_id,
+    ];
+    if ($GLOBALS['vgpc_test_fail_update_field_name'] === $field_name) {
+        return false;
+    }
+
     $value = apply_filters('acf/update_value/key=' . $field['key'], $value, $post_id, $field);
     if ($value === null) {
         return true;
@@ -489,12 +775,26 @@ function delete_field(string|int $selector, int|string|false $post_id = false): 
 
 function get_posts(array $args = []): array
 {
+    $cache_key = serialize($args);
+    if (
+        ! empty($GLOBALS['vgpc_test_enable_query_cache'])
+        && array_key_exists($cache_key, $GLOBALS['vgpc_test_get_posts_cache'])
+    ) {
+        return $GLOBALS['vgpc_test_get_posts_cache'][$cache_key];
+    }
+
     $post_types = (array) ($args['post_type'] ?? 'post');
     $post_types = $post_types === ['any'] ? array_column($GLOBALS['vgpc_test_posts'], 'post_type') : $post_types;
     $post_ids = [];
     foreach ($GLOBALS['vgpc_test_posts'] as $post_id => $post) {
         if (! in_array($post->post_type ?? '', $post_types, true)) {
             continue;
+        }
+        if (isset($args['post_status']) && $args['post_status'] !== 'any') {
+            $post_statuses = (array) $args['post_status'];
+            if (! in_array($post->post_status ?? 'publish', $post_statuses, true)) {
+                continue;
+            }
         }
         if (isset($args['meta_key'])) {
             $value = $GLOBALS['vgpc_test_meta'][$post_id][$args['meta_key']] ?? null;
@@ -505,9 +805,15 @@ function get_posts(array $args = []): array
         $post_ids[] = (int) $post_id;
     }
 
-    return ($args['fields'] ?? '') === 'ids'
+    $results = ($args['fields'] ?? '') === 'ids'
         ? $post_ids
         : array_map(static fn (int $post_id): object => get_post($post_id), $post_ids);
+
+    if (! empty($GLOBALS['vgpc_test_enable_query_cache'])) {
+        $GLOBALS['vgpc_test_get_posts_cache'][$cache_key] = $results;
+    }
+
+    return $results;
 }
 
 function get_current_screen(): ?object

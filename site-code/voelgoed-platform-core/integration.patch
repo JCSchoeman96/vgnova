@@ -1,22 +1,25 @@
 --- a/voelgoed-platform-core.php
 +++ b/voelgoed-platform-core.php
-@@ -25,0 +26 @@
+@@ -25,0 +26,8 @@
 +    'includes/Taxonomy/ContentTopicTaxonomy.php',
-@@ -25,0 +27 @@
 +    'includes/Taxonomy/ContentTopicMigration.php',
-@@ -25,0 +28 @@
 +    'includes/Taxonomy/ContentTopicRoles.php',
++    'includes/Event/EventParticipationRepository.php',
++    'includes/Event/EventParticipationPairLock.php',
++    'includes/Event/EventParticipationService.php',
++    'includes/Event/EventParticipationAdmin.php',
++    'includes/Event/EventRoleSeeder.php',
 --- a/includes/Plugin.php
 +++ b/includes/Plugin.php
-@@ -12,0 +13 @@
+@@ -12,0 +13,5 @@
 +use Voelgoed\PlatformCore\Taxonomy\ContentTopicTaxonomy;
-@@ -12,0 +14 @@
 +use Voelgoed\PlatformCore\Taxonomy\ContentTopicMigration;
-@@ -12,0 +15 @@
 +use Voelgoed\PlatformCore\Taxonomy\ContentTopicRoles;
-@@ -47,0 +49 @@
++use Voelgoed\PlatformCore\Event\EventParticipationAdmin;
++use Voelgoed\PlatformCore\Event\EventRoleSeeder;
+@@ -47,0 +49,5 @@
 +        $this->register_component('content_topic_taxonomy', ContentTopicTaxonomy::class);
-@@ -47,0 +50 @@
 +        $this->register_component('content_topic_migration', ContentTopicMigration::class);
-@@ -47,0 +51 @@
 +        $this->register_component('content_topic_roles', ContentTopicRoles::class);
++        $this->register_component('event_participation_admin', EventParticipationAdmin::class);
++        $this->register_component('event_role_seeder', EventRoleSeeder::class);
