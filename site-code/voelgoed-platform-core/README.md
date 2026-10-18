@@ -69,10 +69,10 @@ stabilization gate are documented in
 
 The Event Participation implementation lives in `includes/Event/`:
 
-- `EventParticipationRepository` reads canonical relationships and duplicate pairs.
-- `EventParticipationPairLock` serializes writes for the same Event × Person pair.
+- `EventParticipationRepository` reads canonical relationships and rechecks candidate pairs with fresh post data plus ACF values while a write lock is held.
+- `EventParticipationPairLock` serializes writes for the same Event × Person pair and concurrent edits to one existing participation.
 - `EventParticipationService` validates and creates participations under the pair lock.
-- `EventParticipationAdmin` validates ACF submissions, rechecks pairs before post writes, and derives admin titles.
+- `EventParticipationAdmin` locks existing participations before reading stored endpoints, rechecks pairs before writes, allows retirement with invalid endpoints, and derives admin titles.
 - `EventRoleSeeder` seeds the approved `event_role` vocabulary on request.
 
 Run the focused checks with:

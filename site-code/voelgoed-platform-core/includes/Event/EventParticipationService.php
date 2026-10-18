@@ -28,15 +28,50 @@ final class EventParticipationService
         int $person_id,
         ?int $exclude_participation_id = null
     ): true|\WP_Error {
-        if (! $this->repository->is_valid_event($event_id)) {
+        return $this->validate_pair_using_repository($event_id, $person_id, $exclude_participation_id, false);
+    }
+
+    public function validate_pair_fresh(
+        int $event_id,
+        int $person_id,
+        ?int $exclude_participation_id = null
+    ): true|\WP_Error {
+        return $this->validate_pair_using_repository($event_id, $person_id, $exclude_participation_id, true);
+    }
+
+    private function validate_pair_using_repository(
+        int $event_id,
+        int $person_id,
+        ?int $exclude_participation_id,
+        bool $fresh
+    ): true|\WP_Error {
+        $valid_event = $fresh
+            ? $this->repository->is_valid_event_fresh($event_id)
+            : $this->repository->is_valid_event($event_id);
+        if (! $valid_event) {
             return new \WP_Error('invalid_event', 'The Event must be an existing, non-trashed Tickera Event.');
         }
 
-        if (! $this->repository->is_valid_person($person_id)) {
+        $valid_person = $fresh
+            ? $this->repository->is_valid_person_fresh($person_id)
+            : $this->repository->is_valid_person($person_id);
+        if (! $valid_person) {
             return new \WP_Error('invalid_person', 'The Person must be an existing, non-trashed Person.');
         }
 
-        if ($this->repository->find_pair_ids($event_id, $person_id, $exclude_participation_id)) {
+        if ($fresh) {
+            $matches = $this->repository->find_pair_ids_fresh($event_id, $person_id, $exclude_participation_id);
+            if ($matches === null) {
+                return new \WP_Error(
+                    'participation_fresh_check_failed',
+                    'Could not verify Event Participation relationships. Try again.'
+                );
+            }
+        } else {
+            $matches = $this->repository->find_pair_ids($event_id, $person_id, $exclude_participation_id);
+        }
+
+        if ($matches) {
             return new \WP_Error('duplicate_event_participation', 'This Event and Person pair already has a participation.');
         }
 
@@ -114,7 +149,7 @@ final class EventParticipationService
         string $status
     ): int|\WP_Error {
         // Recheck after acquiring the lock so a competing writer cannot pass the check concurrently.
-        $pair_validation = $this->validate_pair($event_id, $person_id);
+        $pair_validation = $this->validate_pair_fresh($event_id, $person_id);
         if (is_wp_error($pair_validation)) {
             return $pair_validation;
         }

@@ -93,12 +93,36 @@ final class EventParticipationAdmin
             return $data;
         }
 
+        if ($post_id > 0 && ! $this->pair_lock->acquire_participation($post_id)) {
+            wp_die(
+                'Could not reserve this participation. Try again.',
+                'Event Participation Save Failed',
+                ['response' => 503]
+            );
+        }
+
+        // Retiring a row must remain possible after an endpoint is deleted or trashed.
+        // The participation lock still serializes this transition with edits of the same row.
+        if ($post_id > 0 && ($data['post_status'] ?? null) === 'trash') {
+            return $data;
+        }
+
+        $needs_stored_pair = $post_id > 0 && (! $has_submitted_event || ! $has_submitted_person);
+        $stored_pair = $needs_stored_pair ? $this->repository->stored_pair_ids_fresh($post_id) : null;
+        if ($needs_stored_pair && $stored_pair === null) {
+            wp_die(
+                'Could not read this participation. Try again.',
+                'Event Participation Save Failed',
+                ['response' => 503]
+            );
+        }
+
         $event_id = $has_submitted_event
             ? $this->normalize_id($submitted[self::EVENT_FIELD_KEY])
-            : $this->normalize_id(get_field(EventParticipationRepository::EVENT_FIELD, $post_id));
+            : (int) ($stored_pair['event_id'] ?? 0);
         $person_id = $has_submitted_person
             ? $this->normalize_id($submitted[self::PERSON_FIELD_KEY])
-            : $this->normalize_id(get_field(EventParticipationRepository::PERSON_FIELD, $post_id));
+            : (int) ($stored_pair['person_id'] ?? 0);
         if ($event_id <= 0 && $person_id <= 0 && ! $has_submitted_pair) {
             return $data;
         }
@@ -119,12 +143,20 @@ final class EventParticipationAdmin
             );
         }
 
-        $validation = $this->service->validate_pair(
+        $validation = $this->service->validate_pair_fresh(
             $event_id,
             $person_id,
             $post_id > 0 ? $post_id : null
         );
         if (is_wp_error($validation)) {
+            if ($validation->get_error_code() === 'participation_fresh_check_failed') {
+                wp_die(
+                    $validation->get_error_message(),
+                    'Event Participation Save Failed',
+                    ['response' => 503]
+                );
+            }
+
             wp_die(
                 $validation->get_error_message(),
                 'Duplicate Event Participation',

@@ -394,11 +394,17 @@ try {
     vg_event_participation_qa_check(wp_trash_post($person_id) instanceof WP_Post, 'Could not temporarily trash the QA Person.');
     $trashed_person = $service->validate_pair($qa_event_id, $person_id, $participation_id);
     vg_event_participation_qa_check(is_wp_error($trashed_person) && $trashed_person->get_error_code() === 'invalid_person', 'Validator did not reject the trashed Person with invalid_person.');
+    vg_event_participation_qa_check(wp_trash_post($participation_id) instanceof WP_Post, 'Could not retire the QA participation while its Person endpoint is trashed.');
+    vg_event_participation_qa_check(get_post_status($participation_id) === 'trash', 'The QA participation was not retired after its Person endpoint was trashed.');
     vg_event_participation_qa_check(wp_untrash_post($person_id) instanceof WP_Post, 'Could not restore the QA Person after validator check.');
+    vg_event_participation_qa_check(wp_untrash_post($participation_id) instanceof WP_Post, 'Could not reactivate the QA participation after restoring its Person endpoint.');
+    vg_event_participation_qa_check(get_post_status($participation_id) === 'draft', 'WordPress did not restore the retired QA participation as a draft.');
+    vg_event_participation_qa_check(wp_update_post(['ID' => $participation_id, 'post_status' => 'publish'], true) === $participation_id, 'Could not publish the restored QA participation.');
+    vg_event_participation_qa_check(get_post_status($participation_id) === 'publish', 'The QA participation did not publish after its Person endpoint was restored.');
 
     vg_event_participation_qa_check(wp_update_post(['ID' => $person_id, 'post_title' => $owner . ' changed'], true) === $person_id, 'Could not change temporary QA Person title.');
     vg_event_participation_qa_check(get_the_title($participation_id) === get_the_title($qa_event_id) . ' — ' . get_the_title($person_id), 'Participation title did not follow the changed Person title.');
-    $result = ['event_id' => $qa_event_id, 'person_id' => $person_id, 'participation_id' => $participation_id, 'roles' => ['paneellid', 'spreker'], 'display_order' => 17, 'published_queries_pass' => true, 'private_query_exclusion_pass' => true, 'non_public_routing_pass' => true, 'duplicate_rejected' => true, 'invalid_endpoints_rejected' => true];
+    $result = ['event_id' => $qa_event_id, 'person_id' => $person_id, 'participation_id' => $participation_id, 'roles' => ['paneellid', 'spreker'], 'display_order' => 17, 'published_queries_pass' => true, 'private_query_exclusion_pass' => true, 'non_public_routing_pass' => true, 'duplicate_rejected' => true, 'invalid_endpoints_rejected' => true, 'invalid_endpoint_retirement_pass' => true];
 } catch (Throwable $error) {
     $qa_failure = $error;
 } finally {

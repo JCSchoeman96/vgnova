@@ -46,9 +46,14 @@ final class EventParticipationAdminTest
         vgpc_test_same('Vroue-aand — Mia Botha', get_the_title(300), 'The ACF save hook must derive the participation title.');
         vgpc_test_same(1, count($GLOBALS['vgpc_test_update_post_calls']), 'The ACF save hook must update the participation title once.');
         vgpc_test_same(
-            ['SELECT GET_LOCK(%s, %d)', 'SELECT RELEASE_LOCK(%s)'],
+            [
+                'SELECT GET_LOCK(%s, %d)',
+                'SELECT GET_LOCK(%s, %d)',
+                'SELECT RELEASE_LOCK(%s)',
+                'SELECT RELEASE_LOCK(%s)',
+            ],
             array_column($GLOBALS['wpdb']->queries, 'query'),
-            'The editor must hold the pair lock across the post and ACF field writes.'
+            'The editor must hold the participation and pair locks across the post and ACF field writes.'
         );
     }
 
@@ -122,6 +127,170 @@ final class EventParticipationAdminTest
 
         vgpc_test_true($rejected, 'A status change must not reactivate a pair committed by a competing request.');
         vgpc_test_same('draft', get_post(301)->post_status, 'A rejected status change must leave the current post row unchanged.');
+        do_action('shutdown');
+    }
+
+    public function test_existing_participation_update_locks_post_before_pair(): void
+    {
+        $admin = $this->fixture();
+        $this->add_endpoint(101, 'tc_events', 'Original Event');
+        $this->add_endpoint(102, 'tc_events', 'New Event');
+        $this->add_endpoint(201, 'person', 'Original Person');
+        $this->add_endpoint(202, 'person', 'New Person');
+        $this->add_participation(301, 'draft', 101, 201, 'Existing participation');
+        $_POST['acf'] = [
+            EventParticipationAdmin::EVENT_FIELD_KEY => '102',
+            EventParticipationAdmin::PERSON_FIELD_KEY => '202',
+        ];
+
+        $admin->validate_pair_before_post_save(
+            ['post_type' => EventParticipationRepository::POST_TYPE, 'post_status' => 'draft'],
+            ['ID' => 301]
+        );
+
+        $acquisitions = array_values(array_filter(
+            $GLOBALS['wpdb']->queries,
+            static fn (array $query): bool => $query['query'] === 'SELECT GET_LOCK(%s, %d)'
+        ));
+        vgpc_test_same(2, count($acquisitions), 'An existing edit must acquire both its post lock and its target pair lock.');
+        vgpc_test_true(
+            $acquisitions[0]['args'][0] !== $acquisitions[1]['args'][0],
+            'The participation lock and Event/Person pair lock must be distinct.'
+        );
+        vgpc_test_same(
+            $acquisitions[0]['args'][0],
+            $GLOBALS['wpdb']->queries[0]['args'][0],
+            'The participation lock must be acquired before the pair lock.'
+        );
+    }
+
+    public function test_same_post_edits_and_trash_status_serialize_on_participation_lock(): void
+    {
+        $first_admin = $this->fixture();
+        $second_admin = new EventParticipationAdmin();
+        $this->add_endpoint(101, 'tc_events', 'Original Event');
+        $this->add_endpoint(102, 'tc_events', 'First target Event');
+        $this->add_endpoint(103, 'tc_events', 'Second target Event');
+        $this->add_endpoint(201, 'person', 'Original Person');
+        $this->add_endpoint(202, 'person', 'First target Person');
+        $this->add_endpoint(203, 'person', 'Second target Person');
+        $this->add_participation(301, 'draft', 101, 201, 'Existing participation');
+        $_POST['acf'] = [
+            EventParticipationAdmin::EVENT_FIELD_KEY => '102',
+            EventParticipationAdmin::PERSON_FIELD_KEY => '202',
+        ];
+        $blocked_post_lock = null;
+        $blocked_next_post_lock = false;
+        $GLOBALS['wpdb']->get_var_handler = function (string $query, array $args = []) use (&$blocked_post_lock, &$blocked_next_post_lock): string {
+            if ($query === 'SELECT GET_LOCK(%s, %d)') {
+                if ($blocked_next_post_lock && $args[0] === $blocked_post_lock) {
+                    return '0';
+                }
+                return '1';
+            }
+
+            return '1';
+        };
+
+        $first_admin->validate_pair_before_post_save(
+            ['post_type' => EventParticipationRepository::POST_TYPE, 'post_status' => 'draft'],
+            ['ID' => 301]
+        );
+        $blocked_post_lock = $GLOBALS['wpdb']->queries[0]['args'][0] ?? null;
+        vgpc_test_true(is_string($blocked_post_lock), 'The first edit must hold a participation-scoped lock.');
+
+        // Simulate ACF persisting the first edit while the second edit and a trash transition overlap.
+        $GLOBALS['vgpc_test_meta'][301][EventParticipationRepository::EVENT_FIELD] = 102;
+        $GLOBALS['vgpc_test_meta'][301][EventParticipationRepository::PERSON_FIELD] = 202;
+        $second_admin->register();
+        $_POST['acf'] = [
+            EventParticipationAdmin::EVENT_FIELD_KEY => '103',
+            EventParticipationAdmin::PERSON_FIELD_KEY => '203',
+        ];
+        $blocked_next_post_lock = true;
+        $second_edit_rejected = false;
+        try {
+            $second_admin->validate_pair_before_post_save(
+                ['post_type' => EventParticipationRepository::POST_TYPE, 'post_status' => 'draft'],
+                ['ID' => 301]
+            );
+        } catch (RuntimeException $error) {
+            $second_edit_rejected = str_contains($error->getMessage(), 'Could not reserve this participation');
+        }
+        vgpc_test_true($second_edit_rejected, 'A concurrent edit to another pair must wait on the same participation lock.');
+
+        $acquisitions = array_values(array_filter(
+            $GLOBALS['wpdb']->queries,
+            static fn (array $query): bool => $query['query'] === 'SELECT GET_LOCK(%s, %d)'
+        ));
+        vgpc_test_same(3, count($acquisitions), 'The blocked edit must stop after its post lock attempt and never take another pair lock.');
+        vgpc_test_same($blocked_post_lock, $acquisitions[2]['args'][0], 'Both edits of one post must contend on the same participation lock.');
+
+        $first_admin->release_pair_locks();
+        $this->add_endpoint(202, 'person', 'First target Person', 'trash');
+        $blocked_next_post_lock = false;
+        $_POST['acf'] = [];
+        $trash_data = ['post_type' => EventParticipationRepository::POST_TYPE, 'post_status' => 'trash'];
+        vgpc_test_same(
+            $trash_data,
+            $second_admin->validate_pair_before_post_save($trash_data, ['ID' => 301]),
+            'A trash status update after the edit releases its post lock must proceed despite a trashed endpoint.'
+        );
+        $acquisitions_after_trash = array_values(array_filter(
+            $GLOBALS['wpdb']->queries,
+            static fn (array $query): bool => $query['query'] === 'SELECT GET_LOCK(%s, %d)'
+        ));
+        vgpc_test_same(4, count($acquisitions_after_trash), 'A retirement with an invalid endpoint needs only the participation lock.');
+        vgpc_test_same($blocked_post_lock, $acquisitions_after_trash[3]['args'][0], 'Trash must serialize with edits of the same participation.');
+        $second_admin->release_pair_locks();
+    }
+
+    public function test_trash_allows_trashed_or_missing_endpoints(): void
+    {
+        $admin = $this->fixture();
+        $this->add_endpoint(101, 'tc_events', 'Vroue-aand');
+        $this->add_endpoint(201, 'person', 'Trashed Person', 'trash');
+        $this->add_participation(301, 'draft', 101, 201, 'Participation with trashed Person');
+        $this->add_participation(302, 'draft', 999, 201, 'Participation with missing Event');
+        $trash_data = ['post_type' => EventParticipationRepository::POST_TYPE, 'post_status' => 'trash'];
+
+        vgpc_test_same($trash_data, $admin->validate_pair_before_post_save($trash_data, ['ID' => 301]), 'A trashed endpoint must not block retiring its participation.');
+        vgpc_test_same($trash_data, $admin->validate_pair_before_post_save($trash_data, ['ID' => 302]), 'A missing endpoint must not block retiring its participation.');
+        $acquisitions = array_values(array_filter(
+            $GLOBALS['wpdb']->queries,
+            static fn (array $query): bool => $query['query'] === 'SELECT GET_LOCK(%s, %d)'
+        ));
+        vgpc_test_same(2, count($acquisitions), 'Each trash operation must retain the per-participation edit lock.');
+    }
+
+    public function test_status_update_reads_stored_endpoints_fresh_after_acf_cache_is_warm(): void
+    {
+        $admin = $this->fixture();
+        $admin->register();
+        $this->add_endpoint(101, 'tc_events', 'Vroue-aand');
+        $this->add_endpoint(201, 'person', 'Cached Person');
+        $this->add_endpoint(202, 'person', 'Current Person', 'trash');
+        $this->add_participation(301, 'draft', 101, 201, 'Existing participation');
+        $GLOBALS['vgpc_test_enable_query_cache'] = true;
+
+        // Warm ACF's request-local values, then simulate another request updating the stored relationship.
+        get_field(EventParticipationRepository::EVENT_FIELD, 301);
+        get_field(EventParticipationRepository::PERSON_FIELD, 301);
+        $GLOBALS['vgpc_test_meta'][301][EventParticipationRepository::PERSON_FIELD] = 202;
+        $_POST['acf'] = [];
+
+        $rejected = false;
+        try {
+            apply_filters(
+                'wp_insert_post_data',
+                ['post_type' => EventParticipationRepository::POST_TYPE, 'post_status' => 'pending'],
+                ['ID' => 301]
+            );
+        } catch (RuntimeException $error) {
+            $rejected = str_contains($error->getMessage(), 'existing, non-trashed Person');
+        }
+
+        vgpc_test_true($rejected, 'A quick status change must use the stored Person endpoint from the database, not stale ACF values.');
         do_action('shutdown');
     }
 

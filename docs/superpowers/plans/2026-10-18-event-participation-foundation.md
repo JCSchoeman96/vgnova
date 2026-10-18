@@ -1782,15 +1782,25 @@ endpoint-title resync:
 
 ```text
 selected real Event:
+151
 selected Event had legacy people before QA:
 0
 
 QA Person created:
+1302 (temporary)
 QA participation created:
+1303 (temporary)
 duplicate attempt rejected:
+PASS
 QA Person hard-deleted:
+PASS
 QA participation hard-deleted:
+PASS
 selected Event unchanged:
+PASS
+
+QA retired the participation while its Person endpoint was trashed, restored both records, then published the participation:
+PASS
 ```
 
 ## Final persistent state
@@ -1847,16 +1857,16 @@ legacy product edges migrated:
 
 ```text
 Event Participation foundation:
-N/N
+3/3
 
 Platform Core Event Participation:
-N/N
+58/58
 
 existing Platform Core Content Topic:
 67/67
 
 Platform Core combined:
-67 + new Event count = N
+67 + 58 = 125
 
 Person foundation:
 10/10
@@ -1886,10 +1896,10 @@ persistent event_role terms:
 4
 
 temporary QA Person:
-1 created / 1 hard-deleted
+8 created / 8 hard-deleted
 
 temporary QA participation:
-1 created / 1 hard-deleted
+9 created / 9 hard-deleted (one duplicate from the failed query was separately verified and removed)
 
 legacy WordPress content writes:
 0

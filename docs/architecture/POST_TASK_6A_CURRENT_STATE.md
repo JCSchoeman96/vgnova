@@ -46,11 +46,11 @@ The Local ACF JSON path before Task 6A pointed to `/home/jcschoeman96/projects/c
 
 This temporary source dependency is required while the PR is open. Post-merge Task 6A-S must stabilize the path onto the merged main checkout and verify the three ACF definitions again before the worktree is removed.
 
-Novamira MCP resolved to a different installation (`DanOptics`), so local WP-CLI was used to inspect and update the correct `Voelgoed` staging runtime. No direct SQL writes were used.
+The default Novamira MCP profile resolved to a different installation (`DanOptics`) during the initial runtime work, so local WP-CLI was used for those checks. For the final review QA, the explicitly selected `VGNova` Novamira profile was verified against `Voelgoed` at `http://localhost:10039/` and ran the guarded WP-CLI script. Local shell copied the source-controlled PHP files into the active plugin after a backup because Novamira file writes do not allow PHP files in the active plugin directory. No direct SQL writes were used.
 
 ## QA run and cleanup
 
-The runtime QA run after the pair-lock review fix passed on 2026-10-18 using published Event 151. It created temporary Person 1276 and participation 1277, checked the approved roles `paneellid` and `spreker`, and used display order 17.
+The final runtime QA run after the round 2 review fixes passed on 2026-10-18 using published Event 151. It created temporary Person 1302 and participation 1303, checked the approved roles `paneellid` and `spreker`, used display order 17, and verified trashing a participation while its Person endpoint was trashed followed by restoration and republishing.
 
 | QA check | Result |
 |---|---|
@@ -74,8 +74,8 @@ After cleanup, Person count and Event Participation count were both zero. Person
 | Targeted ACF definition syncs | 3 | Persistent canonical schema active |
 | Approved `event_role` term creation | 4 | Persistent vocabulary active |
 | Platform Core PHP classes and bootstrap deployment | 5 classes plus bootstrap integration | Runtime copy matches source module |
-| Temporary QA Person | 1 | Hard-deleted and verified absent |
-| Temporary QA participation | 1 | Hard-deleted and verified absent |
+| Temporary QA Person | 8 | All eight hard-deleted and verified absent |
+| Temporary QA participation | 9 | Eight ownership-marked rows hard-deleted by QA; one duplicate from the failed query was individually verified and hard-deleted |
 | Legacy profile, event, product, relationship, Bricks, or FluentSnippet writes | 0 | Protected state unchanged |
 
 ## Regression checks
@@ -83,7 +83,7 @@ After cleanup, Person count and Event Participation count were both zero. Person
 | Check | Result |
 |---|---:|
 | Event Participation ACF schema contracts | 3 passed |
-| Event Participation Platform Core tests | 51 passed |
+| Event Participation Platform Core tests | 58 passed |
 | Content Topic Platform Core regression tests | 67 passed |
 | Person Foundation tests | 10 passed |
 | Editorial Dimensions tests | 11 passed |
@@ -91,7 +91,9 @@ After cleanup, Person count and Event Participation count were both zero. Person
 | PHP lint for changed PHP files | Passed |
 | Shared ACF JSON parsing | 9 files parsed |
 
-The Task 6A Platform Core suite adds 51 tests to the prior 67-test Content Topic suite, for 118 tests across those two standalone runners. The final review found that simultaneous pair creation could race. `EventParticipationPairLock` now serializes service and WordPress admin writes, and regression checks simulate a competing commit before the lock is granted. A live runtime lock acquire/release smoke check passed. The Task 7 runtime QA setup boundary was also re-reviewed and fixed so token generation or service construction failures return JSON before mutation.
+The Task 6A Platform Core suite adds 58 tests to the prior 67-test Content Topic suite, for 125 tests across those two standalone runners. The delegated final review found three additional gaps: same-post edits could interleave, the locked duplicate recheck could use stale WordPress/ACF caches, and invalid endpoints could block retirement. `EventParticipationPairLock` now serializes pair writes and same-post edits; the locked duplicate path refreshes post and ACF caches before reading fields through ACF; and a trash transition skips endpoint validation while retaining the participation lock. Regression tests cover cached prechecks, endpoint status changes, different-pair edits, overlap with trash transitions, and trashing records with invalid endpoints.
+
+The first post-review staging QA attempt exposed an incorrect escaped newline in the fresh duplicate query and left temporary participation 1282 behind after its duplicate attempt. The remaining row was tied to the failed run's unique QA title token and was hard-deleted after its Event and missing Person IDs were checked against the clean baseline. Subsequent guarded QA runs passed; the final run above reported zero Persons and participations, no token, and unchanged protected runtime state. The staging database is MySQL 8.0.35; a cross-version compatibility matrix was not run. The Task 7 runtime QA setup boundary was also re-reviewed and fixed so token generation or service construction failures return JSON before mutation.
 
 ## Legacy and migration state
 

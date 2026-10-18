@@ -118,6 +118,73 @@ final class EventParticipationServiceTest
         );
     }
 
+    public function test_create_uses_fresh_database_values_after_cached_precheck(): void
+    {
+        $service = $this->service();
+        $this->add_endpoint(101, 'tc_events', 'Vroue-aand');
+        $this->add_endpoint(201, 'person', 'Mia Botha');
+        $GLOBALS['vgpc_test_enable_query_cache'] = true;
+
+        // Warm this request's candidate query before the competing transaction commits.
+        vgpc_test_same(true, $service->validate_pair(101, 201), 'The initial request-local check must see no duplicate.');
+        $simulated_concurrent_commit = false;
+        $GLOBALS['wpdb']->get_var_handler = function (string $query) use (&$simulated_concurrent_commit): string {
+            if ($query === 'SELECT GET_LOCK(%s, %d)' && ! $simulated_concurrent_commit) {
+                $this->add_participation(401, 'publish', 101, 201);
+                $simulated_concurrent_commit = true;
+            }
+
+            return '1';
+        };
+
+        $result = $service->create(101, 201);
+
+        vgpc_test_true(is_wp_error($result), 'The lock holder must observe a committed duplicate despite warmed request caches.');
+        vgpc_test_same('duplicate_event_participation', $result->get_error_code(), 'The fresh duplicate check must reject the pair.');
+        vgpc_test_same([], $GLOBALS['vgpc_test_insert_post_calls'], 'A stale cached precheck must not allow a duplicate insert.');
+    }
+
+    public function test_create_rechecks_endpoint_status_from_database_after_cached_precheck(): void
+    {
+        $service = $this->service();
+        $this->add_endpoint(101, 'tc_events', 'Vroue-aand');
+        $this->add_endpoint(201, 'person', 'Mia Botha');
+        $GLOBALS['vgpc_test_enable_query_cache'] = true;
+
+        vgpc_test_same(true, $service->validate_pair(101, 201), 'The initial request-local endpoint check must pass.');
+        $GLOBALS['wpdb']->get_var_handler = function (string $query): string {
+            if ($query === 'SELECT GET_LOCK(%s, %d)') {
+                // The endpoint changes after this request cached its WordPress post object.
+                $this->add_endpoint(201, 'person', 'Mia Botha', 'trash');
+            }
+
+            return '1';
+        };
+
+        $result = $service->create(101, 201);
+
+        vgpc_test_true(is_wp_error($result), 'The locked check must use the current Person status from the database.');
+        vgpc_test_same('invalid_person', $result->get_error_code(), 'A Person trashed after the cached precheck must be rejected.');
+        vgpc_test_same([], $GLOBALS['vgpc_test_insert_post_calls'], 'A stale endpoint cache must not permit the insert.');
+    }
+
+    public function test_create_fails_closed_when_fresh_duplicate_query_fails(): void
+    {
+        $service = $this->service();
+        $this->add_endpoint(101, 'tc_events', 'Vroue-aand');
+        $this->add_endpoint(201, 'person', 'Mia Botha');
+        $GLOBALS['wpdb']->get_col_handler = static function (): array {
+            $GLOBALS['wpdb']->last_error = 'Injected fresh-query failure.';
+            return [];
+        };
+
+        $result = $service->create(101, 201);
+
+        vgpc_test_true(is_wp_error($result), 'A failed authoritative duplicate query must stop creation.');
+        vgpc_test_same('participation_fresh_check_failed', $result->get_error_code(), 'The error must identify the fresh-query failure.');
+        vgpc_test_same([], $GLOBALS['vgpc_test_insert_post_calls'], 'A database read error must not be treated as an empty result.');
+    }
+
     public function test_create_fails_closed_when_pair_lock_cannot_be_acquired(): void
     {
         $service = $this->service();

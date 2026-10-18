@@ -5,7 +5,7 @@ namespace Voelgoed\PlatformCore\Event;
 
 defined('ABSPATH') || exit;
 
-/** Serializes creation of the same Event and Person pair across requests. */
+/** Serializes pair writes and concurrent edits to one participation across requests. */
 final class EventParticipationPairLock
 {
     private const WAIT_TIMEOUT_SECONDS = 10;
@@ -19,7 +19,21 @@ final class EventParticipationPairLock
             return false;
         }
 
-        $lock_name = $this->lock_name($event_id, $person_id);
+        return $this->acquire_lock($this->lock_name($event_id, $person_id));
+    }
+
+    /** Serialize writes that edit one existing participation post. */
+    public function acquire_participation(int $participation_id): bool
+    {
+        if ($participation_id <= 0) {
+            return false;
+        }
+
+        return $this->acquire_lock($this->participation_lock_name($participation_id));
+    }
+
+    private function acquire_lock(string $lock_name): bool
+    {
         if (isset($this->held_locks[$lock_name])) {
             return true;
         }
@@ -94,6 +108,18 @@ final class EventParticipationPairLock
         $scope = implode(':', [$database, $prefix, $blog_id, $event_id, $person_id]);
 
         // MySQL limits named locks to 64 characters.
+        return 'vgpc_ep_' . substr(hash('sha256', $scope), 0, 56);
+    }
+
+    private function participation_lock_name(int $participation_id): string
+    {
+        global $wpdb;
+
+        $database = is_object($wpdb) ? (string) ($wpdb->dbname ?? '') : '';
+        $prefix = is_object($wpdb) ? (string) ($wpdb->prefix ?? '') : '';
+        $blog_id = function_exists('get_current_blog_id') ? (int) get_current_blog_id() : 0;
+        $scope = implode(':', [$database, $prefix, $blog_id, 'participation', $participation_id]);
+
         return 'vgpc_ep_' . substr(hash('sha256', $scope), 0, 56);
     }
 }
