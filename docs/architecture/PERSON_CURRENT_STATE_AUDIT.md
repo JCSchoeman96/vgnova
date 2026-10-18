@@ -44,13 +44,17 @@ The largest migration constraint is the event-to-product workflow: `event_medewe
 
 There are five `medewerker` records in total: five `publish`, zero `draft`, zero `private`, and zero `trash`. Each is authored by user ID 1 (`JC_Admin`). All records were created on 2026-06-04 06:05:47; Lynette's record was modified at 06:48:03 and the other four retain the original modification time 06:05:47.
 
-| ID | Name / slug | Status | Photo | Professional title | Short bio | Profile status | Role / group | Topics / categories | Events | Products | Readiness |
-|---:|---|---|---|---|---|---|---|---|---:|---:|---|
-| 753 | Lynette Beer / `lynette-beer` | publish | Attachment 558, `voelgoed-pexels-OHplpN.jpg` | Spreker | Lewensafrigter en spreker. | public | Mentor / Voelgoed Mentor | none / none | 1 | 2 | Field, taxonomy, relationship, and provenance review |
-| 754 | Annelize van der Merwe / `annelize-van-der-merwe` | publish | Attachment 560, `voelgoed-pexels-Gc8Rza.jpg` | empty | Finansiële mentor. | public | Mentor / Voelgoed Mentor | none / none | 0 | 0 | Field, taxonomy, and provenance review |
-| 755 | Thandi Mokoena / `thandi-mokoena` | publish | Attachment 562, `voelgoed-pexels-XNDBLA.jpg` | empty | Huweliks- en gesinsterapeut. | public | Mentor / Voelgoed Mentor | none / none | 0 | 0 | Field, taxonomy, and provenance review |
-| 756 | Elna Pretorius / `elna-pretorius` | publish | Attachment 564, `voelgoed-pexels-M4OozZ.jpg` | empty | Wellness-afrigter. | public | Mentor / Voelgoed Mentor | none / none | 0 | 0 | Field, taxonomy, and provenance review |
-| 757 | Retha Coetzee / `retha-coetzee` | publish | Attachment 566, `voelgoed-pexels-TXEoYM.jpg` | empty | Skrywer en verhaalverteller. | public | Mentor / Voelgoed Mentor | none / none | 1 | 1 | Field, taxonomy, relationship, and provenance review |
+**Readiness split:** the Person architecture is ready for implementation, while the current five-record corpus is **not approved for migration**. The shared creation timestamp, Pexels-style placeholder images, short bios duplicated exactly in excerpt and full content, repeated Mentor / Voelgoed Mentor assignments, the event title `Test Event`, and links to QA/trash products are demo/QA indicators. They do not by themselves prove that the profiles are fixtures, but no repository, import, or source record was found to establish them as genuine Voelgoed people. All five therefore require provenance review and currently have the decision `DEFER`.
+
+For each profile, provenance review must establish whether the identity and source are genuine, whether the record was created as local demo/QA data, whether the photo and biography are genuine or placeholders, whether classifications are editorially valid, and whether dependent relationships represent real work or QA/test data. A real-world name, published status, or a person named in a canonical IA example is not sufficient approval. No current profile or relationship edge is approved for automatic migration.
+
+| ID | Name / slug | Status | Photo | Professional title | Short bio | Profile status | Role / group | Topics / categories | Events | Products | Readiness | Migration decision |
+|---:|---|---|---|---|---|---|---|---|---:|---:|---|---|
+| 753 | Lynette Beer / `lynette-beer` | publish | Attachment 558, `voelgoed-pexels-OHplpN.jpg` | Spreker | Lewensafrigter en spreker. | public | Mentor / Voelgoed Mentor | none / none | 1 | 2 | Field, taxonomy, relationship, and provenance review | `DEFER` |
+| 754 | Annelize van der Merwe / `annelize-van-der-merwe` | publish | Attachment 560, `voelgoed-pexels-Gc8Rza.jpg` | empty | Finansiële mentor. | public | Mentor / Voelgoed Mentor | none / none | 0 | 0 | Field, taxonomy, and provenance review | `DEFER` |
+| 755 | Thandi Mokoena / `thandi-mokoena` | publish | Attachment 562, `voelgoed-pexels-XNDBLA.jpg` | empty | Huweliks- en gesinsterapeut. | public | Mentor / Voelgoed Mentor | none / none | 0 | 0 | Field, taxonomy, and provenance review | `DEFER` |
+| 756 | Elna Pretorius / `elna-pretorius` | publish | Attachment 564, `voelgoed-pexels-M4OozZ.jpg` | empty | Wellness-afrigter. | public | Mentor / Voelgoed Mentor | none / none | 0 | 0 | Field, taxonomy, and provenance review | `DEFER` |
+| 757 | Retha Coetzee / `retha-coetzee` | publish | Attachment 566, `voelgoed-pexels-TXEoYM.jpg` | empty | Skrywer en verhaalverteller. | public | Mentor / Voelgoed Mentor | none / none | 1 | 1 | Field, taxonomy, relationship, and provenance review | `DEFER` |
 
 The counts include all statuses of related records. Lynette has event 763, published product 767, and trashed product 768. Retha has event 763 and trashed product 768. No event or product relationship is inferred from the profile bio or title.
 
@@ -114,12 +118,12 @@ The active ACF-managed, public, REST-visible, non-hierarchical taxonomy has rewr
 | 302 | Gas / `gas` | 0 | — | `CONTEXTUAL_ROLE` | Guest is participation-specific |
 | 306 | Kenner / `kenner` | 0 | — | `PERSISTENT_PERSON_TYPE` | Durable classification candidate in principle, but no assigned profile supports seeding it now |
 | 301 | Kunstenaar / `kunstenaar` | 0 | — | `PERSISTENT_PERSON_TYPE` | Durable identity candidate in principle, but no assigned profile supports seeding it now |
-| 298 | Mentor / `mentor` | 5 | Lynette Beer; Annelize van der Merwe; Thandi Mokoena; Elna Pretorius; Retha Coetzee | `PERSISTENT_PERSON_TYPE` | Strongest initial `person_type` candidate; review each assignment before migration |
+| 298 | Mentor / `mentor` | 5 | Lynette Beer; Annelize van der Merwe; Thandi Mokoena; Elna Pretorius; Retha Coetzee | `PERSISTENT_PERSON_TYPE` | Canonical IA supports Mentor as the initial vocabulary concept; all five current assignments remain unapproved pending per-profile provenance review |
 | 303 | Paneellid / `paneellid` | 0 | — | `CONTEXTUAL_ROLE` | Panel membership belongs to a specific event/session |
 | 305 | Skrywer / `skrywer` | 0 | — | `EDITORIAL_RELATIONSHIP_ROLE` | Model authorship on the relevant article; a person may write without being a permanent “writer” type |
 | 299 | Spreker / `spreker` | 0 | — | `CONTEXTUAL_ROLE` | Speaker is attached to a specific event/session; Lynette's ACF title is not a taxonomy assignment |
 
-The canonical `person_type` vocabulary should begin with **Mentor only**. The evidence is its profile-level assignment to all five records, rather than an event-specific relationship; this suggests a persistent classification, though each assignment needs owner confirmation. Kenner and Kunstenaar remain candidate concepts but have zero current assignments. This is the smallest vocabulary supported by current records.
+The canonical `person_type` vocabulary should begin with **Mentor only**. The canonical IA and conceptual review support Mentor as a persistent type. This approves the vocabulary concept only: the five current profile assignments are unapproved and require independent provenance and editorial review. Kenner and Kunstenaar remain future candidates but have zero assignments and should not be seeded now.
 
 ## `medewerker_groep` audit
 
@@ -157,7 +161,7 @@ Sixteen events have no linked people. Total: one event with people and two event
 
 The field is only a person list. It carries no role, session title, appearance time, display order, featured flag, replay destination, or other participation data. Its ACF instructions direct editors to the profile-level `medewerker_rol`; that is a global workaround, not a relationship-specific event role. The historical `Event Spreker` and `Voelgoed Live Gas` group terms have zero assignments. Do not infer event roles from the global `Mentor` role or from Lynette's `Spreker` title.
 
-The permanent direct conversion `event_medewerkers → Person[]` is **not recommended**. Preserve the two observed edges in a deterministic source-to-target mapping and migrate them into the approved `event_participation` model after its fields and role semantics are designed.
+The permanent direct conversion `event_medewerkers → Person[]` is **not recommended**. The two observed edges (`763 → 753` and `763 → 757`) are `PENDING_PROVENANCE`; neither is approved for migration. If the event and linked Person records are approved as genuine data, record deterministic source-to-target mappings and migrate the edges into `event_participation` after its fields and role semantics are designed.
 
 ## Product relationships and copy automation
 
@@ -178,7 +182,7 @@ Runtime FluentSnippets file `wp-content/fluent-snippet-storage/9-acf-product-cop
 
 The second active runtime snippet, `10-vg-bricks-medewerker-queries.php`, is also FluentSnippets-managed and untracked. It registers Bricks query modes for event people, events and products per profile, product people, and product source event. These snippets and their triggers must be migrated together with their consumers. If `produk_medewerkers` starts targeting Person while the copy helper still reads `event_medewerkers`, a product save can repopulate legacy IDs.
 
-Product Person relationships should migrate **after** `event_participation`, with product field targets and copy automation updated atomically to resolve canonical Person IDs. Keep the original event/product pairs and identify manual versus copied values where provenance can be recovered; do not claim provenance that is not stored.
+Product Person relationships should migrate **after** `event_participation`, with product field targets and copy automation updated atomically to resolve canonical Person IDs. The three observed product-person edges are `PENDING_PROVENANCE`; migrate only after the product, source event where applicable, and linked Person are each approved. Preserve source values for rollback and identify manual versus copied values where provenance can be recovered; do not claim provenance that is not stored.
 
 ## Other Person-related domains
 
@@ -258,9 +262,9 @@ No records were merged. Zero-assignment terms in both taxonomies may be deprecat
 
 ## Readiness summary
 
-All five records require field and provenance review because the only long content duplicates the short bio and several canonical facts are absent. All five require taxonomy review because the assigned global Mentor type and Voelgoed Mentor grouping need confirmation. Lynette and Retha also require relationship review because they have event/product edges; the product edges include a trash record and no copy provenance.
+All five records require field and provenance review because the only long content duplicates the short bio and several canonical facts are absent. All five require taxonomy review because the assigned global Mentor type and Voelgoed Mentor grouping need confirmation. The approved `person_type` concept `Mentor` is a vocabulary decision only; all five current assignments remain unapproved for migration. Lynette and Retha also require relationship review because they have event/product edges; event 763's two edges and product 767/768's three edges are `PENDING_PROVENANCE`. The product edges include a trash record and no copy provenance.
 
-The row-level migration manifest records IDs, source facts, relationship counts, readiness, and a SHA-256 snapshot fingerprint for each profile. The audit fingerprint covers title, slug, status, timestamps, author, excerpt, content, featured-image ID, ACF values, taxonomy term IDs, and incoming valid ACF relationships; revisions are excluded. Recompute fingerprints and re-inventory all relationships immediately before migration.
+The row-level migration manifest is an inventory, not an approved migration list. It records IDs, source facts, relationship counts, readiness, a SHA-256 snapshot fingerprint, and a per-profile `migration_decision` of `DEFER` for each current row. The audit fingerprint covers title, slug, status, timestamps, author, excerpt, content, featured-image ID, ACF values, taxonomy term IDs, and incoming valid ACF relationships; revisions are excluded. Recompute fingerprints and re-inventory all relationships after approval and immediately before any migration.
 
 ## Mutation statement
 

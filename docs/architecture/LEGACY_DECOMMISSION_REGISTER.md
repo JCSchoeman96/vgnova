@@ -223,15 +223,15 @@ Do not remove an item before its removal gate passes. If a task finds a new bloc
 | Field | Record |
 |---|---|
 | Current state | `TEMPORARY TRANSITIONAL`. ACF Pro registers `medewerker` from a database-backed definition (`post_type_medewerker`, ID 741); no source-controlled registration was found. It is public, queryable, REST-visible, supports title/editor/thumbnail/excerpt/revisions, and uses the `/medewerkers/` archive/single base. Runtime has 5 published profiles and no draft, private, or trash profiles. |
-| Target state | Preserve existing profiles and consumers while the dedicated Person architecture task defines the migration and normalization mechanics. Do not create a parallel Person system. Keep `/mense/` as the approved canonical People destination unless a later explicit architecture decision changes it. |
+| Target state | Keep the current profiles and consumers operational while implementing the canonical Person foundation and resolving data provenance separately. The five current profiles are inventory records, not an approved migration corpus. Do not create a parallel Person system. Keep `/mense/` as the approved canonical People destination. |
 | Lifecycle status | `ADAPT` |
 | Why it exists | It provides one public contributor profile model for current staging work. |
 | Why it is legacy or why it is KEEP | It is the functioning runtime profile implementation, while the canonical IA defines a broader Person entity and the `/mense/` destination. Its continued operation does not make it permanently exempt from that architecture. |
-| Replacement | The approved canonical Person model and `/mense/` area. Exact migration and normalization mechanics remain for the Person architecture task. |
+| Replacement | The approved canonical Person model and `/mense/` area. The architecture mapping is defined; profile eligibility and migration authority remain unresolved per record. |
 | Dependencies / consumers | Three profile ACF fields; `medewerker_rol` and `medewerker_groep`; attached `content_topic` and `content_category` (zero profile assignments); `event_medewerkers` (2 edges); `produk_medewerkers` (3 edges); empty `broadcast_hosts`/`broadcast_guests` fields; Bricks templates 772, 773, 774, 124, and 1127, shared card 6b463f, and FluentSnippets query helper. |
 | Removal gate | Do not remove or rename `medewerker` until the approved migration maps and verifies every profile, relationship, URL, template, and consumer. |
-| Planned phase | Dedicated Person architecture, followed by profile and consumer migration. |
-| Evidence / notes | Task 5A found that all five profiles are authored by user 1 and have photos, short bios, and `public` status. Excerpt and `post_content` duplicate the short bio on every profile; only Lynette has the title `Spreker`. All five have `Mentor` and `Voelgoed Mentor`. The public archive and five singles return 200 and self-canonicalize; `/mense/` is available and currently 404. See `PERSON_CURRENT_STATE_AUDIT.md` and `PERSON_PROFILE_MIGRATION_MANIFEST.csv`. |
+| Planned phase | Task 5B Person foundation without legacy profile copies; Task 5C per-profile provenance decisions; domain consumer migration only for approved source data. |
+| Evidence / notes | Task 5A found all five profiles share the same creation timestamp, Pexels-style placeholder images, short bios duplicated in excerpt and content, and Mentor / Voelgoed Mentor assignments. Event 763 is named `Test Event`; linked products include QA/trash records. No repository/import/source provenance establishes the five profiles as genuine Voelgoed source data. These are caution indicators, not proof they are fixtures. All five decisions are `DEFER`; no profile or dependent relationship is approved for automatic migration. The archive and five singles return 200 and self-canonicalize; `/mense/` is available and currently 404. See `PERSON_CURRENT_STATE_AUDIT.md`, `PERSON_PROFILE_MIGRATION_MANIFEST.csv`, and `PERSON_MIGRATION_ARCHITECTURE.md`. |
 
 ### 13. `medewerker_rol` and `medewerker_groep`
 
@@ -241,12 +241,12 @@ Do not remove an item before its removal gate passes. If a task finds a new bloc
 | Target state | Keep stable professional profile classifications where useful. Move event-, episode-, article-, and course-specific roles into the relationship that carries that context. |
 | Lifecycle status | `ADAPT` |
 | Why it exists | These taxonomies support profile labels and group discovery. |
-| Why it is legacy or why it is KEEP | Task 5A classifies `Mentor` as the only initial persistent `person_type` candidate; `Kenner` and `Kunstenaar` remain unassigned candidates. `Spreker`, `Gas`, `Paneellid`, and `Fasiliteerder` are contextual; `Skrywer` is editorial relationship role; `Aanbieder` needs review. `Event Spreker` and `Voelgoed Live Gas` are contextual groups; `Voelgoed Mentor` may represent programme membership and needs confirmation. |
+| Why it is legacy or why it is KEEP | `Mentor` is the only approved initial `person_type` vocabulary concept; this does not approve any current Mentor assignment for migration. `Kenner` and `Kunstenaar` remain unassigned future candidates. `Spreker`, `Gas`, `Paneellid`, and `Fasiliteerder` are contextual; `Skrywer` is editorial relationship role; `Aanbieder` needs review. `Event Spreker` and `Voelgoed Live Gas` are contextual groups; `Voelgoed Mentor` may represent programme membership and needs confirmation. |
 | Replacement | A reviewed split between persistent profile classifications and contextual roles. No term migration is approved here. |
 | Dependencies / consumers | Profile archive filters, Bricks templates, profile records, event relationships, Voelgoed Live host/guest relationships, and any query helpers using these terms. |
 | Removal gate | Review every term and assignment against its domain. Migrate contextual values to verified relationship records, confirm whether `Voelgoed Mentor` is actual programme membership, and verify profile filters/templates before removing either taxonomy. Do not mechanically seed all terms into `person_type`. |
 | Planned phase | Person and relationship architecture, followed by role migration. |
-| Evidence / notes | Current term IDs, people, destinations, confidence, and rationale are in `PERSON_LEGACY_CLASSIFICATION_MAPPING.csv`. The recommended initial `person_type` vocabulary is Mentor only. |
+| Evidence / notes | Current term IDs, observed people, destinations, confidence, and rationale are in `PERSON_LEGACY_CLASSIFICATION_MAPPING.csv`. Mentor is the only approved initial vocabulary concept. All five current assignments remain unapproved pending per-profile provenance and editorial review. |
 
 ### 14. `team_member` and `team_department`
 
@@ -271,57 +271,57 @@ Do not remove an item before its removal gate passes. If a task finds a new bloc
 | Target state | Use one canonical Person entity. Store roles in the relationship context where the role depends on an event, article, course, product, episode, or programme. |
 | Lifecycle status | `DEFER` |
 | Why it exists | This target resolves duplicate person representations and distinguishes a person's profile from their role in a specific item. |
-| Why it is legacy or why it is KEEP | It is a planned replacement direction, not a live model. Current fields and profiles must remain available while the data model is designed. |
-| Replacement | The approved Person entity and contextual relationship structures, to be defined in a later phase. |
+| Why it is legacy or why it is KEEP | The Person architecture and field/relationship mapping are ready for implementation. The current five `medewerker` profiles are not approved for migration: all remain `DEFER` pending evidence about identity, source, demo/QA status, photos, biographies, classifications, and linked relationships. The Person foundation must not depend on copying them. |
+| Replacement | The approved Person entity and migration contract defined by the canonical IA and Task 5A; implement the Person foundation in Task 5B and relationship structures in their owning domain phases. |
 | Dependencies / consumers | `medewerker`; `team_member`; author and expert links; event participation; course instructors; product creators or endorsers; podcast hosts and guests; Voelgoed Live hosts and guests. |
 | Removal gate | Implement the canonical Person entity and topic attachment; map every source ID, field, classification, URL, and relationship. Migrate and verify consumers by domain. Remove legacy structures only after route/SEO verification, zero active consumers, and retained rollback evidence. |
-| Planned phase | Dedicated Person architecture, then data and consumer migration. |
-| Evidence / notes | Task 5A found no topic assignments on the five profiles and no Person CPT. `ContentTopicRoles.php` already defines the Person non-primary policy; `ContentTopicTaxonomyTest.php` and `ContentTopicRolesTest.php` need assertions when Person is introduced. See `PERSON_MIGRATION_ARCHITECTURE.md`. |
+| Planned phase | Task 5B: implement Person foundation without legacy data; Task 5C: decide `MIGRATE`, `DO_NOT_MIGRATE`, or `DEFER` per profile; then migrate approved relationships domain by domain. |
+| Evidence / notes | Task 5A found no topic assignments on the five profiles and no Person CPT. `ContentTopicRoles.php` already defines the Person non-primary policy; `ContentTopicTaxonomyTest.php` and `ContentTopicRolesTest.php` need assertions when Person is introduced. Person architecture is ready; data provenance is unresolved. See `PERSON_MIGRATION_ARCHITECTURE.md` and `PERSON_PROFILE_MIGRATION_MANIFEST.csv`. |
 
 ### 16. Event field `event_medewerkers`
 
 | Field | Record |
 |---|---|
 | Current state | `TEMPORARY TRANSITIONAL`. Active ACF field `event_medewerkers` is a multi-value relationship from Tickera `tc_events` to `medewerker`. There are 17 published events; one has two linked profiles, and 16 have none. |
-| Target state | Preserve the links but migrate to the approved `event_participation` model so event-specific role and participation metadata can be represented. |
+| Target state | Evaluate each observed pair and migrate only provenance-approved event/person edges to `event_participation`, which can represent event-specific role and participation metadata. |
 | Lifecycle status | `ADAPT` |
 | Why it exists | It links event records to the public contributor profiles involved in the event. |
 | Why it is legacy or why it is KEEP | The simple list stores no role, session, appearance time, display order, featured status, or replay destination. Profile-level role/group terms were a global workaround and cannot reliably represent event-specific roles. |
 | Replacement | `event_participation`. Do not permanently map the field to a bare Person list and do not infer contextual roles from `Mentor` or the profile title. |
 | Dependencies / consumers | Tickera event editors and singles; ACF group `Event Medewerkers`; `medewerker` profiles; event templates and query loops; product event links and auto-fill. |
-| Removal gate | Design and implement the relationship model. Migrate all event-person pairs and reviewed contextual roles. Verify event and profile pages, queries, and product auto-fill before disabling/removing the field. |
-| Planned phase | Task 6A+ event participation design and migration, after Person profile foundation and copy. |
-| Evidence / notes | ACF group `Event Medewerkers` has one multi-value relationship to `medewerker`. Task 5A found event 763 linked to profiles 753 and 757; no contextual role field is present. |
+| Removal gate | Design and implement the relationship model. Resolve provenance for each event-person pair and migrate only approved edges with reviewed contextual roles. Verify event and profile pages, queries, and product auto-fill before disabling/removing the field. |
+| Planned phase | Task 6A+ event participation design and migration, after Task 5B foundation and Task 5C profile eligibility decisions. |
+| Evidence / notes | ACF group `Event Medewerkers` has one multi-value relationship to `medewerker`. Event 763 (`Test Event`) links profiles 753 and 757, but both edges are `PENDING_PROVENANCE`; neither is approved for automatic migration. No contextual role field is present. |
 
 ### 17. Event participation model
 
 | Field | Record |
 |---|---|
-| Current state | `FUTURE / NOT YET IMPLEMENTED`. No `event_participation` model is registered. Task 5A verified two live event-person edges to preserve. |
+| Current state | `FUTURE / NOT YET IMPLEMENTED`. No `event_participation` model is registered. Task 5A observed two event-person edges; both are `PENDING_PROVENANCE`, not approved migration data. |
 | Target state | Provide the canonical Event-to-Person participation relationship and the contextual metadata approved for event programming and display. |
 | Lifecycle status | `DEFER` |
 | Why it exists | It is the planned path for contextual event roles rather than treating each role as a global person identity. |
 | Why it is legacy or why it is KEEP | It is the approved future relationship direction. The current list is insufficient to store event roles and other participation facts; a direct list conversion would lose that distinction. |
 | Replacement | The designed and implemented `event_participation` contract, with event/person mapping and contextual role handling. |
 | Dependencies / consumers | Tickera `tc_events`; `event_medewerkers`; `medewerker`; event profiles, schedules, templates, and products sourced from events. |
-| Removal gate | Approve participation fields and queries; build and verify the target; migrate and reconcile every event edge; update templates and the product copy workflow; then verify no consumer depends on the old field. |
+| Removal gate | Approve participation fields and queries; build and verify the target; classify every event edge, migrate only approved edges, and explicitly resolve excluded or deferred pairs; update templates and the product copy workflow; then verify no consumer depends on the old field. |
 | Planned phase | Event relationship architecture. |
-| Evidence / notes | Task 5A confirms 1/17 published events with people, two edges, and no contextual metadata. The current ACF field remains the simple relationship. |
+| Evidence / notes | Task 5A confirms 1/17 published events with people and two edges without contextual metadata. Event 763 and both linked profiles require provenance approval before either edge is migrated. The current ACF field remains the simple relationship. |
 
 ### 18. Product event and person relationships
 
 | Field | Record |
 |---|---|
 | Current state | `TEMPORARY TRANSITIONAL`. Product fields are `produk_bron_event` and `produk_medewerkers`. There are 20 products (9 publish, 7 draft, 1 private, 3 trash), 3 source-event links, and 3 product-person edges on two products, including a trash product. Active runtime snippet `9-acf-product-copy.php` copies event people into an empty product field. |
-| Target state | Keep useful product-event and product-person links, but target canonical Person IDs and source event participants from the approved event relationship model. |
+| Target state | Keep only verified product-event and product-person data; target canonical Person IDs and source event participants from the approved event relationship model. |
 | Lifecycle status | `ADAPT` |
 | Why it exists | It links event-derived products to the event and its contributors. |
 | Why it is legacy or why it is KEEP | The product helper reads legacy `event_medewerkers` and writes `produk_medewerkers`. Changing product targets without replacing it could repopulate legacy IDs. The runtime snippet is FluentSnippets-managed and its executable file is not source-controlled. Manual versus copied product edges are not recorded. |
 | Replacement | Product-to-Person relationships and editor automation that resolves canonical Person IDs from the event participation model, preserving the current no-overwrite behavior for manual selections. |
 | Dependencies / consumers | WooCommerce product editor; ACF group `Medewerker Produkte`; `produk_bron_event`; `produk_medewerkers`; `event_medewerkers`; FluentSnippets `9-acf-product-copy.php`; Bricks product templates. |
-| Removal gate | Reconcile every source-event and product-person edge across all statuses. Replace the copy helper and query helper atomically with field retargeting; verify source mapping, empty-field copy, manual-selection preservation, Bricks displays, and editor flow before disabling/removing old fields or snippets. |
+| Removal gate | Reconcile every source-event and product-person edge across all statuses. Migrate only provenance-approved edges and explicitly resolve exclusions/deferred pairs. Replace the copy helper and query helper atomically with field retargeting; verify source mapping, empty-field copy, manual-selection preservation, Bricks displays, and editor flow before disabling/removing old fields or snippets. |
 | Planned phase | After Task 6A+ event participation and Person relation design; migrate products and automation together. |
-| Evidence / notes | Product 767 (published) links event 763 and Lynette; product 768 (trash) links event 763, Lynette, and Retha. Product 765 (trash) links event 763. Current helper is published, active on all pages, hooks `acf/save_post` priority 20; no copy provenance field exists. |
+| Evidence / notes | Product 767 (published) links event 763 and profile 753; product 768 (trash) links event 763 and profiles 753/757. These three product-person edges are `PENDING_PROVENANCE`; none is approved for automatic migration. Product 765 (trash) links event 763. The product, source event, and linked Person must each pass provenance review before an edge is migrated. Current helper is published, active on all pages, hooks `acf/save_post` priority 20; no copy provenance field exists. |
 
 ### 19. Internal entity `uitsending`
 
@@ -493,14 +493,14 @@ Do not remove an item before its removal gate passes. If a task finds a new bloc
 | Field | Record |
 |---|---|
 | Current state | `FUTURE / NOT YET IMPLEMENTED`. The canonical IA approves the `person` entity and `/mense/`. Runtime remains `medewerker` at `/medewerkers/`. Task 5A collision checks found no page, rewrite, taxonomy route, Bricks route, redirect, menu, or internal URL collision; `/mense/` currently returns 404. |
-| Target state | Implement the approved Person destination at `/mense/` using staged profile and consumer migration. |
+| Target state | Implement the approved Person destination at `/mense/` using a staged foundation and provenance-gated profile and consumer migration. |
 | Lifecycle status | `DEFER` |
 | Why it exists | It is the approved public destination for the canonical Person model. |
 | Why it is legacy or why it is KEEP | The canonical destination is approved but not yet implemented. Runtime currently exposes the transitional archive and singles; no redirect or Person record exists. |
 | Replacement | The canonical Person entity and `/mense/` destination defined by the locked IA. |
 | Dependencies / consumers | Five published profiles; event and product relations; Voelgoed Live hosts and guests; Bricks profile pages; inbound links; SEO. |
-| Removal gate | Copy and verify Person profiles, relationships, templates, consumers, internal links, canonicals and indexing behavior first. Verify equivalent single destinations and then redirect archive/singles. The `/mense/` destination does not need re-approval. |
-| Planned phase | Person architecture and migration planning; `/mense/` is already approved. |
+| Removal gate | Resolve every profile decision and copy/verify only `MIGRATE` profiles. Migrate only provenance-approved relationships; verify templates, consumers, internal links, canonicals, and indexing behavior before redirects. Verify equivalent single destinations and then redirect archive/singles. The `/mense/` destination does not need re-approval. |
+| Planned phase | Task 5B Person foundation without legacy profile copies; Task 5C provenance decisions; later routes only after eligible records and consumers are verified. `/mense/` is already approved. |
 | Evidence / notes | `/mense/` is available but currently 404. The five legacy singles return 200 with self-canonical URLs; no robots meta or `X-Robots-Tag` was observed. See Task 5A current-state audit and migration contract. |
 
 ### 31. Competition route `/kompetisies/`
