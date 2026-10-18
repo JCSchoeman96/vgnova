@@ -15,15 +15,21 @@ $service_file = dirname(__DIR__) . '/includes/Event/EventParticipationService.ph
 if (is_file($service_file)) {
     require_once $service_file;
 }
+$admin_file = dirname(__DIR__) . '/includes/Event/EventParticipationAdmin.php';
+if (is_file($admin_file)) {
+    require_once $admin_file;
+}
 
 require_once __DIR__ . '/EventParticipationRepositoryTest.php';
 require_once __DIR__ . '/EventRoleSeederTest.php';
 require_once __DIR__ . '/EventParticipationServiceTest.php';
+require_once __DIR__ . '/EventParticipationAdminTest.php';
 
 $test_suites = [
     new EventParticipationRepositoryTest(),
     new EventRoleSeederTest(),
     new EventParticipationServiceTest(),
+    new EventParticipationAdminTest(),
 ];
 $passed = 0;
 $failed = 0;

@@ -1,11 +1,11 @@
-# Voelgoed Platform Core content topic slice
+# Voelgoed Platform Core source modules
 
 This directory is the current canonical, source-controlled Platform Core code
-in the `vgnova` repository. It tracks the `content_topic` module installed into
-the existing Voelgoed Platform Core plugin at
+in the `vgnova` repository. It tracks the `content_topic` and Event Participation
+modules installed into the existing Voelgoed Platform Core plugin at
 `wp-content/plugins/voelgoed-platform-core`. The Local WordPress copy is not a
-Git checkout. `integration.patch` records the two bootstrap changes made to
-load and register this module.
+Git checkout. `integration.patch` records the bootstrap changes made to load
+the source-controlled modules and register their lifecycle components.
 
 Any Platform Core code change must first exist in this source-controlled
 module. The active local WordPress plugin directory is a runtime deployment
@@ -60,3 +60,30 @@ If the legacy terms, assignments, canonical tree, or object types changed
 before apply, it stopped without writing. The migration recorded only
 canonical relationships it created. Rollback removed those recorded
 relationships and left legacy category data and unrelated topic assignments in place.
+
+## Event Participation foundation
+
+The Event Participation implementation lives in `includes/Event/`:
+
+- `EventParticipationRepository` reads canonical relationships and duplicate pairs.
+- `EventParticipationService` validates and creates participations.
+- `EventParticipationAdmin` validates ACF submissions and derives admin titles.
+- `EventRoleSeeder` seeds the approved `event_role` vocabulary on request.
+
+Run the focused checks with:
+
+```sh
+php site-code/voelgoed-platform-core/tests/run-event-participation-tests.php
+```
+
+Seed the approved role terms through WP-CLI after the ACF taxonomy is registered:
+
+```sh
+wp vg-event-role-setup
+```
+
+Runtime deployment is separate from changes to this source directory. Apply
+`integration.patch` to the runtime plugin bootstrap and deploy all four Event
+classes before expecting the admin hooks or seeder command to be available.
+Sync only the three Task 6A ACF JSON keys using the documented targeted procedure;
+do not run a global ACF JSON sync.
