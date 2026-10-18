@@ -4,7 +4,7 @@
 **Branch:** `docs/event-consumer-readiness-6b`
 **Base:** `origin/main` at `c2a5d7560bdd7d96b5a842dfa6c268060db7a3ae`
 **Worktree:** `.worktrees/docs-event-consumer-readiness-6b`
-**PR:** Pending creation; target `main`; merge is not authorized
+**PR:** [#22](https://github.com/JCSchoeman96/vgnova/pull/22) targeting `main`; open and unmerged
 
 ## Task outcome
 
