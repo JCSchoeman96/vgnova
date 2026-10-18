@@ -2,8 +2,8 @@
 
 **Status:** Active governance register
 **Inspection date:** 2026-10-18
-**Repository baseline:** origin/main at 33aae1f7d2c564ccb4117dbefafeeda83a676e66
-**Runtime:** Local WordPress at localhost:10039, inspected through Novamira. Task 5C used read-only runtime APIs and SELECT statements only; WordPress writes = 0.
+**Repository baseline:** origin/main at c2a5d7560bdd7d96b5a842dfa6c268060db7a3ae
+**Runtime:** Local WordPress at localhost:10039, inspected through Novamira and WP-CLI. Tasks 5C and 6B used read-only runtime calls; WordPress writes = 0.
 
 This register is the authoritative ledger for architecture that must stay, adapt, migrate, or leave. It tracks live legacy systems and future replacements so a replacement can be completed before its consumers or data are removed.
 
@@ -231,7 +231,7 @@ Do not remove an item before its removal gate passes. If a task finds a new bloc
 | Dependencies / consumers | Three profile ACF fields; `medewerker_rol` and `medewerker_groep`; attached `content_topic` and `content_category` (zero profile assignments); `event_medewerkers` (2 edges); `produk_medewerkers` (3 edges); empty `broadcast_hosts`/`broadcast_guests` fields; Bricks templates 772, 773, 774, 124, and 1127, shared card 6b463f, and FluentSnippets query helper. |
 | Removal gate | Do not remove or rename `medewerker` until the approved migration maps and verifies every profile, relationship, URL, template, and consumer. |
 | Planned phase | Task 5B Person foundation without legacy profile copies; Task 5C read-only per-profile provenance decisions completed; Task 5D only for independently approved MIGRATE rows if any are authorized later; domain consumer migration only for approved source data. |
-| Evidence / notes | Task 5C independently decided 753–757 DEFER (MIGRATE=0; DO_NOT_MIGRATE=0; DEFER=5). No authoritative source-origin artifact was found; QA/rebuild indicators do not prove the profiles themselves are fixtures. The five event/product edges were independently marked EXCLUDE and remain present. Photos are Pexels stock without a subject link and are OMIT separately from profile identity. No Person targets exist; Person count is 0. See PERSON_PROFILE_PROVENANCE_AUDIT.md, PERSON_PROFILE_PROVENANCE_EVIDENCE.csv, PERSON_RELATIONSHIP_PROVENANCE.csv, PERSON_PROFILE_MIGRATION_MANIFEST.csv, and POST_TASK_5C_CURRENT_STATE.md. |
+| Evidence / notes | Task 5C independently decided 753–757 DEFER (MIGRATE=0; DO_NOT_MIGRATE=0; DEFER=5). No authoritative source-origin artifact was found; QA/rebuild indicators do not prove the profiles themselves are fixtures. The five event/product edges were independently marked EXCLUDE and remain present. Photos are Pexels stock without a subject link and are OMIT separately from profile identity. No Person targets exist; Person count is 0. Task 6B confirms Event Single 774 can cut over independently; Templates 772 and 773, the shared card, and product consumers remain legacy. See PERSON_PROFILE_PROVENANCE_AUDIT.md, PERSON_PROFILE_PROVENANCE_EVIDENCE.csv, PERSON_RELATIONSHIP_PROVENANCE.csv, PERSON_PROFILE_MIGRATION_MANIFEST.csv, POST_TASK_5C_CURRENT_STATE.md, and EVENT_CONSUMER_MIGRATION_AUDIT.md. |
 
 ### 13. `medewerker_rol` and `medewerker_groep`
 
@@ -288,10 +288,10 @@ Do not remove an item before its removal gate passes. If a task finds a new bloc
 | Why it exists | It links event records to the public contributor profiles involved in the event. |
 | Why it is legacy or why it is KEEP | The simple list stores no role, session, appearance time, display order, featured status, or replay destination. Profile-level role/group terms were a global workaround and cannot reliably represent event-specific roles. |
 | Replacement | `event_participation`. Do not permanently map the field to a bare Person list and do not infer contextual roles from `Mentor` or the profile title. |
-| Dependencies / consumers | Tickera event editors and singles; ACF group `Event Medewerkers`; `medewerker` profiles; event templates and query loops; product event links and auto-fill. |
-| Removal gate | Resolve provenance for each event-person pair and migrate only approved edges with reviewed contextual roles. Verify Event Single 774, the Medewerker reverse-event query, and product auto-fill against approved targets before disabling/removing the field. Keep the field active while those legacy consumers remain. |
-| Planned phase | Task 6A foundation complete; event data and consumer migration remains gated by individual provenance approval. |
-| Evidence / notes | ACF group Event Medewerkers has one multi-value relationship to medewerker. Event 763 links profiles 753 and 757. Task 5C marks both edges EXCLUDE because the explicit test/QA title/slug and sparse event fields support that edge decision. Both source relationships remain unchanged. |
+| Dependencies / consumers | Tickera event editors; ACF group `Event Medewerkers`; `medewerker` profiles; Event Single 774 native participant loop; Medewerker Single 772 reverse-event query; product event links, product templates, and auto-fill. The Bricks helper's `event_medewerkers` mode is separate from the native 774 query. |
+| Removal gate | Resolve provenance for each event-person pair and migrate only approved edges with reviewed contextual roles. Cut over and verify Event Single 774 against canonical Event Participation data. Verify the Medewerker reverse-event query, product auto-fill, all other templates, and every write path against approved targets before disabling/removing the field. Keep the field active while those legacy consumers remain. |
+| Planned phase | Task 6A foundation complete; Task 6B proves Event Single 774 can be cut over independently in Task 6C. Event data migration remains gated by individual provenance approval. |
+| Evidence / notes | ACF group Event Medewerkers has one multi-value relationship to medewerker. Event 763 links profiles 753 and 757. Task 5C marks both edges EXCLUDE because the explicit test/QA title/slug and sparse event fields support that edge decision. Both source relationships remain unchanged. Task 6B found that native Bricks loop `be9e2f` queries `_event_medewerkers` on profile posts even though the relationship is stored on the Event; the loop returns no matches for Event 763 and its section remains visible. The canonical loop can replace it without data migration, but Task 6C must hide the whole section for an empty canonical result and must not add legacy fallback. Template 772 stays `KEEP_LEGACY / BLOCKED_BY_DATA`; product consumers remain legacy. See EVENT_CONSUMER_MIGRATION_AUDIT.md and EVENT_CONSUMER_MIGRATION_MAP.csv. |
 
 ### 17. Event participation model
 
@@ -304,9 +304,9 @@ Do not remove an item before its removal gate passes. If a task finds a new bloc
 | Why it is legacy or why it is KEEP | This is the approved canonical relationship model. The legacy list remains insufficient to store event roles and participation order; a direct list conversion would lose that distinction. |
 | Replacement | None. `event_participation` is the canonical relationship model. |
 | Dependencies / consumers | Tickera `tc_events`; `event_medewerkers`; `medewerker`; event profiles, schedules, templates, and products sourced from events. |
-| Removal gate | The foundation is implemented. Resolve the five DEFER Person profiles before any edge migration; classify every event edge and migrate only approved edges; update Event Single 774, the Medewerker reverse-event query, and the product copy workflow; then verify routes, templates, and all consumers before removing the old field. |
-| Planned phase | Task 6A foundation complete; event data and consumer migration not started. |
-| Evidence / notes | Event 763 links profiles 753 and 757. Task 5C excludes both edges because the source event is explicitly a test/QA record. This edge decision does not classify either profile as a fixture. Task 6A created no participation records and did not change the current ACF field or consumers. |
+| Removal gate | The foundation is implemented. Resolve the five DEFER Person profiles before any edge migration; classify every event edge and migrate only approved edges. Cut over Event Single 774 in Task 6C using canonical-only data; separately resolve the Medewerker reverse-event query and product copy workflow. Verify routes, templates, and every consumer before removing the old field. |
+| Planned phase | Task 6A foundation complete; Event Single consumer cutover is ready for Task 6C; reverse-profile and product consumers remain in later phases. Event data migration has not started. |
+| Evidence / notes | Event 763 links profiles 753 and 757. Task 5C excludes both edges because the source event is explicitly a test/QA record. This edge decision does not classify either profile as a fixture. Task 6A created no participation records and did not change the current ACF field or consumers. Task 6B confirms the canonical Event query can be introduced independently while Person and Event Participation counts are zero. Event 763 must render zero canonical participants; the source edges remain present and unchanged. See EVENT_CONSUMER_MIGRATION_AUDIT.md and POST_TASK_6B_CURRENT_STATE.md. |
 
 ### 18. Product event and person relationships
 
