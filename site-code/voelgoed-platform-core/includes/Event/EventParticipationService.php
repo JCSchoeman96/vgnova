@@ -8,7 +8,7 @@ defined('ABSPATH') || exit;
 /** Validates and writes canonical Event Participation relationships. */
 final class EventParticipationService
 {
-    private const ALLOWED_STATUSES = ['publish', 'draft', 'pending', 'private', 'future'];
+    private const ALLOWED_STATUSES = ['publish', 'draft', 'pending', 'private'];
 
     private EventParticipationRepository $repository;
 

@@ -1787,9 +1787,9 @@ selected Event had legacy people before QA:
 0
 
 QA Person created:
-1302 (temporary)
+1306 (temporary)
 QA participation created:
-1303 (temporary)
+1307 (temporary)
 duplicate attempt rejected:
 PASS
 QA Person hard-deleted:
@@ -1797,6 +1797,9 @@ PASS
 QA participation hard-deleted:
 PASS
 selected Event unchanged:
+PASS
+
+Person-title change updates participation title:
 PASS
 
 QA retired the participation while its Person endpoint was trashed, restored both records, then published the participation:
@@ -1860,13 +1863,13 @@ Event Participation foundation:
 3/3
 
 Platform Core Event Participation:
-58/58
+64/64
 
 existing Platform Core Content Topic:
 67/67
 
 Platform Core combined:
-67 + 58 = 125
+67 + 64 = 131
 
 Person foundation:
 10/10

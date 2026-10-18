@@ -308,7 +308,7 @@ final class EventParticipationServiceTest
 
     public function test_create_accepts_each_supported_post_status(): void
     {
-        foreach (['publish', 'draft', 'pending', 'private', 'future'] as $status) {
+        foreach (['publish', 'draft', 'pending', 'private'] as $status) {
             $service = $this->service();
             $this->add_endpoint(101, 'tc_events', 'Vroue-aand');
             $this->add_endpoint(201, 'person', 'Mia Botha');
@@ -324,9 +324,9 @@ final class EventParticipationServiceTest
         }
     }
 
-    public function test_create_rejects_retired_and_internal_statuses_before_insert(): void
+    public function test_create_rejects_retired_internal_and_unsupported_future_statuses_before_insert(): void
     {
-        foreach (['trash', 'auto-draft', 'inherit'] as $status) {
+        foreach (['trash', 'auto-draft', 'inherit', 'future'] as $status) {
             $service = $this->service();
             $this->add_endpoint(101, 'tc_events', 'Vroue-aand');
             $this->add_endpoint(201, 'person', 'Mia Botha');
@@ -341,6 +341,21 @@ final class EventParticipationServiceTest
             );
             vgpc_test_same([], $GLOBALS['vgpc_test_insert_post_calls'], 'An unsupported status must not insert a participation.');
         }
+    }
+
+    public function test_create_fails_closed_when_candidate_post_read_fails(): void
+    {
+        $service = $this->service();
+        $this->add_endpoint(101, 'tc_events', 'Vroue-aand');
+        $this->add_endpoint(201, 'person', 'Mia Botha');
+        $this->add_participation(301, 'publish', 101, 201);
+        $GLOBALS['vgpc_test_fail_get_post_id'] = 301;
+
+        $result = $service->create(101, 201);
+
+        vgpc_test_true(is_wp_error($result), 'A candidate post read failure must stop creation.');
+        vgpc_test_same('participation_fresh_check_failed', $result->get_error_code(), 'The service must report an incomplete authoritative read.');
+        vgpc_test_same([], $GLOBALS['vgpc_test_insert_post_calls'], 'A failed candidate read must not permit an insert.');
     }
 
     public function test_post_insert_write_failure_hard_deletes_only_the_new_participation(): void

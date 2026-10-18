@@ -388,6 +388,117 @@ final class EventParticipationAdminTest
         vgpc_test_same(2, count($GLOBALS['vgpc_test_update_post_calls']), 'The Person and related participation must each be updated once.');
     }
 
+    public function test_title_sync_rechecks_status_after_waiting_for_participation_lock(): void
+    {
+        $admin = $this->fixture();
+        $admin->register();
+        $this->add_endpoint(101, 'tc_events', 'Old Event title');
+        $this->add_endpoint(201, 'person', 'Mia Botha');
+        $this->add_participation(301, 'publish', 101, 201, 'Old derived title');
+        $GLOBALS['wpdb']->get_var_handler = function (string $query, array $args = []): string {
+            if ($query === 'SELECT GET_LOCK(%s, %d)') {
+                // A competing request completes its trash transition before title sync gets the lock.
+                $GLOBALS['vgpc_test_posts'][301]->post_status = 'trash';
+            }
+
+            return '1';
+        };
+
+        wp_update_post(['ID' => 101, 'post_title' => 'New Event title'], true);
+
+        vgpc_test_same('trash', get_post_status(301), 'A title update must not restore a participation trashed while lock acquisition waited.');
+        vgpc_test_same('Old derived title', get_the_title(301), 'A trashed participation must not receive a stale title update.');
+        vgpc_test_same(1, count($GLOBALS['vgpc_test_update_post_calls']), 'Only the Event update must reach WordPress.');
+        do_action('shutdown');
+    }
+
+    public function test_title_sync_uses_current_pair_after_waiting_for_participation_lock(): void
+    {
+        $admin = $this->fixture();
+        $admin->register();
+        $this->add_endpoint(101, 'tc_events', 'Old Event title');
+        $this->add_endpoint(102, 'tc_events', 'Current Event title');
+        $this->add_endpoint(201, 'person', 'Old Person');
+        $this->add_endpoint(202, 'person', 'Current Person');
+        $this->add_participation(301, 'publish', 101, 201, 'Old derived title');
+        $GLOBALS['vgpc_test_enable_query_cache'] = true;
+        get_field(EventParticipationRepository::EVENT_FIELD, 301);
+        get_field(EventParticipationRepository::PERSON_FIELD, 301);
+        $GLOBALS['wpdb']->get_var_handler = function (string $query, array $args = []): string {
+            if ($query === 'SELECT GET_LOCK(%s, %d)') {
+                // A competing edit changes the pair before title sync gets the lock.
+                $GLOBALS['vgpc_test_meta'][301][EventParticipationRepository::EVENT_FIELD] = 102;
+                $GLOBALS['vgpc_test_meta'][301][EventParticipationRepository::PERSON_FIELD] = 202;
+            }
+
+            return '1';
+        };
+
+        wp_update_post(['ID' => 101, 'post_title' => 'Renamed Event'], true);
+
+        vgpc_test_same('Current Event title — Current Person', get_the_title(301), 'Title sync must derive its title from the current endpoints after acquiring the participation lock.');
+        vgpc_test_same(102, get_field(EventParticipationRepository::EVENT_FIELD, 301), 'Title sync must preserve the current Event endpoint.');
+        vgpc_test_same(202, get_field(EventParticipationRepository::PERSON_FIELD, 301), 'Title sync must preserve the current Person endpoint.');
+        do_action('shutdown');
+    }
+
+    public function test_nested_acf_save_does_not_release_outer_title_sync_locks(): void
+    {
+        $admin = $this->fixture();
+        $admin->register();
+        $this->add_endpoint(101, 'tc_events', 'Vroue-aand');
+        $this->add_endpoint(201, 'person', 'Mia Botha');
+        $this->add_participation(301, 'draft', 101, 201, 'Old derived title');
+        $admin->validate_pair_before_post_save(
+            ['post_type' => EventParticipationRepository::POST_TYPE, 'post_status' => 'draft'],
+            ['ID' => 301]
+        );
+        $GLOBALS['vgpc_test_acf_save_during_update'] = true;
+
+        do_action('acf/save_post', 301);
+
+        vgpc_test_same([0], $GLOBALS['vgpc_test_acf_save_release_counts'], 'A nested ACF save must leave the outer title update locks held.');
+        vgpc_test_same('Vroue-aand — Mia Botha', get_the_title(301), 'Title sync must still update the derived title.');
+        $release_count = count(array_filter(
+            $GLOBALS['wpdb']->queries,
+            static fn (array $query): bool => $query['query'] === 'SELECT RELEASE_LOCK(%s)'
+        ));
+        vgpc_test_same(2, $release_count, 'The outer ACF save must release its participation and pair locks after title sync returns.');
+    }
+
+    public function test_title_sync_releases_new_locks_in_reverse_order(): void
+    {
+        $admin = $this->fixture();
+        $admin->register();
+        $this->add_endpoint(101, 'tc_events', 'Old Event title');
+        $this->add_endpoint(201, 'person', 'Mia Botha');
+        $this->add_participation(301, 'publish', 101, 201, 'Old derived title');
+        $GLOBALS['vgpc_test_apply_wp_update_filter'] = true;
+
+        wp_update_post(['ID' => 101, 'post_title' => 'New Event title'], true);
+
+        $lock_queries = array_values(array_filter(
+            $GLOBALS['wpdb']->queries,
+            static fn (array $query): bool => in_array($query['query'], [
+                'SELECT GET_LOCK(%s, %d)',
+                'SELECT RELEASE_LOCK(%s)',
+            ], true)
+        ));
+        vgpc_test_same(
+            [
+                'SELECT GET_LOCK(%s, %d)',
+                'SELECT GET_LOCK(%s, %d)',
+                'SELECT RELEASE_LOCK(%s)',
+                'SELECT RELEASE_LOCK(%s)',
+            ],
+            array_column($lock_queries, 'query'),
+            'Title sync must acquire both locks and release them after the update.'
+        );
+        vgpc_test_same($lock_queries[0]['args'][0], $lock_queries[3]['args'][0], 'The participation lock must be released last.');
+        vgpc_test_same($lock_queries[1]['args'][0], $lock_queries[2]['args'][0], 'The target pair lock must be released first.');
+        vgpc_test_same('New Event title — Mia Botha', get_the_title(301), 'The title update must persist after its locks are released.');
+    }
+
     public function test_unrelated_post_type_does_not_mutate_participations(): void
     {
         $admin = $this->fixture();

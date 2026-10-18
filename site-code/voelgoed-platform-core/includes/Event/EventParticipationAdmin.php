@@ -170,6 +170,10 @@ final class EventParticipationAdmin
     /** Recalculate the title after ACF has saved a participation's endpoints. */
     public function handle_acf_save(mixed $post_id): void
     {
+        if ($this->syncing_titles) {
+            return;
+        }
+
         try {
             $post_id = $this->normalize_id($post_id);
             if ($post_id <= 0 || get_post_type($post_id) !== EventParticipationRepository::POST_TYPE) {
@@ -259,29 +263,43 @@ final class EventParticipationAdmin
 
     private function sync_participation_title(int $participation_id): void
     {
-        if (
-            $this->syncing_titles
-            || get_post_type($participation_id) !== EventParticipationRepository::POST_TYPE
-            || get_post_status($participation_id) === 'trash'
-        ) {
+        if ($this->syncing_titles || $participation_id <= 0) {
             return;
         }
 
-        $event_id = $this->normalize_id(get_field(EventParticipationRepository::EVENT_FIELD, $participation_id));
-        $person_id = $this->normalize_id(get_field(EventParticipationRepository::PERSON_FIELD, $participation_id));
-        $title = $this->service->title_for_pair($event_id, $person_id);
-        if (is_wp_error($title) || get_the_title($participation_id) === $title) {
-            return;
-        }
+        $this->pair_lock->with_scoped_locks(function () use ($participation_id): void {
+            if (! $this->pair_lock->acquire_participation($participation_id)) {
+                return;
+            }
 
-        $this->syncing_titles = true;
-        try {
-            wp_update_post([
-                'ID' => $participation_id,
-                'post_title' => $title,
-            ], true);
-        } finally {
-            $this->syncing_titles = false;
-        }
+            $stored_pair = $this->repository->stored_pair_ids_fresh($participation_id);
+            if ($stored_pair === null) {
+                return;
+            }
+
+            $post = get_post($participation_id);
+            if (
+                ! is_object($post)
+                || ($post->post_type ?? null) !== EventParticipationRepository::POST_TYPE
+                || ($post->post_status ?? null) === 'trash'
+            ) {
+                return;
+            }
+
+            $title = $this->service->title_for_pair($stored_pair['event_id'], $stored_pair['person_id']);
+            if (is_wp_error($title) || get_the_title($participation_id) === $title) {
+                return;
+            }
+
+            $this->syncing_titles = true;
+            try {
+                wp_update_post([
+                    'ID' => $participation_id,
+                    'post_title' => $title,
+                ], true);
+            } finally {
+                $this->syncing_titles = false;
+            }
+        });
     }
 }

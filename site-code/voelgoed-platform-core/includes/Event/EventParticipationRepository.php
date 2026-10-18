@@ -165,6 +165,9 @@ final class EventParticipationRepository
                 return null;
             }
             $post = get_post($id);
+            if ($this->database_has_error()) {
+                return null;
+            }
             if (
                 ! is_object($post)
                 || ($post->post_type ?? null) !== self::POST_TYPE

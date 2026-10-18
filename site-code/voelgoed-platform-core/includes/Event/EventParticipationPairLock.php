@@ -61,6 +61,22 @@ final class EventParticipationPairLock
         return true;
     }
 
+    /**
+     * Run an operation and release only locks acquired inside it, in reverse order.
+     */
+    public function with_scoped_locks(callable $operation): mixed
+    {
+        $held_before = array_keys($this->held_locks);
+        try {
+            return $operation();
+        } finally {
+            $acquired_in_scope = array_values(array_diff(array_keys($this->held_locks), $held_before));
+            foreach (array_reverse($acquired_in_scope) as $lock_name) {
+                $this->release_lock($lock_name);
+            }
+        }
+    }
+
     public function release(int $event_id, int $person_id): bool
     {
         if ($event_id <= 0 || $person_id <= 0) {

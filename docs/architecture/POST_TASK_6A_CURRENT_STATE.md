@@ -38,6 +38,8 @@ The deployed Event class files compare byte-for-byte with the source module. Run
 
 The pre-deployment snapshot is retained at `/tmp/vgnova-task6a-runtime-predeploy-20261018`.
 
+The final review fixes were deployed from the source module after backing up the active Event classes to `/tmp/vgnova-task6a-round4-runtime-backup-20261018`. All four deployed Event class files passed byte-for-byte comparison with the source. The bootstrap was unchanged in this deployment.
+
 The Local ACF JSON path before Task 6A pointed to `/home/jcschoeman96/projects/current/vgnova/site-code/acf-json/`. It now points to:
 
 ```text
@@ -50,7 +52,7 @@ The default Novamira MCP profile resolved to a different installation (`DanOptic
 
 ## QA run and cleanup
 
-The final runtime QA run after the round 2 review fixes passed on 2026-10-18 using published Event 151. It created temporary Person 1302 and participation 1303, checked the approved roles `paneellid` and `spreker`, used display order 17, and verified trashing a participation while its Person endpoint was trashed followed by restoration and republishing.
+The final runtime QA run after the round 3 review fixes passed on 2026-10-18 using published Event 151. It created temporary Person 1306 and participation 1307, checked the approved roles `paneellid` and `spreker`, used display order 17, verified title updates after changing the Person title, and verified trashing a participation while its Person endpoint was trashed followed by restoration and republishing.
 
 | QA check | Result |
 |---|---|
@@ -59,6 +61,7 @@ The final runtime QA run after the round 2 review fixes passed on 2026-10-18 usi
 | Participation has no public route | PASS |
 | Duplicate Event × Person pair rejected | PASS |
 | Invalid and trashed endpoint rejected | PASS |
+| Participation title follows the renamed Person | PASS |
 | Temporary Person and participation removed | PASS |
 | QA token and temporary relationships absent | PASS |
 | Protected runtime state unchanged | PASS |
@@ -74,8 +77,8 @@ After cleanup, Person count and Event Participation count were both zero. Person
 | Targeted ACF definition syncs | 3 | Persistent canonical schema active |
 | Approved `event_role` term creation | 4 | Persistent vocabulary active |
 | Platform Core PHP classes and bootstrap deployment | 5 classes plus bootstrap integration | Runtime copy matches source module |
-| Temporary QA Person | 8 | All eight hard-deleted and verified absent |
-| Temporary QA participation | 9 | Eight ownership-marked rows hard-deleted by QA; one duplicate from the failed query was individually verified and hard-deleted |
+| Temporary QA Person | 9 | All nine hard-deleted and verified absent |
+| Temporary QA participation | 10 | Nine ownership-marked rows hard-deleted by QA; one duplicate from the failed query was individually verified and hard-deleted |
 | Legacy profile, event, product, relationship, Bricks, or FluentSnippet writes | 0 | Protected state unchanged |
 
 ## Regression checks
@@ -83,7 +86,7 @@ After cleanup, Person count and Event Participation count were both zero. Person
 | Check | Result |
 |---|---:|
 | Event Participation ACF schema contracts | 3 passed |
-| Event Participation Platform Core tests | 58 passed |
+| Event Participation Platform Core tests | 64 passed |
 | Content Topic Platform Core regression tests | 67 passed |
 | Person Foundation tests | 10 passed |
 | Editorial Dimensions tests | 11 passed |
@@ -91,7 +94,7 @@ After cleanup, Person count and Event Participation count were both zero. Person
 | PHP lint for changed PHP files | Passed |
 | Shared ACF JSON parsing | 9 files parsed |
 
-The Task 6A Platform Core suite adds 58 tests to the prior 67-test Content Topic suite, for 125 tests across those two standalone runners. The delegated final review found three additional gaps: same-post edits could interleave, the locked duplicate recheck could use stale WordPress/ACF caches, and invalid endpoints could block retirement. `EventParticipationPairLock` now serializes pair writes and same-post edits; the locked duplicate path refreshes post and ACF caches before reading fields through ACF; and a trash transition skips endpoint validation while retaining the participation lock. Regression tests cover cached prechecks, endpoint status changes, different-pair edits, overlap with trash transitions, and trashing records with invalid endpoints.
+The Task 6A Platform Core suite adds 64 tests to the prior 67-test Content Topic suite, for 131 tests across those two standalone runners. Earlier reviews found that same-post edits could interleave, duplicate checks could use stale WordPress/ACF caches, and invalid endpoints could block retirement. The final review found that a failed candidate post read could be mistaken for no duplicate, title sync could restore a stale status after a trash operation, and creation with `future` status had no scheduled date. The repository now fails closed on candidate read errors while skipping genuinely missing candidates; title sync takes a scoped participation lock before reading status or endpoints, refreshes them after acquiring the lock, and preserves locks owned by an outer save; and the service rejects `future` creation because it has no schedule-date input. Existing `future` rows still reserve their Event × Person pair. Regression tests cover those findings along with cached prechecks, endpoint status changes, different-pair edits, overlapping trash transitions, and retirement with invalid endpoints.
 
 The first post-review staging QA attempt exposed an incorrect escaped newline in the fresh duplicate query and left temporary participation 1282 behind after its duplicate attempt. The remaining row was tied to the failed run's unique QA title token and was hard-deleted after its Event and missing Person IDs were checked against the clean baseline. Subsequent guarded QA runs passed; the final run above reported zero Persons and participations, no token, and unchanged protected runtime state. The staging database is MySQL 8.0.35; a cross-version compatibility matrix was not run. The Task 7 runtime QA setup boundary was also re-reviewed and fixed so token generation or service construction failures return JSON before mutation.
 

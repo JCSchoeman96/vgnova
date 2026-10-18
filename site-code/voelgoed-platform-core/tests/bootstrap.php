@@ -187,6 +187,10 @@ $GLOBALS['vgpc_test_filters'] = [];
 $GLOBALS['vgpc_test_screen'] = null;
 $GLOBALS['vgpc_test_set_term_calls'] = 0;
 $GLOBALS['vgpc_test_fail_set_term_call'] = null;
+$GLOBALS['vgpc_test_fail_get_post_id'] = null;
+$GLOBALS['vgpc_test_acf_save_during_update'] = false;
+$GLOBALS['vgpc_test_acf_save_release_counts'] = [];
+$GLOBALS['vgpc_test_apply_wp_update_filter'] = false;
 $GLOBALS['vgpc_test_enable_query_cache'] = false;
 $GLOBALS['vgpc_test_get_posts_cache'] = [];
 $GLOBALS['vgpc_test_get_post_cache'] = [];
@@ -217,6 +221,10 @@ function vgpc_test_reset(): void
     $GLOBALS['vgpc_test_screen'] = null;
     $GLOBALS['vgpc_test_set_term_calls'] = 0;
     $GLOBALS['vgpc_test_fail_set_term_call'] = null;
+$GLOBALS['vgpc_test_fail_get_post_id'] = null;
+$GLOBALS['vgpc_test_acf_save_during_update'] = false;
+$GLOBALS['vgpc_test_acf_save_release_counts'] = [];
+$GLOBALS['vgpc_test_apply_wp_update_filter'] = false;
     $GLOBALS['vgpc_test_enable_query_cache'] = false;
     $GLOBALS['vgpc_test_get_posts_cache'] = [];
     $GLOBALS['vgpc_test_get_post_cache'] = [];
@@ -367,6 +375,11 @@ function get_term(int $term_id, string $taxonomy = ''): object|false
 
 function get_post(int $post_id): object|false
 {
+    if ((int) ($GLOBALS['vgpc_test_fail_get_post_id'] ?? 0) === $post_id) {
+        $GLOBALS['wpdb']->last_error = 'Injected candidate post read failure.';
+        return false;
+    }
+
     if (
         ! empty($GLOBALS['vgpc_test_enable_query_cache'])
         && array_key_exists($post_id, $GLOBALS['vgpc_test_get_post_cache'])
@@ -420,12 +433,28 @@ function wp_update_post(array $postarr, bool $wp_error = false): int|WP_Error
     }
 
     $before = clone $post;
-    foreach ($postarr as $key => $value) {
+    $update_data = array_merge(get_object_vars($post), $postarr);
+    if (! empty($GLOBALS['vgpc_test_apply_wp_update_filter'])) {
+        $update_data = apply_filters('wp_insert_post_data', $update_data, $postarr);
+    }
+    foreach ($update_data as $key => $value) {
         if ($key !== 'ID') {
             $post->{$key} = $value;
         }
     }
     $GLOBALS['vgpc_test_update_post_calls'][] = $postarr;
+    if (! empty($GLOBALS['vgpc_test_acf_save_during_update'])) {
+        $release_count_before = count(array_filter(
+            $GLOBALS['wpdb']->queries,
+            static fn (array $query): bool => $query['query'] === 'SELECT RELEASE_LOCK(%s)'
+        ));
+        do_action('acf/save_post', $post_id);
+        $release_count_after = count(array_filter(
+            $GLOBALS['wpdb']->queries,
+            static fn (array $query): bool => $query['query'] === 'SELECT RELEASE_LOCK(%s)'
+        ));
+        $GLOBALS['vgpc_test_acf_save_release_counts'][] = $release_count_after - $release_count_before;
+    }
     do_action('post_updated', $post_id, $post, $before);
 
     return $post_id;

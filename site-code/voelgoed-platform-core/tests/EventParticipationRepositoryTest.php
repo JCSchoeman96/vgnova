@@ -156,6 +156,14 @@ final class EventParticipationRepositoryTest
         vgpc_test_same([302], $repository->find_pair_ids(101, 201, 301), 'An edited participation must not conflict with itself.');
     }
 
+    public function test_fresh_pair_lookup_skips_a_candidate_that_disappeared_without_read_error(): void
+    {
+        $repository = $this->repository();
+        $GLOBALS['wpdb']->get_col_handler = static fn (): array => [301];
+
+        vgpc_test_same([], $repository->find_pair_ids_fresh(101, 201), 'A candidate deleted between ID lookup and post read must not be treated as a duplicate.');
+    }
+
     public function test_live_participation_queries_include_non_retired_statuses(): void
     {
         $repository = $this->repository();
