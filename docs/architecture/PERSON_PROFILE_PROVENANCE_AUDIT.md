@@ -195,7 +195,7 @@ Git history was searched on origin/main only. Hidden stashes and unrelated local
 | Commit | Path | Finding | Interpretation |
 |---|---|---|---|
 | 6e70c0c65c0a05bcb0a92ecf1aaf340286b9e270 | repo/VOELGOED_CANONICAL_INFORMATION_ARCHITECTURE_v0.1.md | Adds Lynette Beer as an IA example | Weak corroboration, not source-record provenance |
-| f70d7fb527a6f0471a856236f0650a25a78a90b4 | site-code/runtime-tests/person-foundation-qa.php | Adds QA snapshot/assertions for legacy IDs and edges | Later QA protection, not original profile creation |
+| f70d7fb527a6f0471a856236f0650a25a78a90b4 | site-code/runtime-tests/person-foundation-qa.php | Adds QA snapshot/assertions for legacy IDs and edges | Later regression safeguard; no profile-creation provenance or migration-eligibility evidence |
 | 8fd5460c5e12bb9a868032bd801f5c900c1e3eb9 | Person Task 5A audit, manifest, architecture docs | Records IDs, slugs, image names, QA links from runtime audit | Documentation of runtime findings, not an original import source |
 
 No historical source-controlled creator/import script or archived source row was found for these names, slugs, filenames, event 763, or products 767/768. That absence does not rule out a deleted external importer, manual editor workflow, or unavailable source material.
@@ -233,7 +233,7 @@ Taxonomy relationships were read separately; these two queries are examples for 
 **Decision:** `DEFER` — **Confidence:** MEDIUM
 
 - **Authoritative:** Runtime confirms its published local state, ACF title/bio/status, image, two taxonomy assignments, and three incoming edges. No original CMS record, source ID, production export, or migration mapping was found.
-- **Strong circumstantial:** Same-second schema/profile batch; stock Pexels image; duplicated one-sentence content; links to Test Event and QA-named products; later repository QA snapshot protects ID 753.
+- **Strong circumstantial:** Same-second schema/profile batch; stock Pexels image; duplicated one-sentence content; links to Test Event and QA-named products. These links inform the edge decision, not the profile’s source origin.
 - **Weak corroboration:** The name appears in a canonical IA example; the name, publication status, and “Lewensafrigter en spreker.” are plausible, not source provenance.
 - **Contradictory evidence:** Test/QA relationships weigh against migrating those edges but do not prove the profile is a fixture. The IA example is not an import artifact.
 - **Unresolved:** Genuine source/editorial origin; Mentor and Voelgoed Mentor assignment validity; whether a verified portrait exists; whether Spreker was a durable title or event context.

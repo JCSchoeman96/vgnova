@@ -107,7 +107,7 @@ During dual-run, keep source profile values and relationships intact. New Person
 
 ## URL and SEO contract
 
-The approved target is `/mense/` and `/mense/{person-slug}/`. The current archive and singles return 200 and self-canonicalize. `/mense/` is currently available and returns 404; no collision was found.
+The approved target is `/mense/` and `/mense/{person-slug}/`. The legacy `/medewerkers/` archive and published singles remain active. Task 5B registered the canonical `/mense/` archive and verified it at HTTP 200 using temporary QA data. There are currently zero persistent Person records, so there is no persistent canonical Person single to verify or redirect to. No `/medewerkers/` redirect has been introduced. Task 5C did not perform a new HTTP route check.
 
 Do not assume slug preservation: current slugs are unique, but no Person target exists. For every published profile, verify target slug, status, canonical, indexing behavior, and internal links before redirecting. Then redirect `/medewerkers/` to `/mense/` and each old single to its verified equivalent. Preserve old route mapping in the migration manifest. Do not change or flush rewrite rules as part of discovery.
 
@@ -136,7 +136,7 @@ Do not remove or rename `medewerker`, its fields, taxonomies, or compatibility b
 6. Runtime and source searches show zero active legacy consumers across all relevant record statuses.
 7. Rollback data is retained and the removal review approves the gate.
 
-Task 5A meets none of the removal gates. The register must remain transitional/deferred and no item should be marked `READY_TO_REMOVE`.
+The current state still does not satisfy the medewerker removal gates: five profiles remain DEFER and active consumers remain. The register must remain transitional/deferred and no item should be marked `READY_TO_REMOVE`.
 
 ## Explicit non-actions
 
