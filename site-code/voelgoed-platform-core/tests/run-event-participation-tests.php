@@ -7,6 +7,10 @@ $repository_file = dirname(__DIR__) . '/includes/Event/EventParticipationReposit
 if (is_file($repository_file)) {
     require_once $repository_file;
 }
+$pair_lock_file = dirname(__DIR__) . '/includes/Event/EventParticipationPairLock.php';
+if (is_file($pair_lock_file)) {
+    require_once $pair_lock_file;
+}
 $role_seeder_file = dirname(__DIR__) . '/includes/Event/EventRoleSeeder.php';
 if (is_file($role_seeder_file)) {
     require_once $role_seeder_file;

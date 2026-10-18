@@ -22,6 +22,32 @@ if (! class_exists('WP_Error')) {
     }
 }
 
+final class VGPC_TestWpdb
+{
+    /** @var list<array{query:string,args:list<mixed>}> */
+    public array $queries = [];
+
+    /** @var callable|null */
+    public $get_var_handler = null;
+
+    /** @param list<mixed> $args */
+    public function prepare(string $query, mixed ...$args): array
+    {
+        return ['query' => $query, 'args' => $args];
+    }
+
+    /** @param array{query:string,args:list<mixed>} $statement */
+    public function get_var(array $statement): mixed
+    {
+        $this->queries[] = $statement;
+        if (is_callable($this->get_var_handler)) {
+            return ($this->get_var_handler)($statement['query'], $statement['args']);
+        }
+
+        return '1';
+    }
+}
+
 if (! class_exists('WP_CLI')) {
     class WP_CLI
     {
@@ -107,6 +133,7 @@ function vgpc_test_reset(): void
     $GLOBALS['vgpc_test_screen'] = null;
     $GLOBALS['vgpc_test_set_term_calls'] = 0;
     $GLOBALS['vgpc_test_fail_set_term_call'] = null;
+    $GLOBALS['wpdb'] = new VGPC_TestWpdb();
     WP_CLI::$commands = [];
     WP_CLI::$messages = [];
     $_POST = [];
@@ -128,6 +155,13 @@ function vgpc_test_true(bool $condition, string $message): void
 {
     if (! $condition) {
         throw new RuntimeException($message);
+    }
+}
+
+if (! function_exists('wp_die')) {
+    function wp_die(string $message = '', string $title = '', array $args = []): never
+    {
+        throw new RuntimeException('wp_die: ' . $message);
     }
 }
 

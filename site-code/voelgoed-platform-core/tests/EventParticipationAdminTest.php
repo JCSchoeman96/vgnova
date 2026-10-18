@@ -12,6 +12,17 @@ final class EventParticipationAdminTest
         $admin->register();
         $this->add_endpoint(101, 'tc_events', 'Vroue-aand');
         $this->add_endpoint(201, 'person', 'Mia Botha');
+        $_POST['acf'] = [
+            EventParticipationAdmin::EVENT_FIELD_KEY => '101',
+            EventParticipationAdmin::PERSON_FIELD_KEY => '201',
+        ];
+        $_POST['post_ID'] = '300';
+        $post_data = ['post_type' => EventParticipationRepository::POST_TYPE, 'post_status' => 'publish'];
+        vgpc_test_same(
+            $post_data,
+            apply_filters('wp_insert_post_data', $post_data, ['ID' => 300]),
+            'A valid editor save must pass the pre-write pair check.'
+        );
 
         $event_validation = $this->validate_field(
             EventParticipationAdmin::EVENT_FIELD_KEY,
@@ -34,6 +45,84 @@ final class EventParticipationAdminTest
         vgpc_test_same(true, $person_validation, 'The Person field validation hook must accept a valid pair.');
         vgpc_test_same('Vroue-aand — Mia Botha', get_the_title(300), 'The ACF save hook must derive the participation title.');
         vgpc_test_same(1, count($GLOBALS['vgpc_test_update_post_calls']), 'The ACF save hook must update the participation title once.');
+        vgpc_test_same(
+            ['SELECT GET_LOCK(%s, %d)', 'SELECT RELEASE_LOCK(%s)'],
+            array_column($GLOBALS['wpdb']->queries, 'query'),
+            'The editor must hold the pair lock across the post and ACF field writes.'
+        );
+    }
+
+    public function test_admin_save_rechecks_under_lock_before_post_write(): void
+    {
+        $admin = $this->fixture();
+        $admin->register();
+        $this->add_endpoint(101, 'tc_events', 'Vroue-aand');
+        $this->add_endpoint(201, 'person', 'Mia Botha');
+        $_POST['acf'] = [
+            EventParticipationAdmin::EVENT_FIELD_KEY => '101',
+            EventParticipationAdmin::PERSON_FIELD_KEY => '201',
+        ];
+        $simulated_concurrent_commit = false;
+        $GLOBALS['wpdb']->get_var_handler = function (string $query) use (&$simulated_concurrent_commit): string {
+            if ($query === 'SELECT GET_LOCK(%s, %d)' && ! $simulated_concurrent_commit) {
+                // The competing request commits while this editor save waits for the same pair lock.
+                $this->add_participation(401, 'publish', 101, 201, 'Competing participation');
+                $simulated_concurrent_commit = true;
+            }
+
+            return '1';
+        };
+
+        $rejected = false;
+        try {
+            apply_filters(
+                'wp_insert_post_data',
+                ['post_type' => EventParticipationRepository::POST_TYPE, 'post_status' => 'publish'],
+                ['ID' => 0]
+            );
+        } catch (RuntimeException $error) {
+            $rejected = str_contains($error->getMessage(), 'already has a participation');
+        }
+
+        vgpc_test_true($rejected, 'A competing committed pair must stop the editor save before the post write.');
+        vgpc_test_same([], $GLOBALS['vgpc_test_update_post_calls'], 'A rejected editor save must not update a participation post.');
+        do_action('shutdown');
+        vgpc_test_same(
+            ['SELECT GET_LOCK(%s, %d)', 'SELECT RELEASE_LOCK(%s)'],
+            array_column($GLOBALS['wpdb']->queries, 'query'),
+            'The held lock must be released after the rejected save ends.'
+        );
+    }
+
+    public function test_quick_status_save_rechecks_stored_pair_under_lock(): void
+    {
+        $admin = $this->fixture();
+        $admin->register();
+        $this->add_endpoint(101, 'tc_events', 'Vroue-aand');
+        $this->add_endpoint(201, 'person', 'Mia Botha');
+        $this->add_participation(301, 'draft', 101, 201, 'Existing participation');
+        $GLOBALS['wpdb']->get_var_handler = function (string $query): string {
+            if ($query === 'SELECT GET_LOCK(%s, %d)') {
+                $this->add_participation(401, 'publish', 101, 201, 'Competing participation');
+            }
+
+            return '1';
+        };
+
+        $rejected = false;
+        try {
+            apply_filters(
+                'wp_insert_post_data',
+                ['post_type' => EventParticipationRepository::POST_TYPE, 'post_status' => 'publish'],
+                ['ID' => 301]
+            );
+        } catch (RuntimeException $error) {
+            $rejected = str_contains($error->getMessage(), 'already has a participation');
+        }
+
+        vgpc_test_true($rejected, 'A status change must not reactivate a pair committed by a competing request.');
+        vgpc_test_same('draft', get_post(301)->post_status, 'A rejected status change must leave the current post row unchanged.');
+        do_action('shutdown');
     }
 
     public function test_acf_validation_rejects_invalid_event_and_person_endpoints(): void

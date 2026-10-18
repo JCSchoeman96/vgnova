@@ -50,7 +50,7 @@ Novamira MCP resolved to a different installation (`DanOptics`), so local WP-CLI
 
 ## QA run and cleanup
 
-The final runtime QA run passed on 2026-10-18 using published Event 151. It created temporary Person 1272 and participation 1273, checked the approved roles `paneellid` and `spreker`, and used display order 17.
+The runtime QA run after the pair-lock review fix passed on 2026-10-18 using published Event 151. It created temporary Person 1276 and participation 1277, checked the approved roles `paneellid` and `spreker`, and used display order 17.
 
 | QA check | Result |
 |---|---|
@@ -73,7 +73,7 @@ After cleanup, Person count and Event Participation count were both zero. Person
 |---|---:|---|
 | Targeted ACF definition syncs | 3 | Persistent canonical schema active |
 | Approved `event_role` term creation | 4 | Persistent vocabulary active |
-| Platform Core PHP classes and bootstrap deployment | 4 classes plus bootstrap integration | Runtime copy matches source module |
+| Platform Core PHP classes and bootstrap deployment | 5 classes plus bootstrap integration | Runtime copy matches source module |
 | Temporary QA Person | 1 | Hard-deleted and verified absent |
 | Temporary QA participation | 1 | Hard-deleted and verified absent |
 | Legacy profile, event, product, relationship, Bricks, or FluentSnippet writes | 0 | Protected state unchanged |
@@ -83,7 +83,7 @@ After cleanup, Person count and Event Participation count were both zero. Person
 | Check | Result |
 |---|---:|
 | Event Participation ACF schema contracts | 3 passed |
-| Event Participation Platform Core tests | 47 passed |
+| Event Participation Platform Core tests | 51 passed |
 | Content Topic Platform Core regression tests | 67 passed |
 | Person Foundation tests | 10 passed |
 | Editorial Dimensions tests | 11 passed |
@@ -91,7 +91,7 @@ After cleanup, Person count and Event Participation count were both zero. Person
 | PHP lint for changed PHP files | Passed |
 | Shared ACF JSON parsing | 9 files parsed |
 
-The Task 6A Platform Core suite adds 47 tests to the prior 67-test Content Topic suite, for 114 tests across those two standalone runners. The Task 7 runtime QA setup boundary was also re-reviewed and fixed so token generation or service construction failures return JSON before mutation.
+The Task 6A Platform Core suite adds 51 tests to the prior 67-test Content Topic suite, for 118 tests across those two standalone runners. The final review found that simultaneous pair creation could race. `EventParticipationPairLock` now serializes service and WordPress admin writes, and regression checks simulate a competing commit before the lock is granted. A live runtime lock acquire/release smoke check passed. The Task 7 runtime QA setup boundary was also re-reviewed and fixed so token generation or service construction failures return JSON before mutation.
 
 ## Legacy and migration state
 

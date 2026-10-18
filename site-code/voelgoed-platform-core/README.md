@@ -70,8 +70,9 @@ stabilization gate are documented in
 The Event Participation implementation lives in `includes/Event/`:
 
 - `EventParticipationRepository` reads canonical relationships and duplicate pairs.
-- `EventParticipationService` validates and creates participations.
-- `EventParticipationAdmin` validates ACF submissions and derives admin titles.
+- `EventParticipationPairLock` serializes writes for the same Event × Person pair.
+- `EventParticipationService` validates and creates participations under the pair lock.
+- `EventParticipationAdmin` validates ACF submissions, rechecks pairs before post writes, and derives admin titles.
 - `EventRoleSeeder` seeds the approved `event_role` vocabulary on request.
 
 Run the focused checks with:
@@ -87,7 +88,7 @@ wp vg-event-role-setup
 ```
 
 Runtime deployment is separate from changes to this source directory. Apply
-`integration.patch` to the runtime plugin bootstrap and deploy all four Event
+`integration.patch` to the runtime plugin bootstrap and deploy all five Event
 classes before expecting the admin hooks or seeder command to be available.
 Sync only the three Task 6A ACF JSON keys using the documented targeted procedure;
 do not run a global ACF JSON sync.

@@ -85,6 +85,54 @@ final class EventParticipationServiceTest
         vgpc_test_same(true, $service->validate_pair(101, 201), 'Retired and auto-draft duplicates must not block the pair.');
     }
 
+    public function test_create_rechecks_pair_after_waiting_for_another_writer(): void
+    {
+        $service = $this->service();
+        $this->add_endpoint(101, 'tc_events', 'Vroue-aand');
+        $this->add_endpoint(201, 'person', 'Mia Botha');
+        $simulated_concurrent_commit = false;
+        $GLOBALS['wpdb']->get_var_handler = function (string $query) use (&$simulated_concurrent_commit): string {
+            if ($query === 'SELECT GET_LOCK(%s, %d)' && ! $simulated_concurrent_commit) {
+                // The competing request commits while this request waits for the same named lock.
+                $this->add_participation(401, 'publish', 101, 201);
+                $simulated_concurrent_commit = true;
+            }
+
+            return '1';
+        };
+
+        $result = $service->create(101, 201);
+
+        vgpc_test_true(is_wp_error($result), 'A request that acquires the pair lock after a competing commit must reject the duplicate.');
+        vgpc_test_same('duplicate_event_participation', $result->get_error_code(), 'The locked recheck must report the duplicate pair.');
+        vgpc_test_same([], $GLOBALS['vgpc_test_insert_post_calls'], 'A competing committed pair must prevent a second insert.');
+        vgpc_test_same(
+            ['SELECT GET_LOCK(%s, %d)', 'SELECT RELEASE_LOCK(%s)'],
+            array_column($GLOBALS['wpdb']->queries, 'query'),
+            'The service must hold the same pair lock across its duplicate recheck and release it afterward.'
+        );
+        vgpc_test_same(
+            $GLOBALS['wpdb']->queries[0]['args'][0],
+            $GLOBALS['wpdb']->queries[1]['args'][0],
+            'The service must release the lock it acquired for this Event and Person pair.'
+        );
+    }
+
+    public function test_create_fails_closed_when_pair_lock_cannot_be_acquired(): void
+    {
+        $service = $this->service();
+        $this->add_endpoint(101, 'tc_events', 'Vroue-aand');
+        $this->add_endpoint(201, 'person', 'Mia Botha');
+        $GLOBALS['wpdb']->get_var_handler = static fn (string $query): string => $query === 'SELECT GET_LOCK(%s, %d)' ? '0' : '1';
+
+        $result = $service->create(101, 201);
+
+        vgpc_test_true(is_wp_error($result), 'A create must fail when it cannot establish the pair lock.');
+        vgpc_test_same('participation_pair_lock_failed', $result->get_error_code(), 'The error must identify failure to protect pair uniqueness.');
+        vgpc_test_same([], $GLOBALS['vgpc_test_insert_post_calls'], 'The service must not create a participation without the pair lock.');
+        vgpc_test_same(['SELECT GET_LOCK(%s, %d)'], array_column($GLOBALS['wpdb']->queries, 'query'), 'An unacquired lock must not be released.');
+    }
+
     public function test_negative_display_order_is_rejected_before_insert(): void
     {
         $service = $this->service();

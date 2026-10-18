@@ -44,15 +44,16 @@ The Event and Person fields are the canonical endpoints. No relationship field w
 | Class | Responsibility |
 |---|---|
 | `EventParticipationRepository` | Validates endpoint types, finds duplicate pairs, reads active participations, returns endpoint IDs, and applies deterministic relationship ordering |
-| `EventParticipationService` | Validates Event × Person pairs, validates roles and display order, creates participation posts and ACF/taxonomy values, and removes a newly created post if its relationship writes fail |
-| `EventParticipationAdmin` | Validates submitted ACF Event and Person fields against the shared pair rule; derives titles after ACF saves and endpoint title changes |
+| `EventParticipationPairLock` | Acquires a database named lock scoped to an Event × Person pair and releases it after the protected write |
+| `EventParticipationService` | Validates Event × Person pairs, validates roles and display order, serializes creation for the same pair, creates participation posts and ACF/taxonomy values, and removes a newly created post if its relationship writes fail |
+| `EventParticipationAdmin` | Validates submitted ACF Event and Person fields against the shared pair rule; rechecks under the pair lock before WordPress saves a participation row; derives titles after ACF saves and endpoint title changes |
 | `EventRoleSeeder` | Registers the explicit `wp vg-event-role-setup` command and seeds only the approved role vocabulary after a complete conflict check |
 
 ### Identity and uniqueness
 
 The pair `(event_id, person_id)` is the identity. A Person may have only one non-retired participation for an Event; multiple contextual roles belong on that one participation. Duplicate detection includes `publish`, `draft`, `pending`, `private`, and `future` records, while `trash` and `auto-draft` do not reserve a pair. Editing the current participation excludes its own ID from the duplicate check.
 
-This is an application-level contract enforced by the shared service and ACF admin validation. Direct SQL and unsupported writers are outside the canonical write path. A participating Event must be an existing, non-trashed `tc_events` post; the Person must be an existing, non-trashed `person` post. Active relationship queries include only published participations and reject malformed or trashed endpoints.
+This is an application-level contract enforced by the service and WordPress admin save path. Because the ACF endpoints live in post meta and have no database unique index, both paths take a MySQL named lock for the pair, recheck duplicates while holding it, and keep it through the write. If the lock cannot be acquired, the write fails closed; an editor save that becomes duplicate while waiting is stopped before the post row changes. Direct SQL and unsupported writers are outside the canonical write path. A participating Event must be an existing, non-trashed `tc_events` post; the Person must be an existing, non-trashed `person` post. Active relationship queries include only published participations and reject malformed or trashed endpoints.
 
 ### Query API
 
@@ -79,7 +80,7 @@ The title is derived as `{Event title} — {Person title}`. ACF saves recalculat
 
 ## Runtime deployment and ACF synchronization
 
-Platform Core source changes belong in `site-code/voelgoed-platform-core/` first. The four Event classes and the bootstrap integration were then deployed to the active local plugin copy. The Local WordPress site at `http://localhost:10039/` was identified by its `Voelgoed` site name. Novamira MCP resolved to a different local installation (`DanOptics`), so the approved local WP-CLI fallback was used for the correct staging runtime. No direct SQL writes were used.
+Platform Core source changes belong in `site-code/voelgoed-platform-core/` first. The five Event classes and the bootstrap integration were then deployed to the active local plugin copy. The Local WordPress site at `http://localhost:10039/` was identified by its `Voelgoed` site name. Novamira MCP resolved to a different local installation (`DanOptics`), so the approved local WP-CLI fallback was used for the correct staging runtime. No direct SQL writes were used.
 
 Only the three Task 6A ACF keys were dry-run and synchronized:
 
@@ -107,7 +108,7 @@ wp eval-file site-code/runtime-tests/event-participation-qa.php
 
 The script selects a published Tickera Event other than Event 763 with no legacy `event_medewerkers` value. It creates one uniquely owned temporary Person and one participation, checks pair validation, roles, ordering, title derivation, query direction, private exclusion, duplicate rejection, invalid endpoints, and non-public routing, then removes only records with its ownership marker. Preflight and setup failures emit JSON with `mutation_started: false` before any write. A focused setup-boundary regression check is available at `site-code/runtime-tests/tests/run-event-participation-qa-setup-tests.php`.
 
-The final staging QA run passed against Event 151 and temporary records 1272 and 1273. Cleanup verified zero remaining Person and participation records, no QA token, no relevant Person or role relationships, no cleanup errors, and unchanged protected state and QA Event. The selected Event was not edited. Event 763, profiles 753–757, attachments 558/560/562/564/566, and Products 767/768 remained unchanged.
+The staging QA run after the pair-lock review fix passed against Event 151 and temporary records 1276 and 1277. Cleanup verified zero remaining Person and participation records, no QA token, no relevant Person or role relationships, no cleanup errors, and unchanged protected state and QA Event. The selected Event was not edited. Event 763, profiles 753–757, attachments 558/560/562/564/566, and Products 767/768 remained unchanged. A separate runtime smoke check acquired and released a named lock through the active WordPress database connection.
 
 ## Legacy coexistence and migration boundary
 

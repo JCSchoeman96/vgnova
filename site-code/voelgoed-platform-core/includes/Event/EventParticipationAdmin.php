@@ -15,14 +15,18 @@ final class EventParticipationAdmin
 
     private EventParticipationService $service;
 
+    private EventParticipationPairLock $pair_lock;
+
     private bool $syncing_titles = false;
 
     public function __construct(
         ?EventParticipationRepository $repository = null,
-        ?EventParticipationService $service = null
+        ?EventParticipationService $service = null,
+        ?EventParticipationPairLock $pair_lock = null
     ) {
         $this->repository = $repository ?? new EventParticipationRepository();
-        $this->service = $service ?? new EventParticipationService($this->repository);
+        $this->pair_lock = $pair_lock ?? new EventParticipationPairLock();
+        $this->service = $service ?? new EventParticipationService($this->repository, $this->pair_lock);
     }
 
     public function register(): void
@@ -39,8 +43,10 @@ final class EventParticipationAdmin
             10,
             4
         );
+        add_filter('wp_insert_post_data', [$this, 'validate_pair_before_post_save'], 10, 2);
         add_action('acf/save_post', [$this, 'handle_acf_save'], 20, 1);
         add_action('post_updated', [$this, 'handle_post_updated'], 10, 3);
+        add_action('shutdown', [$this, 'release_pair_locks'], 1);
     }
 
     /** Validate the submitted Event against the submitted or stored Person. */
@@ -71,15 +77,82 @@ final class EventParticipationAdmin
         return $this->validation_result($event_id, $person_id, $post_id);
     }
 
+    /** Reserve and recheck the pair before WordPress writes the participation post row. */
+    public function validate_pair_before_post_save(array $data, array $postarr): array
+    {
+        $submitted = $_POST['acf'] ?? null;
+        if (($data['post_type'] ?? null) !== EventParticipationRepository::POST_TYPE) {
+            return $data;
+        }
+
+        $post_id = $this->normalize_id($postarr['ID'] ?? 0);
+        $has_submitted_event = is_array($submitted) && array_key_exists(self::EVENT_FIELD_KEY, $submitted);
+        $has_submitted_person = is_array($submitted) && array_key_exists(self::PERSON_FIELD_KEY, $submitted);
+        $has_submitted_pair = $has_submitted_event || $has_submitted_person;
+        if (! $has_submitted_pair && $post_id <= 0) {
+            return $data;
+        }
+
+        $event_id = $has_submitted_event
+            ? $this->normalize_id($submitted[self::EVENT_FIELD_KEY])
+            : $this->normalize_id(get_field(EventParticipationRepository::EVENT_FIELD, $post_id));
+        $person_id = $has_submitted_person
+            ? $this->normalize_id($submitted[self::PERSON_FIELD_KEY])
+            : $this->normalize_id(get_field(EventParticipationRepository::PERSON_FIELD, $post_id));
+        if ($event_id <= 0 && $person_id <= 0 && ! $has_submitted_pair) {
+            return $data;
+        }
+
+        if ($event_id <= 0 || $person_id <= 0) {
+            wp_die(
+                'Select an existing Event and Person before saving this participation.',
+                'Invalid Event Participation',
+                ['response' => 400]
+            );
+        }
+
+        if (! $this->pair_lock->acquire($event_id, $person_id)) {
+            wp_die(
+                'Could not reserve this Event and Person pair. Try again.',
+                'Event Participation Save Failed',
+                ['response' => 503]
+            );
+        }
+
+        $validation = $this->service->validate_pair(
+            $event_id,
+            $person_id,
+            $post_id > 0 ? $post_id : null
+        );
+        if (is_wp_error($validation)) {
+            wp_die(
+                $validation->get_error_message(),
+                'Duplicate Event Participation',
+                ['response' => 409]
+            );
+        }
+
+        return $data;
+    }
+
     /** Recalculate the title after ACF has saved a participation's endpoints. */
     public function handle_acf_save(mixed $post_id): void
     {
-        $post_id = $this->normalize_id($post_id);
-        if ($post_id <= 0 || get_post_type($post_id) !== EventParticipationRepository::POST_TYPE) {
-            return;
-        }
+        try {
+            $post_id = $this->normalize_id($post_id);
+            if ($post_id <= 0 || get_post_type($post_id) !== EventParticipationRepository::POST_TYPE) {
+                return;
+            }
 
-        $this->sync_participation_title($post_id);
+            $this->sync_participation_title($post_id);
+        } finally {
+            $this->release_pair_locks();
+        }
+    }
+
+    public function release_pair_locks(): void
+    {
+        $this->pair_lock->release_all();
     }
 
     /** Resync related participation titles when an Event or Person title changes. */

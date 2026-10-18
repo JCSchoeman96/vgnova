@@ -1,10 +1,11 @@
 --- a/voelgoed-platform-core.php
 +++ b/voelgoed-platform-core.php
-@@ -25,0 +26,7 @@
+@@ -25,0 +26,8 @@
 +    'includes/Taxonomy/ContentTopicTaxonomy.php',
 +    'includes/Taxonomy/ContentTopicMigration.php',
 +    'includes/Taxonomy/ContentTopicRoles.php',
 +    'includes/Event/EventParticipationRepository.php',
++    'includes/Event/EventParticipationPairLock.php',
 +    'includes/Event/EventParticipationService.php',
 +    'includes/Event/EventParticipationAdmin.php',
 +    'includes/Event/EventRoleSeeder.php',

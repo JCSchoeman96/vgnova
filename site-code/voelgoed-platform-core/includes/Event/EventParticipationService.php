@@ -12,9 +12,15 @@ final class EventParticipationService
 
     private EventParticipationRepository $repository;
 
-    public function __construct(?EventParticipationRepository $repository = null)
+    private EventParticipationPairLock $pair_lock;
+
+    public function __construct(
+        ?EventParticipationRepository $repository = null,
+        ?EventParticipationPairLock $pair_lock = null
+    )
     {
         $this->repository = $repository ?? new EventParticipationRepository();
+        $this->pair_lock = $pair_lock ?? new EventParticipationPairLock();
     }
 
     public function validate_pair(
@@ -62,9 +68,12 @@ final class EventParticipationService
         int $display_order = 0,
         string $status = 'publish'
     ): int|\WP_Error {
-        $pair_validation = $this->validate_pair($event_id, $person_id);
-        if (is_wp_error($pair_validation)) {
-            return $pair_validation;
+        if ($event_id <= 0) {
+            return new \WP_Error('invalid_event', 'The Event must be an existing, non-trashed Tickera Event.');
+        }
+
+        if ($person_id <= 0) {
+            return new \WP_Error('invalid_person', 'The Person must be an existing, non-trashed Person.');
         }
 
         if ($display_order < 0) {
@@ -78,6 +87,36 @@ final class EventParticipationService
         $validated_role_ids = $this->validated_event_role_ids($event_role_term_ids);
         if (is_wp_error($validated_role_ids)) {
             return $validated_role_ids;
+        }
+
+        if (! $this->pair_lock->acquire($event_id, $person_id)) {
+            return new \WP_Error(
+                'participation_pair_lock_failed',
+                'Could not reserve this Event and Person pair. Try again.'
+            );
+        }
+
+        try {
+            return $this->create_locked($event_id, $person_id, $validated_role_ids, $display_order, $status);
+        } finally {
+            $this->pair_lock->release($event_id, $person_id);
+        }
+    }
+
+    /**
+     * @param list<int> $validated_role_ids
+     */
+    private function create_locked(
+        int $event_id,
+        int $person_id,
+        array $validated_role_ids,
+        int $display_order,
+        string $status
+    ): int|\WP_Error {
+        // Recheck after acquiring the lock so a competing writer cannot pass the check concurrently.
+        $pair_validation = $this->validate_pair($event_id, $person_id);
+        if (is_wp_error($pair_validation)) {
+            return $pair_validation;
         }
 
         $title = $this->title_for_pair($event_id, $person_id);
