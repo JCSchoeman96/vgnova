@@ -191,6 +191,43 @@ final class EventParticipationServiceTest
         );
     }
 
+    public function test_create_accepts_each_supported_post_status(): void
+    {
+        foreach (['publish', 'draft', 'pending', 'private', 'future'] as $status) {
+            $service = $this->service();
+            $this->add_endpoint(101, 'tc_events', 'Vroue-aand');
+            $this->add_endpoint(201, 'person', 'Mia Botha');
+
+            $participation_id = $service->create(101, 201, [], 0, $status);
+
+            vgpc_test_true(is_int($participation_id), sprintf('The %s status must be supported.', $status));
+            vgpc_test_same(
+                $status,
+                get_post($participation_id)->post_status,
+                sprintf('The requested %s status must be persisted.', $status)
+            );
+        }
+    }
+
+    public function test_create_rejects_retired_and_internal_statuses_before_insert(): void
+    {
+        foreach (['trash', 'auto-draft', 'inherit'] as $status) {
+            $service = $this->service();
+            $this->add_endpoint(101, 'tc_events', 'Vroue-aand');
+            $this->add_endpoint(201, 'person', 'Mia Botha');
+
+            $result = $service->create(101, 201, [], 0, $status);
+
+            vgpc_test_true(is_wp_error($result), sprintf('The %s status must be rejected.', $status));
+            vgpc_test_same(
+                'invalid_participation_status',
+                $result->get_error_code(),
+                sprintf('The %s status must return the status validation error.', $status)
+            );
+            vgpc_test_same([], $GLOBALS['vgpc_test_insert_post_calls'], 'An unsupported status must not insert a participation.');
+        }
+    }
+
     public function test_post_insert_write_failure_hard_deletes_only_the_new_participation(): void
     {
         foreach (['field', 'taxonomy'] as $failure_point) {
