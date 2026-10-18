@@ -12,7 +12,7 @@
 
 ## File map
 
-- Move the two editorial taxonomy JSON files and editorial field group from `site-code/editorial-dimensions/acf-json/` to `site-code/acf-json/` without changing their contents.
+- Move the two editorial taxonomy JSON files and editorial field group from their original Task 4B location, `site-code/editorial-dimensions/acf-json/`, to `site-code/acf-json/` without changing their contents.
 - Add `post_type_person.json`, `taxonomy_person_type.json`, and `group_vg_person_details.json` under `site-code/acf-json/`.
 - Update `site-code/editorial-dimensions/tests/run-editorial-dimensions-tests.php` to read shared JSON and allow only the three editorial plus three approved Person definitions.
 - Update `site-code/voelgoed-platform-core/includes/Taxonomy/ContentTopicTaxonomy.php` and its tests to attach `content_topic` to `person`.
@@ -41,7 +41,7 @@
 
 ## Task 3: Move editorial ACF JSON to the shared directory
 
-**Files:** three current JSON files under `site-code/editorial-dimensions/acf-json/`, their new copies under `site-code/acf-json/`, and `site-code/editorial-dimensions/tests/run-editorial-dimensions-tests.php`.
+**Files:** the three editorial JSON files originally under `site-code/editorial-dimensions/acf-json/` before Task 5B, their relocated files under `site-code/acf-json/`, and `site-code/editorial-dimensions/tests/run-editorial-dimensions-tests.php`.
 
 - [x] Move the three JSON files with Git and verify each source/destination SHA-256 is identical.
 - [x] Change the editorial standalone test to load JSON from `site-code/acf-json/`; preserve its editorial assertions and extend the shared-directory allowlist for the three approved Person definitions.

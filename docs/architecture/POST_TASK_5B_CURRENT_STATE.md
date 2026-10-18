@@ -78,7 +78,25 @@ The event and product snapshots, including modified timestamps, were identical b
 
 ## Source and runtime verification
 
-The Bricks Child theme's `acf-json` path points to the shared `site-code/acf-json/` directory. ACF JSON status and dry-run checks were limited to the three new Person keys, followed by individual syncs for those keys. No unrestricted ACF sync ran. The unrelated pending Member Perk field groups were left untouched.
+The canonical ACF JSON source is `site-code/acf-json/`. Before PR #18 merges, the active Bricks Child `acf-json` symlink temporarily resolves to the Task 5B feature worktree:
+
+```text
+/home/jcschoeman96/projects/current/vgnova/.worktrees/person-foundation-5b/site-code/acf-json
+```
+
+This is temporary review/runtime state, not the durable post-merge target. Keep the worktree until the main checkout contains the merged files and the stabilization checks pass.
+
+Post-merge stabilization (run only after PR #18 is approved and merged):
+
+1. Confirm PR #18 is approved and merged.
+2. Update the main checkout so it contains `site-code/acf-json/`.
+3. Repoint the active Bricks Child `acf-json` symlink to `/home/jcschoeman96/projects/current/vgnova/site-code/acf-json/`.
+4. Verify the resolved symlink target.
+5. Rerun targeted ACF JSON status and parity checks.
+6. Verify the Person and editorial definitions still match runtime.
+7. Remove the Task 5B worktree only after those checks pass.
+
+During Task 5B, ACF JSON status and dry-run checks were limited to the three new Person keys, followed by individual syncs for those keys. No unrestricted ACF sync ran. The unrelated pending Member Perk field groups were left untouched.
 
 The source-controlled Platform Core tests pass (67 tests), the editorial-dimensions tests pass (11 tests), and the Person foundation tests pass (10 tests). The deployed Core taxonomy and role files match the source-controlled versions.
 

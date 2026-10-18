@@ -16,7 +16,27 @@ ACF Pro owns the canonical Person schema:
 - `person_type` taxonomy;
 - `group_vg_person_details` field group.
 
-Their source-controlled ACF Local JSON lives in `site-code/acf-json/`. The Bricks Child theme's active `acf-json` path points to that shared directory. The three editorial definitions moved into it without content changes; their baseline, source, and active-path SHA-256 values match.
+Their source-controlled ACF Local JSON lives in `site-code/acf-json/`. The three editorial definitions moved into it without content changes; their baseline, source, and active-path SHA-256 values match.
+
+### Temporary pre-merge symlink state
+
+Before PR #18 merges, the active Bricks Child `acf-json` symlink resolves to the Task 5B feature worktree:
+
+```text
+/home/jcschoeman96/projects/current/vgnova/.worktrees/person-foundation-5b/site-code/acf-json
+```
+
+This is temporary review/runtime state, not the durable post-merge target. Keep the feature worktree until the main checkout contains the merged shared directory and the stabilization checks below pass.
+
+Post-merge stabilization (run only after PR #18 is approved and merged):
+
+1. Confirm PR #18 is approved and merged.
+2. Update the main checkout so it contains `site-code/acf-json/`.
+3. Repoint the active Bricks Child `acf-json` symlink to `/home/jcschoeman96/projects/current/vgnova/site-code/acf-json/`.
+4. Verify the resolved symlink target.
+5. Rerun targeted ACF JSON status and parity checks.
+6. Verify the Person and editorial definitions still match runtime.
+7. Remove the Task 5B worktree only after those checks pass.
 
 Platform Core owns `content_topic` and the Primary, Secondary, Effective Topic, and classification-state policy. Its supported object types now include `person`; `medewerker` remains supported. No topic terms, roots, or legacy assignments were changed.
 

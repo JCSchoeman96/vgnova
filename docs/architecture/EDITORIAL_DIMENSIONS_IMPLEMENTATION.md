@@ -5,13 +5,13 @@
 
 ## Ownership and source control
 
-ACF Pro owns both taxonomy definitions and the `Editorial Classification` field group. No taxonomy registration was added to Voelgoed Platform Core, theme PHP, or FluentSnippets.
+ACF Pro owns both taxonomy definitions and the `Editorial Classification` field group. No taxonomy registration was added to Voelgoed Platform Core, theme PHP, or FluentSnippets. Task 4B originally introduced the three JSON files under `site-code/editorial-dimensions/acf-json/`. Task 5B later consolidated them into the shared `site-code/acf-json/` directory without changing their configuration.
 
 The tracked ACF Local JSON definitions are:
 
-- `site-code/editorial-dimensions/acf-json/taxonomy_editorial_format.json`
-- `site-code/editorial-dimensions/acf-json/taxonomy_editorial_collection.json`
-- `site-code/editorial-dimensions/acf-json/group_vg_editorial_classification.json`
+- `site-code/acf-json/taxonomy_editorial_format.json`
+- `site-code/acf-json/taxonomy_editorial_collection.json`
+- `site-code/acf-json/group_vg_editorial_classification.json`
 
 The active Bricks Child theme's ACF JSON directory is:
 
@@ -19,7 +19,7 @@ The active Bricks Child theme's ACF JSON directory is:
 /home/jcschoeman96/Local Sites/voelgoed-novamira/app/public/wp-content/themes/bricks-child/acf-json
 ```
 
-That directory is a symlink to this repository module's `site-code/editorial-dimensions/acf-json/`. ACF Local JSON reads and writes through that path. ACF Pro owns the definitions, Git Local JSON is their canonical source-controlled representation, and the WordPress database holds the runtime records. The ACF JSON sync command is the explicit bridge between Git files and those database records. A file changing in Git does not update an existing database record until ACF sync runs.
+For a stabilized checkout, that directory is a symlink to this repository's shared `site-code/acf-json/`. ACF Local JSON reads and writes through that path. ACF Pro owns the definitions, Git Local JSON is their canonical source-controlled representation, and the WordPress database holds the runtime records. The ACF JSON sync command is the explicit bridge between Git files and those database records. A file changing in Git does not update an existing database record until ACF sync runs. The current pre-merge staging symlink temporarily targets the Task 5B feature worktree; its exact target and the required post-merge transition are recorded in [Person Foundation Implementation](PERSON_FOUNDATION_IMPLEMENTATION.md) and the [Post-Task 5B snapshot](POST_TASK_5B_CURRENT_STATE.md).
 
 At verification time ACF's runtime records reported `source: db`. ACF's runtime taxonomy payloads and the JSON files matched for all persisted registration properties. The field group location and every source-defined field property also matched. ACF adds runtime metadata when it loads fields (`ID`, `prefix`, `value`, `menu_order`, `id`, `class`, `parent`, `_name`, `_valid`); these are generated record/runtime values, not source configuration. The database `ID`, ACF validity marker, and modification timestamp are likewise excluded from the parity comparison.
 
@@ -27,12 +27,12 @@ At verification time ACF's runtime records reported `source: db`. ACF's runtime 
 
 Use this order for a new Local or staging checkout. Run WP-CLI commands from the WordPress root. Set `VG_REPO_ROOT` to the checkout root and `VG_WP_ROOT` to the WordPress root.
 
-1. Check out the Git revision that contains the three tracked JSON files listed above.
+1. Check out the Git revision that contains the three tracked JSON files listed above under `site-code/acf-json/`.
 2. Make the active theme's `acf-json` path point to the repository folder. If the path does not exist, create the symlink. If it already exists, verify that it resolves to the repository folder and repair it before continuing if it does not.
 
    ```sh
    ACF_JSON_LINK="$VG_WP_ROOT/wp-content/themes/bricks-child/acf-json"
-   ACF_JSON_SOURCE="$VG_REPO_ROOT/site-code/editorial-dimensions/acf-json"
+   ACF_JSON_SOURCE="$VG_REPO_ROOT/site-code/acf-json"
    mkdir -p "$VG_WP_ROOT/wp-content/themes/bricks-child"
 
    if [ -L "$ACF_JSON_LINK" ]; then
