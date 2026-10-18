@@ -49,22 +49,44 @@ function vg_event_participation_qa_terms(int $post_id, string $taxonomy): array
     return $result;
 }
 
+function vg_event_participation_qa_count_query(string $query, string $description): int
+{
+    global $wpdb;
+    $value = $wpdb->get_var($query);
+    if ($wpdb->last_error !== '') {
+        throw new RuntimeException('Could not read ' . $description . ': ' . $wpdb->last_error);
+    }
+    if ($value === null) {
+        throw new RuntimeException('The count query returned no result for ' . $description . '.');
+    }
+    return (int) $value;
+}
+
 function vg_event_participation_qa_post_count(string $type): int
 {
     global $wpdb;
-    return (int) $wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM {$wpdb->posts} WHERE post_type = %s", $type));
+    return vg_event_participation_qa_count_query(
+        $wpdb->prepare("SELECT COUNT(*) FROM {$wpdb->posts} WHERE post_type = %s", $type),
+        'post type ' . $type
+    );
 }
 
 function vg_event_participation_qa_relationship_count(int $post_id): int
 {
     global $wpdb;
-    return (int) $wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM {$wpdb->term_relationships} WHERE object_id = %d", $post_id));
+    return vg_event_participation_qa_count_query(
+        $wpdb->prepare("SELECT COUNT(*) FROM {$wpdb->term_relationships} WHERE object_id = %d", $post_id),
+        'term relationships for post ' . $post_id
+    );
 }
 
 function vg_event_participation_qa_meta_count(int $post_id): int
 {
     global $wpdb;
-    return (int) $wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM {$wpdb->postmeta} WHERE post_id = %d", $post_id));
+    return vg_event_participation_qa_count_query(
+        $wpdb->prepare("SELECT COUNT(*) FROM {$wpdb->postmeta} WHERE post_id = %d", $post_id),
+        'metadata for post ' . $post_id
+    );
 }
 
 function vg_event_participation_qa_vocab(string $taxonomy): array
@@ -105,16 +127,33 @@ function vg_event_participation_qa_snapshot(): array
     }
     $event = get_post(763);
     vg_event_participation_qa_check($event instanceof WP_Post && $event->post_type === 'tc_events', 'Legacy event 763 is missing.');
-    $event_state = [$event->post_status, $event->post_name, $event->post_modified, vg_event_participation_qa_ids(get_field('event_medewerkers', 763)), vg_event_participation_qa_terms(763, 'event_category')];
+    $event_state = [
+        $event->post_status,
+        $event->post_name,
+        $event->post_modified,
+        vg_event_participation_qa_ids(get_field('event_medewerkers', 763)),
+        vg_event_participation_qa_terms(763, 'event_category'),
+        vg_event_participation_qa_terms(763, 'content_topic'),
+    ];
     $products = [];
     foreach ([767, 768] as $id) {
         $post = get_post($id);
         vg_event_participation_qa_check($post instanceof WP_Post && $post->post_type === 'product', 'Protected product ' . $id . ' is missing.');
-        $products[$id] = [$post->post_status, $post->post_name, $post->post_modified, get_field('produk_bron_event', $id), vg_event_participation_qa_ids(get_field('produk_medewerkers', $id)), vg_event_participation_qa_terms($id, 'product_cat'), vg_event_participation_qa_terms($id, 'product_tag')];
+        $products[$id] = [
+            $post->post_status,
+            $post->post_name,
+            $post->post_modified,
+            get_field('produk_bron_event', $id),
+            vg_event_participation_qa_ids(get_field('produk_medewerkers', $id)),
+            vg_event_participation_qa_terms($id, 'product_cat'),
+            vg_event_participation_qa_terms($id, 'product_tag'),
+            vg_event_participation_qa_terms($id, 'content_topic'),
+        ];
     }
     return [
         'profiles' => $profiles, 'attachments' => $attachments, 'event' => $event_state, 'products' => $products,
         'topics' => vg_event_participation_qa_vocab('content_topic'),
+        'person_count' => vg_event_participation_qa_post_count('person'),
         'person_type_relationships' => vg_event_participation_qa_person_taxonomy_count('person_type'),
         'person_topic_relationships' => vg_event_participation_qa_person_taxonomy_count('content_topic'),
         'participation_count' => vg_event_participation_qa_post_count(EventParticipationRepository::POST_TYPE),
@@ -126,26 +165,47 @@ function vg_event_participation_qa_snapshot(): array
 function vg_event_participation_qa_person_taxonomy_count(string $taxonomy): int
 {
     global $wpdb;
-    return (int) $wpdb->get_var($wpdb->prepare(
-        "SELECT COUNT(*) FROM {$wpdb->term_relationships} r JOIN {$wpdb->term_taxonomy} t ON t.term_taxonomy_id=r.term_taxonomy_id JOIN {$wpdb->posts} p ON p.ID=r.object_id WHERE p.post_type=%s AND t.taxonomy=%s",
-        'person', $taxonomy
-    ));
+    return vg_event_participation_qa_count_query(
+        $wpdb->prepare(
+            "SELECT COUNT(*) FROM {$wpdb->term_relationships} r JOIN {$wpdb->term_taxonomy} t ON t.term_taxonomy_id=r.term_taxonomy_id JOIN {$wpdb->posts} p ON p.ID=r.object_id WHERE p.post_type=%s AND t.taxonomy=%s",
+            'person',
+            $taxonomy
+        ),
+        'Person relationships for taxonomy ' . $taxonomy
+    );
 }
 
 function vg_event_participation_qa_taxonomy_relationship_count(string $taxonomy): int
 {
     global $wpdb;
-    return (int) $wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM {$wpdb->term_relationships} r JOIN {$wpdb->term_taxonomy} t ON t.term_taxonomy_id=r.term_taxonomy_id WHERE t.taxonomy=%s", $taxonomy));
+    return vg_event_participation_qa_count_query(
+        $wpdb->prepare(
+            "SELECT COUNT(*) FROM {$wpdb->term_relationships} r JOIN {$wpdb->term_taxonomy} t ON t.term_taxonomy_id=r.term_taxonomy_id WHERE t.taxonomy=%s",
+            $taxonomy
+        ),
+        'relationships for taxonomy ' . $taxonomy
+    );
 }
 
 function vg_event_participation_qa_token_exists(string $token): bool
 {
     global $wpdb;
     $like = '%' . $wpdb->esc_like($token) . '%';
-    return (int) $wpdb->get_var($wpdb->prepare(
-        "SELECT COUNT(*) FROM {$wpdb->posts} p LEFT JOIN {$wpdb->postmeta} m ON m.post_id=p.ID WHERE p.post_title LIKE %s OR p.post_name LIKE %s OR m.meta_value LIKE %s",
-        $like, $like, $like
-    )) > 0;
+    $post_matches = vg_event_participation_qa_count_query(
+        $wpdb->prepare(
+            "SELECT COUNT(*) FROM {$wpdb->posts} WHERE post_title LIKE %s OR post_name LIKE %s OR post_content LIKE %s OR post_excerpt LIKE %s",
+            $like,
+            $like,
+            $like,
+            $like
+        ),
+        'run token in posts'
+    );
+    $meta_matches = vg_event_participation_qa_count_query(
+        $wpdb->prepare("SELECT COUNT(*) FROM {$wpdb->postmeta} WHERE meta_value LIKE %s", $like),
+        'run token in post metadata'
+    );
+    return $post_matches > 0 || $meta_matches > 0;
 }
 
 vg_event_participation_qa_check(class_exists(EventParticipationService::class), 'Platform Core EventParticipationService is not loaded.');
@@ -153,6 +213,21 @@ foreach ([EventParticipationRepository::POST_TYPE, 'person'] as $type) {
     vg_event_participation_qa_check(post_type_exists($type), 'Required post type ' . $type . ' is not registered.');
 }
 vg_event_participation_qa_check(taxonomy_exists('event_role'), 'Required event_role taxonomy is not registered.');
+$participation_type = get_post_type_object(EventParticipationRepository::POST_TYPE);
+vg_event_participation_qa_check($participation_type instanceof WP_Post_Type, 'Event Participation post type object is missing.');
+vg_event_participation_qa_check(
+    ! $participation_type->public
+        && ! $participation_type->publicly_queryable
+        && $participation_type->exclude_from_search
+        && $participation_type->show_in_rest
+        && ! $participation_type->has_archive
+        && $participation_type->rewrite === false,
+    'Event Participation must remain private, non-queryable, excluded from search, REST-enabled, without an archive or rewrite.'
+);
+$role_taxonomy = get_taxonomy('event_role');
+$role_object_types = is_object($role_taxonomy) ? (array) $role_taxonomy->object_type : [];
+sort($role_object_types);
+vg_event_participation_qa_check($role_object_types === [EventParticipationRepository::POST_TYPE], 'event_role must be attached only to event_participation.');
 vg_event_participation_qa_check(vg_event_participation_qa_post_count('person') === 0, 'Persistent Person count must be zero before QA.');
 vg_event_participation_qa_check(vg_event_participation_qa_post_count(EventParticipationRepository::POST_TYPE) === 0, 'Persistent participation count must be zero before QA.');
 $role_vocab = vg_event_participation_qa_vocab('event_role');
@@ -171,15 +246,31 @@ $candidates = get_posts(['post_type' => 'tc_events', 'post_status' => 'publish',
 $qa_event_id = 0;
 foreach ($candidates as $candidate_id) {
     $candidate_id = (int) $candidate_id;
-    if ($candidate_id !== 763 && vg_event_participation_qa_ids(get_field('event_medewerkers', $candidate_id)) === []) {
+    $candidate = get_post($candidate_id);
+    if (
+        $candidate_id !== 763
+        && $candidate instanceof WP_Post
+        && $candidate->post_type === 'tc_events'
+        && $candidate->post_status === 'publish'
+        && vg_event_participation_qa_ids(get_field('event_medewerkers', $candidate_id)) === []
+    ) {
         $qa_event_id = $candidate_id;
         break;
     }
 }
 vg_event_participation_qa_check($qa_event_id > 0, 'No published QA Event with empty event_medewerkers was found.');
 $qa_event = get_post($qa_event_id);
+vg_event_participation_qa_check($qa_event instanceof WP_Post && $qa_event->ID !== 763, 'The QA Event must be a published Event other than Event 763.');
 $before = vg_event_participation_qa_snapshot();
-$qa_event_before = [$qa_event->post_status, $qa_event->post_name, $qa_event->post_modified, vg_event_participation_qa_ids(get_field('event_medewerkers', $qa_event_id)), vg_event_participation_qa_terms($qa_event_id, 'event_category')];
+$qa_event_before = [
+    $qa_event->post_type,
+    $qa_event->post_status,
+    $qa_event->post_name,
+    $qa_event->post_modified,
+    vg_event_participation_qa_ids(get_field('event_medewerkers', $qa_event_id)),
+    vg_event_participation_qa_terms($qa_event_id, 'event_category'),
+    vg_event_participation_qa_terms($qa_event_id, 'content_topic'),
+];
 vg_event_participation_qa_check($before['event'][3] === [753, 757], 'Legacy Event 763 baseline does not match.');
 
 $token = gmdate('YmdHis') . '-' . bin2hex(random_bytes(8));
@@ -187,7 +278,7 @@ $owner = '[QA][AUTOMATED] ' . $token;
 $person_id = 0;
 $participation_id = 0;
 $qa_failure = null;
-$cleanup_failure = null;
+$cleanup_failures = [];
 $result = [];
 $service = new EventParticipationService();
 try {
@@ -198,7 +289,7 @@ try {
     $person_id = (int) $inserted;
     vg_event_participation_qa_check($person_id > 0 && get_post_meta($person_id, '_vg_task_6a_qa_owner', true) === $owner, 'QA Person ownership marker did not persist.');
 
-    $created = $service->create($qa_event_id, $person_id, [(int) $role_by_slug['spreker']['id'], (int) $role_by_slug['paneellid']['id']], 17, 'private');
+    $created = $service->create($qa_event_id, $person_id, [(int) $role_by_slug['spreker']['id'], (int) $role_by_slug['paneellid']['id']], 17, 'publish');
     if (is_wp_error($created)) {
         throw new RuntimeException('Could not create QA participation: ' . $created->get_error_message());
     }
@@ -213,21 +304,49 @@ try {
     vg_event_participation_qa_check(get_the_title($participation_id) === get_the_title($qa_event_id) . ' — ' . get_the_title($person_id), 'Participation title is not derived from its endpoints.');
     vg_event_participation_qa_check($repo->participations_for_event($qa_event_id) === [$participation_id] && $repo->participations_for_person($person_id) === [$participation_id], 'Canonical Event/Person participation queries failed.');
     vg_event_participation_qa_check($repo->people_for_event($qa_event_id) === [$person_id] && $repo->events_for_person($person_id) === [$qa_event_id], 'Canonical reverse relationship queries failed.');
-    vg_event_participation_qa_check(wp_get_post_terms($participation_id, 'event_role', ['fields' => 'slugs']) === ['paneellid', 'spreker'], 'Participation roles do not match Spreker and Paneellid.');
-    vg_event_participation_qa_check(! is_post_publicly_viewable(get_post($participation_id)), 'Private participation must not be publicly viewable.');
+    $participation_roles = wp_get_post_terms($participation_id, 'event_role', ['fields' => 'slugs']);
+    sort($participation_roles);
+    vg_event_participation_qa_check($participation_roles === ['paneellid', 'spreker'], 'Participation roles do not match Spreker and Paneellid.');
+    vg_event_participation_qa_check(! is_post_publicly_viewable(get_post($participation_id)), 'Published Event Participation must not be publicly viewable.');
 
     $duplicate = $service->create($qa_event_id, $person_id, [], 1, 'publish');
     vg_event_participation_qa_check(is_wp_error($duplicate), 'Duplicate Event/Person pair was accepted.');
     vg_event_participation_qa_check($repo->live_participations_for_event($qa_event_id) === [$participation_id], 'Duplicate attempt created a second valid participation.');
-    vg_event_participation_qa_check(is_wp_error($service->validate_pair(999999999, $person_id)), 'Validator accepted a missing Event.');
-    vg_event_participation_qa_check(is_wp_error($service->validate_pair($qa_event_id, 999999999)), 'Validator accepted a missing Person.');
+    $private_update = wp_update_post(['ID' => $participation_id, 'post_status' => 'private'], true);
+    vg_event_participation_qa_check($private_update === $participation_id, 'Could not temporarily change the QA participation to private.');
+    vg_event_participation_qa_check(
+        $repo->participations_for_event($qa_event_id) === []
+            && $repo->participations_for_person($person_id) === []
+            && $repo->people_for_event($qa_event_id) === []
+            && $repo->events_for_person($person_id) === [],
+        'Private participation leaked into active query results.'
+    );
+    vg_event_participation_qa_check(! is_post_publicly_viewable(get_post($participation_id)), 'Private participation must not be publicly viewable.');
+    $published_update = wp_update_post(['ID' => $participation_id, 'post_status' => 'publish'], true);
+    vg_event_participation_qa_check($published_update === $participation_id, 'Could not restore the QA participation to publish.');
+    vg_event_participation_qa_check(
+        $repo->participations_for_event($qa_event_id) === [$participation_id]
+            && $repo->participations_for_person($person_id) === [$participation_id]
+            && $repo->people_for_event($qa_event_id) === [$person_id]
+            && $repo->events_for_person($person_id) === [$qa_event_id],
+        'Published participation did not return to active query results.'
+    );
+    $missing_event = $service->validate_pair(999999999, $person_id, $participation_id);
+    vg_event_participation_qa_check(is_wp_error($missing_event) && $missing_event->get_error_code() === 'invalid_event', 'Validator did not reject the missing Event with invalid_event.');
+    $missing_person = $service->validate_pair($qa_event_id, 999999999, $participation_id);
+    vg_event_participation_qa_check(is_wp_error($missing_person) && $missing_person->get_error_code() === 'invalid_person', 'Validator did not reject the missing Person with invalid_person.');
+    $wrong_event_type = $service->validate_pair($person_id, $person_id, $participation_id);
+    vg_event_participation_qa_check(is_wp_error($wrong_event_type) && $wrong_event_type->get_error_code() === 'invalid_event', 'Validator accepted a Person ID as an Event.');
+    $wrong_person_type = $service->validate_pair($qa_event_id, $qa_event_id, $participation_id);
+    vg_event_participation_qa_check(is_wp_error($wrong_person_type) && $wrong_person_type->get_error_code() === 'invalid_person', 'Validator accepted an Event ID as a Person.');
     vg_event_participation_qa_check(wp_trash_post($person_id) instanceof WP_Post, 'Could not temporarily trash the QA Person.');
-    vg_event_participation_qa_check(is_wp_error($service->validate_pair($qa_event_id, $person_id)), 'Validator accepted a trashed Person endpoint.');
+    $trashed_person = $service->validate_pair($qa_event_id, $person_id, $participation_id);
+    vg_event_participation_qa_check(is_wp_error($trashed_person) && $trashed_person->get_error_code() === 'invalid_person', 'Validator did not reject the trashed Person with invalid_person.');
     vg_event_participation_qa_check(wp_untrash_post($person_id) instanceof WP_Post, 'Could not restore the QA Person after validator check.');
 
     vg_event_participation_qa_check(wp_update_post(['ID' => $person_id, 'post_title' => $owner . ' changed'], true) === $person_id, 'Could not change temporary QA Person title.');
     vg_event_participation_qa_check(get_the_title($participation_id) === get_the_title($qa_event_id) . ' — ' . get_the_title($person_id), 'Participation title did not follow the changed Person title.');
-    $result = ['event_id' => $qa_event_id, 'person_id' => $person_id, 'participation_id' => $participation_id, 'roles' => ['paneellid', 'spreker'], 'display_order' => 17, 'private' => true, 'duplicate_rejected' => true, 'invalid_endpoints_rejected' => true];
+    $result = ['event_id' => $qa_event_id, 'person_id' => $person_id, 'participation_id' => $participation_id, 'roles' => ['paneellid', 'spreker'], 'display_order' => 17, 'published_queries_pass' => true, 'private_query_exclusion_pass' => true, 'non_public_routing_pass' => true, 'duplicate_rejected' => true, 'invalid_endpoints_rejected' => true];
 } catch (Throwable $error) {
     $qa_failure = $error;
 } finally {
@@ -236,32 +355,108 @@ try {
         if ($id <= 0) {
             continue;
         }
-        $post = get_post($id);
-        if (! ($post instanceof WP_Post) || $post->post_type !== $owned['type'] || get_post_meta($id, '_vg_task_6a_qa_owner', true) !== $owner) {
-            $cleanup_failure = new RuntimeException('Cleanup refused because a QA ownership marker did not match.');
-            continue;
-        }
-        if (! wp_delete_post($id, true) || get_post($id) !== null || vg_event_participation_qa_postmeta_count($id) !== 0 || vg_event_participation_qa_relationship_count($id) !== 0) {
-            $cleanup_failure = new RuntimeException('QA record cleanup did not remove the post, metadata, and term relationships.');
+        try {
+            $post = get_post($id);
+            if (! ($post instanceof WP_Post) || $post->post_type !== $owned['type'] || get_post_meta($id, '_vg_task_6a_qa_owner', true) !== $owner) {
+                throw new RuntimeException('Cleanup refused because the QA ownership marker did not match.');
+            }
+            if (! wp_delete_post($id, true) || get_post($id) !== null || vg_event_participation_qa_meta_count($id) !== 0 || vg_event_participation_qa_relationship_count($id) !== 0) {
+                throw new RuntimeException('QA record cleanup did not remove the post, metadata, and term relationships.');
+            }
+        } catch (Throwable $error) {
+            $cleanup_failures[] = ['id' => $id, 'message' => $error->getMessage()];
         }
     }
 }
-if ($cleanup_failure instanceof Throwable) {
-    throw $cleanup_failure;
-}
+$audit_failures = [];
+$audit = static function (string $name, callable $assertion) use (&$audit_failures): void {
+    try {
+        $assertion();
+    } catch (Throwable $error) {
+        $audit_failures[] = ['check' => $name, 'message' => $error->getMessage()];
+    }
+};
+$token_found = null;
+$remaining_persons = null;
+$remaining_participations = null;
+$remaining_person_type_relationships = null;
+$remaining_person_topic_relationships = null;
+$remaining_role_relationships = null;
+$protected_state_unchanged = false;
+$qa_event_unchanged = false;
+$audit('run_token_absent', static function () use ($token, &$token_found): void {
+    $token_found = vg_event_participation_qa_token_exists($token);
+    vg_event_participation_qa_check(! $token_found, 'The QA run token remains in posts or post metadata.');
+});
+$audit('persistent_records_removed', static function () use (&$remaining_persons, &$remaining_participations): void {
+    $remaining_persons = vg_event_participation_qa_post_count('person');
+    $remaining_participations = vg_event_participation_qa_post_count(EventParticipationRepository::POST_TYPE);
+    vg_event_participation_qa_check($remaining_persons === 0 && $remaining_participations === 0, 'A Person or participation remains after cleanup.');
+});
+$audit('person_relationships_removed', static function () use (&$remaining_person_type_relationships, &$remaining_person_topic_relationships): void {
+    $remaining_person_type_relationships = vg_event_participation_qa_person_taxonomy_count('person_type');
+    $remaining_person_topic_relationships = vg_event_participation_qa_person_taxonomy_count('content_topic');
+    vg_event_participation_qa_check($remaining_person_type_relationships === 0 && $remaining_person_topic_relationships === 0, 'Person taxonomy relationships remain after cleanup.');
+});
+$audit('role_relationships_removed', static function () use (&$remaining_role_relationships): void {
+    $remaining_role_relationships = vg_event_participation_qa_taxonomy_relationship_count('event_role');
+    vg_event_participation_qa_check($remaining_role_relationships === 0, 'Event Participation event_role relationships remain after cleanup.');
+});
+$after = null;
+$audit('protected_state_unchanged', static function () use ($before, &$after, &$protected_state_unchanged): void {
+    $after = vg_event_participation_qa_snapshot();
+    vg_event_participation_qa_check($before === $after, 'Protected runtime state changed during Event Participation QA.');
+    $protected_state_unchanged = true;
+});
+$audit('qa_event_unchanged', static function () use ($qa_event_id, $qa_event_before, &$qa_event_unchanged): void {
+    $qa_event_after = get_post($qa_event_id);
+    vg_event_participation_qa_check($qa_event_after instanceof WP_Post, 'The selected QA Event disappeared.');
+    $qa_event_after_state = [
+        $qa_event_after->post_type,
+        $qa_event_after->post_status,
+        $qa_event_after->post_name,
+        $qa_event_after->post_modified,
+        vg_event_participation_qa_ids(get_field('event_medewerkers', $qa_event_id)),
+        vg_event_participation_qa_terms($qa_event_id, 'event_category'),
+        vg_event_participation_qa_terms($qa_event_id, 'content_topic'),
+    ];
+    vg_event_participation_qa_check($qa_event_before === $qa_event_after_state, 'The selected QA Event changed during QA.');
+    $qa_event_unchanged = true;
+});
+$failures = [];
 if ($qa_failure instanceof Throwable) {
-    throw $qa_failure;
+    $failures[] = ['phase' => 'qa', 'message' => $qa_failure->getMessage()];
 }
-vg_event_participation_qa_check(! vg_event_participation_qa_token_exists($token), 'The QA run token remains in posts or post metadata.');
-vg_event_participation_qa_check(vg_event_participation_qa_post_count('person') === 0 && vg_event_participation_qa_post_count(EventParticipationRepository::POST_TYPE) === 0, 'A Person or participation remains after cleanup.');
-$after = vg_event_participation_qa_snapshot();
-$qa_event_after = get_post($qa_event_id);
-$qa_event_after_state = [$qa_event_after->post_status, $qa_event_after->post_name, $qa_event_after->post_modified, vg_event_participation_qa_ids(get_field('event_medewerkers', $qa_event_id)), vg_event_participation_qa_terms($qa_event_id, 'event_category')];
-vg_event_participation_qa_check($before === $after, 'Protected runtime state changed during Event Participation QA.');
-vg_event_participation_qa_check($qa_event_before === $qa_event_after_state, 'The selected QA Event changed during QA.');
-$report = wp_json_encode(['result' => 'PASS', 'qa' => $result, 'cleanup' => ['persons' => 0, 'participations' => 0, 'run_token_found' => false], 'protected_state_unchanged' => true, 'qa_event_unchanged' => true], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
+foreach ($cleanup_failures as $failure) {
+    $failures[] = ['phase' => 'cleanup'] + $failure;
+}
+foreach ($audit_failures as $failure) {
+    $failures[] = ['phase' => 'audit'] + $failure;
+}
+$report = wp_json_encode([
+    'result' => $failures === [] ? 'PASS' : 'FAIL',
+    'qa' => $result,
+    'cleanup' => [
+        'persons_remaining' => $remaining_persons,
+        'participations_remaining' => $remaining_participations,
+        'run_token_found' => $token_found,
+        'person_type_relationships_remaining' => $remaining_person_type_relationships,
+        'person_content_topic_relationships_remaining' => $remaining_person_topic_relationships,
+        'event_role_relationships_remaining' => $remaining_role_relationships,
+        'ownership_cleanup_failures' => $cleanup_failures,
+    ],
+    'protected_state_unchanged' => $protected_state_unchanged,
+    'qa_event_unchanged' => $qa_event_unchanged,
+    'failures' => $failures,
+], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
 if (defined('WP_CLI') && WP_CLI) {
-    \WP_CLI::success($report);
+    \WP_CLI::line($report);
+    if ($failures !== []) {
+        \WP_CLI::error('Event Participation runtime QA failed.', 1);
+    }
 } else {
     echo $report . PHP_EOL;
+    if ($failures !== []) {
+        throw new RuntimeException('Event Participation runtime QA failed.');
+    }
 }
