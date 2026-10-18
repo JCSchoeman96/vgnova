@@ -496,6 +496,12 @@ function get_posts(array $args = []): array
         if (! in_array($post->post_type ?? '', $post_types, true)) {
             continue;
         }
+        if (isset($args['post_status']) && $args['post_status'] !== 'any') {
+            $post_statuses = (array) $args['post_status'];
+            if (! in_array($post->post_status ?? 'publish', $post_statuses, true)) {
+                continue;
+            }
+        }
         if (isset($args['meta_key'])) {
             $value = $GLOBALS['vgpc_test_meta'][$post_id][$args['meta_key']] ?? null;
             if ((string) $value !== (string) ($args['meta_value'] ?? '')) {
