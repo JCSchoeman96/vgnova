@@ -12,14 +12,16 @@
 
 **Base:** `origin/main` at `ba1b48c7726d9ce477a52eb32bb354a5259edd0c`; implementation branch `feat/event-consumer-cutover-6c`.
 
-**Plan status:** Independently approved and executed on 2026-10-19. The Event Single 774 cutover and runtime QA passed. The optional helper mode retirement was deferred after a zero-caller audit because FluentSnippets source editing was unavailable. See [implementation evidence](../../architecture/EVENT_CONSUMER_6C_IMPLEMENTATION.md), [current state](../../architecture/POST_TASK_6C_CURRENT_STATE.md), and [runtime manifest](../../architecture/EVENT_CONSUMER_6C_RUNTIME_MANIFEST.json).
+**Plan status:** Executed. The Event Single 774 cutover and runtime QA passed. The optional helper mode retirement was deferred after a zero-caller audit because FluentSnippets source editing was unavailable. See [implementation evidence](../../architecture/EVENT_CONSUMER_6C_IMPLEMENTATION.md), [current state](../../architecture/POST_TASK_6C_CURRENT_STATE.md), and [runtime manifest](../../architecture/EVENT_CONSUMER_6C_RUNTIME_MANIFEST.json).
+
+**Approval history:** The written Task 6C specification was independently approved before implementation. A separate pre-implementation review of this implementation plan was not recorded. Implementation later received explicit continuation approval after the Bricks component-storage adaptation stop gate.
 
 ---
 
 ## Approval and stop gates
 
-- This plan received independent approval before implementation began. Runtime operations followed the approved gates below; the final PR remains open and unmerged.
-- After approval, recheck that the worktree is based on the expected SHA and has no unrelated changes. Keep all implementation in `.worktrees/feat-event-consumer-cutover-6c`; do not work in `main`.
+- The approved written specification governed implementation. The final PR remains open and unmerged.
+- Before runtime operations, recheck that the worktree is based on the expected SHA and has no unrelated changes. Keep all implementation in `.worktrees/feat-event-consumer-cutover-6c`; do not work in `main`.
 - Stop before any Bricks write if Template 774 has materially changed from the approved 103-element Task 6B structure, if `Event Participant Card` already exists, if `3c88cc` cannot be preserved byte-for-byte, if the Bricks query or nested Person-loop contract does not work as designed, or if exact rollback cannot be verified.
 - Stop and request architecture review if resolving the Person requires legacy Medewerker fields, Person excerpt/content, credentials, company, website, `content_topic`, `person_type`, a hard-coded route, Event-role inference, or another relationship model.
 - The helper retirement gate is conditional. Any active caller or ambiguous result means the `event_medewerkers` helper mode stays unchanged and retirement is recorded as deferred.
