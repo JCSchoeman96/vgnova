@@ -138,9 +138,9 @@
   },
   "platform_core": {
     "adapter_source_path": "site-code/voelgoed-platform-core/includes/Event/EventParticipationBricks.php",
-    "adapter_source_sha256": "4db7fec1bc2def2bdb8761a0d273c7bfbb39261033bc51dcbe5aada88016d189",
+    "adapter_source_sha256": "1adee948ecb9a53f762e7f9de62bf721e1bc46c9f8d4e3f093f9fd26a9c87c63",
     "adapter_runtime_path": "wp-content/plugins/voelgoed-platform-core/includes/Event/EventParticipationBricks.php",
-    "adapter_runtime_sha256": "4db7fec1bc2def2bdb8761a0d273c7bfbb39261033bc51dcbe5aada88016d189",
+    "adapter_runtime_sha256": "1adee948ecb9a53f762e7f9de62bf721e1bc46c9f8d4e3f093f9fd26a9c87c63",
     "source_runtime_parity": "MATCH",
     "runtime_bootstrap_sha256": "0a65ed3754c969a5ac8f0da49eb730774c24964e15dd642249559ae0dae3cf8e",
     "runtime_plugin_sha256": "596b37e8d3ed0e3f1cafad18bbe404bb5293ec956cb761bcc738f03fa77a459f",
@@ -152,7 +152,19 @@
       "bricks/posts/query_vars": 4,
       "bricks/element/render": 2
     },
-    "delegates_to": "EventParticipationRepository::participations_for_event()"
+    "delegates_to": "EventParticipationRepository::participations_for_event()",
+    "post_review_hardening_deployment": {
+      "review_finding": "Marked Bricks query inherited unrelated Bricks query vars, including legacy meta and taxonomy constraints.",
+      "resolution": "The adapter now returns only the five canonical query arguments for the marked query.",
+      "runtime_backup_path": "/tmp/vgnova-task6c-review-fix-20261019/EventParticipationBricks.pre-queryvars-hardening.php",
+      "runtime_backup_sha256": "4db7fec1bc2def2bdb8761a0d273c7bfbb39261033bc51dcbe5aada88016d189",
+      "runtime_before_sha256": "4db7fec1bc2def2bdb8761a0d273c7bfbb39261033bc51dcbe5aada88016d189",
+      "runtime_after_sha256": "1adee948ecb9a53f762e7f9de62bf721e1bc46c9f8d4e3f093f9fd26a9c87c63",
+      "novamira_read_file_sha256": "1adee948ecb9a53f762e7f9de62bf721e1bc46c9f8d4e3f093f9fd26a9c87c63",
+      "runtime_class_loaded": true,
+      "query_filter_registered": true,
+      "section_filter_registered": true
+    }
   },
   "helper_retirement": {
     "runtime_helper": "10-vg-bricks-medewerker-queries.php",
@@ -194,7 +206,8 @@
       {"run_token": "task6c-20261019-vg01", "person_ids": [1325, 1326], "participation_ids": [1327, 1328], "result": "failed link assertion during component diagnosis", "cleanup": "PASS"},
       {"run_token": "task6c-20261019-vg02", "person_ids": [1329, 1330], "participation_ids": [1331, 1332], "result": "diagnostic confirmed anchors had no href", "cleanup": "PASS"},
       {"run_token": "task6c-20261019-vg03", "person_ids": [1333, 1334], "participation_ids": [1335, 1336], "result": "checker false positive on brx-query-trail anchor; parser corrected", "cleanup": "PASS"},
-      {"run_token": "task6c-20261019-vg04", "person_ids": [1337, 1338], "participation_ids": [1339, 1340], "result": "PASS", "cleanup": "PASS"}
+      {"run_token": "task6c-20261019-vg04", "person_ids": [1337, 1338], "participation_ids": [1339, 1340], "result": "PASS", "cleanup": "PASS"},
+      {"run_token": "task6c-review-fix-20261019-01", "person_ids": [1341, 1342], "participation_ids": [1343, 1344], "result": "PASS after marked-query constraint hardening; Person B then Person A, canonical links, modal retirement, and Event 763 isolation verified", "cleanup": "PASS", "verify_clean": "PASS"}
     ],
     "maximum_simultaneous_records": {"person": 2, "event_participation": 2},
     "all_temporary_records_hard_deleted": true,
@@ -227,7 +240,26 @@
       "http": 200
     },
     "final_cleanup": "PASS",
-    "final_verify_clean": "PASS"
+    "final_verify_clean": "PASS",
+    "post_review_hardening_check": {
+      "qa_event_id": 151,
+      "empty_frontend_before": {"http": 200, "participant_section_absent": true},
+      "person_a": {"id": 1341, "display_order": 20, "professional_title": "rendered", "url": "http://localhost:10039/mense/vg-task-6c-task6c-review-fix-20261019-01-person-a/", "http": 200},
+      "person_b": {"id": 1342, "display_order": 10, "professional_title": "empty", "url": "http://localhost:10039/mense/vg-task-6c-task6c-review-fix-20261019-01-person-b/", "http": 200},
+      "participation_ids": {"person_a": 1343, "person_b": 1344},
+      "repository_order": [1344, 1343],
+      "frontend_order": ["Person B", "Person A"],
+      "medewerker_participant_links": 0,
+      "legacy_modal_absent": true,
+      "placeholder_social_links": 0,
+      "featured_images": "not assigned; image resolution remains untested",
+      "event_763": {"event_medewerkers": [753, 757], "canonical_participations": 0, "section_absent": true, "legacy_fallback_detected": false},
+      "cleanup": "PASS",
+      "verify_clean": "PASS",
+      "qa_event_unchanged": true,
+      "persistent_person_count": 0,
+      "persistent_event_participation_count": 0
+    }
   },
   "protected_state": {
     "profiles_753_757_unchanged": true,
@@ -258,7 +290,7 @@
   },
   "test_results": {
     "event_participation": "65/65 PASS",
-    "event_participation_bricks": "11/11 PASS",
+    "event_participation_bricks": "12/12 PASS",
     "event_role_seeder": "13/13 PASS; reported separately because it overlaps the Event Participation suite",
     "content_topic": "67/67 PASS",
     "event_participation_acf_schema": "3/3 PASS",
@@ -268,13 +300,14 @@
     "existing_qa_cleanup": "3/3 PASS",
     "existing_qa_setup_and_cleanup_combined": "4/4 PASS",
     "task_6c_qa_ownership_and_rendering": "12/12 PASS",
-    "distinct_platform_core_combined": "143/143 PASS",
+    "distinct_platform_core_combined": "144/144 PASS",
     "php_lint": "PASS",
     "json_parse": "PASS",
     "csv_parse": "PASS",
     "integration_patch_parity": "PASS",
     "git_diff_check": "PASS after staging",
-    "protected_state_comparison": "PASS; only intended Template 774 Bricks content/meta and the bricks_components option changed; protected state remained unchanged"
+    "protected_state_comparison": "PASS; protected records remained unchanged; intended changes were Template 774 Bricks content/meta, the bricks_components option, and the Platform Core adapter file",
+    "post_review_hardening_red_green": {"before_fix": "1 inherited-query-constraint regression failed as expected", "after_fix_before_frontend_context_test": "11/11 PASS", "final_bricks_adapter_suite": "12/12 PASS"}
   },
   "migration_counts": {
     "legacy_person_profiles_migrated": 0,
@@ -290,5 +323,17 @@
     "state": "open",
     "merged": false,
     "linked_to_t3_thread": true
+  },
+  "independent_review": {
+    "review_provider": "cursor",
+    "review_model": "composer-2.5",
+    "reviewed_commit": "3058814005f2105a3280b17128b28f2691b21521",
+    "review_status": "completed",
+    "medium_finding": "Marked query retained Bricks-inherited query constraints.",
+    "medium_finding_resolution": "Fixed in source and runtime; exact canonical query vars are returned.",
+    "frontend_context_coverage_finding": "Covered by added test for a frontend Event with no Bricks preview ID.",
+    "featured_image_note": "No temporary QA images were assigned; image resolution is not exercised.",
+    "manifest_pr_state_note": "The PR state now records PR 23 as open and unmerged.",
+    "follow_up_review": "pending after the hardening commit"
   }
 }

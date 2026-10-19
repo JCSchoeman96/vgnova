@@ -40,13 +40,13 @@ final class EventParticipationBricks
         }
 
         $participation_ids = array_values($this->participation_ids_for_event_context());
-        $query_vars['post_type'] = EventParticipationRepository::POST_TYPE;
-        $query_vars['post_status'] = EventParticipationRepository::ACTIVE_STATUS;
-        $query_vars['post__in'] = $participation_ids !== [] ? $participation_ids : [0];
-        $query_vars['orderby'] = 'post__in';
-        $query_vars['posts_per_page'] = -1;
-
-        return $query_vars;
+        return [
+            'post_type' => EventParticipationRepository::POST_TYPE,
+            'post_status' => EventParticipationRepository::ACTIVE_STATUS,
+            'post__in' => $participation_ids !== [] ? $participation_ids : [0],
+            'orderby' => 'post__in',
+            'posts_per_page' => -1,
+        ];
     }
 
     /** Hide the whole marked section on the frontend when canonical results are empty. */

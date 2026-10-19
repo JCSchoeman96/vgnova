@@ -575,4 +575,8 @@ The written design and implementation plan were approved before implementation. 
 
 The full Template 774 snapshot and exact restore input remain in `/tmp/vgnova-task6c/`. The new native component is option entry `194bba` in `bricks_components`; its component post ID and status are not applicable. Full option hashes, backup provenance, and targeted rollback proof are recorded in the runtime manifest.
 
-Four temporary QA runs were cleaned successfully. The final run proved rendered ordering, optional title behavior, canonical Person URLs, modal retirement, Event 763 isolation, and the empty state after cleanup. Persistent Person and Event Participation counts returned to zero.
+Four initial temporary QA runs were cleaned successfully. A fifth run after independent-review query hardening also passed and was cleaned. The final run proved rendered ordering, optional title behavior, canonical Person URLs, modal retirement, Event 763 isolation, and the empty state after cleanup. Persistent Person and Event Participation counts returned to zero.
+
+## Review follow-up addendum, 2026-10-19
+
+The original implementation plan expected 11 Bricks adapter tests and a 143-test distinct Platform Core total. The independent review found that marked Bricks query variables could retain unrelated inherited constraints. A regression test failed before the adapter fix. The adapter now returns only the five canonical query arguments; a frontend-context test was also added. Final counts are 12/12 Bricks adapter tests and 144/144 distinct Platform Core tests. The deployed adapter was backed up, replaced byte-for-byte, and verified through Novamira and WordPress runtime checks. Post-fix two-Person/two-participation frontend QA, cleanup, and `verify-clean` passed.

@@ -72,6 +72,25 @@ final class EventParticipationBricksTest
         vgpc_test_same('publish', $query_vars['post_status'] ?? null, 'The marked query must include only published participations.');
     }
 
+    public function test_frontend_event_query_resolves_the_queried_object_without_bricks_preview(): void
+    {
+        $this->fixture();
+        $this->add_event(101);
+        $this->add_person(201);
+        $this->add_participation(1305, 101, 201, 1);
+        $GLOBALS['vgpc_bricks_test_is_singular'] = true;
+        $GLOBALS['vgpc_bricks_test_queried_object'] = $GLOBALS['vgpc_test_posts'][101];
+
+        $query_vars = $this->adapter()->filter_participation_query_vars(
+            [],
+            ['_cssClasses' => 'vg-event-participation-query'],
+            'x1',
+            'posts'
+        );
+
+        vgpc_test_same([1305], $query_vars['post__in'] ?? null, 'A frontend Event request must resolve the queried Event when Bricks has no preview ID.');
+    }
+
     public function test_repository_order_is_preserved_with_post_in_ordering(): void
     {
         $this->fixture();
@@ -83,15 +102,28 @@ final class EventParticipationBricksTest
         Database::$page_data = ['preview_or_post_id' => 101];
 
         $query_vars = $this->adapter()->filter_participation_query_vars(
-            [],
+            [
+                'post_type' => 'medewerker',
+                'post_status' => 'any',
+                'posts_per_page' => 6,
+                'orderby' => 'menu_order',
+                'order' => 'DESC',
+                'meta_key' => 'event_medewerkers',
+                'meta_query' => [['key' => 'event_medewerkers', 'value' => '753']],
+                'tax_query' => [['taxonomy' => 'event_category', 'terms' => [16]]],
+            ],
             ['_cssClasses' => 'some-existing-class vg-event-participation-query another-class'],
             'x1',
             'posts'
         );
 
-        vgpc_test_same([1305, 1302, 1310], $query_vars['post__in'] ?? null, 'Bricks must receive repository IDs in repository order.');
-        vgpc_test_same('post__in', $query_vars['orderby'] ?? null, 'Bricks must preserve post__in ordering.');
-        vgpc_test_same(-1, $query_vars['posts_per_page'] ?? null, 'The canonical query must not paginate its repository IDs.');
+        vgpc_test_same([
+            'post_type' => 'event_participation',
+            'post_status' => 'publish',
+            'post__in' => [1305, 1302, 1310],
+            'orderby' => 'post__in',
+            'posts_per_page' => -1,
+        ], $query_vars, 'The marked query must discard Bricks-inherited constraints and use only the repository-owned contract.');
     }
 
     public function test_empty_repository_result_cannot_query_all_participations(): void

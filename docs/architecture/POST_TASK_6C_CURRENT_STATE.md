@@ -39,8 +39,10 @@ The helper `event_medewerkers` mode has zero active Bricks callers after the fre
 
 ## QA and cleanup
 
-Event 151 was the temporary QA Event. Four diagnostic runs used two Persons and two participations at a time. All temporary records from all four runs were hard-deleted. The final rendered test showed Person B before Person A for display orders 10 and 20, optional professional-title behavior, canonical Person URLs with HTTP 200, no legacy modal, and no `/medewerkers/` participant links. The empty section was absent before QA and after cleanup.
+Event 151 was the temporary QA Event. Five QA runs used two Persons and two participations at a time. All 10 temporary Persons and 10 participations were hard-deleted. The final run, after query-constraint hardening, showed Person B before Person A for display orders 10 and 20, optional professional-title behavior, canonical Person URLs with HTTP 200, no legacy modal, and no `/medewerkers/` participant links. The empty section was absent before QA and after cleanup.
 
 Protected profiles, attachments, Event 763, Products 767/768, Templates 772/773/124/1127, shared component `6b463f`, the Event ACF field, topic and role vocabularies, the helper source, and product-copy automation matched their pre-task snapshots. Template 774 and the new component option entry are the intended persistent runtime changes. Platform Core source and runtime adapter hashes match.
+
+Independent review found that marked-query input could retain unrelated Bricks constraints. The adapter now returns only its five canonical query arguments. A regression test covers inherited legacy filters, and another covers frontend Event context without a Bricks preview ID. The deployed adapter hash is `1adee948ecb9a53f762e7f9de62bf721e1bc46c9f8d4e3f093f9fd26a9c87c63`; the follow-up runtime QA, cleanup, and final count checks passed.
 
 The implementation is on [PR #23](https://github.com/JCSchoeman96/vgnova/pull/23), open against `main` and unmerged for independent review. See [Task 6C implementation evidence](EVENT_CONSUMER_6C_IMPLEMENTATION.md).
