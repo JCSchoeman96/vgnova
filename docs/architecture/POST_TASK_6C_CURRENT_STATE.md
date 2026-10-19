@@ -43,4 +43,4 @@ Event 151 was the temporary QA Event. Four diagnostic runs used two Persons and 
 
 Protected profiles, attachments, Event 763, Products 767/768, Templates 772/773/124/1127, shared component `6b463f`, the Event ACF field, topic and role vocabularies, the helper source, and product-copy automation matched their pre-task snapshots. Template 774 and the new component option entry are the intended persistent runtime changes. Platform Core source and runtime adapter hashes match.
 
-The implementation is on the review branch and remains unmerged. See [Task 6C implementation evidence](EVENT_CONSUMER_6C_IMPLEMENTATION.md).
+The implementation is on [PR #23](https://github.com/JCSchoeman96/vgnova/pull/23), open against `main` and unmerged for independent review. See [Task 6C implementation evidence](EVENT_CONSUMER_6C_IMPLEMENTATION.md).

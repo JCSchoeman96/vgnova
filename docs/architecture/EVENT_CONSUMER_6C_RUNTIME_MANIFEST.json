@@ -274,7 +274,7 @@
     "csv_parse": "PASS",
     "integration_patch_parity": "PASS",
     "git_diff_check": "PASS after staging",
-    "protected_state_comparison": "PASS; only Template 774 Bricks content and related post metadata changed"
+    "protected_state_comparison": "PASS; only intended Template 774 Bricks content/meta and the bricks_components option changed; protected state remained unchanged"
   },
   "migration_counts": {
     "legacy_person_profiles_migrated": 0,
@@ -283,7 +283,12 @@
   },
   "pr": {
     "title": "feat: cut Event participants over to canonical model",
+    "number": 23,
+    "url": "https://github.com/JCSchoeman96/vgnova/pull/23",
+    "head": "feat/event-consumer-cutover-6c",
     "target": "main",
-    "state": "pending creation; unmerged"
+    "state": "open",
+    "merged": false,
+    "linked_to_t3_thread": true
   }
 }
