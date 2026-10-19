@@ -48,3 +48,17 @@ Independent review found that marked-query input could retain unrelated Bricks c
 A subsequent OpenCode review attempt could not run because the provider returned “Insufficient account funds.” The PR remains open for independent review.
 
 The implementation is on [PR #23](https://github.com/JCSchoeman96/vgnova/pull/23), open against `main` and unmerged for independent review. See [Task 6C implementation evidence](EVENT_CONSUMER_6C_IMPLEMENTATION.md).
+
+## Post-merge Task 6C-S stabilization
+
+**Verified:** 2026-10-19, after PR #23 merged. The preceding sections preserve the Task 6C implementation-time evidence. This section records the later read-only stabilization checks.
+
+PR #23 merged at `35aabfca062cc3e7b73333a860a4e9387c9d9edb`, which is also the clean `main` HEAD checked during stabilization. The `EventParticipationBricks` source and active Platform Core runtime file have the same SHA-256: `1adee948ecb9a53f762e7f9de62bf721e1bc46c9f8d4e3f093f9fd26a9c87c63`. WordPress reports the adapter class loaded, with `bricks/posts/query_vars` registered for four arguments and `bricks/element/render` registered for two.
+
+Template 774 retains the approved content hash `d327a15afa894bbe723e947e8b839b486adc2c7c50475dacd9a21d96efd92b1f`, 72 elements, and participant subtree hash `12c205de641d99a99f9267d7616743b2c27476539fdd7420b2c55697e62f8afa`. Its semantic markers and component reference remain present. Component `194bba` retains record hash `481c60b1bd2310b96cae05834aa49202777788192927021d218c5d1445cadc7f`; the full `bricks_components` option hash is `9d11fa323621913572bbb6b03534eaec3ec721c537f9e759ea028ef5481a0293`. The other 56 component records remain unchanged.
+
+Read-only runtime counts remain Person 0, Event Participation 0, and Event Role 4 terms with 0 relationships. Person `person_type` and `content_topic` relationships remain at zero. `content_topic` remains at 55 terms and 7 roots. Event 763 is unchanged, retains `event_medewerkers=[753,757]`, has 0 canonical participations, and has no participant section. The `event_medewerkers` ACF field remains active.
+
+The legacy helper's `event_medewerkers` mode remains present and unchanged. Its file hash is `e1b7c014cd15a673d663426403a2024a21a1286075c355015f4e217d7e498fa2`. The Task 6C feature worktree was removed after its clean state and lack of runtime references were verified. No active runtime path depends on that worktree. WordPress content and data writes during Task 6C-S: 0.
+
+Post-removal smoke checks returned HTTP 200 for Events 151 and 763, with the participant section absent on both. Event 763 showed no legacy participant fallback. Focused source tests passed: Event Participation Bricks 12/12, Event Participation 65/65, and Content Topic 67/67. PHP lint, JSON parsing, CSV parsing, `integration.patch` validation, and `git diff --check` passed.
