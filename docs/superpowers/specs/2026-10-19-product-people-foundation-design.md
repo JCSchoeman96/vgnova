@@ -214,7 +214,7 @@ _event_name
 
 is a separate Tickera/Event-commerce relationship used by the Event-side Product/ticket presentation.
 
-Task 7A must not combine, migrate, rewrite, or reinterpret `*event*name`.
+Task 7A must not combine, migrate, rewrite, or reinterpret `_event_name`.
 
 ### 3.5 Existing `produk_bron_event`
 
@@ -1304,7 +1304,7 @@ KEEP_LEGACY
 REPLACE_LATER
 ```
 
-### `*event*name`
+### `_event_name`
 
 ```text
 KEEP
