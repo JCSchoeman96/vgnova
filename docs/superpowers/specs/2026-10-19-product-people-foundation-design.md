@@ -281,28 +281,34 @@ Required contract:
 name:
 product_people_mode
 
-type:
-choice
+ACF field type:
+select
 
 choices:
-event
-manual
+event = Event-derived
+manual = Manual
 
-default UI value:
-event
+default_value:
+none / empty
+
+allow_null:
+yes
 
 required:
-yes
+no
+
+multiple:
+no
+
+return_format:
+value
+
+editor instruction:
+Choose Event-derived or Manual to configure canonical Product People.
+Leave blank to keep this Product unconfigured.
 ```
 
-The editor-facing labels may be user-friendly equivalents such as:
-
-```text
-Event-derived
-Manual
-```
-
-but the stored values are locked to:
+The stored values are locked to:
 
 ```text
 event
@@ -317,29 +323,35 @@ Required contract:
 name:
 product_people_override
 
-type:
+ACF field type:
 relationship
 
-target post type:
+post_type:
 person
 
-return format:
-ID
-
-multiple:
-yes
+return_format:
+id
 
 required:
 no
-```
 
-Ordering must preserve the editor-selected relationship order.
+min:
+0
 
-The field should be visible only when:
+max:
+0 / unlimited
 
-```text
+behavior:
+zero or more Person selections
+
+conditional logic:
 product_people_mode == manual
+
+relationship order:
+preserve Relationship-field selection order
 ```
+
+The Relationship field supports multiple Person selections.
 
 ### 4.3 Existing fields
 
@@ -363,13 +375,13 @@ Registering the new ACF fields must not silently configure existing Products.
 The Product People resolver must distinguish:
 
 ```text
-ACF default value
+absent or empty mode value
 ```
 
 from:
 
 ```text
-explicit stored Product mode
+explicit non-empty stored Product mode
 ```
 
 The approved states are:
@@ -377,7 +389,7 @@ The approved states are:
 ### 5.1 UNCONFIGURED
 
 ```text
-product_people_mode has no explicit stored value
+product_people_mode is absent OR empty
 ```
 
 Result:
@@ -392,12 +404,14 @@ This rule applies even if:
 produk_bron_event is populated
 ```
 
-The ACF UI default `event` must not make an old Product canonical automatically.
+There is no default value. ACF may delete the field value or store an empty value when an editor saves a blank mode; both states remain `UNCONFIGURED`.
+
+A Product becomes explicitly configured only when a non-empty stored value of exactly `event` or `manual` exists.
 
 ### 5.2 EVENT
 
 ```text
-explicit stored mode = event
+explicit non-empty stored mode = event
 ```
 
 Result:
@@ -411,7 +425,7 @@ produk_bron_event
 ### 5.3 MANUAL
 
 ```text
-explicit stored mode = manual
+explicit non-empty stored mode = manual
 ```
 
 Result:
@@ -429,7 +443,7 @@ An empty override returns:
 
 ### 5.4 INVALID
 
-Any stored mode other than:
+Any non-empty stored mode other than:
 
 ```text
 event
@@ -652,9 +666,10 @@ The resolver logic must be mechanically equivalent to:
 ```text
 1. validate Product
 
-2. inspect explicitly stored product_people_mode
+2. inspect the explicitly stored product_people_mode value
 
-3. no stored mode
+3. no explicit non-empty stored mode
+   (mode is absent or empty)
    → []
 
 4. mode = manual
@@ -819,17 +834,18 @@ At minimum:
 5. event mode delegates participation selection to EventParticipationRepository;
 6. event mode preserves canonical participation ordering;
 7. event mode filters invalid Person endpoints;
-8. event mode de-duplicates Person IDs preserving first occurrence;
-9. event mode ignores populated manual override;
-10. manual mode preserves override order;
-11. manual mode allows intentional empty `[]`;
-12. manual mode filters non-Person IDs;
-13. manual mode filters unpublished Person endpoints;
-14. manual mode de-duplicates preserving first occurrence;
-15. manual mode ignores `produk_bron_event`;
-16. invalid mode returns `[]`;
-17. `produk_medewerkers` is never used as fallback;
-18. resolution performs no Product/relationship writes.
+8. event mode filters unpublished Person endpoints, including a private Person case in the source tests;
+9. event mode de-duplicates Person IDs preserving first occurrence;
+10. event mode ignores populated manual override;
+11. manual mode preserves override order;
+12. manual mode allows intentional empty `[]`;
+13. manual mode filters non-Person IDs;
+14. manual mode filters unpublished Person endpoints;
+15. manual mode de-duplicates preserving first occurrence;
+16. manual mode ignores `produk_bron_event`;
+17. invalid mode returns `[]`;
+18. `produk_medewerkers` is never used as fallback;
+19. resolution performs no Product/relationship writes.
 
 Existing established suites must remain passing, especially:
 
@@ -850,20 +866,21 @@ Task 7A must not regress Task 6C.
 The implementation must prove that it can distinguish:
 
 ```text
-mode field absent
+no explicit non-empty stored mode
+(mode is absent or empty)
 ```
 
 from:
 
 ```text
-explicit stored "event"
+explicit non-empty stored "event" or "manual"
 ```
 
 The observable contract is:
 
 ```text
 old Product
-+ no stored product_people_mode
++ product_people_mode absent or empty
 + populated produk_bron_event
 → []
 ```
@@ -874,7 +891,7 @@ If the chosen ACF/WordPress implementation cannot preserve this distinction:
 STOP
 ```
 
-Do not weaken the contract by treating ACF's default value as explicit migration state.
+Do not weaken the contract by treating a blank value as explicit migration state. An ordinary save while the mode remains blank must leave canonical Product People unconfigured, whether ACF deletes the blank value or stores it as empty.
 
 ---
 
@@ -902,12 +919,23 @@ At minimum prove:
 #### QA 1 — unconfigured Product
 
 ```text
+temporary Product:
 valid produk_bron_event
-no explicitly stored product_people_mode
+product_people_mode absent or empty
 
-result:
+resolver result before save:
 []
+
+ordinary ACF Product save with mode left blank
+
+resolver result after save:
+[]
+
+stored mode after save:
+absent or empty, never event
 ```
+
+The Product remains `UNCONFIGURED`.
 
 #### QA 2 — Event-derived
 
@@ -974,7 +1002,28 @@ legacy field never influences canonical resolver
 
 Non-Person or unpublished endpoints are excluded.
 
-#### QA 9 — invalid source Event
+#### QA 9 — Event mode excludes unpublished Person
+
+```text
+source Event:
+valid
+
+participation A:
+published participation
+→ published Person A
+
+participation B:
+published participation
+→ draft Person B
+
+expected resolver result:
+[Person A]
+
+Person B:
+absent from result
+```
+
+#### QA 10 — invalid source Event
 
 Missing, malformed, or wrong-type source Event returns `[]`.
 
@@ -1064,22 +1113,20 @@ After QA, protected state must compare equal except for explicitly approved Task
 
 ## 22. No implicit writes to existing Products
 
-Registering the ACF group must not populate Product metadata.
-
-After registration, prove that protected existing Products did not acquire stored values for:
+Registering the ACF group must not write Product metadata. In particular, registration must create no Product meta rows for:
 
 ```text
 product_people_mode
 product_people_override
 ```
 
-The UI default:
+For existing Products, an absent or empty mode means:
 
 ```text
-event
+UNCONFIGURED → []
 ```
 
-is not a migration.
+An ordinary save with a blank mode must not activate canonical Product People. ACF may delete the blank value or store an empty value; the resolver treats both states as `UNCONFIGURED`. No save hook is required to preserve physical meta-row absence.
 
 ---
 
@@ -1130,22 +1177,30 @@ Product People field group:
 registered
 
 product_people_mode:
+ACF Select
 event | manual
 
-UI default:
-event
+blank allowed
+no default
+required: no
+multiple: no
+return_format: value
 
 product_people_override:
+ACF Relationship
 targets person only
-
-multiple:
-yes
+zero or more Person selections
+min: 0
+max: 0 / unlimited
 
 relationship order:
 preserved
 
 manual conditional display:
 active
+
+ordinary save with blank mode:
+stays absent or empty; resolver returns []
 ```
 
 Also prove the legacy ACF definitions remain unchanged:
@@ -1297,7 +1352,7 @@ Product People source-controlled ACF fields:
 IMPLEMENTED
 
 product_people_mode:
-REGISTERED
+REGISTERED as Select; `event` and `manual`; blank allowed; no default; optional
 
 product_people_override:
 REGISTERED
@@ -1308,11 +1363,20 @@ IMPLEMENTED
 event-derived mode:
 VERIFIED
 
+event mode filters unpublished Person endpoints:
+VERIFIED; draft runtime case and private source-test case
+
 manual mode:
 VERIFIED
 
 unconfigured mode:
-VERIFIED → []
+absent OR empty → VERIFIED []
+
+registration:
+VERIFIED; 0 Product meta writes
+
+ordinary save with blank mode:
+VERIFIED; remains UNCONFIGURED
 
 invalid mode:
 VERIFIED → []
@@ -1459,18 +1523,19 @@ If `produk_bron_event` does not reliably represent the approved Product source/p
 STOP
 ```
 
-### Stored/default mode ambiguity
+### Stored mode ambiguity
 
 If ACF/WordPress cannot reliably distinguish:
 
 ```text
-unstored mode
+no explicit non-empty stored mode
+(mode absent or empty)
 ```
 
 from:
 
 ```text
-explicit stored event mode
+explicit non-empty stored event or manual mode
 ```
 
 without changing the locked contract:
@@ -1604,10 +1669,10 @@ _event_name
 SEPARATE / UNCHANGED
 
 Product People mode:
-product_people_mode
+product_people_mode: ACF Select; `event` | `manual`; blank allowed; no default
 
 Product manual People:
-product_people_override → person[]
+product_people_override: ACF Relationship → person[]; zero or more selections
 
 Product People authority:
 ProductPeopleResolver
@@ -1619,7 +1684,7 @@ Manual Product People:
 explicit replacement list
 
 Existing Products:
-UNCONFIGURED unless explicitly migrated/configured
+UNCONFIGURED when product_people_mode is absent or empty; blank saves do not activate People
 
 Legacy produk_medewerkers:
 KEEP_LEGACY
