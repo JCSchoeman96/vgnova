@@ -74,6 +74,15 @@ The Event Participation implementation lives in `includes/Event/`:
 - `EventParticipationService` validates and creates participations under the pair lock. It rejects `future` status because creation accepts no scheduled publication date.
 - `EventParticipationAdmin` locks existing participations before reading stored endpoints, rechecks pairs before writes, allows retirement with invalid endpoints, and derives titles under a scoped lock after refreshing the participation endpoints and their post caches.
 - `EventRoleSeeder` seeds the approved `event_role` vocabulary on request.
+- `EventParticipationBricks` supplies ordered repository IDs to the marked Event Single 774 participant query and hides the marked section on the frontend when no canonical participation exists. It has no `event_medewerkers` fallback.
+
+The Bricks Posts query uses the semantic class token `vg-event-participation-query`. The participant section uses `vg-event-participants-section`. Platform Core changes behavior only for those exact markers.
+
+Run the focused Bricks adapter checks with:
+
+```sh
+php site-code/voelgoed-platform-core/tests/run-event-participation-bricks-tests.php
+```
 
 Run the focused checks with:
 
@@ -88,8 +97,8 @@ wp vg-event-role-setup
 ```
 
 Runtime deployment is separate from changes to this source directory. Apply
-`integration.patch` to the runtime plugin bootstrap and deploy all five Event
-classes before expecting the admin hooks or seeder command to be available.
+`integration.patch` to the runtime plugin bootstrap and deploy all six Event
+classes before expecting the admin hooks, seeder command, or Bricks consumer to be available.
 Sync only the three Task 6A ACF JSON keys using the documented targeted procedure;
 do not run a global ACF JSON sync.
 

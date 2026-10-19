@@ -5,6 +5,16 @@
 **Repository baseline:** `origin/main` at `c2a5d7560bdd7d96b5a842dfa6c268060db7a3ae`
 **Runtime:** VGNova staging at `http://localhost:10039/`, inspected read-only through Novamira and WP-CLI
 
+## Task 6C implementation update
+
+This section records the 2026-10-19 consumer cutover. The audit below preserves its Task 6B findings as a historical readiness snapshot.
+
+Event Single 774 is now `MIGRATED_CANONICAL`. Its marked Bricks loop delegates to `EventParticipationRepository::participations_for_event()` and displays `event_participation → person` cards only. The section is omitted on the frontend when the canonical result is empty. The local participant modal is retired. Event 763 still stores legacy values `[753,757]`, both source edges remain `EXCLUDE`, and it displays zero canonical participants.
+
+The canonical Event Participant Card is active as Bricks option entry `194bba` in `bricks_components`. The helper's `event_medewerkers` mode had zero active callers in the fresh audit, but retirement was deferred because the available FluentSnippets edit path required an unavailable WordPress admin session. The helper and all six modes remain unchanged. The `event_medewerkers` ACF field remains active for the other legacy consumers.
+
+See [Task 6C implementation evidence](EVENT_CONSUMER_6C_IMPLEMENTATION.md), [post-task current state](POST_TASK_6C_CURRENT_STATE.md), and [runtime manifest](EVENT_CONSUMER_6C_RUNTIME_MANIFEST.json) for hashes, structural comparison, QA, and cleanup evidence.
+
 ## Scope
 
 This audit determines readiness for migrating Event-facing presentation from `event_medewerkers → medewerker` to `event_participation → person`. It audits Bricks templates/components, ACF definitions and values, active FluentSnippets, Platform Core source, and related legacy consumers. It does not implement consumer cutover or migrate records.
@@ -178,7 +188,7 @@ The helper resolves the current object from Bricks context, applies mode-specifi
 | `product_medewerkers` | `product`; `get_field('produk_medewerkers', product_id)` | `medewerker` | Preserves ACF relationship order with `post__in`/`orderby=post__in`; empty/invalid gives an empty result | Template 124, element `vgpr03` | `KEEP_LEGACY`; lifecycle `REPLACE_LATER` with product migration |
 | `product_source_event` | `product`; `get_field('produk_bron_event', product_id)` | `tc_events` | Relationship result; empty/invalid gives an empty result | Template 124, element `vgpr13` | `KEEP_LEGACY`; lifecycle `REPLACE_LATER` with product migration |
 
-The legacy Event people mode and Template 774's native loop are distinct. Only the individual `event_medewerkers` mode may be removed; do not retire the helper or its other five modes. Before removing it, Task 6C must repeat a runtime-wide and repository-wide caller check across all Bricks templates, all Bricks components, active FluentSnippets and runtime helper code, repository source, and Git history and documented references. The 27-template Bricks scan in Task 6B is discovery evidence, not the final deletion gate. Retiring this helper mode does not delete `event_medewerkers`, change its ACF definition, or remove another consumer. The field and source values remain until the full read/write removal gate passes.
+The legacy Event people mode and Template 774's former native loop are distinct. Task 6C completed a fresh runtime and repository caller audit across all Bricks templates and components, active FluentSnippets and runtime helper code, repository source, Git history, and architecture/evidence documents. It found zero active Bricks callers for `event_medewerkers`, but retained the mode because FluentSnippets editing was unavailable through the connected runtime. The helper and its six modes remain unchanged. This deferred mode retirement does not delete `event_medewerkers`, change its ACF definition, or remove another consumer. The field and source values remain until every read and write path passes its removal gate.
 
 ## Source-control and history cross-check
 
@@ -189,7 +199,7 @@ Repository and Git-history searches covered the requested names and IDs, includi
 - `site-code/voelgoed-platform-core/includes/Event/EventParticipationRepository.php` is the canonical source. It exposes `participations_for_event()` and `participations_for_person()`; its current implementation returns participation IDs in display-order/ID order. A Bricks query adapter is not present in the source module.
 - Task 5C history records the two Event 763 edges as `EXCLUDE`; Task 6A established the relationship foundation without migrating those edges; Task 6A-S stabilized its runtime ACF source. These decisions are recorded in [Task 5C provenance](PERSON_PROFILE_PROVENANCE_AUDIT.md) and the [Post-Task 6A snapshot](POST_TASK_6A_CURRENT_STATE.md).
 
-The search did not find a source-controlled legacy helper or Bricks component that Task 6C can edit directly. The new query integration belongs in the Platform Core module, while the targeted Bricks edit will be made through the runtime builder only in Task 6C.
+At the Task 6B audit date, the search found no source-controlled Bricks template export or legacy helper source. Task 6C added the query integration to Platform Core and made the approved targeted Bricks edit through the runtime builder.
 
 ## Person-to-Event reverse consumer
 
@@ -215,19 +225,19 @@ Template 1127 has separate host and guest loops over `broadcast_hosts` and `broa
 
 The Task 6C loop input is the current Tickera `tc_events` post. The loop objects are the ordered `event_participation[]` returned by Platform Core. Each item resolves `event_participation_person` to `person` and can read `event_role` and `event_participation_display_order` from the relationship.
 
-`EventParticipationRepository::participations_for_event()` returns participation IDs ordered by `event_participation_display_order` ascending, then participation ID ascending. Task 6C should reuse that Platform Core behavior; Bricks must not introduce a separate order. The new card should render Person featured image, Person title, optional `person_professional_title`, optional participation `event_role` terms, and the canonical Person permalink. No short bio, long bio, company, credentials, `content_topic`, or `person_type` dependency has been proved necessary.
+`EventParticipationRepository::participations_for_event()` returns participation IDs ordered by `event_participation_display_order` ascending, then participation ID ascending. Task 6C uses that result directly and Bricks preserves its `post__in` sequence. The Event Participant Card renders Person featured image, title, optional `person_professional_title`, and canonical Person permalink. It does not render `event_role` because the existing layout had no established role position. No short bio, long bio, company, credentials, `content_topic`, or `person_type` dependency was needed.
 
-The design allows role output as `OPTIONAL_FOR_6C`: the current template has no clear contextual role slot. If the role is included, use `event_role` from the participation record. Do not derive it from any Person or legacy profile field.
+Event role output was deferred. The card does not infer a role from Person or legacy profile fields.
 
-The canonical result for Event 763 is expected to contain zero participations because the only observed source edges are excluded and no canonical records exist. This is the correct result; it is not accidental data loss. There must be no canonical-first/legacy-fallback query. A Person permalink is specified by the canonical contract but is not runtime-verified against a persistent Person because none exists; Task 6C must verify the link using a temporary owned Person record.
+The canonical result for Event 763 remains zero because its observed source edges are excluded and no canonical records exist. Task 6C verified that no legacy fallback runs. Temporary QA Persons proved both rendered canonical permalinks and HTTP 200 responses; those records were hard-deleted, so persistent Person count remains zero.
 
 ## Empty-state behavior
 
-Today, Template 774 has no explicit empty message and no section visibility condition. The participant loop yields no rows for Event 763, but static section content remains visible. For Task 6C, the complete participant section must be hidden when the canonical query returns zero rows. Do not display “No participants” by default or expose migration status to visitors.
+Before Task 6C, Template 774 had no explicit empty message or section visibility condition. The canonical adapter now hides the complete participant section when the repository returns no IDs. The section stays editable in Bricks builder requests. No empty message or migration status is shown to visitors.
 
 ## Consumer readiness decisions
 
-The machine-readable row-by-row decisions are in [Event Consumer Migration Map](EVENT_CONSUMER_MIGRATION_MAP.csv). Counts use the map's single `readiness_status` value per row. `BLOCKED_BY_DATA` is also recorded as a blocking reason on four `KEEP_LEGACY` rows; that reason count is reported separately.
+The table below records Task 6B readiness counts. The current consumer states are in the updated [Event Consumer Migration Map](EVENT_CONSUMER_MIGRATION_MAP.csv). `BLOCKED_BY_DATA` is also recorded as a blocking reason on four `KEEP_LEGACY` rows in the historical 6B map; that reason count is reported separately.
 
 | Primary readiness state | Count |
 |---|---:|
@@ -240,9 +250,9 @@ The machine-readable row-by-row decisions are in [Event Consumer Migration Map](
 
 There are four `KEEP_LEGACY` consumers with `blocking_reason=BLOCKED_BY_DATA`: the two Template 772 query modes, Template 772 profile consumer, and Template 773 archive. These are not double-counted as primary states.
 
-Event Single 774 is `READY_FOR_CUTOVER` despite zero canonical records. The canonical repository query contract exists, no source Event edge is approved for migration, the new component can render an empty set, and Task 6C can hide the enclosing section. Cutover does not require changes to Templates 772, 773, or 124. Task 6C must QA the query with temporary owned canonical data and verify empty output before cleanup. The new permalink card intentionally replaces the current participant modal; the modal's legacy profile content and placeholder links are not part of the canonical contract.
+At the Task 6B audit date, Event Single 774 was `READY_FOR_CUTOVER` despite zero canonical records. Task 6C has since completed that cutover and verified the canonical query with temporary owned records, empty output before and after cleanup, and Event 763 isolation. It did not change Templates 772, 773, or 124. The new permalink card replaced the participant modal without carrying its legacy profile content or placeholder links.
 
-## Task 6C exact scope
+## Task 6C approved scope
 
 ### In scope
 

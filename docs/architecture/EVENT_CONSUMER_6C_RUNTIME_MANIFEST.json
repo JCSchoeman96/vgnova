@@ -1,0 +1,289 @@
+{
+  "task": "6C",
+  "captured_date": "2026-10-19",
+  "baseline_commit": "ba1b48c7726d9ce477a52eb32bb354a5259edd0c",
+  "branch": "feat/event-consumer-cutover-6c",
+  "runtime_site": "http://localhost:10039/",
+  "template_774": {
+    "post_id": 774,
+    "status": "publish",
+    "modified": "2026-06-05 13:42:18",
+    "condition": {
+      "templatePreviewType": "single",
+      "templatePreviewPostType": "tc_events",
+      "templatePreviewPostId": "763",
+      "templateConditions": [
+        {
+          "main": "postType",
+          "postType": ["tc_events"]
+        }
+      ]
+    },
+    "condition_unchanged": true,
+    "before": {
+      "element_count": 103,
+      "bricks_page_content_2_sha256": "a613c6e33c3870bcf143ef126470699bc1d2018c4c2a1d4733419574eb3e23c3",
+      "export_content_array_sha256": "3ead9d9269d3c74114d15aa4986d6a5f5e9d869e242ad9692fbc841bf42103bb",
+      "participant_subtree_root": "e1c7e9",
+      "participant_subtree_sha256": "dd4c13c51a0253e60868b1dbeeedb5051334d8977c113c4f070e5d1073944df8",
+      "participant_element_ids": ["e1c7e9", "1661b9", "2c59af", "330832", "c3677f", "312992", "788912", "59d032", "be9e2f", "872b5c", "bddf03", "950754", "0050e7", "3c88cc", "611c17", "86c5de", "0e5451", "afc060", "fdca1f", "ba42c9", "fc70d8", "dd23df", "7ca627", "e92d0d", "899e94", "4083a5", "666096", "e245ab", "cecc93", "9fcff4", "b947b7", "953e9d", "0fb77e", "b2accf", "0ea0a7", "3ec246", "5d6dab", "30255d", "a48a61"],
+      "static_intro_3c88cc_sha256": "a296bc1980f1b8e626a9d13d716e5ba69b3ee1031cff257ffc80ac560e3f8c88",
+      "product_loop_cxqfiw_sha256": "267660d4c9ec20b836274175bd9b61352630d90bca7a7c9df655e083aca54ab",
+      "legacy_query": {
+        "post_type": ["medewerker"],
+        "meta_key": "_event_medewerkers",
+        "element_id": "be9e2f",
+        "query_settings": {
+          "meta_query": [{"id": "mnocht", "key": "_event_medewerkers", "value": "{post_id}"}],
+          "orderby": ["_default"],
+          "post_type": ["medewerker"]
+        }
+      }
+    },
+    "after": {
+      "element_count": 72,
+      "bricks_page_content_2_sha256": "d327a15afa894bbe723e947e8b839b486adc2c7c50475dacd9a21d96efd92b1f",
+      "export_content_array_sha256": "5450c53f5022485af64ee73537b244dc1c7c24858c58be66d791c8bbc7c79190",
+      "participant_subtree_root": "e1c7e9",
+      "participant_subtree_sha256": "12c205de641d99a99f9267d7616743b2c27476539fdd7420b2c55697e62f8afa",
+      "participant_element_ids": ["e1c7e9", "1661b9", "be9e2f", "ae53cc", "3c88cc", "611c17", "86c5de", "0e5451"],
+      "query_marker": "vg-event-participation-query",
+      "section_marker": "vg-event-participants-section",
+      "canonical_query_settings": {
+        "post_type": ["event_participation"],
+        "repository_order_preserved_by_adapter": true,
+        "empty_or_invalid_post__in": [0],
+        "runtime_orderby": "post__in",
+        "runtime_post_status": "publish",
+        "runtime_posts_per_page": -1
+      },
+      "participant_loop_element_id": "be9e2f",
+      "static_intro_element_id": "3c88cc",
+      "product_loop_settings": {
+        "hasLoop": true,
+        "query": {
+          "meta_query": [{"id": "hnkjti", "key": "_event_name", "value": "{post_id}"}],
+          "orderby": ["_default"],
+          "post_type": ["product"],
+          "posts_per_page": "-1"
+        }
+      },
+      "product_loop_settings_unchanged": true,
+      "retired_participant_elements": ["2c59af", "30255d", "afc060", "fdca1f"],
+      "retired_legacy_dynamic_output": ["{mb_people_title}", "modal {post_content}", "participant social placeholder links"],
+      "component_instance": {
+        "element_id": "ae53cc",
+        "component_id": "194bba"
+      },
+      "legacy_query_present": false,
+      "legacy_modal_and_trigger_present": false,
+      "static_intro_3c88cc_sha256": "a296bc1980f1b8e626a9d13d716e5ba69b3ee1031cff257ffc80ac560e3f8c88",
+      "static_intro_unchanged": true,
+      "product_loop_cxqfiw_sha256": "267660d4c9ec20b836274175bd9b61352630d90bca7a7c9df655e083aca54ab",
+      "product_loop_unchanged": true,
+      "non_participant_sections_unchanged": true,
+      "fresh_read_after_component_link_edit_matches_saved_cutover_tree": true
+    },
+    "rollback": {
+      "template_snapshot": "/tmp/vgnova-task6c/template-774-prewrite-capture.json",
+      "exact_restore_content": "/tmp/vgnova-task6c/template-774-exact-restore-input.json"
+    }
+  },
+  "component": {
+    "storage_type": "bricks_components_option",
+    "option_name": "bricks_components",
+    "component_id": "194bba",
+    "title": "Event Participant Card",
+    "post_id": null,
+    "post_status": null,
+    "post_id_and_status_meaning": "not applicable for Bricks option-stored components",
+    "record_hash_at_approved_identity_check": "270357dcf089d8aa99030e9089f82f907104616b82b0179e26ede2e7670fec6e",
+    "final_record_hash": "481c60b1bd2310b96cae05834aa49202777788192927021d218c5d1445cadc7f",
+    "ownership_marker": "vg-task-6c-event-participant-card",
+    "outer_context": "event_participation",
+    "person_resolver": "event_participation_person",
+    "person_rendering_context": "person",
+    "output": ["featured_image", "post_title", "optional person_professional_title", "canonical {post_url}"],
+    "event_role_rendered": false,
+    "option_mutations": [
+      {
+        "operation": "component creation",
+        "before_option_sha256": "cee5337302536f18106b3776d20b9041992eecc6441d4c06bcdccfa0916d5ae9",
+        "before_entry_count": 56,
+        "before_provenance": "reconstructed by removing only 194bba from the verified append-only create result; not captured live before initial component creation",
+        "after_option_sha256": "644962adc7fbd9d3d823b69ab8f82d42757bf7b6d3020dcce0a0fec0cc1fdbfb",
+        "after_entry_count": 57
+      },
+      {
+        "operation": "targeted canonical link correction",
+        "before_option_sha256": "644962adc7fbd9d3d823b69ab8f82d42757bf7b6d3020dcce0a0fec0cc1fdbfb",
+        "before_backup_path": "/tmp/vgnova-task6c/bricks-components-option-before-link-fix.phpser",
+        "before_backup_is_exact": true,
+        "after_option_sha256": "9d11fa323621913572bbb6b03534eaec3ec721c537f9e759ea028ef5481a0293",
+        "after_entry_count": 57
+      }
+    ],
+    "unrelated_entries_count": 56,
+    "unrelated_entries_hashes_and_order_unchanged": true,
+    "legacy_component_6b463f_hash_before_and_after": "57370bbb83d3125758eba9a5194eb1a898b8914b546ee4d84b32f642e07aeaac",
+    "current_option_sha256": "9d11fa323621913572bbb6b03534eaec3ec721c537f9e759ea028ef5481a0293",
+    "current_option_entry_count": 57,
+    "rollback": {
+      "safe_targeted_removal": true,
+      "remove_only_component_id": "194bba",
+      "proof": "Compared all 56 other entries and order before and after; no unrelated entry changed",
+      "exact_backup_before_link_correction": "/tmp/vgnova-task6c/bricks-components-option-before-link-fix.phpser",
+      "pre_create_option_backup_note": "No live full-option backup was captured before initial create; reconstructed baseline is retained separately"
+    }
+  },
+  "platform_core": {
+    "adapter_source_path": "site-code/voelgoed-platform-core/includes/Event/EventParticipationBricks.php",
+    "adapter_source_sha256": "4db7fec1bc2def2bdb8761a0d273c7bfbb39261033bc51dcbe5aada88016d189",
+    "adapter_runtime_path": "wp-content/plugins/voelgoed-platform-core/includes/Event/EventParticipationBricks.php",
+    "adapter_runtime_sha256": "4db7fec1bc2def2bdb8761a0d273c7bfbb39261033bc51dcbe5aada88016d189",
+    "source_runtime_parity": "MATCH",
+    "runtime_bootstrap_sha256": "0a65ed3754c969a5ac8f0da49eb730774c24964e15dd642249559ae0dae3cf8e",
+    "runtime_plugin_sha256": "596b37e8d3ed0e3f1cafad18bbe404bb5293ec956cb761bcc738f03fa77a459f",
+    "integration_patch": "PASS",
+    "runtime_class_loaded": true,
+    "runtime_query_filter_registered": true,
+    "runtime_section_filter_registered": true,
+    "hooks": {
+      "bricks/posts/query_vars": 4,
+      "bricks/element/render": 2
+    },
+    "delegates_to": "EventParticipationRepository::participations_for_event()"
+  },
+  "helper_retirement": {
+    "runtime_helper": "10-vg-bricks-medewerker-queries.php",
+    "fresh_caller_audit": "PASS",
+    "templates_scanned": 27,
+    "components_scanned": 57,
+    "active_bricks_callers_for_event_medewerkers_mode": 0,
+    "repository_git_history_and_documentation_searched": true,
+    "helper_before_sha256": "e1b7c014cd15a673d663426403a2024a21a1286075c355015f4e217d7e498fa2",
+    "helper_after_sha256": "e1b7c014cd15a673d663426403a2024a21a1286075c355015f4e217d7e498fa2",
+    "helper_changed": false,
+    "active_snippet_before_after": "published, run condition all, hook bricks/posts/query_vars, priority 10, accepted args 4; unchanged",
+    "all_modes_retained": ["event_medewerkers", "event_products", "medewerker_events", "medewerker_products", "product_medewerkers", "product_source_event"],
+    "other_five_modes_unchanged": true,
+    "retirement_decision": "KEEP_LEGACY; deferred",
+    "defer_reason": "FluentSnippets source-edit ability was unavailable; editor redirected to WordPress login",
+    "product_copy_snippet_9_sha256_before_after": "58e8035502b30397b9659f952e4d49bbdbd7cdbd15070e37e5b07ebaa5ce2f70",
+    "acf_event_medewerkers_field_unchanged": true
+  },
+  "qa": {
+    "event": {
+      "id": 151,
+      "title": "Aanlyn, uitsendings …",
+      "slug": "aanlyn-uitsendings",
+      "status": "publish",
+      "modified": "2026-04-21 19:28:08",
+      "event_category_ids": [16],
+      "content_topic_ids": [],
+      "legacy_event_medewerkers": null,
+      "legacy_relationship_present": false,
+      "canonical_participation_count_before": 0,
+      "empty_state_http_before": 200,
+      "empty_section_absent_before": true,
+      "empty_state_http_after_cleanup": 200,
+      "empty_section_absent_after_cleanup": true,
+      "event_unchanged": true
+    },
+    "runs": [
+      {"run_token": "task6c-20261019-vg01", "person_ids": [1325, 1326], "participation_ids": [1327, 1328], "result": "failed link assertion during component diagnosis", "cleanup": "PASS"},
+      {"run_token": "task6c-20261019-vg02", "person_ids": [1329, 1330], "participation_ids": [1331, 1332], "result": "diagnostic confirmed anchors had no href", "cleanup": "PASS"},
+      {"run_token": "task6c-20261019-vg03", "person_ids": [1333, 1334], "participation_ids": [1335, 1336], "result": "checker false positive on brx-query-trail anchor; parser corrected", "cleanup": "PASS"},
+      {"run_token": "task6c-20261019-vg04", "person_ids": [1337, 1338], "participation_ids": [1339, 1340], "result": "PASS", "cleanup": "PASS"}
+    ],
+    "maximum_simultaneous_records": {"person": 2, "event_participation": 2},
+    "all_temporary_records_hard_deleted": true,
+    "successful_ordering": {
+      "person_a_id": 1337,
+      "person_a_display_order": 20,
+      "person_b_id": 1338,
+      "person_b_display_order": 10,
+      "repository_order": [1340, 1339],
+      "frontend_order": ["Person B", "Person A"],
+      "pass": true
+    },
+    "professional_title": {"person_a": "rendered", "person_b_empty": true},
+    "featured_images": "not assigned; image resolution not exercised",
+    "canonical_links": {
+      "person_a_url": "http://localhost:10039/mense/vg-task-6c-task6c-20261019-vg04-person-a/",
+      "person_a_http": 200,
+      "person_b_url": "http://localhost:10039/mense/vg-task-6c-task6c-20261019-vg04-person-b/",
+      "person_b_http": 200,
+      "medewerkers_participant_links": 0
+    },
+    "legacy_modal_absent": true,
+    "placeholder_social_links": 0,
+    "event_763_isolation": {
+      "legacy_event_medewerkers": [753, 757],
+      "canonical_participation_count": 0,
+      "frontend_participant_section_absent": true,
+      "profiles_753_757_rendered": false,
+      "legacy_fallback_detected": false,
+      "http": 200
+    },
+    "final_cleanup": "PASS",
+    "final_verify_clean": "PASS"
+  },
+  "protected_state": {
+    "profiles_753_757_unchanged": true,
+    "attachments_558_560_562_564_566_unchanged": true,
+    "event_763_and_legacy_values_unchanged": true,
+    "products_767_768_unchanged": true,
+    "template_772_unchanged": true,
+    "template_773_unchanged": true,
+    "component_6b463f_unchanged": true,
+    "template_124_unchanged": true,
+    "template_1127_unchanged": true,
+    "acf_event_medewerkers_field_unchanged": true,
+    "product_copy_automation_unchanged": true,
+    "changed_records": [774],
+    "expected_changed_fields": ["post_meta_sha256", "bricks_page_content_sha256"],
+    "acf_event_medewerkers_group_id": 748,
+    "acf_event_medewerkers_field_id": 749
+  },
+  "persistent_final_counts": {
+    "person": 0,
+    "event_participation": 0,
+    "event_role_terms": 4,
+    "event_role_relationships": 0,
+    "person_type_relationships": 0,
+    "person_content_topic_relationships": 0,
+    "content_topic_terms": 55,
+    "content_topic_roots": 7
+  },
+  "test_results": {
+    "event_participation": "65/65 PASS",
+    "event_participation_bricks": "11/11 PASS",
+    "event_role_seeder": "13/13 PASS; reported separately because it overlaps the Event Participation suite",
+    "content_topic": "67/67 PASS",
+    "event_participation_acf_schema": "3/3 PASS",
+    "person_foundation": "10/10 PASS",
+    "editorial_dimensions": "11/11 PASS",
+    "existing_qa_setup": "1/1 PASS",
+    "existing_qa_cleanup": "3/3 PASS",
+    "existing_qa_setup_and_cleanup_combined": "4/4 PASS",
+    "task_6c_qa_ownership_and_rendering": "12/12 PASS",
+    "distinct_platform_core_combined": "143/143 PASS",
+    "php_lint": "PASS",
+    "json_parse": "PASS",
+    "csv_parse": "PASS",
+    "integration_patch_parity": "PASS",
+    "git_diff_check": "PASS after staging",
+    "protected_state_comparison": "PASS; only Template 774 Bricks content and related post metadata changed"
+  },
+  "migration_counts": {
+    "legacy_person_profiles_migrated": 0,
+    "legacy_event_edges_migrated": 0,
+    "legacy_product_edges_migrated": 0
+  },
+  "pr": {
+    "title": "feat: cut Event participants over to canonical model",
+    "target": "main",
+    "state": "pending creation; unmerged"
+  }
+}
