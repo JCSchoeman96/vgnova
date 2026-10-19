@@ -45,4 +45,6 @@ Protected profiles, attachments, Event 763, Products 767/768, Templates 772/773/
 
 Independent review found that marked-query input could retain unrelated Bricks constraints. The adapter now returns only its five canonical query arguments. A regression test covers inherited legacy filters, and another covers frontend Event context without a Bricks preview ID. The deployed adapter hash is `1adee948ecb9a53f762e7f9de62bf721e1bc46c9f8d4e3f093f9fd26a9c87c63`; the follow-up runtime QA, cleanup, and final count checks passed.
 
+A subsequent OpenCode review attempt could not run because the provider returned “Insufficient account funds.” The PR remains open for independent review.
+
 The implementation is on [PR #23](https://github.com/JCSchoeman96/vgnova/pull/23), open against `main` and unmerged for independent review. See [Task 6C implementation evidence](EVENT_CONSUMER_6C_IMPLEMENTATION.md).

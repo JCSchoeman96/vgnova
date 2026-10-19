@@ -90,4 +90,6 @@ The independent review found that the marked query kept Bricks-inherited constra
 
 After deploying the change, runtime QA run `task6c-review-fix-20261019-01` verified an empty Event before setup, B-before-A order with display orders 10 and 20, optional title output, canonical Person links, modal absence, and Event 763 isolation. Cleanup and `verify-clean` passed. No QA featured images were assigned, so image resolution remains untested. The exported Bricks snapshots and exact rollback files remain in `/tmp/vgnova-task6c/` on the implementation machine; the manifest records their paths and hashes.
 
+A follow-up independent review was attempted with OpenCode after the hardening commit, but the provider returned “Insufficient account funds” before reviewing the code. The PR remains open for independent review.
+
 No Person profile, legacy Event edge, or product edge was migrated. The runtime manifest records the exact state and hashes.

@@ -334,6 +334,8 @@
     "frontend_context_coverage_finding": "Covered by added test for a frontend Event with no Bricks preview ID.",
     "featured_image_note": "No temporary QA images were assigned; image resolution is not exercised.",
     "manifest_pr_state_note": "The PR state now records PR 23 as open and unmerged.",
-    "follow_up_review": "pending after the hardening commit"
+    "follow_up_review_provider": "OpenCode",
+    "follow_up_review_status": "unavailable",
+    "follow_up_review_result": "Upstream request failed before code review: Insufficient account funds"
   }
 }
