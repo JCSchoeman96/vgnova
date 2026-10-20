@@ -345,6 +345,41 @@ final class ProductPeopleResolverTest
         );
     }
 
+    /** Approved contract: if ACF field reads are unavailable, a configured Product resolves to [] and never fatals. */
+    public function test_event_mode_fails_closed_when_acf_get_field_is_unavailable(): void
+    {
+        vgpc_test_same('[]', $this->resolve_without_acf('event'), 'Event mode must resolve to [] when get_field() is unavailable.');
+    }
+
+    public function test_manual_mode_fails_closed_when_acf_get_field_is_unavailable(): void
+    {
+        vgpc_test_same('[]', $this->resolve_without_acf('manual'), 'Manual mode must resolve to [] when get_field() is unavailable.');
+    }
+
+    /**
+     * Runs the real resolver in a separate PHP process where ACF is not loaded and get_field() is undefined.
+     * The shared bootstrap always defines get_field(), so the guard can only be proven out-of-process.
+     */
+    private function resolve_without_acf(string $mode): string
+    {
+        $dir = dirname(__DIR__) . '/includes';
+        $code = "define('ABSPATH', '/');"
+            . " function get_post_type(\$post = null) { return 'product'; }"
+            . " function get_post_meta(\$id, \$key = '', \$single = false) { return \$key === 'product_people_mode' ? " . var_export($mode, true) . " : ''; }"
+            . " require " . var_export($dir . '/Event/EventParticipationRepository.php', true) . ";"
+            . " require " . var_export($dir . '/Product/ProductPeopleFields.php', true) . ";"
+            . " require " . var_export($dir . '/Product/ProductPeopleResolver.php', true) . ";"
+            . " try { echo json_encode((new Voelgoed\\PlatformCore\\Product\\ProductPeopleResolver())->people_for_product(401)); }"
+            . " catch (Throwable \$error) { echo 'THREW: ' . \$error->getMessage(); }";
+        $output = [];
+        $exit_code = 0;
+        exec(escapeshellarg(PHP_BINARY) . ' -r ' . escapeshellarg($code) . ' 2>&1', $output, $exit_code);
+
+        vgpc_test_same(0, $exit_code, 'The resolver process must not crash. Output: ' . implode("\n", $output));
+
+        return trim(implode("\n", $output));
+    }
+
     private function resolver(): ProductPeopleResolver
     {
         return new ProductPeopleResolver(new EventParticipationRepository());

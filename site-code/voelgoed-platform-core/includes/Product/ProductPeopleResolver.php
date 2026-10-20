@@ -55,6 +55,11 @@ final class ProductPeopleResolver
     /** @return list<int> */
     private function event_people(int $product_id): array
     {
+        // Fail closed when ACF field reads are unavailable: the approved contract resolves to [] rather than fataling.
+        if (! function_exists('get_field')) {
+            return [];
+        }
+
         $event_id = $this->positive_id(get_field(self::SOURCE_EVENT_FIELD, $product_id, false));
         if ($event_id === null || ! $this->repository->is_valid_event($event_id)) {
             return [];
@@ -66,6 +71,11 @@ final class ProductPeopleResolver
     /** @return list<int> */
     private function manual_people(int $product_id): array
     {
+        // Fail closed when ACF field reads are unavailable: the approved contract resolves to [] rather than fataling.
+        if (! function_exists('get_field')) {
+            return [];
+        }
+
         $raw = get_field(ProductPeopleFields::OVERRIDE_FIELD, $product_id, false);
         if (! is_array($raw)) {
             return [];
