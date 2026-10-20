@@ -12,6 +12,10 @@
     "worktree": ".worktrees/feat-product-people-foundation-7a"
   },
   "feature_commits_after_baseline": [
+    "0eaaae5b2b35dcec1cac188115df2c1c7a590b25 docs: retarget Product removal gate to Task 7B architecture",
+    "fe1cd122644f5ac9a0dd16947ae8025070d20609 fix: fail closed when ACF field reads are unavailable",
+    "f002bc036930f38308aea3438609d382fbf69266 docs: link Task 7A PR in implementation ledger",
+    "d0b05e12644274b2dc84ec4cbe942feafeb4b3e4 docs: record Product People foundation state",
     "6c14efd41ecb643a97f074a8b8fa69f03919420c docs: record Task 7A Tickera side-effect ruling",
     "d0cddbc7edbe593e879deb0ca5de88c2d7f92ed2 fix: clean owned Tickera side effects in Product People QA",
     "95ab18b366ab05aa905442063762b6793368ec49 test: add Product People runtime QA",
@@ -22,14 +26,14 @@
   "feature_head_sha": "recorded_in_pr_body",
   "source_sha256": {
     "includes/Product/ProductPeopleFields.php": "bbefd2ff36822bef87db5a99da6725b6cbc94a564bb00b8fcee6b70a1b7c9635",
-    "includes/Product/ProductPeopleResolver.php": "4f108ee2c30b4455c4a77b3c5a2d1e9f955f2c1af6ba9928a0a95320f9699b61",
+    "includes/Product/ProductPeopleResolver.php": "3e636980cbda18d4f936c3ba63f6ac72d8939979387b19417769ece50973d8de",
     "integration.patch": "1b4a4eaa5630563d1394228d66badfd2ee946641bcc9c525c96cb6b4d6ac167e",
     "runtime-tests/product-people-qa.php": "dc25ebfe38ce3ce09380d93b4b338e8f5a8b4ab50133dcf45f6667fb1f7fd86e",
     "runtime-tests/product-people-qa-side-effects.php": "660520e1ce1df5aa2912b1f0b88e232fc101320787088d6b0e6d1786362e1303"
   },
   "runtime_sha256": {
     "includes/Product/ProductPeopleFields.php": "bbefd2ff36822bef87db5a99da6725b6cbc94a564bb00b8fcee6b70a1b7c9635",
-    "includes/Product/ProductPeopleResolver.php": "4f108ee2c30b4455c4a77b3c5a2d1e9f955f2c1af6ba9928a0a95320f9699b61"
+    "includes/Product/ProductPeopleResolver.php": "3e636980cbda18d4f936c3ba63f6ac72d8939979387b19417769ece50973d8de"
   },
   "runtime_bootstrap_hashes": {
     "before_task_7a": {
@@ -446,21 +450,21 @@
     "event_participation": 0
   },
   "qa_run": {
-    "run_token": "20261020055806-e770a89da8dc6181",
+    "run_token": "20261020061553-494f435b4ca701bc",
     "result": "PASS",
     "owned_ids": {
-      "event": 1354,
+      "event": 1363,
       "participations": [
-        1360,
-        1361,
-        1362
+        1369,
+        1370,
+        1371
       ],
       "persons": {
-        "A": 1356,
-        "B": 1357,
-        "C": 1358
+        "A": 1365,
+        "B": 1366,
+        "C": 1367
       },
-      "product": 1359
+      "product": 1368
     },
     "scenarios": [
       {
@@ -559,7 +563,7 @@
       "run_token_found": false,
       "tickera_side_effects": {
         "deleted": [
-          1355
+          1364
         ],
         "failures": [],
         "unexplained": []
@@ -568,14 +572,32 @@
     "failures": []
   },
   "test_counts": {
-    "product_people_focused": 50,
+    "product_people_focused": 52,
     "event_participation": 65,
     "event_participation_bricks": 12,
     "event_role_seeder": 13,
     "content_topic": 67,
     "person_foundation": 10
   },
+  "resolver_fail_closed_revision": {
+    "reason": "architecture review REVISE: ProductPeopleResolver must fail closed when ACF get_field() is unavailable",
+    "guard": "function_exists('get_field') before get_field() reads in event_people() and manual_people()",
+    "tests": "test_event_mode_fails_closed_when_acf_get_field_is_unavailable; test_manual_mode_fails_closed_when_acf_get_field_is_unavailable",
+    "tdd_red_observed": "both tests failed: Call to undefined function Voelgoed\\PlatformCore\\Product\\get_field()",
+    "tdd_green_observed": "52 Product People tests passed",
+    "redeployed_files": [
+      "includes/Product/ProductPeopleResolver.php"
+    ],
+    "superseded_qa_run_token": "20261020055806-e770a89da8dc6181"
+  },
   "historical_runs": [
+    {
+      "run_token": "20261020055806-e770a89da8dc6181",
+      "result": "PASS",
+      "reason": "completion evidence superseded: validated the pre-review resolver (sha 4f108ee2...) which lacked the get_field() fail-closed guard; redeployed resolver requires a fresh run",
+      "scenarios": "14 of 14 PASS",
+      "evidence_for_task_7a_completion": false
+    },
     {
       "run_token": "20261020054436-e6890be3153eeea3",
       "result": "FAIL",

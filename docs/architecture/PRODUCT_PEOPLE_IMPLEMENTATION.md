@@ -8,7 +8,7 @@ This record documents the canonical Product People foundation as implemented and
 | Plan | [Task 7A plan](../superpowers/plans/2026-10-20-product-people-foundation-7a.md) |
 | Execution baseline | `origin/main` = `b63f5d529722d2d50350ddbbdea3917b07250a4d` (verified at execution start and again before the PR) |
 | Branch | `feat/product-people-foundation-7a` |
-| Feature commits after baseline | `396e450` fields; `9d9fdbd` resolver; `4d3dd12` Platform Core wiring; `95ab18b` runtime QA script; `d0cddbc` Tickera side-effect QA fix; `6c14efd` ledger ruling; plus the Task 7 documentation commit |
+| Feature commits after baseline | `396e450` fields; `9d9fdbd` resolver; `4d3dd12` Platform Core wiring; `95ab18b` runtime QA script; `d0cddbc` Tickera side-effect QA fix; `6c14efd` ledger ruling; `fe1cd12` fail-closed ACF guard (architecture review); `0eaaae5` removal-gate rewrite; plus the Task 7 documentation commit |
 | Feature head SHA | Recorded in the implementation PR body (the head cannot be recorded inside the commit that defines it) |
 | Scope | `ProductPeopleFields`, `ProductPeopleResolver`, focused tests, `integration.patch` and README wiring, guarded runtime QA, and architecture records |
 
@@ -36,7 +36,7 @@ final class ProductPeopleResolver
 }
 ```
 
-Resolution is read-only and uses the explicit mode only:
+Resolution is read-only and uses the explicit mode only. If ACF's `get_field()` is unavailable (ACF not loaded), `event` and `manual` both return `[]` before any relationship read, so the resolver never fatals. Both behaviours are proven by out-of-process tests, because the shared test bootstrap always defines `get_field()`.
 
 | Stored mode | Behaviour |
 |---|---|
@@ -60,7 +60,7 @@ Published-Person filtering is applied on top of the repository. The repository v
 | File | SHA-256 (source = runtime) |
 |---|---|
 | `includes/Product/ProductPeopleFields.php` | `bbefd2ff36822bef87db5a99da6725b6cbc94a564bb00b8fcee6b70a1b7c9635` |
-| `includes/Product/ProductPeopleResolver.php` | `4f108ee2c30b4455c4a77b3c5a2d1e9f955f2c1af6ba9928a0a95320f9699b61` |
+| `includes/Product/ProductPeopleResolver.php` | `3e636980cbda18d4f936c3ba63f6ac72d8939979387b19417769ece50973d8de` |
 
 Runtime bootstrap changed only by the four Product lines in `integration.patch`. `voelgoed-platform-core.php` moved from `0a65ed37…` to `315985ba…`, and `includes/Plugin.php` moved from `596b37e8…` to `646b356e…`. The full hash set is in [`PRODUCT_PEOPLE_7A_RUNTIME_MANIFEST.json`](PRODUCT_PEOPLE_7A_RUNTIME_MANIFEST.json).
 
@@ -68,7 +68,7 @@ Runtime bootstrap changed only by the four Product lines in `integration.patch`.
 
 | Suite | Result |
 |---|---|
-| Product People focused suite | 50 passed (fields 7; resolver 27; integration wiring 5; Tickera side-effect ownership and QA guards 11) |
+| Product People focused suite | 52 passed (fields 7; resolver 29; integration wiring 5; Tickera side-effect ownership and QA guards 11) |
 | Event Participation | 65 passed |
 | Event Participation Bricks | 12 passed |
 | Event Role Seeder | 13 passed |
@@ -81,7 +81,9 @@ Mutation check: removing the published-status filter and falling back to the Eve
 
 ## Guarded runtime QA
 
-The final run used run token `20261020055806-e770a89da8dc6181`. Its result was `PASS`, with no failures.
+The completion run used run token `20261020061553-494f435b4ca701bc`, executed after the fail-closed resolver fix was redeployed (source and runtime `ProductPeopleResolver.php` both `3e636980…`). Its result was `PASS`, with no failures.
+
+The earlier run `20261020055806-e770a89da8dc6181` (14 of 14 PASS) validated the pre-review resolver (`4f108ee…`), which lacked the `get_field()` guard. It is kept as historical evidence only and is not completion evidence for the current resolver.
 
 | Check | Result |
 |---|---|
@@ -91,8 +93,8 @@ The final run used run token `20261020055806-e770a89da8dc6181`. Its result was `
 | Persons before / after | 0 / 0 |
 | `event_participation` before / after | 0 / 0 |
 | Owned QA residue (posts, meta rows, term relationships) | 0 / 0 / 0 |
-| Run token in posts, post meta, or options | 0 / 0 / 0 |
-| Owned Tickera side effect removed before the QA Event | `tc_api_keys` 1355, owned by this run, deleted after re-verification |
+| Run token in posts, post meta, or options | 0 / 0 / 0 (independent read-only scan after the run) |
+| Owned Tickera side effect removed before the QA Event | `tc_api_keys` 1364, owned by this run, deleted after re-verification |
 | Unexplained Tickera side effects | none |
 | `tc_api_keys` exact equality to pre-QA state | true (18 pre-existing records) |
 | Protected Product, Event, template, component, and snippet state | equal to pre-QA snapshot |
