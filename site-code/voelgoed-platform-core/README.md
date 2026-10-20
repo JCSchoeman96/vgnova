@@ -109,3 +109,20 @@ setup failure boundary has a standalone regression check at
 `site-code/runtime-tests/tests/run-event-participation-qa-setup-tests.php`.
 Created-record ownership and failure-safe cleanup have focused regressions at
 `site-code/runtime-tests/tests/run-event-participation-qa-cleanup-tests.php`.
+
+## Product People foundation
+
+The Task 7A Product People foundation lives in `includes/Product/`:
+
+- `ProductPeopleFields` owns the PHP-local ACF fields `product_people_mode` (`event` or `manual`, blank allowed, no default) and `product_people_override` (ordered `person` relationship, shown only in manual mode). It does not own `produk_bron_event` or `produk_medewerkers`.
+- `ProductPeopleResolver` is the read-only canonical Product → Person authority. It resolves Event-derived People through `EventParticipationRepository` or manual People from `product_people_override`, keeps only published Persons, and returns `[]` when the mode is absent, empty, or invalid. It never reads `produk_medewerkers` and never writes.
+
+No Product consumer has migrated yet. Product Single 124 and the legacy Product relationship helpers remain unchanged until the separate consumer-cutover task.
+
+Run the focused checks with:
+
+```sh
+php site-code/voelgoed-platform-core/tests/run-product-people-tests.php
+```
+
+Runtime deployment remains a copied plugin deployment. No ACF Local JSON sync is used for Task 7A.
