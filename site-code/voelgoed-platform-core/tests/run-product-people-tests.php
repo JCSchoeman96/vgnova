@@ -11,6 +11,7 @@ $product_files = [
     dirname(__DIR__) . '/includes/Product/ProductPeopleFields.php',
     dirname(__DIR__) . '/includes/Product/ProductPeopleResolver.php',
     dirname(__DIR__) . '/includes/Product/ProductPeopleBricks.php',
+    dirname(__DIR__) . '/includes/Product/ProductSourceEventBricks.php',
 ];
 foreach ($product_files as $product_file) {
     if (is_file($product_file)) {
@@ -26,6 +27,7 @@ if (is_file($qa_side_effects_file)) {
 require_once __DIR__ . '/ProductPeopleFieldsTest.php';
 require_once __DIR__ . '/ProductPeopleResolverTest.php';
 require_once __DIR__ . '/ProductPeopleBricksTest.php';
+require_once __DIR__ . '/ProductSourceEventBricksTest.php';
 require_once __DIR__ . '/ProductPeopleIntegrationTest.php';
 require_once __DIR__ . '/ProductPeopleQaSideEffectsTest.php';
 
@@ -33,6 +35,7 @@ $test_suites = [
     new ProductPeopleFieldsTest(),
     new ProductPeopleResolverTest(),
     new ProductPeopleBricksTest(),
+    new ProductSourceEventBricksTest(),
     new ProductPeopleIntegrationTest(),
     new ProductPeopleQaSideEffectsTest(),
 ];
