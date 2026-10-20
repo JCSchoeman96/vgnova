@@ -1,0 +1,612 @@
+{
+  "task": "7A",
+  "title": "Canonical Product People foundation",
+  "planning": {
+    "spec": "docs/superpowers/specs/2026-10-19-product-people-foundation-design.md",
+    "plan": "docs/superpowers/plans/2026-10-20-product-people-foundation-7a.md"
+  },
+  "execution_baseline": {
+    "origin_main_sha": "b63f5d529722d2d50350ddbbdea3917b07250a4d",
+    "verified_at_execution": true,
+    "feature_branch": "feat/product-people-foundation-7a",
+    "worktree": ".worktrees/feat-product-people-foundation-7a"
+  },
+  "feature_commits_after_baseline": [
+    "0eaaae5b2b35dcec1cac188115df2c1c7a590b25 docs: retarget Product removal gate to Task 7B architecture",
+    "fe1cd122644f5ac9a0dd16947ae8025070d20609 fix: fail closed when ACF field reads are unavailable",
+    "f002bc036930f38308aea3438609d382fbf69266 docs: link Task 7A PR in implementation ledger",
+    "d0b05e12644274b2dc84ec4cbe942feafeb4b3e4 docs: record Product People foundation state",
+    "6c14efd41ecb643a97f074a8b8fa69f03919420c docs: record Task 7A Tickera side-effect ruling",
+    "d0cddbc7edbe593e879deb0ca5de88c2d7f92ed2 fix: clean owned Tickera side effects in Product People QA",
+    "95ab18b366ab05aa905442063762b6793368ec49 test: add Product People runtime QA",
+    "4d3dd1236c4f069b2131852aa3cd40e98ef61b81 feat: wire Product People into Platform Core",
+    "9d9fdbd410d47d644454f5635d1b4c13fc613b25 feat: resolve canonical Product People",
+    "396e450a7b5fe206968dffdf32cec9bca04ab3b1 feat: register canonical Product People fields"
+  ],
+  "feature_head_sha": "recorded_in_pr_body",
+  "source_sha256": {
+    "includes/Product/ProductPeopleFields.php": "bbefd2ff36822bef87db5a99da6725b6cbc94a564bb00b8fcee6b70a1b7c9635",
+    "includes/Product/ProductPeopleResolver.php": "3e636980cbda18d4f936c3ba63f6ac72d8939979387b19417769ece50973d8de",
+    "integration.patch": "1b4a4eaa5630563d1394228d66badfd2ee946641bcc9c525c96cb6b4d6ac167e",
+    "runtime-tests/product-people-qa.php": "dc25ebfe38ce3ce09380d93b4b338e8f5a8b4ab50133dcf45f6667fb1f7fd86e",
+    "runtime-tests/product-people-qa-side-effects.php": "660520e1ce1df5aa2912b1f0b88e232fc101320787088d6b0e6d1786362e1303"
+  },
+  "runtime_sha256": {
+    "includes/Product/ProductPeopleFields.php": "bbefd2ff36822bef87db5a99da6725b6cbc94a564bb00b8fcee6b70a1b7c9635",
+    "includes/Product/ProductPeopleResolver.php": "3e636980cbda18d4f936c3ba63f6ac72d8939979387b19417769ece50973d8de"
+  },
+  "runtime_bootstrap_hashes": {
+    "before_task_7a": {
+      "voelgoed-platform-core.php": "0a65ed3754c969a5ac8f0da49eb730774c24964e15dd642249559ae0dae3cf8e",
+      "includes/Plugin.php": "596b37e8d3ed0e3f1cafad18bbe404bb5293ec956cb761bcc738f03fa77a459f"
+    },
+    "after_deployment": {
+      "voelgoed-platform-core.php": "315985ba170da4d28cbe0268a3fa174529356136663f944d2504bad38d274172",
+      "includes/Plugin.php": "646b356e391068ac138c65b6397b2ea08737d88a0ef9dac2552965a182005baa"
+    }
+  },
+  "legacy_snippet_hashes": {
+    "9-acf-product-copy.php": "58e8035502b30397b9659f952e4d49bbdbd7cdbd15070e37e5b07ebaa5ce2f70",
+    "10-vg-bricks-medewerker-queries.php": "e1b7c014cd15a673d663426403a2024a21a1286075c355015f4e217d7e498fa2",
+    "unchanged_after_qa": true
+  },
+  "acf_field_group_normalized_schema": {
+    "fields": [
+      {
+        "allow_null": 1,
+        "choices": {
+          "event": "Event-derived",
+          "manual": "Manual"
+        },
+        "conditional_logic": false,
+        "default_value": "",
+        "key": "field_vg_product_people_mode",
+        "label": "Product: People mode",
+        "multiple": 0,
+        "name": "product_people_mode",
+        "required": 0,
+        "return_format": "value",
+        "type": "select",
+        "ui": 0
+      },
+      {
+        "conditional_logic": [
+          [
+            {
+              "field": "field_vg_product_people_mode",
+              "operator": "==",
+              "value": "manual"
+            }
+          ]
+        ],
+        "filters": [
+          "search"
+        ],
+        "key": "field_vg_product_people_override",
+        "label": "Product: Manual People",
+        "max": 0,
+        "min": 0,
+        "name": "product_people_override",
+        "post_type": [
+          "person"
+        ],
+        "required": 0,
+        "return_format": "id",
+        "type": "relationship"
+      }
+    ],
+    "group": {
+      "active": true,
+      "key": "group_vg_product_people",
+      "local": "php",
+      "location": [
+        [
+          {
+            "operator": "==",
+            "param": "post_type",
+            "value": "product"
+          }
+        ]
+      ],
+      "title": "Product People"
+    },
+    "legacy_produk_bron_event": {
+      "allow_null": 0,
+      "conditional_logic": false,
+      "key": "field_produk_bron_event",
+      "label": "Bron Event",
+      "multiple": 0,
+      "name": "produk_bron_event",
+      "post_type": [
+        "tc_events"
+      ],
+      "required": 0,
+      "return_format": "id",
+      "type": "post_object",
+      "ui": 1
+    },
+    "legacy_produk_medewerkers": {
+      "conditional_logic": false,
+      "filters": [
+        "search"
+      ],
+      "key": "field_produk_medewerkers",
+      "label": "Produk Medewerkers",
+      "max": 0,
+      "min": 0,
+      "name": "produk_medewerkers",
+      "post_type": [
+        "medewerker"
+      ],
+      "required": 0,
+      "return_format": "id",
+      "type": "relationship"
+    }
+  },
+  "canonical_product_meta": {
+    "before_rows": [],
+    "after_rows": [],
+    "all_product_ids_before": [
+      525,
+      527,
+      529,
+      531,
+      642,
+      765,
+      767,
+      768,
+      842,
+      844,
+      845,
+      846,
+      905,
+      908,
+      911,
+      914,
+      917,
+      920,
+      923,
+      1186
+    ],
+    "all_product_ids_after": [
+      525,
+      527,
+      529,
+      531,
+      642,
+      765,
+      767,
+      768,
+      842,
+      844,
+      845,
+      846,
+      905,
+      908,
+      911,
+      914,
+      917,
+      920,
+      923,
+      1186
+    ],
+    "equal": true
+  },
+  "protected_products": {
+    "before": {
+      "product_765": {
+        "acf": {
+          "produk_bron_event": [
+            763
+          ],
+          "produk_medewerkers": []
+        },
+        "content_md5": "d41d8cd98f00b204e9800998ecf8427e",
+        "meta_digest": "816f0f81a1fbfed817c37b8db004f51e",
+        "meta_row_count": 6,
+        "modified": "2026-06-04 06:11:40",
+        "name": "test-event-recording-qa__trashed",
+        "post_type": "product",
+        "status": "trash",
+        "title": "Test Event Recording"
+      },
+      "product_767": {
+        "acf": {
+          "produk_bron_event": [
+            763
+          ],
+          "produk_medewerkers": [
+            753
+          ]
+        },
+        "content_md5": "d41d8cd98f00b204e9800998ecf8427e",
+        "meta_digest": "55789255c43fe90d885fa0ef74783719",
+        "meta_row_count": 6,
+        "modified": "2026-06-04 06:35:44",
+        "name": "test-event-recording-qa2",
+        "post_type": "product",
+        "status": "publish",
+        "title": "Test Event Recording QA2"
+      },
+      "product_768": {
+        "acf": {
+          "produk_bron_event": [
+            763
+          ],
+          "produk_medewerkers": [
+            753,
+            757
+          ]
+        },
+        "content_md5": "d41d8cd98f00b204e9800998ecf8427e",
+        "meta_digest": "1decd9f1c36f87c71edb8200f8014e9f",
+        "meta_row_count": 8,
+        "modified": "2026-06-04 06:11:40",
+        "name": "qa4__trashed",
+        "post_type": "product",
+        "status": "trash",
+        "title": "QA4"
+      }
+    },
+    "after": {
+      "product_765": {
+        "post_type": "product",
+        "status": "trash",
+        "name": "test-event-recording-qa__trashed",
+        "title": "Test Event Recording",
+        "modified": "2026-06-04 06:11:40",
+        "content_md5": "d41d8cd98f00b204e9800998ecf8427e",
+        "meta_row_count": 6,
+        "meta_digest": "816f0f81a1fbfed817c37b8db004f51e",
+        "acf": {
+          "produk_bron_event": [
+            763
+          ],
+          "produk_medewerkers": []
+        }
+      },
+      "product_767": {
+        "post_type": "product",
+        "status": "publish",
+        "name": "test-event-recording-qa2",
+        "title": "Test Event Recording QA2",
+        "modified": "2026-06-04 06:35:44",
+        "content_md5": "d41d8cd98f00b204e9800998ecf8427e",
+        "meta_row_count": 6,
+        "meta_digest": "55789255c43fe90d885fa0ef74783719",
+        "acf": {
+          "produk_bron_event": [
+            763
+          ],
+          "produk_medewerkers": [
+            753
+          ]
+        }
+      },
+      "product_768": {
+        "post_type": "product",
+        "status": "trash",
+        "name": "qa4__trashed",
+        "title": "QA4",
+        "modified": "2026-06-04 06:11:40",
+        "content_md5": "d41d8cd98f00b204e9800998ecf8427e",
+        "meta_row_count": 8,
+        "meta_digest": "1decd9f1c36f87c71edb8200f8014e9f",
+        "acf": {
+          "produk_bron_event": [
+            763
+          ],
+          "produk_medewerkers": [
+            753,
+            757
+          ]
+        }
+      }
+    },
+    "equal": true
+  },
+  "protected_event_763": {
+    "before": {
+      "acf": {
+        "event_medewerkers": [
+          753,
+          757
+        ]
+      },
+      "content_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "meta_digest": "9d569ec026fa136039ebe0e5ed17ced6",
+      "meta_row_count": 13,
+      "modified": "2026-06-05 11:09:06",
+      "name": "test-event-medewerkers-qa",
+      "post_type": "tc_events",
+      "status": "publish",
+      "title": "Test Event"
+    },
+    "after": {
+      "post_type": "tc_events",
+      "status": "publish",
+      "name": "test-event-medewerkers-qa",
+      "title": "Test Event",
+      "modified": "2026-06-05 11:09:06",
+      "content_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "meta_row_count": 13,
+      "meta_digest": "9d569ec026fa136039ebe0e5ed17ced6",
+      "acf": {
+        "event_medewerkers": [
+          753,
+          757
+        ]
+      }
+    },
+    "equal": true
+  },
+  "bricks_templates": {
+    "before": {
+      "template_124": {
+        "content_md5": "d41d8cd98f00b204e9800998ecf8427e",
+        "meta_digest": "0b88b32c6efb1a8fe534f765cf2cd3e2",
+        "meta_row_count": 3,
+        "modified": "2026-04-20 10:38:43",
+        "name": "single-product",
+        "post_type": "bricks_template",
+        "status": "publish",
+        "title": "Single Product"
+      },
+      "template_772": {
+        "content_md5": "d41d8cd98f00b204e9800998ecf8427e",
+        "meta_digest": "9aff9c4f70053f7c33741c4f4f86758f",
+        "meta_row_count": 5,
+        "modified": "2026-06-04 06:41:47",
+        "name": "medewerker-single",
+        "post_type": "bricks_template",
+        "status": "publish",
+        "title": "Medewerker Single"
+      },
+      "template_774": {
+        "content_md5": "d41d8cd98f00b204e9800998ecf8427e",
+        "meta_digest": "27910344b7d586d62e93a6971208bcd1",
+        "meta_row_count": 5,
+        "modified": "2026-06-05 13:42:18",
+        "name": "event-single",
+        "post_type": "bricks_template",
+        "status": "publish",
+        "title": "Event Single"
+      }
+    },
+    "after": {
+      "template_124": {
+        "post_type": "bricks_template",
+        "status": "publish",
+        "name": "single-product",
+        "title": "Single Product",
+        "modified": "2026-04-20 10:38:43",
+        "content_md5": "d41d8cd98f00b204e9800998ecf8427e",
+        "meta_row_count": 3,
+        "meta_digest": "0b88b32c6efb1a8fe534f765cf2cd3e2"
+      },
+      "template_772": {
+        "post_type": "bricks_template",
+        "status": "publish",
+        "name": "medewerker-single",
+        "title": "Medewerker Single",
+        "modified": "2026-06-04 06:41:47",
+        "content_md5": "d41d8cd98f00b204e9800998ecf8427e",
+        "meta_row_count": 5,
+        "meta_digest": "9aff9c4f70053f7c33741c4f4f86758f"
+      },
+      "template_774": {
+        "post_type": "bricks_template",
+        "status": "publish",
+        "name": "event-single",
+        "title": "Event Single",
+        "modified": "2026-06-05 13:42:18",
+        "content_md5": "d41d8cd98f00b204e9800998ecf8427e",
+        "meta_row_count": 5,
+        "meta_digest": "27910344b7d586d62e93a6971208bcd1"
+      }
+    },
+    "equal": true
+  },
+  "bricks_components": {
+    "before": {
+      "component_digests": {
+        "194bba": "9971d30da0f4859795c24bbc51a92dac",
+        "6b463f": "d623dc760e0dca0db73772a70699c343"
+      },
+      "option_md5": "d85430bf3dc6f129a12f3f124b55890e"
+    },
+    "after": {
+      "option_md5": "d85430bf3dc6f129a12f3f124b55890e",
+      "component_digests": {
+        "194bba": "9971d30da0f4859795c24bbc51a92dac",
+        "6b463f": "d623dc760e0dca0db73772a70699c343"
+      }
+    },
+    "equal": true
+  },
+  "tickera_api_keys": {
+    "pre_qa_count": 18,
+    "post_qa_count": 18,
+    "exact_equal": true
+  },
+  "protected_snapshot_full_equal": {
+    "all_product_ids": true,
+    "bricks_components": true,
+    "canonical_product_meta_rows": true,
+    "event": true,
+    "event_name_meta_rows": true,
+    "event_participation_count": true,
+    "person_count": true,
+    "post_type_counts": true,
+    "products": true,
+    "profiles": true,
+    "snippet_hashes": true,
+    "templates": true,
+    "tickera_api_keys": true,
+    "vocabularies": true
+  },
+  "final_counts": {
+    "person": 0,
+    "event_participation": 0
+  },
+  "qa_run": {
+    "run_token": "20261020061553-494f435b4ca701bc",
+    "result": "PASS",
+    "owned_ids": {
+      "event": 1363,
+      "participations": [
+        1369,
+        1370,
+        1371
+      ],
+      "persons": {
+        "A": 1365,
+        "B": 1366,
+        "C": 1367
+      },
+      "product": 1368
+    },
+    "scenarios": [
+      {
+        "id": "S01",
+        "label": "absent mode with valid source Event returns empty",
+        "result": "PASS"
+      },
+      {
+        "id": "S02",
+        "label": "ordinary ACF blank save leaves an absent mode unconfigured",
+        "result": "PASS"
+      },
+      {
+        "id": "S02b",
+        "label": "ordinary ACF blank save clears an explicit event mode back to unconfigured",
+        "result": "PASS"
+      },
+      {
+        "id": "S03",
+        "label": "event mode returns published Persons in Event Participation order and excludes draft Persons",
+        "result": "PASS"
+      },
+      {
+        "id": "S04",
+        "label": "event mode ignores a stale manual override",
+        "result": "PASS"
+      },
+      {
+        "id": "S05",
+        "label": "manual mode returns the override in editor order",
+        "result": "PASS"
+      },
+      {
+        "id": "S06",
+        "label": "empty manual override returns empty despite a valid source Event",
+        "result": "PASS"
+      },
+      {
+        "id": "S07",
+        "label": "malformed manual endpoints are filtered to published Persons",
+        "result": "PASS"
+      },
+      {
+        "id": "S08",
+        "label": "invalid stored mode returns empty",
+        "result": "PASS"
+      },
+      {
+        "id": "S09",
+        "label": "wrong-type source Event returns empty",
+        "result": "PASS"
+      },
+      {
+        "id": "S10",
+        "label": "missing source Event returns empty",
+        "result": "PASS"
+      },
+      {
+        "id": "S11",
+        "label": "malformed source Event returns empty",
+        "result": "PASS"
+      },
+      {
+        "id": "S12",
+        "label": "manual mode ignores a valid source Event",
+        "result": "PASS"
+      },
+      {
+        "id": "S13",
+        "label": "legacy produk_medewerkers never influences the canonical result",
+        "result": "PASS"
+      }
+    ],
+    "malformed_source_event_returns_empty": "PASS",
+    "acf_save_path_fired": true,
+    "before_after_counts": {
+      "event_participation_after": 0,
+      "event_participation_before": 0,
+      "persons_after": 0,
+      "persons_before": 0
+    },
+    "protected_state_unchanged": true,
+    "tickera_api_keys_unchanged": true,
+    "tickera_api_keys_pre_qa_count": 18,
+    "canonical_product_meta_baseline_unchanged": true,
+    "legacy_snippet_hashes_unchanged": true,
+    "post_type_counts_equal": true,
+    "cleanup": {
+      "event_participations_remaining": 0,
+      "owned_meta_rows_remaining": 0,
+      "owned_posts_remaining": 0,
+      "owned_term_relationships_remaining": 0,
+      "ownership_cleanup_failures": [],
+      "persons_remaining": 0,
+      "post_type_count_diffs": [],
+      "run_token_found": false,
+      "tickera_side_effects": {
+        "deleted": [
+          1364
+        ],
+        "failures": [],
+        "unexplained": []
+      }
+    },
+    "failures": []
+  },
+  "test_counts": {
+    "product_people_focused": 52,
+    "event_participation": 65,
+    "event_participation_bricks": 12,
+    "event_role_seeder": 13,
+    "content_topic": 67,
+    "person_foundation": 10
+  },
+  "resolver_fail_closed_revision": {
+    "reason": "architecture review REVISE: ProductPeopleResolver must fail closed when ACF get_field() is unavailable",
+    "guard": "function_exists('get_field') before get_field() reads in event_people() and manual_people()",
+    "tests": "test_event_mode_fails_closed_when_acf_get_field_is_unavailable; test_manual_mode_fails_closed_when_acf_get_field_is_unavailable",
+    "tdd_red_observed": "both tests failed: Call to undefined function Voelgoed\\PlatformCore\\Product\\get_field()",
+    "tdd_green_observed": "52 Product People tests passed",
+    "redeployed_files": [
+      "includes/Product/ProductPeopleResolver.php"
+    ],
+    "superseded_qa_run_token": "20261020055806-e770a89da8dc6181"
+  },
+  "historical_runs": [
+    {
+      "run_token": "20261020055806-e770a89da8dc6181",
+      "result": "PASS",
+      "reason": "completion evidence superseded: validated the pre-review resolver (sha 4f108ee2...) which lacked the get_field() fail-closed guard; redeployed resolver requires a fresh run",
+      "scenarios": "14 of 14 PASS",
+      "evidence_for_task_7a_completion": false
+    },
+    {
+      "run_token": "20261020054436-e6890be3153eeea3",
+      "result": "FAIL",
+      "reason": "post-cleanup audit: tc_api_keys post 1346 created by Tickera for the owned QA Event remained; tc_api_keys|publish 18 -> 19",
+      "scenarios": "13 of 13 PASS; malformed_source_event_returns_empty PASS",
+      "recovery": "owned residue removed by exact ownership check; bootstrap restored to pre-7A hashes; Product files removed; snapshot matched pre-deployment state",
+      "evidence_for_task_7a_completion": false
+    }
+  ],
+  "stop_conditions_encountered": "STOP 1 (Task 6 first run): post-cleanup audit failure caused by an unowned Tickera side effect; resolved by the approved Task 5 regression fix and a fresh Task 6 run.",
+  "credentials_stored": false
+}
