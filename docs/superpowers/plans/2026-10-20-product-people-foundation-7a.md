@@ -761,8 +761,11 @@ Using only the owned QA Product:
 invalid non-empty mode → []
 event mode + wrong-type source endpoint → []
 event mode + missing source → []
+event mode + malformed source value → []
 manual mode ignores valid source Event
 ```
+
+For the malformed source proof, use only the owned QA Product. With mode `event`, set `produk_bron_event` to an array/object-shaped value that violates the single-ID contract. Try the ACF update API first. If ACF rejects or normalizes the malformed value, inject it through raw Product meta for this QA case. After raw-meta injection, clear the ACF value cache for this Product field before resolution. Assert `[]`, then restore the valid source Event through ACF and confirm the field reads that Event before continuing. Record the result as `malformed_source_event_returns_empty` in the JSON summary and copy it into the runtime manifest.
 
 Populate `produk_medewerkers` on the QA Product with an existing legacy Medewerker ID and prove it never affects resolver output.
 
@@ -805,6 +808,7 @@ Print one JSON object containing at minimum:
 run token
 owned IDs
 all scenario PASS/FAIL results
+malformed_source_event_returns_empty PASS/FAIL result
 before/after persistent counts
 protected-state comparison result
 cleanup residue counts
@@ -1108,6 +1112,7 @@ Event 763 before/after protected values
 Bricks template/component before/after hashes
 QA owned IDs
 QA scenario results
+malformed_source_event_returns_empty result copied from QA JSON summary
 cleanup residue counts
 final Person/participation counts
 focused/regression test counts
