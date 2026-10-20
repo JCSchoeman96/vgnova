@@ -17,14 +17,21 @@ foreach ($product_files as $product_file) {
     }
 }
 
+$qa_side_effects_file = dirname(__DIR__, 2) . '/runtime-tests/product-people-qa-side-effects.php';
+if (is_file($qa_side_effects_file)) {
+    require_once $qa_side_effects_file;
+}
+
 require_once __DIR__ . '/ProductPeopleFieldsTest.php';
 require_once __DIR__ . '/ProductPeopleResolverTest.php';
 require_once __DIR__ . '/ProductPeopleIntegrationTest.php';
+require_once __DIR__ . '/ProductPeopleQaSideEffectsTest.php';
 
 $test_suites = [
     new ProductPeopleFieldsTest(),
     new ProductPeopleResolverTest(),
     new ProductPeopleIntegrationTest(),
+    new ProductPeopleQaSideEffectsTest(),
 ];
 $passed = 0;
 $failed = 0;

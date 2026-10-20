@@ -165,8 +165,12 @@ function vg_product_people_qa_token_exists(string $token): bool
         $wpdb->prepare("SELECT COUNT(*) FROM {$wpdb->postmeta} WHERE meta_value LIKE %s", $like),
         'run token in post metadata'
     );
+    $option_matches = vg_product_people_qa_db_count(
+        $wpdb->prepare("SELECT COUNT(*) FROM {$wpdb->options} WHERE option_value LIKE %s", $like),
+        'run token in options'
+    );
 
-    return $post_matches > 0 || $meta_matches > 0;
+    return $post_matches > 0 || $meta_matches > 0 || $option_matches > 0;
 }
 
 function vg_product_people_qa_terms(int $post_id, string $taxonomy): array
@@ -197,6 +201,93 @@ function vg_product_people_qa_vocab(string $taxonomy): array
     usort($result, static fn (array $a, array $b): int => $a['id'] <=> $b['id']);
 
     return $result;
+}
+
+/**
+ * Every tc_api_keys record (any status) with the raw fields needed for ownership proof. The secret api_key value is never read.
+ *
+ * @return list<array{id:int, post_type:string, status:string, api_key_name:mixed, event_name:mixed}>
+ */
+function vg_product_people_qa_api_key_rows(): array
+{
+    global $wpdb;
+    $ids = array_map('intval', $wpdb->get_col("SELECT ID FROM {$wpdb->posts} WHERE post_type = 'tc_api_keys' ORDER BY ID"));
+    if ($wpdb->last_error !== '') {
+        throw new RuntimeException('Could not read tc_api_keys IDs: ' . $wpdb->last_error);
+    }
+
+    $rows = [];
+    foreach ($ids as $id) {
+        $post = get_post($id);
+        if (! $post instanceof WP_Post) {
+            continue;
+        }
+        $rows[] = [
+            'id' => $id,
+            'post_type' => $post->post_type,
+            'status' => $post->post_status,
+            'api_key_name' => get_post_meta($id, 'api_key_name', true),
+            'event_name' => get_post_meta($id, 'event_name', true),
+        ];
+    }
+
+    return $rows;
+}
+
+/** Normalized pre/post-QA state of tc_api_keys, compared for exact equality as a protected-state gate. */
+function vg_product_people_qa_api_key_snapshot_rows(): array
+{
+    $snapshot = [];
+    foreach (vg_product_people_qa_api_key_rows() as $row) {
+        $snapshot[] = [
+            'id' => $row['id'],
+            'status' => $row['status'],
+            'api_key_name' => $row['api_key_name'],
+            'event_name' => $row['event_name'],
+            'event_refs' => vg_product_people_qa_extract_event_refs($row['event_name']),
+        ];
+    }
+
+    return $snapshot;
+}
+
+/**
+ * Hard-deletes only Tickera tc_api_keys side effects provably owned by this run, before the owned Event is deleted.
+ * Each candidate is re-classified immediately before deletion. Unexplained records are reported and never deleted.
+ *
+ * @param list<int> $pre_api_key_ids tc_api_keys IDs captured before any QA mutation.
+ * @return array{deleted:list<int>, unexplained:list<array{id:int, reason:string}>, failures:list<array{id:int, message:string}>}
+ */
+function vg_product_people_qa_delete_tickera_side_effects(int $event_id, string $owner, array $pre_api_key_ids): array
+{
+    $report = ['deleted' => [], 'unexplained' => [], 'failures' => []];
+    $plan = vg_product_people_qa_plan_tickera_side_effects(vg_product_people_qa_api_key_rows(), $pre_api_key_ids, $owner, [$event_id]);
+
+    $report['unexplained'] = $plan['unexplained'];
+    foreach ($plan['unexplained'] as $item) {
+        $report['failures'][] = ['id' => $item['id'], 'message' => 'tc_api_keys side effect is not provably owned: ' . $item['reason']];
+    }
+
+    foreach ($plan['delete'] as $id) {
+        try {
+            $current = array_values(array_filter(vg_product_people_qa_api_key_rows(), static fn (array $row): bool => $row['id'] === $id));
+            $recheck = vg_product_people_qa_plan_tickera_side_effects($current, $pre_api_key_ids, $owner, [$event_id]);
+            vg_product_people_qa_check(
+                $recheck['delete'] === [$id] && $recheck['unexplained'] === [],
+                'ownership could not be re-proven immediately before deletion'
+            );
+            wp_delete_post($id, true);
+            vg_product_people_qa_check(
+                get_post($id) === null && vg_product_people_qa_meta_count($id) === 0,
+                'deletion did not remove the post and its metadata'
+            );
+            $report['deleted'][] = $id;
+        } catch (Throwable $error) {
+            $report['failures'][] = ['id' => $id, 'message' => 'tc_api_keys: ' . $error->getMessage()];
+        }
+    }
+
+    return $report;
 }
 
 /**
@@ -330,6 +421,7 @@ function vg_product_people_qa_snapshot(): array
         'snippet_hashes' => $snippet_hashes,
         'vocabularies' => $term_vocab,
         'post_type_counts' => vg_product_people_qa_post_type_counts(),
+        'tickera_api_keys' => vg_product_people_qa_api_key_snapshot_rows(),
         'person_count' => vg_product_people_qa_post_count('person'),
         'event_participation_count' => vg_product_people_qa_post_count(EventParticipationRepository::POST_TYPE),
     ];
@@ -357,9 +449,11 @@ function vg_product_people_qa_mark(int $post_id, string $post_type, string $owne
  * Hard-delete only proven-owned records, in dependency order: Product, participations, Persons, Event.
  * Each record is deleted only when its exact post type and owner marker match; a failed proof retains the record.
  *
+ * @param list<int> $pre_api_key_ids tc_api_keys IDs captured before any QA mutation.
+ * @param array{tickera_side_effects?: array} $report Receives the Tickera side-effect cleanup evidence.
  * @return list<array{id:int, message:string}>
  */
-function vg_product_people_qa_cleanup(array $owned, string $owner): array
+function vg_product_people_qa_cleanup(array $owned, string $owner, array $pre_api_key_ids, array &$report): array
 {
     $failures = [];
     $dependencies_clear = true;
@@ -438,7 +532,17 @@ function vg_product_people_qa_cleanup(array $owned, string $owner): array
 
     if ($owned['event'] > 0) {
         if ($dependencies_clear) {
-            $delete((int) $owned['event'], 'tc_events', $owner);
+            // Tickera side effects are removed while the owned Event still proves their ownership, then the Event goes.
+            $side_effects = vg_product_people_qa_delete_tickera_side_effects((int) $owned['event'], $owner, $pre_api_key_ids);
+            $report['tickera_side_effects'] = $side_effects;
+            if ($side_effects['failures'] === []) {
+                $delete((int) $owned['event'], 'tc_events', $owner);
+            } else {
+                foreach ($side_effects['failures'] as $side_effect_failure) {
+                    $failures[] = ['id' => $side_effect_failure['id'], 'message' => 'Tickera side effect: ' . $side_effect_failure['message']];
+                }
+                $failures[] = ['id' => (int) $owned['event'], 'message' => 'Event retained because Tickera side effects were not verified as removed.'];
+            }
         } else {
             $failures[] = ['id' => (int) $owned['event'], 'message' => 'Event retained because dependent QA records were not verified as removed.'];
         }
@@ -542,6 +646,10 @@ if ($preflight_failure instanceof Throwable) {
     echo $preflight_report . PHP_EOL;
     throw new RuntimeException('Product People runtime QA preflight failed.');
 }
+
+// tc_api_keys IDs that existed before any QA mutation; these are never cleanup candidates.
+$pre_api_key_ids = array_map('intval', array_column($before['tickera_api_keys'], 'id'));
+$cleanup_report = [];
 
 $token = gmdate('YmdHis') . '-' . bin2hex(random_bytes(8));
 $owner = VG_PRODUCT_PEOPLE_QA_OWNER_LABEL . ' ' . $token;
@@ -785,7 +893,7 @@ try {
 } catch (Throwable $error) {
     $qa_failure = $error;
 } finally {
-    $cleanup_failures = vg_product_people_qa_cleanup($owned, $owner);
+    $cleanup_failures = vg_product_people_qa_cleanup($owned, $owner, $pre_api_key_ids, $cleanup_report);
 }
 
 // Post-cleanup audits. Each failure is recorded rather than hidden.
@@ -838,6 +946,14 @@ $audit('persistent_counts_zero', static function () use (&$persons_remaining, &$
     $persons_remaining = vg_product_people_qa_post_count('person');
     $participations_remaining = vg_product_people_qa_post_count(EventParticipationRepository::POST_TYPE);
     vg_product_people_qa_check($persons_remaining === 0 && $participations_remaining === 0, 'A persistent Person or event_participation remains after cleanup.');
+});
+$tickera_api_keys_unchanged = false;
+$audit('tickera_api_keys_unchanged', static function () use ($before, &$tickera_api_keys_unchanged): void {
+    vg_product_people_qa_check(
+        vg_product_people_qa_api_key_snapshot_rows() === $before['tickera_api_keys'],
+        'tc_api_keys state differs from the exact pre-QA snapshot.'
+    );
+    $tickera_api_keys_unchanged = true;
 });
 $after = null;
 $audit('protected_state_unchanged', static function () use ($before, &$after, &$protected_state_unchanged, &$post_type_counts_equal, &$post_type_count_diffs, &$canonical_baseline_unchanged, &$snippet_hashes_unchanged): void {
@@ -907,6 +1023,8 @@ $report = json_encode([
         'event_participation_after' => $participations_remaining,
     ],
     'protected_state_unchanged' => $protected_state_unchanged,
+    'tickera_api_keys_unchanged' => $tickera_api_keys_unchanged,
+    'tickera_api_keys_pre_qa_count' => count($pre_api_key_ids),
     'canonical_product_meta_baseline_unchanged' => $canonical_baseline_unchanged,
     'legacy_snippet_hashes_unchanged' => $snippet_hashes_unchanged,
     'post_type_counts_equal' => $post_type_counts_equal,
@@ -919,6 +1037,7 @@ $report = json_encode([
         'event_participations_remaining' => $participations_remaining,
         'post_type_count_diffs' => $post_type_count_diffs,
         'ownership_cleanup_failures' => $cleanup_failures,
+        'tickera_side_effects' => $cleanup_report['tickera_side_effects'] ?? null,
     ],
     'failures' => $failures,
 ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE | JSON_THROW_ON_ERROR);
