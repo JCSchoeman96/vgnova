@@ -1,6 +1,6 @@
 --- a/voelgoed-platform-core.php
 +++ b/voelgoed-platform-core.php
-@@ -25,0 +26,11 @@
+@@ -25,0 +26,13 @@
 +    'includes/Taxonomy/ContentTopicTaxonomy.php',
 +    'includes/Taxonomy/ContentTopicMigration.php',
 +    'includes/Taxonomy/ContentTopicRoles.php',
@@ -12,9 +12,11 @@
 +    'includes/Event/EventParticipationBricks.php',
 +    'includes/Product/ProductPeopleFields.php',
 +    'includes/Product/ProductPeopleResolver.php',
++    'includes/Product/ProductPeopleBricks.php',
++    'includes/Product/ProductSourceEventBricks.php',
 --- a/includes/Plugin.php
 +++ b/includes/Plugin.php
-@@ -12,0 +13,7 @@
+@@ -12,0 +13,9 @@
 +use Voelgoed\PlatformCore\Taxonomy\ContentTopicTaxonomy;
 +use Voelgoed\PlatformCore\Taxonomy\ContentTopicMigration;
 +use Voelgoed\PlatformCore\Taxonomy\ContentTopicRoles;
@@ -22,7 +24,9 @@
 +use Voelgoed\PlatformCore\Event\EventRoleSeeder;
 +use Voelgoed\PlatformCore\Event\EventParticipationBricks;
 +use Voelgoed\PlatformCore\Product\ProductPeopleFields;
-@@ -47,0 +55,7 @@
++use Voelgoed\PlatformCore\Product\ProductPeopleBricks;
++use Voelgoed\PlatformCore\Product\ProductSourceEventBricks;
+@@ -47,0 +57,9 @@
 +        $this->register_component('content_topic_taxonomy', ContentTopicTaxonomy::class);
 +        $this->register_component('content_topic_migration', ContentTopicMigration::class);
 +        $this->register_component('content_topic_roles', ContentTopicRoles::class);
@@ -30,3 +34,5 @@
 +        $this->register_component('event_role_seeder', EventRoleSeeder::class);
 +        $this->register_component('event_participation_bricks', EventParticipationBricks::class);
 +        $this->register_component('product_people_fields', ProductPeopleFields::class);
++        $this->register_component('product_people_bricks', ProductPeopleBricks::class);
++        $this->register_component('product_source_event_bricks', ProductSourceEventBricks::class);

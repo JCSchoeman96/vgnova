@@ -15,9 +15,17 @@ final class ProductPeopleIntegrationTest
             in_array("'includes/Product/ProductPeopleResolver.php',", $added, true),
             'integration.patch must load includes/Product/ProductPeopleResolver.php in the bootstrap.'
         );
+        vgpc_test_true(
+            in_array("'includes/Product/ProductPeopleBricks.php',", $added, true),
+            'integration.patch must load includes/Product/ProductPeopleBricks.php in the bootstrap.'
+        );
+        vgpc_test_true(
+            in_array("'includes/Product/ProductSourceEventBricks.php',", $added, true),
+            'integration.patch must load includes/Product/ProductSourceEventBricks.php in the bootstrap.'
+        );
     }
 
-    public function test_plugin_imports_and_registers_only_the_field_component(): void
+    public function test_plugin_imports_and_registers_product_bricks_components_without_registering_resolver(): void
     {
         $added = $this->added_lines();
 
@@ -28,6 +36,22 @@ final class ProductPeopleIntegrationTest
         vgpc_test_true(
             in_array("\$this->register_component('product_people_fields', ProductPeopleFields::class);", $added, true),
             'integration.patch must register the product_people_fields lifecycle component.'
+        );
+        vgpc_test_true(
+            in_array('use Voelgoed\PlatformCore\Product\ProductPeopleBricks;', $added, true),
+            'integration.patch must import ProductPeopleBricks into includes/Plugin.php.'
+        );
+        vgpc_test_true(
+            in_array('use Voelgoed\PlatformCore\Product\ProductSourceEventBricks;', $added, true),
+            'integration.patch must import ProductSourceEventBricks into includes/Plugin.php.'
+        );
+        vgpc_test_true(
+            in_array("\$this->register_component('product_people_bricks', ProductPeopleBricks::class);", $added, true),
+            'integration.patch must register the product_people_bricks lifecycle component.'
+        );
+        vgpc_test_true(
+            in_array("\$this->register_component('product_source_event_bricks', ProductSourceEventBricks::class);", $added, true),
+            'integration.patch must register the product_source_event_bricks lifecycle component.'
         );
     }
 
