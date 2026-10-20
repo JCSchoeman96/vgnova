@@ -18,9 +18,11 @@ foreach ($product_files as $product_file) {
 }
 
 require_once __DIR__ . '/ProductPeopleFieldsTest.php';
+require_once __DIR__ . '/ProductPeopleResolverTest.php';
 
 $test_suites = [
     new ProductPeopleFieldsTest(),
+    new ProductPeopleResolverTest(),
 ];
 $passed = 0;
 $failed = 0;
