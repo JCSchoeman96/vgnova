@@ -143,6 +143,26 @@ The active Product People resolver reads `product_people_mode`, then either foll
 
 The complete legacy copy chain is `produk_bron_event` → Event `event_medewerkers` → snippet 9 on Product save → Product `produk_medewerkers` → helper mode `medewerker_products` → Template 772 `vgms33`. Template 772 is the only current active reader of the copied Product field found in Bricks. The next safe break point remains unresolved: Task 5 must settle the reverse Product presentation requirement, and Task 6 must verify editor use and other consumers before any proposal to change the writer or field. The source Event field has separate Product People and source Event readers and remains outside that proposed break.
 
+### Task 5: Canonical reverse reads and Product requirement
+
+Fresh Product-value capture: 2026-10-22 11:21 UTC, from the verified 10039 identity above. Current Person and Event Participation counts remain zero from the pre-audit snapshot. Source and deployed runtime copies of the Event Participation repository, Bricks adapter, and service match by SHA-256; paths and hashes, plus the raw-ID-only Product reads, are recorded in `/tmp/task-7c-audit-abde5c-20261022/runtime-evidence.txt` and `source-hashes.txt`. Tests were inspected as implementation evidence and were not run.
+
+#### `Person → Event Participation → Event`
+
+`EventParticipationRepository::events_for_person($person_id)` reads through published `event_participation` records linked by `event_participation_person`, rechecks both endpoint types, rejects trashed endpoints, and returns unique `tc_events` IDs ordered by `event_participation_display_order` ascending and then participation ID ascending. Repository tests cover ordered results, published participation status, and malformed or wrong-type endpoints.
+
+Endpoint validation accepts any existing status except `trash`; the repository does not require the Person or Event endpoint to be `publish`. A future public Bricks query must therefore require the current Person to be publicly available and constrain returned Events to `publish`. The existing `EventParticipationBricks` adapter handles the Event context only: it uses `participations_for_event()` for Template 774's `vg-event-participation-query`, returns published participation IDs in repository order, and fails closed when no Event context exists. No existing Bricks component or adapter calls `events_for_person()`.
+
+The repository contract is available in source and deployed runtime, so a later Person-to-Event consumer can be designed without copying profiles 753–757 or creating runtime records. A read-only Bricks adapter/query bridge is still needed to bind Person context to the reverse repository method. With zero Person and zero Event Participation records, this audit found no live canonical Person event result to render. The bridge and data migration remain separate authorization units. Event 763's two legacy edges remain `EXCLUDE` and unchanged.
+
+#### Reverse Product requirement
+
+**Current requirement outcome 1 selected: a genuine supported reverse Product requirement that needs separate canonical architecture approval.** Published Template 772 actively queries `produk_medewerkers` in reverse at `vgms33`; the active Product save snippet can populate the field from the linked Event; the legacy ACF fields remain active; and the documented editor flow instructs editors to set Product people. This is current configured behavior. Keeping it through Person replacement needs a separately approved canonical reverse-query contract.
+
+The canonical Product People implementation only resolves Product → Person from `product_people_mode`, `produk_bron_event`/Event Participation, or `product_people_override`. It has no reverse Product API and deliberately ignores `produk_medewerkers`; the current code does not establish that reverse Products can be derived safely from canonical configuration. The active Template 772 consumer and editor path mean the audit cannot classify this presentation as obsolete. Product Single 124 stores the canonical forward Person card and separate source Event query, but has no template conditions, so its public rendering remains unverified pending Task 6.
+
+Read-only ACF checks of all nine published Products found no canonical Product People mode or override values. Eight also have no nonempty legacy Product People values. The only populated published legacy edge is Product 767 → profile 753, which remains `EXCLUDE`. The active flow establishes the requirement boundary; it does not authorize migrating that edge or any other edge. No reverse index, storage, scan contract, or synchronization design is proposed here.
+
 ## Classifications and dependency order
 
 Pending Task 7. Each atomic concern will receive exactly one approved lifecycle classification. These classifications authorize no deletion, migration, retirement, or runtime mutation.
