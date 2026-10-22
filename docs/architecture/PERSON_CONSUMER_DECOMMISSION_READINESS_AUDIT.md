@@ -264,6 +264,14 @@ The current content_category taxonomy has zero profile assignments. The shared 4
 
 The earliest safe point to break the Product copy chain is after a separate canonical reverse Product decision, consumer replacement, full reader/writer review, and edge-level data authority review. The protected Product edges stay EXCLUDE in Task 7C, so that point has not been reached. Keep snippet 9 and produk_medewerkers unchanged until those later gates pass.
 
+## Task 8 evidence documents and inventory reconciliation
+
+The current-state snapshot records the verified execution baseline and 10039 runtime identity, current Person and Event Participation counts, current callers, source/runtime parity, fixed profile and edge rulings, route state, and unresolved access limits. Its zero-write statement remains provisional until Task 10 repeats the fingerprints. The external pre-state and runtime evidence references are retained outside Git.
+
+The inventory now reflects the fresh post-Task-7B state: Template 124's canonical Product People and source Event adapters; the three active `6b463f` instances and absence from Template 124; all six helper modes and their actual callers; the Template 772 reverse Product copy chain; current `/medewerkers/` and `/mense/` route responses; and the active demo-page callers of `4d1dd4`. Historical Task 7A inventory state is marked as historical and points to the current Template 124 row. The existing CSV columns were preserved.
+
+No current lifecycle ruling changed during this audit. `LEGACY_DECOMMISSION_REGISTER.md` and historical implementation reports therefore remain untouched. The five profile `DEFER` rulings and five relationship `EXCLUDE` rulings remain fixed.
+
 ## Recommendation
 
 Pending Task 9. The completed audit will select exactly one next implementation unit, or one evidence/access blocker where the approved plan allows it. The recommendation will not be executed.
