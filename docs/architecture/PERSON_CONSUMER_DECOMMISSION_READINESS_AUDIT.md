@@ -50,7 +50,39 @@ The repository source baseline is `abde5c4689ed2b15f3b97bc6b1b3e04d65618f64`. So
 
 ## Runtime identity and pre-audit fingerprint
 
-Pending the identity-only preflight. If any required value is absent or identifies another installation, runtime inspection stops here.
+Identity-only preflight passed at 2026-10-22 10:55 UTC. The selected Novamira profile is `localhost`, whose origin is `http://localhost:10039/`.
+
+| Required value | Evidence |
+|---|---|
+| `ABSPATH` | `/home/jcschoeman96/Local Sites/voelgoed-novamira/app/public/`. `wp-config.php` defines it as `__DIR__ . '/'`; `realpath` resolves to the expected WordPress root. |
+| `home_url` | `http://localhost:10039`. Novamira `core/get-site-info` returned this URL and `wpurl`; a read-only WP-CLI option read using the site-specific PHP config returned the same `home` value. Site title: `Voelgoed`. |
+| Actual HTTP port | A GET to `http://localhost:10039/` returned HTTP 200 with `remote_port=10039`. No redirect was followed. |
+| Database name | `local`, confirmed by a SELECT-only query against the connected database. The expected root's `wp-config.php` sets `DB_NAME=local` and `DB_HOST=localhost`. |
+| Database server identity | A SELECT-only query returned hostname `jc-kubuntu`, port `10038`, server UUID `028fe7c9-3720-11f1-8cb0-a8a159280deb`, and MySQL `8.0.35`. The site-specific Local PHP and MySQL configuration use the same socket `/home/jcschoeman96/.config/Local/run/nAZNpFs99/mysql/mysqld.sock`; runtime Novamira reports MySQL `8.0.35`. |
+| Repository baseline | `abde5c4689ed2b15f3b97bc6b1b3e04d65618f64`, recorded separately from runtime identity. |
+
+The identity evidence and capture time are in `/tmp/task-7c-audit-abde5c-20261022/preflight-identity.txt`. No credentials were recorded. The system PATH has no MySQL client, so the `wp db query` wrapper could not run. The Local installation's MySQL 8.0.35 client connected through the expected site's socket and ran the read-only identity query. It is available for the pre- and post-audit SELECT-only fingerprints.
+
+The protected pre-audit fingerprint was captured at 10:56 UTC, before caller, route, or content inspection. One SELECT statement produced canonical row hashes for the complete `wp_posts`, `wp_postmeta`, `wp_term_relationships`, `wp_terms`, `wp_term_taxonomy`, and `wp_options` tables. All six tables use InnoDB, so the statement read one consistent snapshot. SQL hashed post content, metadata values, term text, and option values before returning results. No raw option values, credentials, or unnecessary profile fields were stored.
+
+| Table | Rows | Pre-audit SHA-256 |
+|---|---:|---|
+| `wp_posts` | 761 | `a7ff0eb5c9def20c100dfc7680e17ca4338203fdb7b8fead6fc3ff0dfd93bd47` |
+| `wp_postmeta` | 3,928 | `c582dd125fc4b6d9aacdf720b65bfbef7e5ff3614cb504c62465b8823e1588bb` |
+| `wp_term_relationships` | 160 | `676a5e974719590f8d2f70e8b484c3835507364661748f14f6dc1d24fb964736` |
+| `wp_terms` | 396 | `c3960c1bce6f0565021aeda4760ba7378169bf4cca1bd4c0bbac3745a9d26a18` |
+| `wp_term_taxonomy` | 396 | `0d3926719996eea230b3f253791965bd40a1078220b2de85e385370b16bccb61` |
+| `wp_options` | 1,198 | `27cc25362cae7d279e45f07ade79965176f9a3885b17d5835827867f24aeb6e1` |
+
+The protected object fingerprint covers Profiles 753–757, Event 763, Products 765, 767, and 768, Templates 772, 773, 774, 124, and 1127, including their post, postmeta, and term-relationship state. Per-object hashes and counts are in `/tmp/task-7c-audit-abde5c-20261022/pre-state-fingerprint.txt`. Fresh relationship values at baseline are Event 763 `event_medewerkers=[753,757]`, Product 767 `produk_medewerkers=[753]`, and Product 768 `produk_medewerkers=[753,757]`. Products 765, 767, and 768 each have `produk_bron_event=763`. The audit did not read `_event_name`.
+
+The database had zero `person` posts and zero `event_participation` posts across all statuses. It had five published `medewerker` profiles and 17 published `tc_events`. The `bricks_components` option has a baseline hash of `a3fe81604eb4215980bf93f842c3c4d5c6ae9a739604b015351b33a861497105`; all `bricks%`, relevant `acf%`, and non-secret FluentSnippets option hashes are recorded in the fingerprint file. The global post and postmeta fingerprints include ACF definitions, Bricks templates, and FluentSnippets records.
+
+Pre-audit runtime file hashes are in `/tmp/task-7c-audit-abde5c-20261022/runtime-evidence.txt`. The deployed Event Participation repository and Bricks adapter, Product People resolver and Bricks adapter, and Product source Event adapter match their source-controlled SHA-256 values. The deployed `9-acf-product-copy.php` hash is `58e8035502b30397b9659f952e4d49bbdbd7cdbd15070e37e5b07ebaa5ce2f70`; `10-vg-bricks-medewerker-queries.php` is `e1b7c014cd15a673d663426403a2024a21a1286075c355015f4e217d7e498fa2`.
+
+No `.crashed` marker, `task-7c` file, or trace-named file existed under the runtime root at baseline. The external evidence directory contained only non-executable text files. WP-CLI's Local PHP configuration emitted an Imagick shared-library warning, but read-only option reads succeeded. The system PATH lacked `mysql`; the Local MySQL 8.0.35 client and expected socket were used for all SQL fingerprints.
+
+The full pre-audit counts, digests, per-object hashes, field relationship IDs, runtime file hashes, and artifact inventory are in `/tmp/task-7c-audit-abde5c-20261022/`. No runtime write has been issued. The post-audit comparison remains pending Task 10.
 
 ## Fresh consumer findings
 
