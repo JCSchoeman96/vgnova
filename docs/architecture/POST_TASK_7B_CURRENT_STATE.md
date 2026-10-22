@@ -2,6 +2,7 @@
 
 ## CURRENT
 
+- Task 7B is the merged and current Product Single 124 architecture. PR #29 was merged as `0b895029d001416fbfccd5e7dc2f9ef82bf981a3`.
 - Product Single Template 124 uses `ProductPeopleBricks` and `ProductPeopleResolver::people_for_product()` to query ordered canonical `person` records.
 - Empty canonical Product People results hide the complete marked frontend section. Bricks builder and builder-call contexts keep it editable.
 - Product Person Card `dc8611` renders canonical Person data and its `/mense/` profile link.
@@ -9,12 +10,10 @@
 - Template 124 element count is 82. The normalized non-target projection, core record, and non-element metadata match the captured pre-write state.
 - Existing Products remain unconfigured for canonical Product People. No existing Product relationship was migrated.
 - WooCommerce Store Coming Soon remains enabled with `woocommerce_coming_soon=yes` and `woocommerce_store_pages_only=yes`. Anonymous Product requests remain subject to that store gate.
-- PR #29 is open against `main` for independent review and has not been merged.
 
 ## TARGET NEXT
 
-- Wait for the independent review of PR #29.
-- Any later Product or Person migration requires its own approved scope, data map, caller audit, and runtime proof.
+- Any subsequent Product or Person migration requires a separately approved scope and design.
 - Task 7C has not started.
 
 ## DEFER / KEEP_LEGACY
