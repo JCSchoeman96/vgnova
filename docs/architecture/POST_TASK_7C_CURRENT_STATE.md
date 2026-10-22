@@ -62,6 +62,10 @@ During resumed execution, the `novamira_localhost` adapter was called before its
 
 Novamira exposed no FluentSnippets management ability. No snippet editor or other save-capable editor screen was opened. Therefore the caller scan and runtime source reads do not authorize snippet cleanup. The public Product response limitation and ACF source metadata conflict also remain unresolved.
 
+## Next unit selected by the audit
+
+The audit recommends one next unit: a separately reviewed architecture/spec decision for canonical reverse Product relationships. It will define the supported Person-to-Product read and editor behavior, relationship authority and provenance expectations, and separation from Product source Event display. It selects no storage or synchronization mechanism and authorizes no implementation. The existing Product consumer, field, writer, and protected edge rulings remain unchanged pending separate approvals.
+
 ## Protected-state closeout
 
 **Task 10 status:** Pending. Reverify runtime identity, recompute the same global and protected-object fingerprints, compare the pre/post state, verify the fixed profile and edge rulings, inspect for audit-created executable PHP/trace files or a new `.crashed` marker, and confirm repository output scope. Record the actual results here before claiming zero writes.

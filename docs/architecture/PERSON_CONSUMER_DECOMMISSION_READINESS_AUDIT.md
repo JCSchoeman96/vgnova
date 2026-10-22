@@ -274,7 +274,15 @@ No current lifecycle ruling changed during this audit. `LEGACY_DECOMMISSION_REGI
 
 ## Recommendation
 
-Pending Task 9. The completed audit will select exactly one next implementation unit, or one evidence/access blocker where the approved plan allows it. The recommendation will not be executed.
+### Exactly one next unit
+
+Approve a separate architecture/spec decision for the canonical reverse Product relationship: define the supported Person-to-Product read and editor behavior that will replace Template 772's `medewerker_products` consumer and govern the eventual retirement review of `produk_medewerkers` and snippet `9-acf-product-copy.php`.
+
+This is the next dependency because the fresh audit confirmed an active Template 772 reverse Product read, an active Product-save writer, and a current editor flow, while canonical Product People has no reverse API or safe derivation contract. The separate design decision unlocks a reviewable replacement boundary for that legacy chain. It carries less risk than changing the active consumer or writer because the unit is design and review only, based on directly inspected callers and read/write paths, with no runtime writes or data movement.
+
+After that decision, Template 772's reverse Product cutover and any retirement of the field, helper mode, or copy snippet remain blocked until the approved contract is implemented and verified and separate edge-level data authority is granted. Profiles 753–757 remain `DEFER`; all five protected Event/Product edges remain `EXCLUDE`. The Person profile summary mapping, role/group semantics, and verified Person route remain unresolved.
+
+Before implementation, the architecture spec must receive separate review and approval. It must define the required reverse Product read/editor behavior, relationship authority and provenance expectations, and how Product source Event presentation stays independent. Task 7C does not select a storage or synchronization mechanism, and this recommendation authorizes no runtime or repository code change. No other next unit is recommended here.
 
 ## Zero-write closeout and validation
 
