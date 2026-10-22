@@ -30,6 +30,7 @@ require_once __DIR__ . '/ProductPeopleBricksTest.php';
 require_once __DIR__ . '/ProductSourceEventBricksTest.php';
 require_once __DIR__ . '/ProductPeopleIntegrationTest.php';
 require_once __DIR__ . '/ProductPeopleQaSideEffectsTest.php';
+require_once __DIR__ . '/ProductSingle124QaRequestTest.php';
 
 $test_suites = [
     new ProductPeopleFieldsTest(),
@@ -38,6 +39,7 @@ $test_suites = [
     new ProductSourceEventBricksTest(),
     new ProductPeopleIntegrationTest(),
     new ProductPeopleQaSideEffectsTest(),
+    new ProductSingle124QaRequestTest(),
 ];
 $passed = 0;
 $failed = 0;

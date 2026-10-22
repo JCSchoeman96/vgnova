@@ -75,7 +75,7 @@ final class ProductSourceEventBricks
             && is_array(\Bricks\Database::$page_data)
         ) {
             $preview_id = (int) (\Bricks\Database::$page_data['preview_or_post_id'] ?? 0);
-            if ($preview_id > 0) {
+            if ($preview_id > 0 && function_exists('get_post_type') && get_post_type($preview_id) === 'product') {
                 return $preview_id;
             }
         }

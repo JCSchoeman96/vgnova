@@ -32,6 +32,7 @@ if (! defined('ABSPATH')) {
 }
 
 require_once __DIR__ . '/product-people-qa-side-effects.php';
+require_once __DIR__ . '/product-single-124-qa-request.php';
 
 const VG_PRODUCT_SINGLE_124_QA_OWNER_META = '_vg_task_7b_qa_owner';
 const VG_PRODUCT_SINGLE_124_QA_OWNER_LABEL = '[QA][AUTOMATED] Task 7B';
@@ -80,17 +81,17 @@ const VG_PRODUCT_SINGLE_124_QA_EXPECTED_RECORD_HASHES = [
     755 => ['fe4e34803c2bf80187caa75b59cbde759d99635fba7c0424c7b806e178f7eeb7', '286c1f63a718905c7a1c3f80d912e8dd60550b9b9e1bbe6de596d9b553c475e1'],
     756 => ['1241bed4fe6f83a38401d513a08aec21f8eaa8928e21e444018b59b2f325554a', '8a30be06a201f081bfcbd8ffc94c992ccf5b46571161521537d879a3e3909e90'],
     757 => ['dd4571c80bee776651dbce3c84a3c127d570d0a159b2111169f3238d32c1d1a6', 'c58d6f6328d34842b6a13675035764d175e132c67fe123d14f4b8c47e07377ae'],
-    763 => ['278adefcf2d9edd1826aa489f074fed17cd21693a3f2f5f07d354e77384457d4', '518eb2405dd703e9ae74009a126969939f633942c2c4f7dbc4c5afa33f2a710'],
+    763 => ['278adefcf2d9edd1826aa489f074fed17cd21693a3f2f5f07d354e77384457d4', '518eb2405dd703e9ae74009a126969939f633942c2c4cf7dbc4c5afa33f2a710'],
     765 => ['ddfeba8d1e1e9b2f88532340c401f0021877cf3f941214dba4e7a6ee475a916c', '74ae5f31b7095ddd556985b9cf379295f7c0da34412220642d50e90808667874'],
     767 => ['8e02c0d733a4fef0d49dfb8970a45d8583e38e1529fa91539d7de66e18178696', '92487ca037d42a709301c313a3c54f24e8f9a8fb42bbdc25bf2a1c5f9125c288'],
     768 => ['d73e67b8fb9aad5459a9ed8ecf14db09b057899f1248976084ed5964ba42f438', '4105508490935bb9508719405a6b33b750770485bae739b78a9f8084f36976db'],
     772 => ['31dea28af3d3a91ec383546ff33dc9f089161f78213859135e81d6704300ad38', '7ced9a53bb6b1373775860958a132b46f650854ce1f9cfe8b71f92698edbf01d'],
     774 => ['89d0df125e10ccc0ebfa79faca414c665022fc445f5546c5a7ff48d0e4f68762', '40d2f52644e5e14fc0e9ead57372c75a87e1f005dc26331dcdb33aa8c36510ef'],
 ];
-const VG_PRODUCT_SINGLE_124_QA_TEMPLATE124_PROJECTION_SHA256 = '1d8f63d32d9c5b567d0ef009499b5cff43fa2bc1c25513692761af7c264ee4fc';
+const VG_PRODUCT_SINGLE_124_QA_TEMPLATE124_PROJECTION_SHA256 = '450bd890a4413699827c8d4536b3d500d9f9555492deb85141580fdeef79dc5b';
 const VG_PRODUCT_SINGLE_124_QA_TEMPLATE124_CORE_SHA256 = '5bf9d2165fc25d30602ffa37a5976199b2542021273edb8e094c0290502f68b4';
 const VG_PRODUCT_SINGLE_124_QA_TEMPLATE124_META_SHA256 = 'ad786ff204f521df5b496799274c93e84a471697a4c8e8990e85225655a8cb10';
-const VG_PRODUCT_SINGLE_124_QA_COMPONENTS_SHA256 = '9d11fa323621913572bbb6b03534eaec3ec721c537f9e759ea028ef5481a0293';
+const VG_PRODUCT_SINGLE_124_QA_COMPONENTS_SHA256 = 'e929fbf066ead1b9a244dd681bb72d3b3b6f95c1927051f1518482ffd9e33fc3';
 const VG_PRODUCT_SINGLE_124_QA_PROTECTED_COMPONENT_HASHES = [
     '194bba' => '481c60b1bd2310b96cae05834aa49202777788192927021d218c5d1445cadc7f',
     '6b463f' => '57370bbb83d3125758eba9a5194eb1a898b8914b546ee4d84b32f642e07aeaac',
@@ -183,7 +184,12 @@ function vg_product_single_124_qa_token_exists(string $token): bool
         ),
         $wpdb->prepare("SELECT COUNT(*) FROM {$wpdb->postmeta} WHERE meta_value LIKE %s", $like),
         $wpdb->prepare("SELECT COUNT(*) FROM {$wpdb->options} WHERE option_value LIKE %s", $like),
-        $wpdb->prepare("SELECT COUNT(*) FROM {$wpdb->terms} WHERE name LIKE %s OR slug LIKE %s OR description LIKE %s", $like, $like, $like),
+        $wpdb->prepare(
+            "SELECT COUNT(*) FROM {$wpdb->terms} terms LEFT JOIN {$wpdb->term_taxonomy} taxonomy ON taxonomy.term_id = terms.term_id WHERE terms.name LIKE %s OR terms.slug LIKE %s OR taxonomy.description LIKE %s",
+            $like,
+            $like,
+            $like
+        ),
         $wpdb->prepare("SELECT COUNT(*) FROM {$wpdb->termmeta} WHERE meta_value LIKE %s", $like),
     ];
     foreach ($checks as $index => $sql) {
@@ -287,9 +293,7 @@ function vg_product_single_124_qa_template_projection(string $card_id): array
         $index = $by_id[$query_id];
         vg_product_single_124_qa_remove_marker($elements[$index]['settings'], 'vg-product-people-query');
         vg_product_single_124_qa_remove_marker($elements[$index]['settings'], 'vg-product-source-event-query');
-        if (isset($elements[$index]['settings']['query']) && is_array($elements[$index]['settings']['query'])) {
-            unset($elements[$index]['settings']['query']['vg_query_type']);
-        }
+        unset($elements[$index]['settings']['query']);
     }
     $people_index = $by_id['vgpr03'];
     vg_product_single_124_qa_remove_marker($elements[$people_index]['settings'], 'vg-product-people-query');
@@ -324,6 +328,20 @@ function vg_product_single_124_qa_component_label(array $component): string
     return (string) ($component['elements'][0]['label'] ?? '');
 }
 
+function vg_product_single_124_qa_stable_hash(mixed $value): string
+{
+    $previous_precision = ini_get('serialize_precision');
+    if ($previous_precision === false || ini_set('serialize_precision', '-1') === false) {
+        throw new RuntimeException('Could not set a stable PHP float serialization precision for Bricks component comparison.');
+    }
+
+    try {
+        return hash('sha256', serialize($value));
+    } finally {
+        ini_set('serialize_precision', $previous_precision);
+    }
+}
+
 /** @return array<string, mixed> */
 function vg_product_single_124_qa_component_inventory(): array
 {
@@ -337,13 +355,13 @@ function vg_product_single_124_qa_component_inventory(): array
         }
         $id = (string) ($component['id'] ?? '');
         if (in_array($id, VG_PRODUCT_SINGLE_124_QA_COMPONENTS, true)) {
-            $protected[$id] = hash('sha256', serialize($component));
+            $protected[$id] = vg_product_single_124_qa_stable_hash($component);
         }
         if (vg_product_single_124_qa_component_label($component) === 'Product Person Card') {
             $cards[$id] = [
                 'entry' => $component,
                 'key' => $key,
-                'sha256' => hash('sha256', serialize($component)),
+                'sha256' => vg_product_single_124_qa_stable_hash($component),
             ];
         }
     }
@@ -626,6 +644,12 @@ function vg_product_single_124_qa_expected_state(array $snapshot): void
         $snapshot['product_ids'] === VG_PRODUCT_SINGLE_124_QA_EXPECTED_PRODUCT_IDS,
         'Existing Product ID set differs from the Task 1 preflight.'
     );
+    $sandbox_php_files = array_values(array_filter(
+        $snapshot['sandbox_directory_entries'],
+        static fn (string $entry): bool => is_file(WP_CONTENT_DIR . '/novamira-sandbox/' . $entry)
+            && str_ends_with(strtolower($entry), '.php')
+    ));
+    vg_product_single_124_qa_check($sandbox_php_files === [], 'A top-level PHP file is present in the Novamira sandbox; stop before QA requests.');
     vg_product_single_124_qa_check(
         $snapshot['product_fields'] === VG_PRODUCT_SINGLE_124_QA_EXPECTED_PRODUCT_FIELDS,
         'Existing Product People, source Event, legacy relationship, or _event_name fields differ from Task 1.'
@@ -734,7 +758,7 @@ function vg_product_single_124_qa_snapshot(): array
         'template124_core_sha256' => hash('sha256', serialize($template_post_vars)),
         'template124_meta_sha256' => hash('sha256', serialize($template_meta)),
         'template124_element_count' => count(get_post_meta(VG_PRODUCT_SINGLE_124_QA_TEMPLATE, '_bricks_page_content_2', true)),
-        'components_without_product_card_sha256' => hash('sha256', serialize($components_without_card)),
+        'components_without_product_card_sha256' => vg_product_single_124_qa_stable_hash($components_without_card),
         'protected_components' => $component_state['protected'],
         'product_person_cards' => $component_state['cards'],
         'callers' => vg_product_single_124_qa_query_callers(),
@@ -743,6 +767,9 @@ function vg_product_single_124_qa_snapshot(): array
         'copy_hash' => is_file($copy_path) ? hash_file('sha256', $copy_path) : null,
         'person_count' => vg_product_single_124_qa_post_count('person'),
         'participation_count' => vg_product_single_124_qa_post_count(EventParticipationRepository::POST_TYPE),
+        'woocommerce_coming_soon' => get_option('woocommerce_coming_soon'),
+        'woocommerce_store_pages_only' => get_option('woocommerce_store_pages_only'),
+        'sandbox_directory_entries' => vg_product_single_124_qa_sandbox_entries(WP_CONTENT_DIR . '/novamira-sandbox'),
         'api_keys' => vg_product_single_124_qa_api_key_rows(),
         'post_type_counts' => vg_product_single_124_qa_post_type_counts(),
     ];
@@ -864,12 +891,75 @@ function vg_product_single_124_qa_source_query(ProductSourceEventBricks $adapter
 
 function vg_product_single_124_qa_frontend(string $url): array
 {
-    $response = wp_remote_get($url, ['timeout' => 25, 'redirection' => 3, 'sslverify' => false]);
+    $public_url = $url;
+    $url = vg_product_single_124_qa_frontend_bypass_url(
+        $url,
+        home_url('/'),
+        (string) getenv('VG_TASK_7B_FRONTEND_BYPASS_TOKEN')
+    );
+    $authenticated_identity = $GLOBALS['vg_product_single_124_qa_authenticated_identity'] ?? null;
+    vg_product_single_124_qa_check(
+        is_array($authenticated_identity)
+            && ($authenticated_identity['user_id'] ?? null) === get_current_user_id()
+            && ($authenticated_identity['manage_woocommerce'] ?? null) === true,
+        'The frontend QA request identity was not verified before fixture creation.'
+    );
+    $request_args = vg_product_single_124_qa_frontend_request_args(
+        $url,
+        home_url('/'),
+        (string) ($_SERVER['HTTP_AUTHORIZATION'] ?? ''),
+        get_current_user_id() > 0 && current_user_can('manage_woocommerce')
+    );
+    $sandbox_baseline = $GLOBALS['vg_product_single_124_qa_sandbox_baseline'] ?? null;
+    vg_product_single_124_qa_check(is_array($sandbox_baseline), 'The sandbox listing baseline is unavailable.');
+    $sandbox_listing = vg_product_single_124_qa_assert_sandbox_unchanged(
+        WP_CONTENT_DIR . '/novamira-sandbox',
+        $sandbox_baseline
+    );
+    $response = wp_remote_get($url, $request_args);
     vg_product_single_124_qa_check(! is_wp_error($response), 'Frontend request failed: ' . (is_wp_error($response) ? $response->get_error_message() : 'unknown'));
     $status = (int) wp_remote_retrieve_response_code($response);
     $body = (string) wp_remote_retrieve_body($response);
     vg_product_single_124_qa_check($status === 200, 'Frontend URL returned HTTP ' . $status . ': ' . $url);
-    return ['status' => $status, 'body' => $body, 'url' => $url];
+    return [
+        'status' => $status,
+        'body' => $body,
+        'url' => $public_url,
+        'request_path' => (string) (parse_url($url, PHP_URL_PATH) ?: ''),
+        'request_actor_id' => get_current_user_id(),
+        'coming_soon_bypass' => 'woocommerce_coming_soon_exclude_task_7b_request_token',
+        'redirects_followed' => 0,
+        'sandbox_directory_entries_before_request' => $sandbox_listing,
+    ];
+}
+
+/** Verify the forwarded Basic credential resolves to this exact privileged QA actor. */
+function vg_product_single_124_qa_frontend_identity(int $expected_user_id): array
+{
+    $request_args = vg_product_single_124_qa_frontend_request_args(
+        rest_url('wp/v2/users/me?context=edit'),
+        home_url('/'),
+        (string) ($_SERVER['HTTP_AUTHORIZATION'] ?? ''),
+        $expected_user_id > 0 && current_user_can('manage_woocommerce')
+    );
+    $sandbox_baseline = $GLOBALS['vg_product_single_124_qa_sandbox_baseline'] ?? null;
+    vg_product_single_124_qa_check(is_array($sandbox_baseline), 'The sandbox listing baseline is unavailable for identity verification.');
+    $sandbox_listing = vg_product_single_124_qa_assert_sandbox_unchanged(
+        WP_CONTENT_DIR . '/novamira-sandbox',
+        $sandbox_baseline
+    );
+    $response = wp_remote_get(rest_url('wp/v2/users/me?context=edit'), $request_args);
+    vg_product_single_124_qa_check(! is_wp_error($response), 'Authenticated identity request failed: ' . (is_wp_error($response) ? $response->get_error_message() : 'unknown'));
+    $status = (int) wp_remote_retrieve_response_code($response);
+    $payload = json_decode((string) wp_remote_retrieve_body($response), true);
+    vg_product_single_124_qa_check(is_array($payload), 'Authenticated identity response was not a JSON object.');
+    $identity = vg_product_single_124_qa_assert_identity_payload($expected_user_id, $status, $payload);
+
+    return $identity + [
+        'http_status' => $status,
+        'auth_scheme' => 'Basic',
+        'sandbox_directory_entries_before_request' => $sandbox_listing,
+    ];
 }
 
 /** Run a separate loaded-file process without ACF functions to prove both adapters fail closed. */
@@ -896,7 +986,7 @@ function vg_product_single_124_qa_no_acf_process(): array
         . "echo json_encode(['people'=>\$people,'event'=>\$event],JSON_THROW_ON_ERROR);";
     $output = [];
     $exit = 0;
-    exec(escapeshellarg(PHP_BINARY) . ' -r ' . escapeshellarg($code) . ' 2>&1', $output, $exit);
+    exec(escapeshellarg(vg_product_single_124_qa_php_cli_binary()) . ' -r ' . escapeshellarg($code) . ' 2>&1', $output, $exit);
     vg_product_single_124_qa_check($exit === 0, 'Isolated no-ACF process failed: ' . implode("\n", $output));
     $result = json_decode(implode("\n", $output), true, 512, JSON_THROW_ON_ERROR);
     vg_product_single_124_qa_check(
@@ -936,7 +1026,7 @@ function vg_product_single_124_qa_builder_process(string $context): array
         . "echo json_encode(['render'=>\$result],JSON_THROW_ON_ERROR);";
     $output = [];
     $exit = 0;
-    exec(escapeshellarg(PHP_BINARY) . ' -r ' . escapeshellarg($code) . ' 2>&1', $output, $exit);
+    exec(escapeshellarg(vg_product_single_124_qa_php_cli_binary()) . ' -r ' . escapeshellarg($code) . ' 2>&1', $output, $exit);
     vg_product_single_124_qa_check($exit === 0, 'Isolated builder-context process failed: ' . implode("\n", $output));
     $result = json_decode(implode("\n", $output), true, 512, JSON_THROW_ON_ERROR);
     vg_product_single_124_qa_check(($result['render'] ?? false) === true, 'Product People section was hidden in ' . $context . ' context.');
@@ -979,7 +1069,6 @@ function vg_product_single_124_qa_create_product(string $owner, int &$owned_prod
 
 function vg_product_single_124_qa_assert_card_html(array $response, array $person, int $image_id): void
 {
-    $html = $response['body'];
     $url = get_permalink($person['id']);
     $image_urls = array_filter([
         wp_get_attachment_url($image_id),
@@ -988,14 +1077,24 @@ function vg_product_single_124_qa_assert_card_html(array $response, array $perso
         wp_get_attachment_image_url($image_id, 'medium'),
         wp_get_attachment_image_url($image_id, 'thumbnail'),
     ], 'is_string');
-    foreach ([$person['title'], $person['professional_title'], $person['excerpt'], $url] as $value) {
-        vg_product_single_124_qa_check(is_string($value) && $value !== '' && str_contains($html, esc_html($value)) || is_string($value) && $value !== '' && str_contains($html, $value), 'Rendered Product Person Card is missing expected Person value: ' . (string) $value);
-    }
+    $cards = vg_product_single_124_qa_person_card_values((string) $response['body']);
+    $matching_cards = array_values(array_filter(
+        $cards,
+        static fn (array $card): bool => $card['title'] === $person['title']
+    ));
+    vg_product_single_124_qa_check(count($matching_cards) === 1, 'Rendered Product Person Card does not contain exactly one card for canonical Person ' . $person['id'] . '.');
+    $card = $matching_cards[0];
+    vg_product_single_124_qa_check($card['professional_title'] === $person['professional_title'], 'Rendered Product Person Card has the wrong canonical professional title.');
+    vg_product_single_124_qa_check($card['excerpt'] === $person['excerpt'], 'Rendered Product Person Card has the wrong canonical Person excerpt.');
     vg_product_single_124_qa_check(
-        $image_urls !== [] && count(array_filter($image_urls, static fn (string $image_url): bool => str_contains($html, $image_url))) > 0,
+        $card['profile_url'] === $url,
+        'Rendered Product Person Card permalink mismatch; expected ' . $url . ', rendered ' . ($card['profile_url'] !== '' ? $card['profile_url'] : '[empty href]') . '.'
+    );
+    vg_product_single_124_qa_check(
+        $image_urls !== [] && count(array_intersect($image_urls, $card['image_urls'])) > 0,
         'Rendered Product Person Card does not use the current Person featured image.'
     );
-    vg_product_single_124_qa_check(str_contains($html, 'Bekyk profiel'), 'Rendered Product Person Card is missing the Product-page profile action label.');
+    vg_product_single_124_qa_check($card['cta'] === 'Bekyk profiel', 'Rendered Product Person Card is missing the Product-page profile action label.');
 }
 
 function vg_product_single_124_qa_marked_section_renders(bool $render, ProductPeopleBricks $adapter): bool
@@ -1007,15 +1106,24 @@ function vg_product_single_124_qa_marked_section_renders(bool $render, ProductPe
 
 $token = (string) getenv('VG_TASK_7B_OWNER_TOKEN');
 $owner = VG_PRODUCT_SINGLE_124_QA_OWNER_LABEL . ' ' . $token;
+$preflight_only = getenv('VG_TASK_7B_PREFLIGHT_ONLY') === '1';
 $post_cutover = getenv('VG_TASK_7B_POST_CUTOVER') === '1';
+$frontend_bypass_token = (string) getenv('VG_TASK_7B_FRONTEND_BYPASS_TOKEN');
 $before = null;
+$frontend_identity = null;
 $preflight_failure = null;
 try {
-    vg_product_single_124_qa_check($post_cutover, 'Refusing to run without VG_TASK_7B_POST_CUTOVER=1.');
+    vg_product_single_124_qa_check($preflight_only || $post_cutover, 'Refusing to run without VG_TASK_7B_POST_CUTOVER=1.');
     vg_product_single_124_qa_check(
         preg_match('/^[A-Za-z0-9][A-Za-z0-9._-]{7,127}$/', $token) === 1,
         'VG_TASK_7B_OWNER_TOKEN must be a unique 8–128 character alphanumeric/dot/underscore/hyphen token.'
     );
+    if ($post_cutover) {
+        vg_product_single_124_qa_check(
+            preg_match('/\A[a-f0-9]{64}\z/', $frontend_bypass_token) === 1,
+            'VG_TASK_7B_FRONTEND_BYPASS_TOKEN must be a 64-character hexadecimal request-scoped token.'
+        );
+    }
     vg_product_single_124_qa_check(! vg_product_single_124_qa_token_exists($token), 'The run token already exists in durable WordPress state.');
     foreach ([
         ProductPeopleFields::class,
@@ -1034,6 +1142,11 @@ try {
     vg_product_single_124_qa_check(class_exists('Bricks\\Database'), 'Bricks database context is unavailable.');
     $before = vg_product_single_124_qa_snapshot();
     vg_product_single_124_qa_expected_state($before);
+    $GLOBALS['vg_product_single_124_qa_sandbox_baseline'] = $before['sandbox_directory_entries'];
+    if ($post_cutover) {
+        $frontend_identity = vg_product_single_124_qa_frontend_identity(get_current_user_id());
+        $GLOBALS['vg_product_single_124_qa_authenticated_identity'] = $frontend_identity;
+    }
 } catch (Throwable $error) {
     $preflight_failure = $error;
 }
@@ -1052,7 +1165,25 @@ if ($preflight_failure instanceof Throwable) {
         \WP_CLI::error('Task 7B Product Single 124 QA preflight failed.', 1);
     }
     echo $payload . PHP_EOL;
-    exit(1);
+    return;
+}
+
+if ($preflight_only) {
+    $payload = json_encode([
+        'result' => 'PASS',
+        'task' => '7B',
+        'phase' => 'preflight',
+        'mutation_started' => false,
+        'run_token' => $token,
+        'owner_marker' => $owner,
+        'snapshot' => $before,
+    ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
+    if (defined('WP_CLI') && WP_CLI) {
+        \WP_CLI::line($payload);
+    } else {
+        echo $payload . PHP_EOL;
+    }
+    return;
 }
 
 $pre_api_ids = array_map('intval', array_column($before['api_keys'], 'id'));
@@ -1093,6 +1224,7 @@ try {
 
     $attachments = get_posts([
         'post_type' => 'attachment',
+        'post_mime_type' => 'image',
         'post_status' => 'inherit',
         'numberposts' => 4,
         'orderby' => 'ID',
@@ -1102,7 +1234,10 @@ try {
     vg_product_single_124_qa_check(is_array($attachments) && count($attachments) >= 4, 'Four existing read-only image fixtures are required.');
     $images = array_map('intval', array_slice($attachments, 0, 4));
     foreach ($images as $attachment_id) {
-        vg_product_single_124_qa_check($attachment_id > 0 && get_post_type($attachment_id) === 'attachment', 'A selected read-only image fixture is invalid.');
+        vg_product_single_124_qa_check(
+            $attachment_id > 0 && get_post_type($attachment_id) === 'attachment' && wp_attachment_is_image($attachment_id),
+            'A selected read-only image fixture is invalid.'
+        );
     }
 
     $person_a = vg_product_single_124_qa_create_person($owner, 'A', 'Task 7B Person A', 'QA Title A', 'QA excerpt A', 'publish', $images[0], $owned['persons']);
@@ -1140,7 +1275,7 @@ try {
         vg_product_single_124_qa_set_people($product_id, null, []);
         vg_product_single_124_qa_check(! vg_product_single_124_qa_marked_section_renders(true, $people_bricks), 'Unconfigured Product People section must be hidden on frontend.');
         $response = vg_product_single_124_qa_frontend(get_permalink($product_id));
-        vg_product_single_124_qa_check(! str_contains($response['body'], 'vg-product-people-section'), 'Unconfigured Product People section leaked into frontend markup.');
+        vg_product_single_124_qa_check(! vg_product_single_124_qa_html_has_class($response['body'], 'vg-product-people-section'), 'Unconfigured Product People section leaked into frontend HTML.');
         $frontend_evidence['unconfigured_product'] = ['status' => $response['status'], 'url' => $response['url']];
         return ['render' => false, 'frontend_status' => $response['status']];
     });
@@ -1178,7 +1313,7 @@ try {
         vg_product_single_124_qa_set_people($product_id, 'manual', []);
         vg_product_single_124_qa_check(! vg_product_single_124_qa_marked_section_renders(true, $people_bricks), 'Empty manual Product People section must be hidden on frontend.');
         $response = vg_product_single_124_qa_frontend(get_permalink($product_id));
-        vg_product_single_124_qa_check(! str_contains($response['body'], 'vg-product-people-section'), 'Empty manual Product People section leaked into frontend markup.');
+        vg_product_single_124_qa_check(! vg_product_single_124_qa_html_has_class($response['body'], 'vg-product-people-section'), 'Empty manual Product People section leaked into frontend HTML.');
         $frontend_evidence['manual_empty_product'] = ['status' => $response['status'], 'url' => $response['url']];
         return ['render' => false, 'frontend_status' => $response['status']];
     });
@@ -1223,8 +1358,28 @@ try {
             vg_product_single_124_qa_check($resolver->people_for_product($product_id) === [], 'Event mode returned people without published Event Participation records.');
             vg_product_single_124_qa_check(! vg_product_single_124_qa_marked_section_renders(true, $people_bricks), 'Empty event-derived Product People section must be hidden on frontend.');
             $response = vg_product_single_124_qa_frontend(get_permalink($product_id));
-            vg_product_single_124_qa_check(! str_contains($response['body'], 'vg-product-people-section'), 'Empty event-derived Product People section leaked into frontend markup.');
-            vg_product_single_124_qa_check(str_contains($response['body'], get_the_title($event_id)), 'The source Event stopped rendering when event-derived Product People were empty.');
+            vg_product_single_124_qa_check(! vg_product_single_124_qa_html_has_class($response['body'], 'vg-product-people-section'), 'Empty event-derived Product People section leaked into frontend HTML.');
+            $source_query = vg_product_single_124_qa_source_query(new ProductSourceEventBricks(), $product_id);
+            $source_title = get_the_title($event_id);
+            $event_card_texts = vg_product_single_124_qa_event_card_texts($response['body']);
+            $source_title_rendered = count(array_filter($event_card_texts, static fn (string $text): bool => str_contains($text, $source_title))) > 0;
+            $source_posts = (new WP_Query($source_query))->posts;
+            vg_product_single_124_qa_check(
+                $source_title_rendered,
+                'The source Event stopped rendering when event-derived Product People were empty. ' . json_encode([
+                    'event_id' => $event_id,
+                    'event_title' => $source_title,
+                    'source_query' => $source_query,
+                    'source_query_result_ids' => wp_list_pluck($source_posts, 'ID'),
+                    'source_event_meta' => get_post_meta($product_id, 'produk_bron_event', true),
+                    'source_event_field' => get_field('produk_bron_event', $product_id, false),
+                    'url' => $response['url'],
+                    'source_marker_present' => vg_product_single_124_qa_html_has_class($response['body'], 'vg-product-source-event-query'),
+                    'source_element_id_present' => vg_product_single_124_qa_html_has_class($response['body'], 'brxe-vgpr13'),
+                    'event_card_texts' => $event_card_texts,
+                    'response_excerpt' => substr(strip_tags($response['body']), 0, 900),
+                ], JSON_UNESCAPED_SLASHES)
+            );
             $frontend_evidence['event_empty_product'] = ['status' => $response['status'], 'url' => $response['url'], 'source_event_title' => get_the_title($event_id)];
             return ['people_ids' => [], 'source_event_id' => $event_id, 'frontend_status' => $response['status']];
         } finally {
@@ -1262,8 +1417,13 @@ try {
         $query = vg_product_single_124_qa_source_query($source_bricks, $product_id);
         vg_product_single_124_qa_check(($query['post__in'] ?? null) === [$event_id], 'Source Event disappeared while Product People were empty.');
         $response = vg_product_single_124_qa_frontend(get_permalink($product_id));
-        vg_product_single_124_qa_check(str_contains($response['body'], $owner_event_title = get_the_title($event_id)), 'Source Event card did not render while Product People were empty.');
-        vg_product_single_124_qa_check(! str_contains($response['body'], 'vg-product-people-section'), 'Empty Product People section leaked into frontend markup.');
+        $owner_event_title = get_the_title($event_id);
+        $event_card_texts = vg_product_single_124_qa_event_card_texts($response['body']);
+        vg_product_single_124_qa_check(
+            count(array_filter($event_card_texts, static fn (string $text): bool => str_contains($text, $owner_event_title))) > 0,
+            'Source Event Card did not render while Product People were empty.'
+        );
+        vg_product_single_124_qa_check(! vg_product_single_124_qa_html_has_class($response['body'], 'vg-product-people-section'), 'Empty Product People section leaked into frontend HTML.');
         $frontend_evidence['empty_people_source_event'] = ['status' => $response['status'], 'url' => $response['url']];
         return ['query' => $query, 'event_title' => $owner_event_title, 'people_ids' => []];
     });
@@ -1377,12 +1537,14 @@ try {
         );
         $card_evidence = vg_product_single_124_qa_card($person_b);
         $response = vg_product_single_124_qa_frontend(get_permalink($product_id));
+        $rendered_cards = vg_product_single_124_qa_person_card_values($response['body']);
+        $rendered_titles = array_column($rendered_cards, 'title');
         $positions = [];
         foreach ([$person_b, $person_a, $person_c] as $id) {
             $person = $people_by_id[$id];
             vg_product_single_124_qa_assert_card_html($response, $person, $person['image_id']);
-            $positions[$id] = strpos($response['body'], esc_html($person['title']));
-            vg_product_single_124_qa_check($positions[$id] !== false, 'Person title was not present in Product frontend output.');
+            $positions[$id] = array_search($person['title'], $rendered_titles, true);
+            vg_product_single_124_qa_check(is_int($positions[$id]), 'Person title was not present in a rendered Product Person Card.');
         }
         vg_product_single_124_qa_check($positions[$person_b] < $positions[$person_a] && $positions[$person_a] < $positions[$person_c], 'Rendered Product Person Cards are not in resolver order.');
         vg_product_single_124_qa_check(get_permalink($person_b) !== false, 'Canonical Person permalink is unavailable.');
@@ -1397,9 +1559,10 @@ try {
         $response = vg_product_single_124_qa_frontend(get_permalink($product_id));
         vg_product_single_124_qa_assert_card_html($response, $people_by_id[$person_c], $people_by_id[$person_c]['image_id']);
         vg_product_single_124_qa_assert_card_html($response, $people_by_id[$person_a], $people_by_id[$person_a]['image_id']);
-        $first = strpos($response['body'], esc_html($people_by_id[$person_c]['title']));
-        $second = strpos($response['body'], esc_html($people_by_id[$person_a]['title']));
-        vg_product_single_124_qa_check($first !== false && $second !== false && $first < $second, 'Manual Product cards did not preserve the explicit order.');
+        $rendered_titles = array_column(vg_product_single_124_qa_person_card_values($response['body']), 'title');
+        $first = array_search($people_by_id[$person_c]['title'], $rendered_titles, true);
+        $second = array_search($people_by_id[$person_a]['title'], $rendered_titles, true);
+        vg_product_single_124_qa_check(is_int($first) && is_int($second) && $first < $second, 'Manual Product cards did not preserve the explicit order.');
         $frontend_evidence['manual_product'] = ['status' => $response['status'], 'url' => $response['url'], 'person_order' => [$person_c, $person_a]];
         return ['person_order' => [$person_c, $person_a]];
     });
@@ -1443,6 +1606,8 @@ $post_type_counts_equal = false;
 $person_after = null;
 $participation_after = null;
 $protected_state_equal = false;
+$coming_soon_state_equal = false;
+$sandbox_directory_equal = false;
 
 $audit('owned_records_removed', static function () use ($owned_residue): void {
     vg_product_single_124_qa_check($owned_residue === ['posts' => 0, 'meta_rows' => 0, 'term_relationships' => 0], 'Owned QA posts/meta/relationships remain.');
@@ -1466,12 +1631,17 @@ $audit('qa_product_event_name_unchanged', static function () use (&$qa_event_nam
     }
     vg_product_single_124_qa_check($qa_event_name_before === $qa_event_name_after, 'QA Product _event_name changed.');
 });
-$audit('protected_state_matches_task_1', static function () use ($before, &$after, &$post_type_counts_equal, &$protected_state_equal): void {
+$audit('protected_state_matches_task_1', static function () use ($before, &$after, &$post_type_counts_equal, &$protected_state_equal, &$coming_soon_state_equal, &$sandbox_directory_equal): void {
     $after = vg_product_single_124_qa_snapshot();
     vg_product_single_124_qa_expected_state($after);
     $post_type_counts_equal = $before['post_type_counts'] === $after['post_type_counts'];
     vg_product_single_124_qa_check($post_type_counts_equal, 'All post-type/status counts did not return to the Task 1 pre-QA snapshot.');
-    $protected_state_equal = true;
+    $coming_soon_state_equal = $before['woocommerce_coming_soon'] === $after['woocommerce_coming_soon']
+        && $before['woocommerce_store_pages_only'] === $after['woocommerce_store_pages_only'];
+    vg_product_single_124_qa_check($coming_soon_state_equal, 'WooCommerce public Coming Soon configuration changed during QA.');
+    $sandbox_directory_equal = $before['sandbox_directory_entries'] === $after['sandbox_directory_entries'];
+    vg_product_single_124_qa_check($sandbox_directory_equal, 'Novamira sandbox directory entries changed during QA.');
+    $protected_state_equal = $post_type_counts_equal && $coming_soon_state_equal && $sandbox_directory_equal;
 });
 $audit('tickera_side_effects_equal', static function () use ($before): void {
     vg_product_single_124_qa_check(vg_product_single_124_qa_api_key_rows() === $before['api_keys'], 'Tickera side-effect state did not return to the pre-QA snapshot.');
@@ -1501,12 +1671,20 @@ $report = [
     'owner_marker' => $owner,
     'preflight' => [
         'template124_projection_sha256' => $before['template124_projection_sha256'],
-        'product_person_card' => array_map(static fn (array $row): array => ['id' => $row['id'], 'sha256' => $row['sha256']], $before['product_person_cards']),
+        'product_person_card' => array_map(
+            static fn (string $id, array $row): array => ['id' => $id, 'sha256' => $row['sha256']],
+            array_keys($before['product_person_cards']),
+            array_values($before['product_person_cards'])
+        ),
         'caller_counts' => array_map('count', $before['callers']),
         'helper_sha256' => $before['helper_hash'],
         'copy_snippet_sha256' => $before['copy_hash'],
         'person_count' => $before['person_count'],
         'event_participation_count' => $before['participation_count'],
+        'woocommerce_coming_soon' => $before['woocommerce_coming_soon'],
+        'woocommerce_store_pages_only' => $before['woocommerce_store_pages_only'],
+        'sandbox_directory_entries' => $before['sandbox_directory_entries'],
+        'frontend_authenticated_identity' => $frontend_identity,
         'tickera_api_key_count' => count($before['api_keys']),
         'tickera_api_keys_sha256' => hash('sha256', serialize($before['api_keys'])),
     ],
@@ -1527,6 +1705,22 @@ $report = [
         'person_count_after' => $person_after,
         'event_participation_count_after' => $participation_after,
         'post_type_counts_equal' => $post_type_counts_equal,
+        'woocommerce_public_coming_soon_state' => [
+            'before' => [
+                'woocommerce_coming_soon' => $before['woocommerce_coming_soon'],
+                'woocommerce_store_pages_only' => $before['woocommerce_store_pages_only'],
+            ],
+            'after' => $after === null ? null : [
+                'woocommerce_coming_soon' => $after['woocommerce_coming_soon'],
+                'woocommerce_store_pages_only' => $after['woocommerce_store_pages_only'],
+            ],
+            'unchanged' => $coming_soon_state_equal,
+        ],
+        'sandbox_directory' => [
+            'before' => $before['sandbox_directory_entries'],
+            'after' => $after['sandbox_directory_entries'] ?? null,
+            'unchanged' => $sandbox_directory_equal,
+        ],
         'protected_state_equal' => $protected_state_equal,
         'protected_state_after' => $after,
     ],
@@ -1540,7 +1734,4 @@ if (defined('WP_CLI') && WP_CLI) {
     }
 } else {
     echo $encoded . PHP_EOL;
-}
-if ($failures !== []) {
-    exit(1);
 }

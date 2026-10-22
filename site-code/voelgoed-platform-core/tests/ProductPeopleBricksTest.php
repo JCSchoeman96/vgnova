@@ -250,6 +250,22 @@ final class ProductPeopleBricksTest
         );
     }
 
+    public function test_non_product_bricks_template_preview_falls_back_to_singular_product(): void
+    {
+        $this->fixture();
+        $this->post(404, 'bricks_template');
+        VGPC_TestBricksDatabase::$page_data = ['preview_or_post_id' => 404];
+        $GLOBALS['vgpc_test_is_singular'] = true;
+        $GLOBALS['vgpc_test_queried_object'] = get_post(self::PRODUCT);
+        $GLOBALS['vgpc_test_the_id'] = self::NON_PRODUCT;
+
+        vgpc_test_same(
+            $this->canonical_query([self::PERSON_A]),
+            $this->adapter()->filter_people_query_vars([], ['_cssClasses' => 'vg-product-people-query'], 'loop', 'block'),
+            'A Bricks template ID must not override the singular Product context.'
+        );
+    }
+
     public function test_singular_queried_product_context_is_used_without_preview(): void
     {
         $this->fixture();

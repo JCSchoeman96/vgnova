@@ -47,6 +47,23 @@ final class ProductSourceEventBricksTest
         );
     }
 
+    public function test_non_product_bricks_template_preview_falls_back_to_singular_product(): void
+    {
+        $this->fixture();
+        $this->post(404, 'bricks_template');
+        VGPC_TestBricksDatabase::$page_data = ['preview_or_post_id' => 404];
+        $GLOBALS['vgpc_test_is_singular'] = true;
+        $GLOBALS['vgpc_test_queried_object'] = get_post(self::PRODUCT);
+        $GLOBALS['vgpc_test_the_id'] = self::NON_PRODUCT;
+        $this->set_source_event(self::PRODUCT, self::SOURCE_EVENT);
+
+        vgpc_test_same(
+            $this->source_event_query([self::SOURCE_EVENT]),
+            $this->adapter()->filter_source_event_query_vars([], ['_cssClasses' => 'vg-product-source-event-query'], 'loop', 'block'),
+            'A Bricks template ID must not hide the singular Product source Event.'
+        );
+    }
+
     public function test_positive_integer_and_digit_string_source_event_values_resolve_identically(): void
     {
         $this->fixture();

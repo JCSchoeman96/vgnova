@@ -121,6 +121,66 @@ final class ProductPeopleIntegrationTest
         vgpc_test_true($hunks >= 2, 'integration.patch must contain the bootstrap and Plugin hunks.');
     }
 
+    public function test_task_7b_token_scan_reads_term_descriptions_from_term_taxonomy(): void
+    {
+        $qa = (string) file_get_contents(dirname(__DIR__, 2) . '/runtime-tests/product-single-124-qa.php');
+
+        vgpc_test_true(
+            str_contains($qa, "LEFT JOIN {\$wpdb->term_taxonomy}")
+                && str_contains($qa, 'taxonomy.description LIKE %s'),
+            'The Task 7B ownership-token scan must join wp_term_taxonomy before searching term descriptions.'
+        );
+    }
+
+    public function test_task_7b_protected_record_hashes_are_full_sha256_values(): void
+    {
+        $qa = (string) file_get_contents(dirname(__DIR__, 2) . '/runtime-tests/product-single-124-qa.php');
+        $matched = preg_match('/const VG_PRODUCT_SINGLE_124_QA_EXPECTED_RECORD_HASHES = \[(.*?)\n\];/s', $qa, $record_block);
+
+        vgpc_test_true($matched === 1, 'The Task 7B protected record hash map must exist.');
+
+        preg_match_all("/\\d+ => \\['([a-f0-9]+)', '([a-f0-9]+)'\\]/", $record_block[1], $hashes);
+        vgpc_test_true(count($hashes[0]) === 11, 'The Task 7B protected record map must contain all 11 audited records.');
+
+        foreach ([...$hashes[1], ...$hashes[2]] as $hash) {
+            vgpc_test_true(strlen($hash) === 64, 'Every Task 7B protected record digest must contain 64 hexadecimal characters.');
+        }
+    }
+
+    public function test_task_7b_component_hashes_normalize_php_float_serialization_precision(): void
+    {
+        $qa = (string) file_get_contents(dirname(__DIR__, 2) . '/runtime-tests/product-single-124-qa.php');
+
+        vgpc_test_true(
+            str_contains($qa, 'function vg_product_single_124_qa_stable_hash(')
+                && str_contains($qa, "ini_set('serialize_precision', '-1')")
+                && str_contains($qa, 'vg_product_single_124_qa_stable_hash($component)'),
+            'Task 7B component comparisons must hash values with normalized float serialization precision.'
+        );
+    }
+
+    public function test_task_7b_card_evidence_uses_component_registry_id(): void
+    {
+        $qa = (string) file_get_contents(dirname(__DIR__, 2) . '/runtime-tests/product-single-124-qa.php');
+
+        vgpc_test_true(
+            str_contains($qa, "static fn (string \$id, array \$row): array => ['id' => \$id, 'sha256' => \$row['sha256']]")
+                && str_contains($qa, "array_keys(\$before['product_person_cards'])"),
+            'Task 7B card evidence must report the Product Person Card registry ID.'
+        );
+    }
+
+    public function test_task_7b_featured_image_fixtures_are_valid_image_attachments(): void
+    {
+        $qa = (string) file_get_contents(dirname(__DIR__, 2) . '/runtime-tests/product-single-124-qa.php');
+
+        vgpc_test_true(
+            str_contains($qa, "'post_mime_type' => 'image'")
+                && str_contains($qa, 'wp_attachment_is_image($attachment_id)'),
+            'Task 7B Person fixtures must select valid image attachments, not SVG or other attachment types.'
+        );
+    }
+
     private function assert_hunk_count(?int $expected, int $actual): void
     {
         if ($expected !== null && $expected !== $actual) {
