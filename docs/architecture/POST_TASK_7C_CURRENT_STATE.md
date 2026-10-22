@@ -1,6 +1,6 @@
 # Post-Task 7C Current State
 
-**Status:** Draft during Task 8; Task 10 closeout pending. This snapshot records the authorized read-only audit state. It does not authorize migration, cleanup, route changes, or runtime writes.
+**Status:** Task 10 stopped after a protected fingerprint mismatch. This snapshot records the authorized read-only audit and closeout evidence. It does not authorize migration, cleanup, route changes, or runtime writes.
 
 ## Repository and runtime identity
 
@@ -68,4 +68,20 @@ The audit recommends one next unit: a separately reviewed architecture/spec deci
 
 ## Protected-state closeout
 
-**Task 10 status:** Pending. Reverify runtime identity, recompute the same global and protected-object fingerprints, compare the pre/post state, verify the fixed profile and edge rulings, inspect for audit-created executable PHP/trace files or a new `.crashed` marker, and confirm repository output scope. Record the actual results here before claiming zero writes.
+Task 10 reverified the runtime identity at 2026-10-22 12:03 UTC. `ABSPATH`, `home_url`, the HTTP port, and the connected database name/server UUID match the pre-audit identity. The direct GET returned HTTP 200 from port 10039. The verified database was `local` on `jc-kubuntu:10038`, UUID `028fe7c9-3720-11f1-8cb0-a8a159280deb`, MySQL 8.0.35.
+
+The same one-SELECT InnoDB fingerprint method found exact matches for `wp_posts` (761 rows), `wp_postmeta` (3,928), `wp_term_relationships` (160), `wp_terms` (396), and `wp_term_taxonomy` (396). The protected object groups also match: 14 post rows, 97 postmeta rows, and 10 term relationship rows. The five profiles, Event 763, Products 765/767/768, and Bricks Templates 772/773/774/124/1127 therefore have unchanged post, metadata, and term-relationship fingerprints. The post-type/status counts still contain no `person` or `event_participation` rows. Product People configuration remains absent in the unchanged postmeta state.
+
+The full `wp_options` fingerprint differs. It changed from 1,198 rows with SHA-256 `27cc25362cae7d279e45f07ade79965176f9a3885b17d5835827867f24aeb6e1` to 1,202 rows with SHA-256 `cb12b7e70225d35620589a4042430baf573aaaac555e5a4c166ab54c25d22a66`. The captured ACF, Bricks, and Fluent option hashes show these differences:
+
+| Option | Pre-audit | Post-audit |
+|---|---|---|
+| `acf_pro_license` | Absent | `3b6f443efd05294b1a4ed304f5f88f57392557bd2ae87f55da69dc50b9ae30ca` |
+| `acf_pro_license_status` | Absent | `67e33f57619a0c13f1c501266c89f7de804d76ab7b0d705348cc605b5ba3aafd` |
+| `bricks_license_key` | Absent | `feff649e59f8d57aa41815ccc9be85753babba1e04601396d592498a3356ebe6` |
+| `fs_accounts` | Absent | `34ac1b4f85dcda44df3dd91385c2ef07e56ea984c19c4210a90abbd430017129` |
+| `fs_api_cache` | `a7499511da6f54647011c76ae3beb68c687725f876f223a5b6434630eefcfc1b` | `36a9584cb6b6d9170050e1a688bae5981cba32593400c97e05fe3e8903b2e6d7` |
+
+The `bricks_components` option hash and all captured `wp_posts`, `wp_postmeta`, and term hashes match their pre-audit values. The pre-audit artifact contains only an aggregate hash for the full options table plus individual hashes for the ACF, Bricks, and Fluent option subsets. It does not contain a per-option baseline for every other option, so any additional option-level differences cannot be localized from the saved pre-state evidence.
+
+The audit issued no runtime write action, but the options mismatch prevents a zero-write conclusion. Its cause is unknown. No cleanup or restoration was attempted. Following the stop rule, no further runtime inspection was performed after detecting this mismatch. The post-state fingerprint is at `/tmp/task-7c-audit-abde5c-20261022/post-state-fingerprint.txt`. The post-audit runtime artifact scan, final repository output-scope validation, Markdown validation, and PR creation were not performed. The audit branch remains local and unmerged.

@@ -286,4 +286,22 @@ Before implementation, the architecture spec must receive separate review and ap
 
 ## Zero-write closeout and validation
 
-Pending Task 10. The closeout will repeat runtime identity and protected-state fingerprints, verify the fixed rulings and artifact inventory, validate the approved documentation outputs and CSV, and run `git diff --check`.
+### Task 10 stop result
+
+At 2026-10-22 12:03 UTC, the identity check still identified the authorized runtime: `ABSPATH=/home/jcschoeman96/Local Sites/voelgoed-novamira/app/public/`, `home_url=http://localhost:10039`, actual HTTP port 10039, database `local`, server `jc-kubuntu:10038`, UUID `028fe7c9-3720-11f1-8cb0-a8a159280deb`, MySQL 8.0.35. VGNova `core/get-site-info`, WP-CLI config reads, a direct GET, and a SELECT-only database identity query agreed.
+
+The same single-SELECT InnoDB fingerprint method found exact pre/post matches for `wp_posts` (761 rows), `wp_postmeta` (3,928), `wp_term_relationships` (160), `wp_terms` (396), and `wp_term_taxonomy` (396). Protected object fingerprints also match: 14 posts, 97 postmeta rows, and 10 term relationship rows covering Profiles 753–757, Event 763, Products 765/767/768, and Templates 772/773/774/124/1127. The five protected profiles and five protected relationship edges are unchanged. No `person` or `event_participation` post exists, and the unchanged postmeta fingerprint confirms no Product People configuration was created.
+
+The full options fingerprint differs. `wp_options` changed from 1,198 rows and SHA-256 `27cc25362cae7d279e45f07ade79965176f9a3885b17d5835827867f24aeb6e1` to 1,202 rows and SHA-256 `cb12b7e70225d35620589a4042430baf573aaaac555e5a4c166ab54c25d22a66`. The saved option-subset hashes identify four added option keys and one changed value hash:
+
+| Option | Pre-audit | Post-audit |
+|---|---|---|
+| `acf_pro_license` | Absent | `3b6f443efd05294b1a4ed304f5f88f57392557bd2ae87f55da69dc50b9ae30ca` |
+| `acf_pro_license_status` | Absent | `67e33f57619a0c13f1c501266c89f7de804d76ab7b0d705348cc605b5ba3aafd` |
+| `bricks_license_key` | Absent | `feff649e59f8d57aa41815ccc9be85753babba1e04601396d592498a3356ebe6` |
+| `fs_accounts` | Absent | `34ac1b4f85dcda44df3dd91385c2ef07e56ea984c19c4210a90abbd430017129` |
+| `fs_api_cache` | `a7499511da6f54647011c76ae3beb68c687725f876f223a5b6434630eefcfc1b` | `36a9584cb6b6d9170050e1a688bae5981cba32593400c97e05fe3e8903b2e6d7` |
+
+The `bricks_components` option hash and the captured Bricks, ACF, and Fluent option hashes not listed above match. The pre-audit artifact has no per-option baseline for keys outside those filtered subsets, so the aggregate options mismatch cannot be fully localized from the saved pre-state evidence. No raw option values were recorded. The audit issued no runtime write action, but the mismatch means zero writes cannot be proven. The cause is unknown, and no cleanup or restoration was attempted.
+
+Following the approved stop rule, runtime inspection stopped at this mismatch. The post-audit artifact scan, final repository output-scope validation, CSV/Markdown validation, `git diff --check`, push, and PR creation were not performed. No PR was opened, no merge occurred, and the recommended next unit was not started. The post-state fingerprint is stored outside Git at `/tmp/task-7c-audit-abde5c-20261022/post-state-fingerprint.txt`; further closeout must wait for separate review of the options mismatch.
