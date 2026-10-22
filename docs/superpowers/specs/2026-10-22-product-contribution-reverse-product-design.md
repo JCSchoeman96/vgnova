@@ -278,7 +278,7 @@ Required fields:
 |---|---|---|
 | `product_contribution_product` | Post Object | One WooCommerce `product`, required for publication, return ID |
 | `product_contribution_person` | Post Object | One canonical `person`, required for publication, return ID |
-| `product_contribution_roles` | Taxonomy | `product_role`, multiple, at least one role required for a published manual contribution |
+| `product_contribution_roles` | Taxonomy | `product_role`, multiple, at least one role required for any published Product Contribution |
 | `product_contribution_display_order` | Number | Optional, integer, minimum `0`, default `0` |
 
 The Product and Person fields are canonical endpoints.
@@ -320,6 +320,8 @@ Initial vocabulary:
 
 These are Product-specific contextual roles only. They do not automatically imply Person classifications or Event roles.
 
+The initial vocabulary is intentionally small. Expanding or reinterpreting it requires a later explicit architecture decision rather than opportunistic seeding.
+
 The vocabulary must be source-controlled and seeded through the same idempotent, conflict-safe approach used for other controlled taxonomies.
 
 Unexpected or conflicting slugs/names must stop the seeder before mutation.
@@ -343,15 +345,12 @@ A published contribution must have:
 ```text
 one valid Product endpoint
 one valid Person endpoint
+one or more approved product_role terms
 one unique non-retired Product × Person pair
 valid non-negative display order
 ```
 
-Manual-mode publication additionally requires:
-
-```text
-at least one approved product_role
-```
+This role requirement applies to both manual and event-mode Product Contribution records. An event-derived Product association may exist without a Product Contribution at all; however, if an event-mode Product Contribution is published, it must actually annotate the association with at least one Product-specific role.
 
 Endpoint records must exist, have the expected post type, and not be trashed.
 
@@ -435,10 +434,12 @@ Product Contribution = membership + Product roles + Product-side order
 
 event mode:
 Event Participation = membership
-Product Contribution = optional Product roles only
+Product Contribution = optional Product-role annotation only
 ```
 
-ACF editor instructions must state this clearly.
+A Product Contribution that becomes authoritative because the Product switches to manual mode must still satisfy all manual-mode publication rules. A contribution that remains stored but no longer satisfies the current mode's active rules must not leak into canonical reads.
+
+ACF editor instructions must state the mode semantics clearly.
 
 ---
 
@@ -563,9 +564,7 @@ Person order comes from Event Participation
 source = event
 ```
 
-An event-derived association may validly have no Product-specific role annotation.
-
-A manual active association may not be role-less.
+An event-derived association may validly have no Product-specific role because it may have no Product Contribution annotation. A published Product Contribution itself may never be role-less.
 
 ---
 
@@ -789,7 +788,7 @@ Implementation is ready for independent review only when it proves at minimum:
 3. Product and Person endpoints are type-checked.
 4. One non-retired Product × Person pair is unique.
 5. Multiple Product roles live on one contribution record.
-6. A published manual contribution requires at least one approved Product Role.
+6. Every published Product Contribution requires at least one approved Product Role.
 7. Event-mode publication rejects a Person who is not currently canonical for the Product's source Event.
 8. Event-derived membership still changes live when Event Participation changes, without Product Contribution synchronization.
 9. `people_for_product()` remains stable for existing Product consumers.
