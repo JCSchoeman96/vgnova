@@ -1,6 +1,8 @@
 # Task 7C Person Consumer and Legacy Decommission Readiness Implementation Plan
 
-> **For agentic workers:** Use `superpowers:executing-plans` to carry out this read-only audit task by task. Do not run it until Task 7C execution is separately authorized.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use `superpowers:subagent-driven-development` (recommended) or `superpowers:executing-plans` to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+
+Do not run this read-only audit until Task 7C execution is separately authorized.
 
 **Goal:** Perform a fresh, read-only audit of remaining `medewerker` consumers and produce one evidence-backed next implementation recommendation.
 
@@ -213,16 +215,18 @@ git commit -m "docs: trace Task 7C relationship write paths"
 
 - [ ] Decide whether a later reverse Event consumer can be designed without persistent migrated Person data. Do not create Event Participation records or migrate the two excluded Event 763 edges.
 
-- [ ] For reverse Products, select exactly one current requirement description:
+- [ ] For reverse Products, select exactly one current requirement description only if the available evidence supports it:
   1. a genuine supported reverse Product requirement that needs separate canonical architecture approval;
   2. a presentation safely derivable from canonical Product configuration without persistent reverse storage; or
   3. an obsolete legacy presentation to retire.
+
+  If evidence or access is insufficient to support any outcome, do not force a choice. Record the evidence limitation, mark Task 5 blocked/incomplete, and carry that blocker into the final Task 7C recommendation. Do not invent an unsupported conclusion to satisfy the three-way decision.
 
 - [ ] Base that choice on the current Template 772 presentation, Product People behavior in Product Single 124, current editor/user flows, actual active callers, and the source/runtime relationship model. If evidence is inaccessible, record the limitation and do not claim the requirement is obsolete or supported without evidence.
 
 - [ ] Do not add or propose a reverse index, new relationship storage, database scan contract, synchronization system, or Product relationship design as part of Task 7C. Keep the known Product edges `EXCLUDE`.
 
-**Completion check:** The report states the reverse Event read contract and its Bricks readiness from evidence. It records exactly one of the three reverse Product requirement descriptions with the evidence and access limitations behind that choice.
+**Completion check:** The report states the reverse Event read contract and its Bricks readiness from evidence. For reverse Products, it records exactly one of the three requirement descriptions when sufficient evidence supports that choice. Otherwise, it records the access/evidence limitation, marks Task 5 blocked/incomplete, and carries that blocker into the final recommendation without forcing an outcome.
 
 **Commit point:** Commit the canonical-readiness findings:
 
