@@ -106,6 +106,43 @@ Component `6b463f` has seven elements: `vgmcc2` uses `{featured_image}`, `vgmcc3
 
 The `medewerker` route remains a direct dependency of the single and archive template conditions. The actual route response, canonical and indexing signals, current ACF field/taxonomy definitions, and any route consumers are reserved for Task 6. No route or record was changed.
 
+### Task 4: Relationship helpers and write paths
+
+Fresh runtime capture: 2026-10-22 11:16 UTC, from the verified 10039 identity above. Novamira ACF setup, field-group, schema, and raw-value abilities were inspected read-only. Runtime helper and writer code was read from the authorized install. Repository source searches did not find source-controlled PHP definitions for either FluentSnippets file, so their source parity is unavailable. The runtime storage index and snippet headers identify both as published, run globally with conditions disabled. Deployed SHA-256: `10-vg-bricks-medewerker-queries.php` `e1b7c014cd15a673d663426403a2024a21a1286075c355015f4e217d7e498fa2`; `9-acf-product-copy.php` `58e8035502b30397b9659f952e4d49bbdbd7cdbd15070e37e5b07ebaa5ce2f70`. Runtime hashes and field-group/value evidence are in `/tmp/task-7c-audit-abde5c-20261022/runtime-evidence.txt`.
+
+#### ACF definitions and current IDs
+
+| Field | Current definition | Data direction and editor/write path |
+|---|---|---|
+| `event_medewerkers` | Active DB field group `group_event_medewerkers` (ID 748); multiple ACF relationship to `medewerker`, ID return format, on `tc_events` | Event → legacy profile. Editors set the Event relationship. Snippet 9 reads it during Product saves; helper 10 also reads it in the `event_medewerkers` and `medewerker_events` branches. |
+| `produk_bron_event` | Active DB field group `group_medewerker_produkte` (ID 750); single ACF post object to `tc_events`, ID return format, on `product` | Product → source Event. Editors set the source Event. Snippet 9 and helper 10 read it. Platform Core also reads it for canonical Event-derived Product People and separate source Event presentation. |
+| `produk_medewerkers` | Active DB field group `group_medewerker_produkte` (ID 750); multiple ACF relationship to `medewerker`, ID return format, on `product` | Product → legacy profiles. Editors may select it. Snippet 9 fills it when empty. Template 772's `medewerker_products` query reads it in reverse. The canonical Product People resolver ignores it. |
+
+The current ACF raw ID reads were: Event 763 `event_medewerkers=[753,757]`; Product 765 `produk_bron_event=763`, `produk_medewerkers` empty; Product 767 `produk_bron_event=763`, `produk_medewerkers=[753]`; Product 768 `produk_bron_event=763`, `produk_medewerkers=[753,757]`. These match the protected state recorded before substantive inspection. The `EXCLUDE` edge rulings remain fixed. No ACF value or relationship was written.
+
+The separate active PHP ACF group `group_vg_product_people` belongs to `ProductPeopleFields`; it owns `product_people_mode` and `product_people_override` targeting `person`. It does not define the three legacy fields above. Its runtime source is Platform Core, with source/deployed class hashes matching. Product People mode and override are a separate data path. The WooCommerce `_event_name` query in Template 774 is also separate from these ACF fields.
+
+#### FluentSnippets and all six helper modes
+
+`10-vg-bricks-medewerker-queries.php` is runtime-only and published. The snippet registers `bricks/posts/query_vars` at priority 10 with four arguments. It resolves the current post context and has exactly these six branches:
+
+| Mode | Purpose; read direction and data | Current active caller |
+|---|---|---|
+| `event_medewerkers` | List Event profiles; Event context → `medewerker` IDs from ACF `event_medewerkers`, ordered by the relationship list | None found |
+| `event_products` | List Products sourced from an Event; Event context → Products whose `produk_bron_event` equals the current Event ID | None found |
+| `medewerker_events` | Show Events for a profile; `medewerker` context → published `tc_events` whose `event_medewerkers` metadata contains the profile ID | Template 772, loop `vgms23` |
+| `medewerker_products` | Show Products for a profile; `medewerker` context → published Products whose `produk_medewerkers` metadata contains the profile ID | Template 772, loop `vgms33` |
+| `product_medewerkers` | Show legacy profiles on a Product; Product context → `medewerker` IDs from ACF `produk_medewerkers`, ordered by the selected IDs | None found |
+| `product_source_event` | Show the Product source Event; Product context → Event ID from ACF `produk_bron_event` | None found |
+
+The fresh exact-string scan of published Bricks metadata and component definitions found only the two Template 772 helper modes listed above. The other four registered branches have no current Bricks helper-mode caller. All six branches only change Bricks query vars and perform reads. The reverse-query helper checks published target posts and matches relationship metadata with a substring `LIKE` search for the current numeric ID. No additional branch was present. The separate `ProductPeopleBricks` and `ProductSourceEventBricks` integrations use Template 124's semantic CSS markers and Platform Core; they are not calls to modes in snippet 10.
+
+`9-acf-product-copy.php` is runtime-only and published, with global run condition and snippet-manager priority 10. Its `acf/save_post` callback runs at WordPress priority 20. It skips nonnumeric IDs and non-Product posts. For Products with an empty `produk_medewerkers`, it reads `produk_bron_event`, reads that Event's `event_medewerkers`, normalizes the returned IDs, and writes them to `produk_medewerkers` with `update_field`. A nonempty Product selection is preserved. The snippet stores no provenance marker, so an existing value does not disclose whether it came from an editor or an earlier copy. The current stored IDs alone do not establish which actor wrote them.
+
+The active Product People resolver reads `product_people_mode`, then either follows `produk_bron_event` through Event Participation or reads `product_people_override`; it filters to published `person` records. It never reads `produk_medewerkers`, `event_medewerkers`, or `medewerker` and does not write. `ProductSourceEventBricks` separately reads and validates `produk_bron_event` for its marked query. Both Platform Core adapters are registered in the deployed plugin and represented by the source-controlled `integration.patch`. Template 124 stores their semantic query markers; its condition list is empty, so front-end execution remains unverified pending Task 6. Source/deployed hashes match for the Event Participation repository/service/Bricks adapter and Product People fields/resolver/Bricks/Source Event classes.
+
+The complete legacy copy chain is `produk_bron_event` → Event `event_medewerkers` → snippet 9 on Product save → Product `produk_medewerkers` → helper mode `medewerker_products` → Template 772 `vgms33`. Template 772 is the only current active reader of the copied Product field found in Bricks. The next safe break point remains unresolved: Task 5 must settle the reverse Product presentation requirement, and Task 6 must verify editor use and other consumers before any proposal to change the writer or field. The source Event field has separate Product People and source Event readers and remains outside that proposed break.
+
 ## Classifications and dependency order
 
 Pending Task 7. Each atomic concern will receive exactly one approved lifecycle classification. These classifications authorize no deletion, migration, retirement, or runtime mutation.
