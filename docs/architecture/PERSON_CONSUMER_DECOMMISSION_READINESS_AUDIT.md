@@ -139,9 +139,9 @@ The fresh exact-string scan of published Bricks metadata and component definitio
 
 `9-acf-product-copy.php` is runtime-only and published, with global run condition and snippet-manager priority 10. Its `acf/save_post` callback runs at WordPress priority 20. It skips nonnumeric IDs and non-Product posts. For Products with an empty `produk_medewerkers`, it reads `produk_bron_event`, reads that Event's `event_medewerkers`, normalizes the returned IDs, and writes them to `produk_medewerkers` with `update_field`. A nonempty Product selection is preserved. The snippet stores no provenance marker, so an existing value does not disclose whether it came from an editor or an earlier copy. The current stored IDs alone do not establish which actor wrote them.
 
-The active Product People resolver reads `product_people_mode`, then either follows `produk_bron_event` through Event Participation or reads `product_people_override`; it filters to published `person` records. It never reads `produk_medewerkers`, `event_medewerkers`, or `medewerker` and does not write. `ProductSourceEventBricks` separately reads and validates `produk_bron_event` for its marked query. Both Platform Core adapters are registered in the deployed plugin and represented by the source-controlled `integration.patch`. Template 124 stores their semantic query markers; its condition list is empty, so front-end execution remains unverified pending Task 6. Source/deployed hashes match for the Event Participation repository/service/Bricks adapter and Product People fields/resolver/Bricks/Source Event classes.
+The active Product People resolver reads `product_people_mode`, then either follows `produk_bron_event` through Event Participation or reads `product_people_override`; it filters to published `person` records. It never reads `produk_medewerkers`, `event_medewerkers`, or `medewerker` and does not write. `ProductSourceEventBricks` separately reads and validates `produk_bron_event` for its marked query. Both Platform Core adapters are registered in the deployed plugin and represented by the source-controlled `integration.patch`. Template 124 stores their semantic query markers, but its condition list is empty. The Task 6 public Product route check returned the WooCommerce coming-soon response without either marker, so it did not verify Template 124 execution. Source/deployed hashes match for the Event Participation repository/service/Bricks adapter and Product People fields/resolver/Bricks/Source Event classes.
 
-The complete legacy copy chain is `produk_bron_event` → Event `event_medewerkers` → snippet 9 on Product save → Product `produk_medewerkers` → helper mode `medewerker_products` → Template 772 `vgms33`. Template 772 is the only current active reader of the copied Product field found in Bricks. The next safe break point remains unresolved: Task 5 must settle the reverse Product presentation requirement, and Task 6 must verify editor use and other consumers before any proposal to change the writer or field. The source Event field has separate Product People and source Event readers and remains outside that proposed break.
+The complete legacy copy chain is `produk_bron_event` → Event `event_medewerkers` → snippet 9 on Product save → Product `produk_medewerkers` → helper mode `medewerker_products` → Template 772 `vgms33`. Template 772 is the only current active reader of the copied Product field found in Bricks. Task 5 confirmed a supported reverse Product flow that needs separate canonical architecture approval. No part of the copy chain can be changed until that review and a later consumer cutover pass. The source Event field has separate Product People and source Event readers and remains outside that proposed break.
 
 ### Task 5: Canonical reverse reads and Product requirement
 
@@ -159,9 +159,59 @@ The repository contract is available in source and deployed runtime, so a later 
 
 **Current requirement outcome 1 selected: a genuine supported reverse Product requirement that needs separate canonical architecture approval.** Published Template 772 actively queries `produk_medewerkers` in reverse at `vgms33`; the active Product save snippet can populate the field from the linked Event; the legacy ACF fields remain active; and the documented editor flow instructs editors to set Product people. This is current configured behavior. Keeping it through Person replacement needs a separately approved canonical reverse-query contract.
 
-The canonical Product People implementation only resolves Product → Person from `product_people_mode`, `produk_bron_event`/Event Participation, or `product_people_override`. It has no reverse Product API and deliberately ignores `produk_medewerkers`; the current code does not establish that reverse Products can be derived safely from canonical configuration. The active Template 772 consumer and editor path mean the audit cannot classify this presentation as obsolete. Product Single 124 stores the canonical forward Person card and separate source Event query, but has no template conditions, so its public rendering remains unverified pending Task 6.
+The canonical Product People implementation only resolves Product → Person from `product_people_mode`, `produk_bron_event`/Event Participation, or `product_people_override`. It has no reverse Product API and deliberately ignores `produk_medewerkers`; the current code does not establish that reverse Products can be derived safely from canonical configuration. The active Template 772 consumer and editor path mean the audit cannot classify this presentation as obsolete. Product Single 124 stores the canonical forward Person card and separate source Event query, but has no template conditions. The Task 6 Product route returned WooCommerce's coming-soon response without either query marker, so Template 124's public execution remains unverified.
 
 Read-only ACF checks of all nine published Products found no canonical Product People mode or override values. Eight also have no nonempty legacy Product People values. The only populated published legacy edge is Product 767 → profile 753, which remains `EXCLUDE`. The active flow establishes the requirement boundary; it does not authorize migrating that edge or any other edge. No reverse index, storage, scan contract, or synchronization design is proposed here.
+
+### Task 6: Routes, dynamic tags, taxonomies, and fields
+
+The fresh read-only runtime capture was taken at 11:47 UTC on 2026-10-22 from the verified VGNova connection. The route requests used GET against localhost:10039. Each reported remote port 10039. Sanitized captures are in /tmp/task-7c-audit-abde5c-20261022/runtime-evidence.txt.
+
+#### ACF definitions and values
+
+group_medewerker_besonderhede is active and database-backed on medewerker. It defines medewerker_titel, medewerker_kort_bio, and medewerker_profiel_status. All five protected profiles have status public and a non-empty short bio. Only profile 753 has a non-empty title. No field text was copied into the evidence.
+
+The active medewerker_rol and medewerker_groep taxonomies are database-backed, public, and queryable. Their rewrite slugs are medewerker-rol and medewerker-groep. The current registrations contain nine role terms and five group terms. Profiles 753–757 all have role mentor and group voelgoed-mentor. Template 772 displays these terms at vgms09 and vgms10.
+
+group_vg_broadcast_episode is active on uitsending. Its broadcast_hosts and broadcast_guests fields are multiple relationships to medewerker and return IDs. Both fields are empty on all five published episodes. Template 1127 still has active loops for both fields, so the empty values do not establish that the consumer is obsolete. The host loop is sghlop with component instance e9a70e; the guest loop is sgglop with instance d05bf6.
+
+The active event_medewerkers and produk_medewerkers fields have no direct Bricks dynamic-token use. Their current reads and writes occur through the Task 4 helper and copy chain. The broadcast_related_content field targets posts, courses, products, and events, not medewerker.
+
+ACF list results report source json for post_type_person and group_vg_person_details; the corresponding get results report source db. The source metadata conflict remains unresolved. No definitions or values were edited.
+
+#### Dynamic-data registry and actual uses
+
+The Bricks ACF registry includes acf_medewerker_titel, acf_medewerker_kort_bio, acf_medewerker_profiel_status, acf_event_medewerkers, acf_produk_medewerkers, acf_broadcast_hosts, and acf_broadcast_guests. The WordPress registry includes post_terms_medewerker_rol and post_terms_medewerker_groep.
+
+| Tag or field | Current active use | Finding |
+|---|---|---|
+| acf_medewerker_titel | Template 772 vgms07; component 6b463f in Templates 773 and 1127 | Reads the current medewerker loop item. |
+| acf_medewerker_kort_bio | Template 772 vgms08; component 6b463f in Templates 773 and 1127 | Reads the current medewerker loop item. |
+| post_terms_medewerker_rol, post_terms_medewerker_groep | Template 772 vgms09 and vgms10 | Reads profile role and group terms. |
+| acf_medewerker_profiel_status | No active Bricks use found | Registered field and token; observed routes did not expose a status-based condition. |
+| acf_event_medewerkers, acf_produk_medewerkers | No direct Bricks token use found | Active field reads and writes are documented under Task 4. |
+| acf_broadcast_hosts, acf_broadcast_guests | Template 1127 loops sghlop and sgglop | Active relationship queries to medewerker; all five current published episode values are empty. |
+
+Template 772's profile elements use the two profile ACF fields and the role/group terms. Its Event and Product loops use helper modes, not direct field tokens. Template 773 uses vgma04 and component instance vgma05. Template 1127 also uses 6b463f for hosts and guests. The registry entries alone do not prove a consumer; this table separates registrations from saved uses.
+
+#### Routes and navigation
+
+| GET route | Result | Canonical and indexing signals | Current evidence |
+|---|---|---|---|
+| /medewerkers/ | 200, no redirect; body class post-type-archive-medewerker | No canonical link; robots meta contains only max-image-preview:large; no X-Robots-Tag. | Template 773 is configured for this archive. The rendered response had no profile-path anchors, despite the saved card's post_url setting. |
+| /medewerkers/{profile-753}/ | 200, no redirect | Self-canonical; robots meta contains only max-image-preview:large; no X-Robots-Tag. | Representative protected profile route. The response had one /medewerkers/ link and no /mense/ link. |
+| /mense/ | 200; body class post-type-archive-person; no h1 | No canonical link; robots meta contains only max-image-preview:large; no X-Robots-Tag. | Person archive route exists, but there are zero persistent Person records and no archive heading. |
+| /mense/{profile-753}/ | 404; body class error404 | No canonical link; robots meta contains only max-image-preview:large; no X-Robots-Tag. | No verified canonical single destination for the protected profile. |
+
+The tested responses contained no /medewerkers/ or /mense/ links in header or nav markup. Template 77's published header definition has no display condition and remains inactive; its only Medewerkers link is #. No route, canonical, menu, redirect, indexing, or rewrite setting changed.
+
+The Task 6 public check of Product 767's URL returned 200 but rendered WooCommerce's coming-soon response. It had a self-canonical and the same max-image-preview:large robots meta. It contained no Product People or source Event marker, no main content, and no main heading. Template 124's stored canonical markers therefore remain unverified in public rendering; its published Bricks template also has no display conditions.
+
+A future single-route change still needs an approved identity and provenance ruling, a persistent target Person ID, a verified /mense/{slug}/ destination, and an exact unambiguous legacy-route mapping. Archive work needs a verified canonical archive and separate review of canonical, menu, and indexing behavior. The registered /mense/ route alone does not meet those gates.
+
+#### Task 6 access limitations
+
+During resumed execution, the novamira_localhost adapter was called before its identity had been checked. Its read-only ACF response did not match the Voelgoed baseline. I excluded those results and stopped using that adapter. The VGNova adapter then returned Voelgoed, http://localhost:10039, and WordPress 7.1.3; the existing preflight file supplies the expected root and database/server identity. All subsequent runtime calls used that verified connection or public GETs to port 10039. The incident and ACF source metadata conflict are recorded in /tmp/task-7c-audit-abde5c-20261022/access-limitations.txt.
 
 ## Classifications and dependency order
 
