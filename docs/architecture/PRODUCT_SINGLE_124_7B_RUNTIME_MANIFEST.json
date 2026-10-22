@@ -1,0 +1,1038 @@
+{
+  "schema_version": 1,
+  "task": "7B",
+  "status": "complete_pending_independent_review",
+  "repository": {
+    "name": "JCSchoeman96/vgnova",
+    "branch": "feat/product-single-124-cutover-7b",
+    "base_sha": "a6cccb7f9862d6b8ff11d6635da6ccfd5b6d6b76",
+    "implementation_source_head_sha": "1e4d7dea8ee9d200a63968cc25627d5ee852a5a3",
+    "pull_request": "https://github.com/JCSchoeman96/vgnova/pull/29",
+    "target_branch": "main",
+    "merged": false,
+    "task_7c_started": false
+  },
+  "runtime_environment": {
+    "home_url": "http://localhost:10039/",
+    "server_port": 10039,
+    "wordpress_root": "/home/jcschoeman96/Local Sites/voelgoed-novamira/app/public/",
+    "wordpress_version": "7.1.3",
+    "coming_soon": {
+      "woocommerce_coming_soon": "yes",
+      "woocommerce_store_pages_only": "yes",
+      "changed": false
+    },
+    "mu_plugins_after_qa": {
+      "vg-masteriyo-course-products.php": "c573514ebeb92246b74e78b06a702ebfd02109e1a1c3b55ac50148f16c348fd9",
+      "temporary_task_7b_bypass_plugin_present": false
+    }
+  },
+  "approved_root_cause": {
+    "summary": "WooCommerce Store Coming Soon intercepted anonymous Product requests during template_include and exited before Bricks rendered Template 124.",
+    "significance": "This was a runtime gate. It did not indicate a Product Single 124 adapter failure.",
+    "scoped_bypass": {
+      "mechanism": "Temporary request-scoped woocommerce_coming_soon_exclude filter",
+      "site": "http://localhost:10039/",
+      "probe_request": "Anonymous GET for Product 767",
+      "request_token": "20261022-7b-bricks-trace-02",
+      "enabled": true,
+      "global_options_changed": false,
+      "temporary_filter_removed_after_probe": true
+    },
+    "route_trace": {
+      "path": "/tmp/vg-task-7b-route-20261022-7b-bricks-trace-02.jsonl",
+      "sha256": "d85ae0ed1a872ad2b6be330e1986405156f68118189fe196de5e5b18d3708d27",
+      "route": [
+        "template-loader.php final template and include: Bricks single-product.php",
+        "Bricks single-product.php entry: Product 767, active content template 124",
+        "Helpers::get_bricks_data(): 82 elements; has_bricks_data=true; no WooCommerce fallback",
+        "Frontend::render_content() and content-area Frontend::render_data(): 82 elements",
+        "vgpr13 query: post_type=tc_events, post__in=[763], orderby=post__in, posts_per_page=1; result [763]",
+        "vgpr14 rendered component f60f14; source Event card marker present"
+      ],
+      "trace_response_evidence": {
+        "source_event_card_visible": true,
+        "visible_event_title": "Test Event",
+        "coming_soon_interstitial_present": false
+      }
+    },
+    "restored_source_hashes": {
+      "wp-blog-header.php": "eb6491db4178b3858d44402ec337623a5ee12de66128dbc92742dd8735f6ed07",
+      "wp-includes/template-loader.php": "29419e3e5fc3c20842395822b230d851c41e5ced70121431ffee7bf0dd917372",
+      "wp-includes/class-wp-hook.php": "b839c0e5672246bca8db1ab781ec8835f7732f253c375a237cbf6ec536e8d12e",
+      "bricks/single-product.php": "b1ece3cf3963dbfd21ecb0e2e01596e10b7b2d0a719830217c2d50ee4b8b7a69",
+      "bricks/includes/frontend.php": "38ff05112444f568b1d57dca5392f326ed58455a999ed2cf2c049ca105ff1d93"
+    }
+  },
+  "source_runtime_parity": {
+    "product_people_bricks": {
+      "source_sha256": "001967451c55ef4911427a53f0b72a3457ff925298450fc6a4517ff123d18ca7",
+      "runtime_sha256": "001967451c55ef4911427a53f0b72a3457ff925298450fc6a4517ff123d18ca7",
+      "equal": true
+    },
+    "product_source_event_bricks": {
+      "source_sha256": "9781aac4f6594d0626539f0f7fc488b863b3fe0af4a9e8b34e3604fed1467697",
+      "runtime_sha256": "9781aac4f6594d0626539f0f7fc488b863b3fe0af4a9e8b34e3604fed1467697",
+      "equal": true
+    },
+    "integration_patch_sha256": "a7f4b868c8b9b205ed04ba60472362e256ab102c9b7e7e1760eeb719255c541d",
+    "runtime_bootstrap_sha256": "2a0645e9d0812cf13e27b2b4f3f1ff25c07650c3bd93deba672f21d96f6a71b6",
+    "runtime_plugin_sha256": "c50ad78ac7fe32cafe6c3476b9d61e68214047d69c255637d957da013e09f2f8",
+    "qa_script_sha256": "78f628b03d634184b2daadd37be9f818039b12060eff6c9d72c489890dc4172e",
+    "qa_request_helper_sha256": "a93786e37ca8cd332dfd54cfc0e6544e1a632d1faddfb9e0e6c2ef8ad4999531"
+  },
+  "template_124": {
+    "element_count_before": 82,
+    "element_count_after": 82,
+    "raw_element_tree_sha256_before": "b629c9cb7412ff8531f06ba357eede11383c69424810a44469e5e740bf132826",
+    "raw_element_tree_sha256_after": "788c9e4b04a57091d5b6e2fafff6e38b374307b5fa8e0eb22f6c320910fb3088",
+    "normalized_target_projection_sha256": "450bd890a4413699827c8d4536b3d500d9f9555492deb85141580fdeef79dc5b",
+    "projection_normalization": [
+      "Removes the approved Product People section marker and query markers",
+      "Removes the approved source Event query marker",
+      "Normalizes the Product Person Card swap to one direct loop child",
+      "Excludes settings.query on the two approved target query elements"
+    ],
+    "non_target_structure_equal": true,
+    "template_core_sha256": "5bf9d2165fc25d30602ffa37a5976199b2542021273edb8e094c0290502f68b4",
+    "template_non_element_meta_sha256": "ad786ff204f521df5b496799274c93e84a471697a4c8e8990e85225655a8cb10",
+    "core_and_non_element_meta_equal_to_preflight": true,
+    "approved_targets": {
+      "product_people_section": {
+        "element_id": "vgpr00",
+        "marker": "vg-product-people-section"
+      },
+      "product_people_query": {
+        "element_id": "vgpr03",
+        "marker": "vg-product-people-query"
+      },
+      "product_person_card_instance": {
+        "element_id": "vgpr04",
+        "component_id": "dc8611",
+        "direct_loop_child": true
+      },
+      "source_event_query": {
+        "element_id": "vgpr13",
+        "marker": "vg-product-source-event-query"
+      },
+      "source_event_card": {
+        "element_id": "vgpr14",
+        "component_id": "f60f14"
+      }
+    },
+    "before_target_state": {
+      "vgpr00": {
+        "people_section_marker_present": false
+      },
+      "vgpr03": {
+        "legacy_query_mode": "product_medewerkers",
+        "canonical_marker_present": false
+      },
+      "vgpr04": {
+        "component_id": "6b463f"
+      },
+      "vgpr13": {
+        "legacy_query_mode": "product_source_event",
+        "canonical_marker_present": false
+      },
+      "vgpr14": {
+        "component_id": "f60f14"
+      }
+    },
+    "after_target_state": {
+      "vgpr00": {
+        "people_section_marker": "vg-product-people-section"
+      },
+      "vgpr03": {
+        "people_query_marker": "vg-product-people-query"
+      },
+      "vgpr04": {
+        "component_id": "dc8611",
+        "direct_child_of_vgpr03": true
+      },
+      "vgpr13": {
+        "source_event_query_marker": "vg-product-source-event-query"
+      },
+      "vgpr14": {
+        "component_id": "f60f14"
+      }
+    }
+  },
+  "product_person_card": {
+    "component_id": "dc8611",
+    "structural_sha256": "4875f5962dd18b6cc66270cb62aa7030bd71c5704edf024b04db1348f74e8a33",
+    "loop_object": "person",
+    "fields": [
+      "featured_image",
+      "post_title",
+      "person_professional_title",
+      "post_excerpt",
+      "post_url"
+    ],
+    "action_label": "Bekyk profiel",
+    "contains_medewerker_fields": false,
+    "uses_event_participation_object": false
+  },
+  "protected_components": {
+    "194bba": "481c60b1bd2310b96cae05834aa49202777788192927021d218c5d1445cadc7f",
+    "6b463f": "57370bbb83d3125758eba9a5194eb1a898b8914b546ee4d84b32f642e07aeaac"
+  },
+  "protected_state": {
+    "task_1_preflight_matched": true,
+    "task_7b_cleanup_protected_state_equal": true,
+    "protected_record_hashes": {
+      "753": {
+        "post": "18b7b826b29f9a05a2e3d2fb771a9439311b8a95178f93065cca1e3200d8185f",
+        "meta": "987899ce4d75fa9da3f5058fdd11f2251e9721e5404f390ecf9c66bb3e416181"
+      },
+      "754": {
+        "post": "c13c455c09829bc9b4d0695ce0dbd908e8c633c972c090ea20e8aa889c2522b4",
+        "meta": "d9b8b260ea2fab4d735114dc086ff660bbafaac13ffc26dd8dd26b6aa35a9db9"
+      },
+      "755": {
+        "post": "fe4e34803c2bf80187caa75b59cbde759d99635fba7c0424c7b806e178f7eeb7",
+        "meta": "286c1f63a718905c7a1c3f80d912e8dd60550b9b9e1bbe6de596d9b553c475e1"
+      },
+      "756": {
+        "post": "1241bed4fe6f83a38401d513a08aec21f8eaa8928e21e444018b59b2f325554a",
+        "meta": "8a30be06a201f081bfcbd8ffc94c992ccf5b46571161521537d879a3e3909e90"
+      },
+      "757": {
+        "post": "dd4571c80bee776651dbce3c84a3c127d570d0a159b2111169f3238d32c1d1a6",
+        "meta": "c58d6f6328d34842b6a13675035764d175e132c67fe123d14f4b8c47e07377ae"
+      },
+      "763": {
+        "post": "278adefcf2d9edd1826aa489f074fed17cd21693a3f2f5f07d354e77384457d4",
+        "meta": "518eb2405dd703e9ae74009a126969939f633942c2c4cf7dbc4c5afa33f2a710"
+      },
+      "765": {
+        "post": "ddfeba8d1e1e9b2f88532340c401f0021877cf3f941214dba4e7a6ee475a916c",
+        "meta": "74ae5f31b7095ddd556985b9cf379295f7c0da34412220642d50e90808667874"
+      },
+      "767": {
+        "post": "8e02c0d733a4fef0d49dfb8970a45d8583e38e1529fa91539d7de66e18178696",
+        "meta": "92487ca037d42a709301c313a3c54f24e8f9a8fb42bbdc25bf2a1c5f9125c288"
+      },
+      "768": {
+        "post": "d73e67b8fb9aad5459a9ed8ecf14db09b057899f1248976084ed5964ba42f438",
+        "meta": "4105508490935bb9508719405a6b33b750770485bae739b78a9f8084f36976db"
+      },
+      "772": {
+        "post": "31dea28af3d3a91ec383546ff33dc9f089161f78213859135e81d6704300ad38",
+        "meta": "7ced9a53bb6b1373775860958a132b46f650854ce1f9cfe8b71f92698edbf01d"
+      },
+      "774": {
+        "post": "89d0df125e10ccc0ebfa79faca414c665022fc445f5546c5a7ff48d0e4f68762",
+        "meta": "40d2f52644e5e14fc0e9ead57372c75a87e1f005dc26331dcdb33aa8c36510ef"
+      }
+    },
+    "protected_product_ids": [
+      525,
+      527,
+      529,
+      531,
+      642,
+      765,
+      767,
+      768,
+      842,
+      844,
+      845,
+      846,
+      905,
+      908,
+      911,
+      914,
+      917,
+      920,
+      923,
+      1186
+    ],
+    "product_fields_and_event_name_projection": {
+      "525": [
+        null,
+        null,
+        null,
+        null,
+        ""
+      ],
+      "527": [
+        null,
+        null,
+        null,
+        null,
+        ""
+      ],
+      "529": [
+        null,
+        null,
+        null,
+        null,
+        ""
+      ],
+      "531": [
+        null,
+        null,
+        null,
+        null,
+        ""
+      ],
+      "642": [
+        null,
+        null,
+        null,
+        null,
+        ""
+      ],
+      "765": [
+        null,
+        null,
+        "763",
+        null,
+        ""
+      ],
+      "767": [
+        null,
+        null,
+        "763",
+        [
+          "753"
+        ],
+        ""
+      ],
+      "768": [
+        null,
+        null,
+        "763",
+        [
+          "753",
+          "757"
+        ],
+        ""
+      ],
+      "842": [
+        null,
+        null,
+        "",
+        "",
+        "763"
+      ],
+      "844": [
+        null,
+        null,
+        "",
+        "",
+        "763"
+      ],
+      "845": [
+        null,
+        null,
+        "",
+        "",
+        "763"
+      ],
+      "846": [
+        null,
+        null,
+        "",
+        "",
+        "763"
+      ],
+      "905": [
+        null,
+        null,
+        null,
+        null,
+        ""
+      ],
+      "908": [
+        null,
+        null,
+        null,
+        null,
+        ""
+      ],
+      "911": [
+        null,
+        null,
+        null,
+        null,
+        ""
+      ],
+      "914": [
+        null,
+        null,
+        null,
+        null,
+        ""
+      ],
+      "917": [
+        null,
+        null,
+        null,
+        null,
+        ""
+      ],
+      "920": [
+        null,
+        null,
+        null,
+        null,
+        ""
+      ],
+      "923": [
+        null,
+        null,
+        null,
+        null,
+        ""
+      ],
+      "1186": [
+        null,
+        null,
+        null,
+        null,
+        ""
+      ]
+    },
+    "current_product_fields_projection_sha256": "2098e732a750507f8e3d33e5e6ddc0f179e7faff2889d8142d71738e9f194795",
+    "protected_templates": {
+      "772": {
+        "post": "31dea28af3d3a91ec383546ff33dc9f089161f78213859135e81d6704300ad38",
+        "meta": "7ced9a53bb6b1373775860958a132b46f650854ce1f9cfe8b71f92698edbf01d"
+      },
+      "774": {
+        "post": "89d0df125e10ccc0ebfa79faca414c665022fc445f5546c5a7ff48d0e4f68762",
+        "meta": "40d2f52644e5e14fc0e9ead57372c75a87e1f005dc26331dcdb33aa8c36510ef"
+      }
+    },
+    "product_765_767_768_values_unchanged": true,
+    "event_763_hash_unchanged": true,
+    "legacy_produk_medewerkers_values_unchanged": true,
+    "produk_bron_event_values_unchanged": true,
+    "event_name_values_unchanged": true,
+    "woo_coming_soon_unchanged": true,
+    "post_type_counts_equal_after_cleanup": true
+  },
+  "legacy_audit": {
+    "caller_locations": {
+      "product_medewerkers": [],
+      "product_source_event": [],
+      "medewerker_products": [
+        {
+          "template": 772,
+          "element": "vgms33"
+        }
+      ],
+      "vg-product-people-query": [
+        {
+          "template": 124,
+          "element": "vgpr03"
+        }
+      ],
+      "vg-product-source-event-query": [
+        {
+          "template": 124,
+          "element": "vgpr13"
+        }
+      ],
+      "vg-product-people-section": [
+        {
+          "template": 124,
+          "element": "vgpr00"
+        }
+      ]
+    },
+    "template_772_reverse_product_mode": "medewerker_products",
+    "template_772_reverse_product_element": "vgms33",
+    "helper_sha256_before_after": {
+      "10-vg-bricks-medewerker-queries.php": "e1b7c014cd15a673d663426403a2024a21a1286075c355015f4e217d7e498fa2",
+      "equal": true
+    },
+    "product_copy_sha256_before_after": {
+      "9-acf-product-copy.php": "58e8035502b30397b9659f952e4d49bbdbd7cdbd15070e37e5b07ebaa5ce2f70",
+      "equal": true
+    },
+    "rulings": {
+      "product_medewerkers": {
+        "status": "RETIRE_PENDING_ACCESS",
+        "active_bricks_callers": 0,
+        "reason": "Template 124 caller was removed; safe FluentSnippets edit access was unavailable."
+      },
+      "product_source_event": {
+        "status": "RETIRE_PENDING_ACCESS",
+        "active_bricks_callers": 0,
+        "replacement_live": true,
+        "reason": "Template 124 source Event replacement is live; safe FluentSnippets edit access was unavailable."
+      },
+      "9-acf-product-copy.php": {
+        "status": "RETIRE_PENDING_DEPENDENCY",
+        "dependency": "Template 772 vgms33 uses medewerker_products to query products through produk_medewerkers.",
+        "action": "Snippet remains unchanged."
+      },
+      "produk_medewerkers": {
+        "status": "KEEP_LEGACY",
+        "existing_values_changed": false
+      },
+      "produk_bron_event": {
+        "status": "KEEP",
+        "existing_values_changed": false
+      },
+      "_event_name": {
+        "status": "KEEP",
+        "existing_values_changed": false
+      }
+    }
+  },
+  "qa": {
+    "run_token": "20261022-7b-qa-392bf965d38cde40",
+    "result": "PASS",
+    "scenario_count": 30,
+    "scenarios": [
+      {
+        "id": "unconfigured_returns_empty",
+        "result": "PASS",
+        "evidence": {
+          "ids": []
+        }
+      },
+      {
+        "id": "unconfigured_section_hidden_frontend",
+        "result": "PASS",
+        "evidence": {
+          "render": false,
+          "frontend_status": 200
+        }
+      },
+      {
+        "id": "event_mode_preserves_event_participation_order",
+        "result": "PASS",
+        "evidence": {
+          "ids": [
+            1466,
+            1465,
+            1467
+          ]
+        }
+      },
+      {
+        "id": "event_mode_excludes_unpublished_person",
+        "result": "PASS",
+        "evidence": {
+          "excluded_person_id": 1469
+        }
+      },
+      {
+        "id": "event_mode_ignores_manual_override",
+        "result": "PASS",
+        "evidence": {
+          "ids": [
+            1466,
+            1465,
+            1467
+          ]
+        }
+      },
+      {
+        "id": "manual_mode_preserves_explicit_order",
+        "result": "PASS",
+        "evidence": {
+          "ids": [
+            1467,
+            1465
+          ]
+        }
+      },
+      {
+        "id": "manual_mode_deduplicates_first_occurrence",
+        "result": "PASS",
+        "evidence": {
+          "ids": [
+            1467,
+            1465,
+            1466
+          ]
+        }
+      },
+      {
+        "id": "manual_empty_returns_empty",
+        "result": "PASS",
+        "evidence": {
+          "ids": []
+        }
+      },
+      {
+        "id": "manual_empty_section_hidden_frontend",
+        "result": "PASS",
+        "evidence": {
+          "render": false,
+          "frontend_status": 200
+        }
+      },
+      {
+        "id": "invalid_mode_returns_empty",
+        "result": "PASS",
+        "evidence": {
+          "ids": [],
+          "stored_mode": "invalid-task-7b-mode"
+        }
+      },
+      {
+        "id": "legacy_produk_medewerkers_does_not_affect_output",
+        "result": "PASS",
+        "evidence": {
+          "legacy_person_id": 1468,
+          "ids": []
+        }
+      },
+      {
+        "id": "empty_result_query_uses_post_in_zero",
+        "result": "PASS",
+        "evidence": {
+          "query": {
+            "post_type": "person",
+            "post_status": "publish",
+            "post__in": [
+              0
+            ],
+            "orderby": "post__in",
+            "posts_per_page": -1
+          },
+          "result_count": 0
+        }
+      },
+      {
+        "id": "event_mode_empty_section_hidden_frontend",
+        "result": "PASS",
+        "evidence": {
+          "people_ids": [],
+          "source_event_id": 1463,
+          "frontend_status": 200
+        }
+      },
+      {
+        "id": "builder_keeps_empty_section_editable",
+        "result": "PASS",
+        "evidence": {
+          "render": true,
+          "context": "bricks_is_builder"
+        }
+      },
+      {
+        "id": "builder_call_keeps_empty_section_editable",
+        "result": "PASS",
+        "evidence": {
+          "render": true,
+          "context": "bricks_is_builder_call"
+        }
+      },
+      {
+        "id": "valid_source_event_returns_exact_event",
+        "result": "PASS",
+        "evidence": {
+          "query": {
+            "post_type": "tc_events",
+            "post__in": [
+              1463
+            ],
+            "orderby": "post__in",
+            "posts_per_page": 1
+          }
+        }
+      },
+      {
+        "id": "source_event_renders_while_people_empty",
+        "result": "PASS",
+        "evidence": {
+          "query": {
+            "post_type": "tc_events",
+            "post__in": [
+              1463
+            ],
+            "orderby": "post__in",
+            "posts_per_page": 1
+          },
+          "event_title": "[QA][AUTOMATED] Task 7B 20261022-7b-qa-392bf965d38cde40 Event",
+          "people_ids": []
+        }
+      },
+      {
+        "id": "manual_mode_does_not_change_source_event",
+        "result": "PASS",
+        "evidence": {
+          "event_id": 1463
+        }
+      },
+      {
+        "id": "empty_source_event_returns_empty",
+        "result": "PASS",
+        "evidence": {
+          "query": {
+            "post_type": "tc_events",
+            "post__in": [
+              0
+            ],
+            "orderby": "post__in",
+            "posts_per_page": 1
+          }
+        }
+      },
+      {
+        "id": "malformed_array_source_event_returns_empty",
+        "result": "PASS",
+        "evidence": {
+          "query": {
+            "post_type": "tc_events",
+            "post__in": [
+              0
+            ],
+            "orderby": "post__in",
+            "posts_per_page": 1
+          }
+        }
+      },
+      {
+        "id": "malformed_multi_source_event_returns_empty",
+        "result": "PASS",
+        "evidence": {
+          "query": {
+            "post_type": "tc_events",
+            "post__in": [
+              0
+            ],
+            "orderby": "post__in",
+            "posts_per_page": 1
+          }
+        }
+      },
+      {
+        "id": "malformed_scalar_source_event_returns_empty",
+        "result": "PASS",
+        "evidence": {
+          "rejected_values": [
+            "zero",
+            "negative",
+            "leading_whitespace",
+            "trailing_whitespace",
+            "object"
+          ]
+        }
+      },
+      {
+        "id": "missing_source_event_returns_empty",
+        "result": "PASS",
+        "evidence": {
+          "query": {
+            "post_type": "tc_events",
+            "post__in": [
+              0
+            ],
+            "orderby": "post__in",
+            "posts_per_page": 1
+          }
+        }
+      },
+      {
+        "id": "wrong_post_type_source_event_returns_empty",
+        "result": "PASS",
+        "evidence": {
+          "query": {
+            "post_type": "tc_events",
+            "post__in": [
+              0
+            ],
+            "orderby": "post__in",
+            "posts_per_page": 1
+          },
+          "wrong_type_id": 1470
+        }
+      },
+      {
+        "id": "trashed_source_event_returns_empty",
+        "result": "PASS",
+        "evidence": {
+          "query": {
+            "post_type": "tc_events",
+            "post__in": [
+              0
+            ]
+          },
+          "event_restored": false
+        }
+      },
+      {
+        "id": "acf_path_is_used",
+        "result": "PASS",
+        "evidence": {
+          "acf_load_value_filter_fired": true
+        }
+      },
+      {
+        "id": "_event_name_is_unchanged_and_irrelevant",
+        "result": "PASS",
+        "evidence": {
+          "event_name_before": [],
+          "event_name_after": []
+        }
+      },
+      {
+        "id": "acf_unavailable_fails_closed",
+        "result": "PASS",
+        "evidence": {
+          "people": {
+            "post_type": "person",
+            "post_status": "publish",
+            "post__in": [
+              0
+            ],
+            "orderby": "post__in",
+            "posts_per_page": -1
+          },
+          "event": {
+            "post_type": "tc_events",
+            "post__in": [
+              0
+            ],
+            "orderby": "post__in",
+            "posts_per_page": 1
+          }
+        }
+      },
+      {
+        "id": "product_person_card_uses_canonical_person_data",
+        "result": "PASS",
+        "evidence": {
+          "card_id": "dc8611",
+          "card_sha256": "4875f5962dd18b6cc66270cb62aa7030bd71c5704edf024b04db1348f74e8a33",
+          "loop_query": {
+            "post_type": "person",
+            "post_status": "publish",
+            "post__in": [
+              1466,
+              1465,
+              1467
+            ],
+            "orderby": "post__in",
+            "posts_per_page": -1
+          },
+          "person_order": [
+            1466,
+            1465,
+            1467
+          ],
+          "profile_http_status": 200
+        }
+      },
+      {
+        "id": "manual_product_person_card_preserves_order",
+        "result": "PASS",
+        "evidence": {
+          "person_order": [
+            1467,
+            1465
+          ]
+        }
+      }
+    ],
+    "owned_ids": {
+      "product": 1470,
+      "events": [
+        1463
+      ],
+      "persons": [
+        1465,
+        1466,
+        1467,
+        1468,
+        1469
+      ],
+      "participations": [
+        1471,
+        1472,
+        1473,
+        1474
+      ]
+    },
+    "frontend": {
+      "unconfigured_product": {
+        "status": 200,
+        "url": "http://localhost:10039/winkel/qaautomated-task-7b-20261022-7b-qa-392bf965d38cde40-product/"
+      },
+      "manual_empty_product": {
+        "status": 200,
+        "url": "http://localhost:10039/winkel/qaautomated-task-7b-20261022-7b-qa-392bf965d38cde40-product/"
+      },
+      "event_empty_product": {
+        "status": 200,
+        "url": "http://localhost:10039/winkel/qaautomated-task-7b-20261022-7b-qa-392bf965d38cde40-product/",
+        "source_event_title": "[QA][AUTOMATED] Task 7B 20261022-7b-qa-392bf965d38cde40 Event"
+      },
+      "empty_people_source_event": {
+        "status": 200,
+        "url": "http://localhost:10039/winkel/qaautomated-task-7b-20261022-7b-qa-392bf965d38cde40-product/"
+      },
+      "canonical_person": {
+        "status": 200,
+        "url": "http://localhost:10039/mense/qaautomated-task-7b-20261022-7b-qa-392bf965d38cde40-task-7b-person-b/"
+      },
+      "event_product": {
+        "status": 200,
+        "url": "http://localhost:10039/winkel/qaautomated-task-7b-20261022-7b-qa-392bf965d38cde40-product/",
+        "person_order": [
+          1466,
+          1465,
+          1467
+        ]
+      },
+      "manual_product": {
+        "status": 200,
+        "url": "http://localhost:10039/winkel/qaautomated-task-7b-20261022-7b-qa-392bf965d38cde40-product/",
+        "person_order": [
+          1467,
+          1465
+        ]
+      }
+    },
+    "authenticated_identity": {
+      "user_id": 1,
+      "manage_woocommerce": true,
+      "http_status": 200,
+      "auth_scheme": "Basic",
+      "sandbox_directory_entries_before_request": [
+        ".htaccess",
+        "index.html",
+        "vg-r1-route-10039-20261022-7f24c1a9.jsonl",
+        "vg-seed-dummy-content.php.quarantined",
+        "web.config",
+        "wp-cli-jobs"
+      ]
+    },
+    "event_name_before_after": {
+      "before": [],
+      "after": []
+    },
+    "cleanup": {
+      "owned_residue": {
+        "posts": 0,
+        "meta_rows": 0,
+        "term_relationships": 0
+      },
+      "token_present_after_cleanup": false,
+      "current_token_scan": {
+        "posts": 0,
+        "postmeta": 0,
+        "options": 0,
+        "terms": 0,
+        "termmeta": 0
+      },
+      "person_count_before": 0,
+      "person_count_after": 0,
+      "event_participation_count_before": 0,
+      "event_participation_count_after": 0,
+      "post_type_counts_equal": true,
+      "protected_state_equal": true,
+      "coming_soon_before": {
+        "woocommerce_coming_soon": "yes",
+        "woocommerce_store_pages_only": "yes"
+      },
+      "coming_soon_after": {
+        "woocommerce_coming_soon": "yes",
+        "woocommerce_store_pages_only": "yes"
+      },
+      "coming_soon_unchanged": true,
+      "sandbox_before": [
+        ".htaccess",
+        "index.html",
+        "vg-r1-route-10039-20261022-7f24c1a9.jsonl",
+        "vg-seed-dummy-content.php.quarantined",
+        "web.config",
+        "wp-cli-jobs"
+      ],
+      "sandbox_after": [
+        ".htaccess",
+        "index.html",
+        "vg-r1-route-10039-20261022-7f24c1a9.jsonl",
+        "vg-seed-dummy-content.php.quarantined",
+        "web.config",
+        "wp-cli-jobs"
+      ],
+      "sandbox_unchanged": true,
+      "tickera_side_effects": {
+        "deleted": [
+          1464
+        ],
+        "unexplained": [],
+        "failures": []
+      },
+      "failures": []
+    }
+  },
+  "verification": {
+    "source_test_suites": [
+      {
+        "name": "Product People",
+        "passed": 101,
+        "exit_code": 0
+      },
+      {
+        "name": "Event Participation",
+        "passed": 65,
+        "exit_code": 0
+      },
+      {
+        "name": "Event Participation Bricks",
+        "passed": 12,
+        "exit_code": 0
+      },
+      {
+        "name": "Event Role Seeder",
+        "passed": 13,
+        "exit_code": 0
+      },
+      {
+        "name": "Content Topic",
+        "passed": 67,
+        "exit_code": 0
+      },
+      {
+        "name": "Person Foundation",
+        "passed": 10,
+        "exit_code": 0
+      }
+    ],
+    "reported_suite_passes": 268,
+    "php_lint": "PASS",
+    "git_diff_check": "PASS",
+    "final_runtime_read_port": 10039,
+    "final_runtime_token_residue_counts": {
+      "posts": 0,
+      "postmeta": 0,
+      "options": 0,
+      "terms": 0,
+      "termmeta": 0
+    }
+  },
+  "historical_superseded_runs": [
+    {
+      "run_token": "20261022-7b-qa-2fbc2f50739c45ba",
+      "result": "FAIL",
+      "reason": "Product Person Card canonical permalink assertion failed because the rendered link was empty.",
+      "cleanup": "PASS",
+      "completion_evidence": false
+    },
+    {
+      "run_token": "20261022-7b-qa-ff607b304a80ea90",
+      "result": "FAIL",
+      "reason": "Product Person Card canonical permalink assertion failed because the rendered link was empty.",
+      "cleanup": "PASS",
+      "completion_evidence": false
+    },
+    {
+      "run_token": null,
+      "result": "FAIL",
+      "reason": "Isolated subprocess used PHP-FPM without libtidy; no QA completion claim relies on this attempt.",
+      "cleanup": "PASS",
+      "completion_evidence": false
+    }
+  ]
+}
