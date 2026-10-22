@@ -110,14 +110,16 @@ setup failure boundary has a standalone regression check at
 Created-record ownership and failure-safe cleanup have focused regressions at
 `site-code/runtime-tests/tests/run-event-participation-qa-cleanup-tests.php`.
 
-## Product People foundation
+## Product People foundation and Bricks adapters
 
-The Task 7A Product People foundation lives in `includes/Product/`:
+The Task 7A Product People foundation and Task 7B Bricks adapters live in `includes/Product/`:
 
 - `ProductPeopleFields` owns the PHP-local ACF fields `product_people_mode` (`event` or `manual`, blank allowed, no default) and `product_people_override` (ordered `person` relationship, shown only in manual mode). It does not own `produk_bron_event` or `produk_medewerkers`.
 - `ProductPeopleResolver` is the read-only canonical Product → Person authority. It resolves Event-derived People through `EventParticipationRepository` or manual People from `product_people_override`, keeps only published Persons, and returns `[]` when the mode is absent, empty, or invalid. It never reads `produk_medewerkers` and never writes.
+- `ProductPeopleBricks` adapts only the exact `vg-product-people-query` and `vg-product-people-section` markers. It delegates membership to `ProductPeopleResolver`, preserves its order in the Person query, and hides an empty frontend section while keeping it editable in builder contexts.
+- `ProductSourceEventBricks` adapts only the exact `vg-product-source-event-query` marker. It independently reads and validates `produk_bron_event`; it does not call `ProductPeopleResolver` or inspect Product People mode or WooCommerce's `_event_name`.
 
-No Product consumer has migrated yet. Product Single 124 and the legacy Product relationship helpers remain unchanged until the separate consumer-cutover task.
+The Product People and source-Event adapters are separate authorities: a Product may display its source Event while its Product People section is empty. Runtime Template 124 migration remains separate from source deployment. Apply the additive Product lines in `integration.patch` and deploy both adapter files before enabling the matching Bricks markers.
 
 Run the focused checks with:
 
