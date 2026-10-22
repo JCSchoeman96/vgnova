@@ -1,6 +1,6 @@
 # Person consumer decommission readiness audit
 
-Status: in progress. This is a read-only runtime audit. No migration, consumer cutover, or cleanup is authorized by this audit.
+Status: COMPLETE_WITH_RUNTIME_VOLATILITY_DISCLOSURE. The audit found no protected architectural mutation. No migration, consumer cutover, cleanup, or runtime write is authorized by this audit.
 
 ## Execution baseline and ruling
 
@@ -36,11 +36,11 @@ The audit records current consumers and dependencies for the `medewerker` implem
 
 These rulings remain fixed during Task 7C. New evidence may be reported, but a ruling change needs separate review. Architecture dependency does not grant migration authority.
 
-## Evidence and zero-write method
+## Evidence and protected-state method
 
 External sanitized evidence is stored outside the repository at `/tmp/task-7c-audit-abde5c-20261022/`. The directory contains text or data files only. `baseline.txt` records the execution ruling. `source-hashes.txt` records the repository source baseline, tracked paths, and pre-runtime SHA-256 values. Runtime identity, pre-audit fingerprints, runtime evidence, post-audit fingerprints, and access limits will be recorded in separate files there. No credentials or unnecessary personal field values will be stored.
 
-Runtime inspection will use read-only Novamira operations where available. Any database evidence will use SELECT-only reads and value hashes for options. Runtime files will be read or hashed without writes. No editor screen or control that can save or auto-sync will be used. The same method will produce pre- and post-audit fingerprints. Missing or inaccessible evidence will be reported as an access limitation, not as proof of zero callers.
+Runtime inspection used read-only Novamira operations where available. Database snapshots used SELECT-only reads and value hashes. Runtime files were read or hashed without writes. No editor screen or save-capable control was used. The initial method also hashed the full `wp_options` table. Task 10 found that digest includes volatile runtime state, so it is not a standalone zero-write gate. Protected architectural fingerprints remain hard gates; option writes are accounted for separately from the retained binlog. Missing or inaccessible evidence is reported as an access limitation, not as proof of zero callers.
 
 The only runtime in scope is `http://localhost:10039/`, expected at `/home/jcschoeman96/Local Sites/voelgoed-novamira/app/public/`. No substantive runtime query may run until `ABSPATH`, `home_url`, actual request/runtime port, and database name plus server identity positively identify that installation.
 
@@ -82,7 +82,7 @@ Pre-audit runtime file hashes are in `/tmp/task-7c-audit-abde5c-20261022/runtime
 
 No `.crashed` marker, `task-7c` file, or trace-named file existed under the runtime root at baseline. The external evidence directory contained only non-executable text files. WP-CLI's Local PHP configuration emitted an Imagick shared-library warning, but read-only option reads succeeded. The system PATH lacked `mysql`; the Local MySQL 8.0.35 client and expected socket were used for all SQL fingerprints.
 
-The full pre-audit counts, digests, per-object hashes, field relationship IDs, runtime file hashes, and artifact inventory are in `/tmp/task-7c-audit-abde5c-20261022/`. No runtime write has been issued. The post-audit comparison remains pending Task 10.
+The full pre-audit counts, digests, per-object hashes, field relationship IDs, runtime file hashes, and artifact inventory are in `/tmp/task-7c-audit-abde5c-20261022/`. The audit made no explicit runtime write call. Task 10 accounts separately for runtime option writes and the protected architectural state comparison.
 
 ## Fresh consumer findings
 
@@ -226,7 +226,7 @@ Each row receives one approved current-state classification. These are readiness
 | Template 772 reverse Products | Template 772 loop vgms33, helper mode medewerker_products; writer 9-acf-product-copy.php | Tasks 3–5; runtime Template 772, ACF values, and snippet 9 | Reads reverse Product links; snippet 9 writes produk_medewerkers on Product save | BLOCKED_BY_RELATIONSHIP_MODEL | A current supported reverse Product flow exists, but canonical Product People has no reverse Product API or safe derivation contract. | Approve a separate canonical reverse Product architecture and consumer requirement before changing any field, helper, or writer. | Product Single 124 did not render in the public route check; its stored query markers remain unverified in a coming-soon response. | The known Product edges remain EXCLUDE. The active requirement does not authorize migrating them. |
 | Template 772 classification and taxonomy presentation | Template 772 elements vgms09 and vgms10 | Tasks 3 and 6; active role/group taxonomy definitions and five profile assignments | Reads global role and group terms | BLOCKED_BY_RELATIONSHIP_MODEL | Role terms mix persistent profile classifications with contextual Event, episode, and editorial roles. Group semantics also need review. | Approve the split between persistent person_type values and relationship-specific roles or programme membership. | No access limitation for current term reads. | All five role assignments and all five group assignments remain DEFER. Do not copy terms mechanically. |
 | Template 772 route and canonical dependency | Template 772 condition for medewerker; /medewerkers/{slug}/ | Tasks 3 and 6 route GETs; ACF routes; zero Person records | Reads current medewerker context and post URL | BLOCKED_BY_PERSON_DATA | The equivalent /mense/{profile-753}/ route returns 404. There is no persistent target Person ID or exact approved route mapping. | Approve profile identity/provenance, create an authorized target Person in a separate task, and verify its exact route. | /mense/ returns an empty archive response without a canonical link or h1. | No protected profile may be copied or redirected in Task 7C. |
-| Profiles 753–757 and their values | Templates 772 and 773; component 6b463f; current public routes | Tasks 2, 3, 5, and 6; pre/post fingerprint pending Task 10 | Current legacy profile records and fields are read-only inputs | BLOCKED_BY_PERSON_DATA | No canonical Person record exists, and the five migration rulings are DEFER. | Separate approved identity/provenance decisions and explicit per-record migration authority. | No access limitation for read-only profile values; unnecessary field text was not recorded. | Keep all five DEFER rulings unchanged. |
+| Profiles 753–757 and their values | Templates 772 and 773; component 6b463f; current public routes | Tasks 2, 3, 5, and 6; matching pre/post protected fingerprints | Current legacy profile records and fields are read-only inputs | BLOCKED_BY_PERSON_DATA | No canonical Person record exists, and the five migration rulings are DEFER. | Separate approved identity/provenance decisions and explicit per-record migration authority. | No access limitation for read-only profile values; unnecessary field text was not recorded. | Keep all five DEFER rulings unchanged. |
 | medewerker_titel | Template 772 vgms07; component 6b463f in Templates 773 and 1127 | Task 6 ACF schema and Bricks reads | Read-only display field | RETIRE_PENDING_DEPENDENCY | Current legacy templates read it. Canonical Person has person_professional_title, but data migration is not authorized. | Replace all approved consumers and complete any later field mapping before field removal. | No profile text was stored in evidence. | The value on profile 753 remains under its DEFER ruling. |
 | medewerker_kort_bio | Template 772 vgms08; component 6b463f in Templates 773 and 1127 | Task 6 ACF schema and Bricks reads | Read-only display field | RETIRE_PENDING_DEPENDENCY | Current legacy templates read it. The current Person group has no corresponding short-bio field. | Approve a canonical summary mapping and replace all consumers before field removal. | No profile text was stored in evidence. | The five current values are not approved for migration. |
 | medewerker_profiel_status | ACF editor field; no active Bricks or code reader found | Task 6 ACF schema, values, and dynamic-tag search | Editor-managed status; no active runtime read found | KEEP_LEGACY | The current profile workflow still exposes this status field, and no canonical status mapping is approved. | Review the field in a separately approved Person editorial workflow. | No access limitation for read-only values. | All five current values are public; this does not change the DEFER rulings. |
@@ -266,7 +266,7 @@ The earliest safe point to break the Product copy chain is after a separate cano
 
 ## Task 8 evidence documents and inventory reconciliation
 
-The current-state snapshot records the verified execution baseline and 10039 runtime identity, current Person and Event Participation counts, current callers, source/runtime parity, fixed profile and edge rulings, route state, and unresolved access limits. Its zero-write statement remains provisional until Task 10 repeats the fingerprints. The external pre-state and runtime evidence references are retained outside Git.
+The current-state snapshot records the verified execution baseline and 10039 runtime identity, current Person and Event Participation counts, current callers, source/runtime parity, fixed profile and edge rulings, route state, and unresolved access limits. Task 10 confirms that protected architectural fingerprints match and documents volatile option writes separately. The external pre-state and runtime evidence references remain outside Git.
 
 The inventory now reflects the fresh post-Task-7B state: Template 124's canonical Product People and source Event adapters; the three active `6b463f` instances and absence from Template 124; all six helper modes and their actual callers; the Template 772 reverse Product copy chain; current `/medewerkers/` and `/mense/` route responses; and the active demo-page callers of `4d1dd4`. Historical Task 7A inventory state is marked as historical and points to the current Template 124 row. The existing CSV columns were preserved.
 
@@ -284,24 +284,1829 @@ After that decision, Template 772's reverse Product cutover and any retirement o
 
 Before implementation, the architecture spec must receive separate review and approval. It must define the required reverse Product read/editor behavior, relationship authority and provenance expectations, and how Product source Event presentation stays independent. Task 7C does not select a storage or synchronization mechanism, and this recommendation authorizes no runtime or repository code change. No other next unit is recommended here.
 
-## Zero-write closeout and validation
+## Task 10 closeout and validation
 
-### Task 10 stop result
+### Initial Task 10 stop
 
-At 2026-10-22 12:03 UTC, the identity check still identified the authorized runtime: `ABSPATH=/home/jcschoeman96/Local Sites/voelgoed-novamira/app/public/`, `home_url=http://localhost:10039`, actual HTTP port 10039, database `local`, server `jc-kubuntu:10038`, UUID `028fe7c9-3720-11f1-8cb0-a8a159280deb`, MySQL 8.0.35. VGNova `core/get-site-info`, WP-CLI config reads, a direct GET, and a SELECT-only database identity query agreed.
+At 2026-10-22 12:03 UTC, the first Task 10 closeout reused the saved 10039 identity evidence and compared the saved pre/post database fingerprints. The protected post, postmeta, and term-relationship fingerprints matched. The full wp_options digest differed, so execution stopped before repository validation, commit, push, or PR creation. That stop followed the original plan. The reviewer later ruled that the whole-table options digest is not a valid standalone gate because normal WordPress bootstraps change volatile options.
 
-The same single-SELECT InnoDB fingerprint method found exact pre/post matches for `wp_posts` (761 rows), `wp_postmeta` (3,928), `wp_term_relationships` (160), `wp_terms` (396), and `wp_term_taxonomy` (396). Protected object fingerprints also match: 14 posts, 97 postmeta rows, and 10 term relationship rows covering Profiles 753–757, Event 763, Products 765/767/768, and Templates 772/773/774/124/1127. The five protected profiles and five protected relationship edges are unchanged. No `person` or `event_participation` post exists, and the unchanged postmeta fingerprint confirms no Product People configuration was created.
+No cleanup or restoration was attempted. The pre-state and post-state fingerprint files remain unchanged. Task 7C resumed at Task 10 only.
 
-The full options fingerprint differs. `wp_options` changed from 1,198 rows and SHA-256 `27cc25362cae7d279e45f07ade79965176f9a3885b17d5835827867f24aeb6e1` to 1,202 rows and SHA-256 `cb12b7e70225d35620589a4042430baf573aaaac555e5a4c166ab54c25d22a66`. The saved option-subset hashes identify four added option keys and one changed value hash:
+### Reviewer-approved protected-state gate
 
-| Option | Pre-audit | Post-audit |
-|---|---|---|
-| `acf_pro_license` | Absent | `3b6f443efd05294b1a4ed304f5f88f57392557bd2ae87f55da69dc50b9ae30ca` |
-| `acf_pro_license_status` | Absent | `67e33f57619a0c13f1c501266c89f7de804d76ab7b0d705348cc605b5ba3aafd` |
-| `bricks_license_key` | Absent | `feff649e59f8d57aa41815ccc9be85753babba1e04601396d592498a3356ebe6` |
-| `fs_accounts` | Absent | `34ac1b4f85dcda44df3dd91385c2ef07e56ea984c19c4210a90abbd430017129` |
-| `fs_api_cache` | `a7499511da6f54647011c76ae3beb68c687725f876f223a5b6434630eefcfc1b` | `36a9584cb6b6d9170050e1a688bae5981cba32593400c97e05fe3e8903b2e6d7` |
+The final identity check uses the existing post-state capture. It records ABSPATH=/home/jcschoeman96/Local Sites/voelgoed-novamira/app/public/, home_url=http://localhost:10039, actual HTTP port 10039, database local, database server jc-kubuntu:10038, UUID 028fe7c9-3720-11f1-8cb0-a8a159280deb, and MySQL 8.0.35. The active MySQL process on port 10038 uses the same data-directory UUID. No further HTTP request, WP-CLI command, Novamira call, or WordPress bootstrap was made.
 
-The `bricks_components` option hash and the captured Bricks, ACF, and Fluent option hashes not listed above match. The pre-audit artifact has no per-option baseline for keys outside those filtered subsets, so the aggregate options mismatch cannot be fully localized from the saved pre-state evidence. No raw option values were recorded. The audit issued no runtime write action, but the mismatch means zero writes cannot be proven. The cause is unknown, and no cleanup or restoration was attempted.
+The whole wp_options digest remains a volatility disclosure. The hard gate is exact equality for the protected architectural fingerprints:
 
-Following the approved stop rule, runtime inspection stopped at this mismatch. The post-audit artifact scan, final repository output-scope validation, CSV/Markdown validation, `git diff --check`, push, and PR creation were not performed. No PR was opened, no merge occurred, and the recommended next unit was not started. The post-state fingerprint is stored outside Git at `/tmp/task-7c-audit-abde5c-20261022/post-state-fingerprint.txt`; further closeout must wait for separate review of the options mismatch.
+| Protected state | Rows | Pre-audit SHA-256 | Post-audit SHA-256 | Result |
+|---|---:|---|---|---|
+| Protected posts | 14 | f27cfaa980a220bc2d2f45bec089fdaa066e65a4866d4fbca4865eac88df78b6 | f27cfaa980a220bc2d2f45bec089fdaa066e65a4866d4fbca4865eac88df78b6 | Match |
+| Protected postmeta and relationships | 97 | e89e262c28581190bf7935741692f63cfd5d8b14482808c6794bf9283cc3ddba | e89e262c28581190bf7935741692f63cfd5d8b14482808c6794bf9283cc3ddba | Match |
+| Protected term relationships | 10 | 2e4798f9166c750533ad3371eb8dced3dd84ea15e86b9ac01499e7ffb4052ad4 | 2e4798f9166c750533ad3371eb8dced3dd84ea15e86b9ac01499e7ffb4052ad4 | Match |
+| All posts | 761 | a7ff0eb5c9def20c100dfc7680e17ca4338203fdb7b8fead6fc3ff0dfd93bd47 | a7ff0eb5c9def20c100dfc7680e17ca4338203fdb7b8fead6fc3ff0dfd93bd47 | Match |
+| All postmeta | 3,928 | c582dd125fc4b6d9aacdf720b65bfbef7e5ff3614cb504c62465b8823e1588bb | c582dd125fc4b6d9aacdf720b65bfbef7e5ff3614cb504c62465b8823e1588bb | Match |
+| All term relationships | 160 | 676a5e974719590f8d2f70e8b484c3835507364661748f14f6dc1d24fb964736 | 676a5e974719590f8d2f70e8b484c3835507364661748f14f6dc1d24fb964736 | Match |
+| All terms | 396 | c3960c1bce6f0565021aeda4760ba7378169bf4cca1bd4c0bbac3745a9d26a18 | c3960c1bce6f0565021aeda4760ba7378169bf4cca1bd4c0bbac3745a9d26a18 | Match |
+| All term taxonomies | 396 | 0d3926719996eea230b3f253791965bd40a1078220b2de85e385370b16bccb61 | 0d3926719996eea230b3f253791965bd40a1078220b2de85e385370b16bccb61 | Match |
+
+The protected object fingerprints cover Profiles 753–757, Event 763, Products 765/767/768, Templates 772/773/774/124/1127, their relationship values, and associated term relationships. The five profile rulings remain DEFER, and all five protected Event/Product edges remain EXCLUDE. The Bricks component option hash for 6b463f is unchanged. The post and postmeta hashes include the relevant ACF definitions and FluentSnippets records. The Product People configuration remains absent. Pre/post counts for person and event_participation remain zero.
+
+No Task 7C protected architectural state mutation was found. The audit window contained background and volatile WordPress option writes documented below; attribution of the triggering request remains unresolved.
+
+### Forensic accounting of wp_options writes
+
+The full wp_options fingerprint changed from 1,198 rows with SHA-256 27cc25362cae7d279e45f07ade79965176f9a3885b17d5835827867f24aeb6e1 to 1,202 rows with SHA-256 cb12b7e70225d35620589a4042430baf573aaaac555e5a4c166ab54c25d22a66. The four-row increase came from two wp_theme_files_patterns transient rows and their two timeout rows, inserted at 13:24:53 SAST. The digest mismatch remains recorded but does not fail the protected-state gate.
+
+The retained row-based binary log binlog.000044 belongs to the saved database identity. Its source is the active MySQL data directory whose UUID matches the saved 10039 preflight record. mysqlbinlog 8.4.0 decoded it with row images for database local. The scan covered 12:45:00–14:10:00 SAST on 2026-10-22. The pre-state header has minute precision at 12:56 SAST; the post-state capture is 14:03:45 SAST. The conservative capture interval is 12:56:00–14:03:45. The broad scan had 2,090 wp_options row writes; 1,720 fell within the capture interval. No statement-based INSERT, UPDATE, REPLACE, or DELETE against wp_options was found.
+
+| Classification | Writes in capture interval |
+|---|---:|
+| transient/cache | 224 |
+| cron/scheduler/lock | 1,021 |
+| plugin licensing/account housekeeping | 204 |
+| plugin operational housekeeping | 271 |
+| Task 7C architectural/configuration state | 0 |
+| unknown | 0 |
+| Total | 1,720 |
+
+The in-window operation counts are 1,210 UPDATE, 257 INSERT, and 253 DELETE. The write times range from 13:01:36 to 14:01:17 SAST. The full sanitized per-write list follows. Each row records only timestamp, operation type, option name, classification, and whether it affects protected Task 7C state. No option values are included.
+
+<details>
+<summary>Complete sanitized wp_options write ledger, 1,720 row writes</summary>
+
+~~~text
+Timestamp SAST | Operation | Option name | Classification | Affects protected Task 7C architectural state
+--- | --- | --- | --- | ---
+2026-10-22 13:01:36 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:01:36 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:01:36 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:01:37 | INSERT | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:01:37 | INSERT | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:01:37 | DELETE | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:01:37 | DELETE | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:01:37 | INSERT | _transient_doing_cron | cron/scheduler/lock | no
+2026-10-22 13:01:37 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:01:37 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:01:37 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:01:37 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:01:37 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:01:37 | INSERT | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:01:37 | INSERT | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:01:37 | DELETE | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:01:37 | DELETE | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:01:37 | UPDATE | _fluentcrm_lock_minute_scheduler | cron/scheduler/lock | no
+2026-10-22 13:01:37 | UPDATE | _fcrm_last_scheduler | cron/scheduler/lock | no
+2026-10-22 13:01:37 | UPDATE | fluentcrm_is_sending_emails | cron/scheduler/lock | no
+2026-10-22 13:01:37 | UPDATE | fluentcrm_is_sending_emails | cron/scheduler/lock | no
+2026-10-22 13:01:37 | UPDATE | _fcrm_last_email_process_cleanup | cron/scheduler/lock | no
+2026-10-22 13:01:37 | UPDATE | _fc_funnel_processor_lock | cron/scheduler/lock | no
+2026-10-22 13:01:37 | UPDATE | _fc_last_funnel_processor_ran | cron/scheduler/lock | no
+2026-10-22 13:01:37 | UPDATE | _fc_funnel_processor_lock | cron/scheduler/lock | no
+2026-10-22 13:01:37 | UPDATE | _fluentcrm_lock_minute_scheduler | cron/scheduler/lock | no
+2026-10-22 13:01:37 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:01:37 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:01:37 | UPDATE | bricks_indexer_running | cron/scheduler/lock | no
+2026-10-22 13:01:37 | UPDATE | bricks_indexer_running | cron/scheduler/lock | no
+2026-10-22 13:01:37 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:01:37 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:01:37 | UPDATE | _fluentcrm_lock_five_minute_scheduler | cron/scheduler/lock | no
+2026-10-22 13:01:37 | UPDATE | _fcrm_last_five_minutes_run | cron/scheduler/lock | no
+2026-10-22 13:01:37 | UPDATE | _fluentcrm_lock_hourly_scheduler | cron/scheduler/lock | no
+2026-10-22 13:01:37 | UPDATE | _fluentcrm_lock_hourly_scheduler | cron/scheduler/lock | no
+2026-10-22 13:01:37 | UPDATE | _fluentcrm_lock_five_minute_scheduler | cron/scheduler/lock | no
+2026-10-22 13:01:37 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:01:37 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:01:37 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:01:37 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:01:37 | INSERT | _transient_timeout_vgmp_redemption_reservation_cleanup_lock | cron/scheduler/lock | no
+2026-10-22 13:01:37 | INSERT | _transient_vgmp_redemption_reservation_cleanup_lock | cron/scheduler/lock | no
+2026-10-22 13:01:37 | DELETE | _transient_vgmp_redemption_reservation_cleanup_lock | cron/scheduler/lock | no
+2026-10-22 13:01:37 | DELETE | _transient_timeout_vgmp_redemption_reservation_cleanup_lock | cron/scheduler/lock | no
+2026-10-22 13:01:37 | DELETE | _transient_doing_cron | cron/scheduler/lock | no
+2026-10-22 13:01:38 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:01:38 | INSERT | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:01:38 | INSERT | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:01:38 | DELETE | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:01:38 | DELETE | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:01:38 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:01:38 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:01:38 | INSERT | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:01:38 | INSERT | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:01:38 | DELETE | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:01:38 | DELETE | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:01:45 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:01:45 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:01:45 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:01:45 | INSERT | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:01:45 | INSERT | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:01:45 | DELETE | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:01:45 | DELETE | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:01:46 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:01:46 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:01:46 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:01:46 | INSERT | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:01:46 | INSERT | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:01:46 | DELETE | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:01:46 | DELETE | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:01:46 | INSERT | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:01:46 | INSERT | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:01:46 | DELETE | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:01:46 | DELETE | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:01:47 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:01:47 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:01:47 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:01:47 | INSERT | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:01:47 | INSERT | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:01:47 | DELETE | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:01:47 | DELETE | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:01:53 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:01:54 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:01:54 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:01:54 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:01:54 | INSERT | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:01:54 | INSERT | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:01:54 | DELETE | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:01:54 | DELETE | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:01:54 | INSERT | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:01:54 | INSERT | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:01:54 | DELETE | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:01:54 | DELETE | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:02:22 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:02:22 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:02:22 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:02:22 | INSERT | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:02:22 | INSERT | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:02:22 | DELETE | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:02:22 | DELETE | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:02:22 | INSERT | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:02:22 | INSERT | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:02:22 | DELETE | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:02:22 | DELETE | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:03:10 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:03:10 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:03:10 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:03:10 | INSERT | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:03:10 | INSERT | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:03:10 | DELETE | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:03:10 | DELETE | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:03:10 | INSERT | _transient_doing_cron | cron/scheduler/lock | no
+2026-10-22 13:03:11 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:03:11 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:03:11 | UPDATE | _fluentcrm_lock_minute_scheduler | cron/scheduler/lock | no
+2026-10-22 13:03:11 | UPDATE | _fcrm_last_scheduler | cron/scheduler/lock | no
+2026-10-22 13:03:11 | UPDATE | fluentcrm_is_sending_emails | cron/scheduler/lock | no
+2026-10-22 13:03:11 | UPDATE | fluentcrm_is_sending_emails | cron/scheduler/lock | no
+2026-10-22 13:03:11 | UPDATE | _fcrm_last_email_process_cleanup | cron/scheduler/lock | no
+2026-10-22 13:03:11 | UPDATE | _fc_funnel_processor_lock | cron/scheduler/lock | no
+2026-10-22 13:03:11 | UPDATE | _fc_last_funnel_processor_ran | cron/scheduler/lock | no
+2026-10-22 13:03:11 | UPDATE | _fc_funnel_processor_lock | cron/scheduler/lock | no
+2026-10-22 13:03:11 | UPDATE | _fluentcrm_lock_minute_scheduler | cron/scheduler/lock | no
+2026-10-22 13:03:11 | DELETE | _transient_doing_cron | cron/scheduler/lock | no
+2026-10-22 13:04:15 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:04:15 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:04:15 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:04:15 | INSERT | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:04:15 | INSERT | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:04:15 | DELETE | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:04:15 | DELETE | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:04:15 | INSERT | _transient_doing_cron | cron/scheduler/lock | no
+2026-10-22 13:04:15 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:04:15 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:04:15 | UPDATE | _fluentcrm_lock_minute_scheduler | cron/scheduler/lock | no
+2026-10-22 13:04:15 | UPDATE | _fcrm_last_scheduler | cron/scheduler/lock | no
+2026-10-22 13:04:15 | UPDATE | fluentcrm_is_sending_emails | cron/scheduler/lock | no
+2026-10-22 13:04:15 | UPDATE | fluentcrm_is_sending_emails | cron/scheduler/lock | no
+2026-10-22 13:04:15 | UPDATE | _fc_funnel_processor_lock | cron/scheduler/lock | no
+2026-10-22 13:04:15 | UPDATE | _fc_last_funnel_processor_ran | cron/scheduler/lock | no
+2026-10-22 13:04:15 | UPDATE | _fc_funnel_processor_lock | cron/scheduler/lock | no
+2026-10-22 13:04:15 | UPDATE | _fluentcrm_lock_minute_scheduler | cron/scheduler/lock | no
+2026-10-22 13:04:15 | DELETE | _transient_doing_cron | cron/scheduler/lock | no
+2026-10-22 13:05:08 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:05:08 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:05:08 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:05:09 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:05:09 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:05:09 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:05:09 | INSERT | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:05:09 | INSERT | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:05:09 | DELETE | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:05:09 | DELETE | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:05:09 | INSERT | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:05:09 | INSERT | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:05:09 | DELETE | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:05:09 | DELETE | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:05:09 | INSERT | _transient_doing_cron | cron/scheduler/lock | no
+2026-10-22 13:05:09 | INSERT | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:05:09 | INSERT | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:05:09 | DELETE | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:05:09 | DELETE | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:05:09 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:05:09 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:05:10 | DELETE | _transient_doing_cron | cron/scheduler/lock | no
+2026-10-22 13:05:30 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:05:30 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:05:30 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:05:30 | INSERT | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:05:30 | INSERT | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:05:30 | DELETE | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:05:30 | DELETE | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:05:31 | INSERT | _transient_doing_cron | cron/scheduler/lock | no
+2026-10-22 13:05:31 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:05:31 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:05:31 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:05:31 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:05:31 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:05:31 | INSERT | _transient_timeout_vgmp_runtime_status_batch_lock | cron/scheduler/lock | no
+2026-10-22 13:05:31 | INSERT | _transient_vgmp_runtime_status_batch_lock | cron/scheduler/lock | no
+2026-10-22 13:05:31 | DELETE | _transient_vgmp_runtime_status_batch_lock | cron/scheduler/lock | no
+2026-10-22 13:05:31 | DELETE | _transient_timeout_vgmp_runtime_status_batch_lock | cron/scheduler/lock | no
+2026-10-22 13:05:31 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:05:31 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:05:31 | UPDATE | _fluentcrm_lock_minute_scheduler | cron/scheduler/lock | no
+2026-10-22 13:05:31 | UPDATE | _fcrm_last_scheduler | cron/scheduler/lock | no
+2026-10-22 13:05:31 | UPDATE | fluentcrm_is_sending_emails | cron/scheduler/lock | no
+2026-10-22 13:05:31 | UPDATE | fluentcrm_is_sending_emails | cron/scheduler/lock | no
+2026-10-22 13:05:31 | UPDATE | _fcrm_last_email_process_cleanup | cron/scheduler/lock | no
+2026-10-22 13:05:31 | UPDATE | _fc_funnel_processor_lock | cron/scheduler/lock | no
+2026-10-22 13:05:31 | UPDATE | _fc_last_funnel_processor_ran | cron/scheduler/lock | no
+2026-10-22 13:05:31 | UPDATE | _fc_funnel_processor_lock | cron/scheduler/lock | no
+2026-10-22 13:05:31 | UPDATE | _fluentcrm_lock_minute_scheduler | cron/scheduler/lock | no
+2026-10-22 13:05:31 | DELETE | _transient_doing_cron | cron/scheduler/lock | no
+2026-10-22 13:05:36 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:05:36 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:05:36 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:05:36 | INSERT | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:05:36 | INSERT | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:05:36 | DELETE | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:05:36 | DELETE | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:05:55 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:05:55 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:05:55 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:05:55 | INSERT | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:05:55 | INSERT | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:05:55 | DELETE | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:05:55 | DELETE | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:05:55 | INSERT | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:05:55 | INSERT | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:05:55 | DELETE | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:05:55 | DELETE | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:05:55 | INSERT | _transient_doing_cron | cron/scheduler/lock | no
+2026-10-22 13:05:55 | INSERT | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:05:55 | INSERT | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:05:55 | DELETE | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:05:55 | DELETE | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:05:56 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:05:56 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:05:56 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:05:56 | INSERT | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:05:56 | INSERT | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:05:56 | DELETE | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:05:56 | DELETE | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:05:56 | INSERT | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:05:56 | INSERT | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:05:56 | DELETE | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:05:56 | DELETE | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:05:56 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:05:56 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:05:56 | UPDATE | bricks_indexer_running | cron/scheduler/lock | no
+2026-10-22 13:05:56 | UPDATE | bricks_indexer_running | cron/scheduler/lock | no
+2026-10-22 13:05:56 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:05:56 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:05:56 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:05:56 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:05:56 | UPDATE | _fluentcrm_lock_five_minute_scheduler | cron/scheduler/lock | no
+2026-10-22 13:05:56 | UPDATE | _fcrm_last_five_minutes_run | cron/scheduler/lock | no
+2026-10-22 13:05:56 | UPDATE | _fc_funnel_processor_lock | cron/scheduler/lock | no
+2026-10-22 13:05:56 | UPDATE | _fc_last_funnel_processor_ran | cron/scheduler/lock | no
+2026-10-22 13:05:56 | UPDATE | _fc_funnel_processor_lock | cron/scheduler/lock | no
+2026-10-22 13:05:56 | UPDATE | _fluentcrm_lock_hourly_scheduler | cron/scheduler/lock | no
+2026-10-22 13:05:56 | UPDATE | _fluentcrm_lock_hourly_scheduler | cron/scheduler/lock | no
+2026-10-22 13:05:56 | UPDATE | _fluentcrm_lock_five_minute_scheduler | cron/scheduler/lock | no
+2026-10-22 13:05:56 | DELETE | _transient_doing_cron | cron/scheduler/lock | no
+2026-10-22 13:06:03 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:06:03 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:06:03 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:06:03 | INSERT | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:06:03 | INSERT | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:06:03 | DELETE | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:06:03 | DELETE | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:06:04 | INSERT | _transient_doing_cron | cron/scheduler/lock | no
+2026-10-22 13:06:04 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:06:04 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:06:04 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:06:04 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:06:04 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:06:04 | DELETE | _transient_doing_cron | cron/scheduler/lock | no
+2026-10-22 13:06:33 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:06:33 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:06:33 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:06:33 | INSERT | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:06:33 | INSERT | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:06:33 | DELETE | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:06:33 | DELETE | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:06:33 | INSERT | _transient_doing_cron | cron/scheduler/lock | no
+2026-10-22 13:06:33 | UPDATE | _transient_doing_cron | cron/scheduler/lock | no
+2026-10-22 13:06:34 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:06:34 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:06:34 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:06:34 | INSERT | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:06:34 | INSERT | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:06:35 | DELETE | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:06:35 | DELETE | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:06:35 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:06:35 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:06:35 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:06:35 | INSERT | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:06:35 | INSERT | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:06:35 | DELETE | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:06:35 | DELETE | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:06:35 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:06:35 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:06:35 | UPDATE | _fluentcrm_lock_minute_scheduler | cron/scheduler/lock | no
+2026-10-22 13:06:35 | UPDATE | _fcrm_last_scheduler | cron/scheduler/lock | no
+2026-10-22 13:06:35 | UPDATE | fluentcrm_is_sending_emails | cron/scheduler/lock | no
+2026-10-22 13:06:35 | UPDATE | fluentcrm_is_sending_emails | cron/scheduler/lock | no
+2026-10-22 13:06:35 | UPDATE | _fc_funnel_processor_lock | cron/scheduler/lock | no
+2026-10-22 13:06:35 | UPDATE | _fc_last_funnel_processor_ran | cron/scheduler/lock | no
+2026-10-22 13:06:35 | UPDATE | _fc_funnel_processor_lock | cron/scheduler/lock | no
+2026-10-22 13:06:35 | UPDATE | _fluentcrm_lock_minute_scheduler | cron/scheduler/lock | no
+2026-10-22 13:06:35 | DELETE | _transient_doing_cron | cron/scheduler/lock | no
+2026-10-22 13:06:51 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:06:51 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:06:51 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:06:51 | INSERT | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:06:51 | INSERT | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:06:51 | DELETE | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:06:51 | DELETE | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:07:05 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:07:05 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:07:05 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:07:05 | INSERT | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:07:05 | INSERT | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:07:05 | DELETE | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:07:05 | DELETE | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:07:05 | INSERT | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:07:05 | INSERT | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:07:05 | DELETE | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:07:05 | DELETE | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:07:14 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:07:14 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:07:14 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:07:14 | INSERT | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:07:14 | INSERT | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:07:14 | DELETE | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:07:14 | DELETE | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:07:14 | INSERT | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:07:14 | INSERT | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:07:14 | DELETE | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:07:14 | DELETE | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:07:55 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:07:55 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:07:55 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:07:55 | INSERT | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:07:55 | INSERT | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:07:55 | DELETE | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:07:55 | DELETE | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:07:55 | INSERT | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:07:55 | INSERT | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:07:55 | DELETE | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:07:55 | DELETE | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:07:55 | INSERT | _transient_doing_cron | cron/scheduler/lock | no
+2026-10-22 13:07:55 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:07:55 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:07:55 | UPDATE | _fluentcrm_lock_minute_scheduler | cron/scheduler/lock | no
+2026-10-22 13:07:55 | UPDATE | _fcrm_last_scheduler | cron/scheduler/lock | no
+2026-10-22 13:07:55 | UPDATE | fluentcrm_is_sending_emails | cron/scheduler/lock | no
+2026-10-22 13:07:55 | UPDATE | fluentcrm_is_sending_emails | cron/scheduler/lock | no
+2026-10-22 13:07:55 | UPDATE | _fc_funnel_processor_lock | cron/scheduler/lock | no
+2026-10-22 13:07:55 | UPDATE | _fc_last_funnel_processor_ran | cron/scheduler/lock | no
+2026-10-22 13:07:55 | UPDATE | _fc_funnel_processor_lock | cron/scheduler/lock | no
+2026-10-22 13:07:55 | UPDATE | _fluentcrm_lock_minute_scheduler | cron/scheduler/lock | no
+2026-10-22 13:07:55 | DELETE | _transient_doing_cron | cron/scheduler/lock | no
+2026-10-22 13:08:13 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:08:13 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:08:13 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:08:13 | INSERT | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:08:13 | INSERT | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:08:13 | DELETE | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:08:13 | DELETE | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:08:22 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:08:22 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:08:22 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:08:23 | INSERT | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:08:23 | INSERT | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:08:23 | DELETE | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:08:23 | DELETE | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:09:09 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:09:09 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:09:09 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:09:09 | INSERT | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:09:09 | INSERT | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:09:09 | DELETE | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:09:09 | DELETE | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:09:09 | INSERT | _transient_doing_cron | cron/scheduler/lock | no
+2026-10-22 13:09:09 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:09:09 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:09:09 | UPDATE | _fluentcrm_lock_minute_scheduler | cron/scheduler/lock | no
+2026-10-22 13:09:09 | UPDATE | _fcrm_last_scheduler | cron/scheduler/lock | no
+2026-10-22 13:09:09 | UPDATE | fluentcrm_is_sending_emails | cron/scheduler/lock | no
+2026-10-22 13:09:10 | UPDATE | fluentcrm_is_sending_emails | cron/scheduler/lock | no
+2026-10-22 13:09:10 | UPDATE | _fcrm_last_email_process_cleanup | cron/scheduler/lock | no
+2026-10-22 13:09:10 | UPDATE | _fc_funnel_processor_lock | cron/scheduler/lock | no
+2026-10-22 13:09:10 | UPDATE | _fc_last_funnel_processor_ran | cron/scheduler/lock | no
+2026-10-22 13:09:10 | UPDATE | _fc_funnel_processor_lock | cron/scheduler/lock | no
+2026-10-22 13:09:10 | UPDATE | _fluentcrm_lock_minute_scheduler | cron/scheduler/lock | no
+2026-10-22 13:09:10 | DELETE | _transient_doing_cron | cron/scheduler/lock | no
+2026-10-22 13:10:49 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:10:49 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:10:49 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:10:50 | INSERT | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:10:50 | INSERT | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:10:50 | DELETE | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:10:50 | DELETE | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:10:50 | INSERT | _transient_doing_cron | cron/scheduler/lock | no
+2026-10-22 13:10:50 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:10:50 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:10:50 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:10:50 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:10:50 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:10:50 | DELETE | _transient_as_is_ensure_recurring_actions_scheduled | cron/scheduler/lock | no
+2026-10-22 13:10:50 | DELETE | _transient_timeout_as_is_ensure_recurring_actions_scheduled | cron/scheduler/lock | no
+2026-10-22 13:10:50 | INSERT | _transient_timeout_as_is_ensure_recurring_actions_scheduled | cron/scheduler/lock | no
+2026-10-22 13:10:50 | INSERT | _transient_as_is_ensure_recurring_actions_scheduled | cron/scheduler/lock | no
+2026-10-22 13:10:50 | INSERT | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:10:50 | INSERT | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:10:50 | DELETE | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:10:50 | DELETE | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:10:50 | UPDATE | _fluentcrm_lock_minute_scheduler | cron/scheduler/lock | no
+2026-10-22 13:10:50 | UPDATE | _fcrm_last_scheduler | cron/scheduler/lock | no
+2026-10-22 13:10:50 | UPDATE | fluentcrm_is_sending_emails | cron/scheduler/lock | no
+2026-10-22 13:10:50 | UPDATE | fluentcrm_is_sending_emails | cron/scheduler/lock | no
+2026-10-22 13:10:50 | UPDATE | _fc_funnel_processor_lock | cron/scheduler/lock | no
+2026-10-22 13:10:50 | UPDATE | _fc_last_funnel_processor_ran | cron/scheduler/lock | no
+2026-10-22 13:10:50 | UPDATE | _fc_funnel_processor_lock | cron/scheduler/lock | no
+2026-10-22 13:10:50 | UPDATE | _fluentcrm_lock_minute_scheduler | cron/scheduler/lock | no
+2026-10-22 13:10:50 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:10:50 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:10:50 | UPDATE | bricks_indexer_running | cron/scheduler/lock | no
+2026-10-22 13:10:50 | UPDATE | bricks_indexer_running | cron/scheduler/lock | no
+2026-10-22 13:10:50 | DELETE | _transient_doing_cron | cron/scheduler/lock | no
+2026-10-22 13:10:57 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:10:57 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:10:57 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:10:57 | INSERT | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:10:57 | INSERT | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:10:57 | DELETE | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:10:57 | DELETE | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:10:57 | INSERT | _transient_doing_cron | cron/scheduler/lock | no
+2026-10-22 13:10:57 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:10:57 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:10:57 | UPDATE | _fluentcrm_lock_five_minute_scheduler | cron/scheduler/lock | no
+2026-10-22 13:10:57 | UPDATE | _fcrm_last_five_minutes_run | cron/scheduler/lock | no
+2026-10-22 13:10:57 | UPDATE | _fc_funnel_processor_lock | cron/scheduler/lock | no
+2026-10-22 13:10:57 | UPDATE | _fc_last_funnel_processor_ran | cron/scheduler/lock | no
+2026-10-22 13:10:58 | UPDATE | _fc_funnel_processor_lock | cron/scheduler/lock | no
+2026-10-22 13:10:58 | UPDATE | _fluentcrm_lock_hourly_scheduler | cron/scheduler/lock | no
+2026-10-22 13:10:58 | UPDATE | _fluentcrm_lock_hourly_scheduler | cron/scheduler/lock | no
+2026-10-22 13:10:58 | UPDATE | _fluentcrm_lock_five_minute_scheduler | cron/scheduler/lock | no
+2026-10-22 13:10:58 | DELETE | _transient_doing_cron | cron/scheduler/lock | no
+2026-10-22 13:11:01 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:11:01 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:11:01 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:11:01 | INSERT | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:11:01 | INSERT | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:11:01 | DELETE | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:11:01 | DELETE | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:11:06 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:11:06 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:11:06 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:11:06 | INSERT | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:11:06 | INSERT | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:11:06 | DELETE | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:11:06 | DELETE | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:11:06 | INSERT | _transient_doing_cron | cron/scheduler/lock | no
+2026-10-22 13:11:07 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:11:07 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:11:07 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:11:07 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:11:07 | DELETE | _transient_doing_cron | cron/scheduler/lock | no
+2026-10-22 13:11:12 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:11:12 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:11:12 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:11:12 | INSERT | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:11:12 | INSERT | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:11:12 | DELETE | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:11:12 | DELETE | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:11:18 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:11:18 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:11:18 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:11:18 | INSERT | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:11:18 | INSERT | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:11:18 | DELETE | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:11:18 | DELETE | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:11:21 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:11:21 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:11:21 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:11:21 | UPDATE | novamira_mcp_last_request | plugin operational housekeeping | no
+2026-10-22 13:11:22 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:11:22 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:11:22 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:11:31 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:11:31 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:11:31 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:11:31 | INSERT | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:11:31 | INSERT | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:11:31 | DELETE | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:11:31 | DELETE | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:11:31 | INSERT | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:11:31 | INSERT | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:11:31 | DELETE | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:11:31 | DELETE | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:11:31 | INSERT | _transient_doing_cron | cron/scheduler/lock | no
+2026-10-22 13:11:32 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:11:32 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:11:32 | INSERT | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:11:32 | INSERT | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:11:32 | DELETE | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:11:32 | DELETE | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:11:32 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:11:32 | INSERT | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:11:32 | INSERT | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:11:32 | DELETE | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:11:32 | DELETE | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:11:33 | INSERT | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:11:33 | INSERT | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:11:33 | DELETE | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:11:33 | DELETE | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:11:33 | INSERT | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:11:33 | INSERT | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:11:33 | DELETE | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:11:33 | DELETE | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:11:33 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:11:33 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:11:33 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:11:33 | INSERT | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:11:33 | INSERT | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:11:33 | DELETE | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:11:33 | DELETE | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:11:33 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:11:33 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:11:33 | DELETE | _transient_doing_cron | cron/scheduler/lock | no
+2026-10-22 13:12:42 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:12:42 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:12:42 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:12:42 | INSERT | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:12:42 | INSERT | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:12:42 | DELETE | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:12:42 | DELETE | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:12:43 | INSERT | _transient_doing_cron | cron/scheduler/lock | no
+2026-10-22 13:12:43 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:12:43 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:12:43 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:12:43 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:12:43 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:12:43 | UPDATE | _fluentcrm_lock_minute_scheduler | cron/scheduler/lock | no
+2026-10-22 13:12:43 | UPDATE | _fcrm_last_scheduler | cron/scheduler/lock | no
+2026-10-22 13:12:43 | UPDATE | fluentcrm_is_sending_emails | cron/scheduler/lock | no
+2026-10-22 13:12:43 | UPDATE | fluentcrm_is_sending_emails | cron/scheduler/lock | no
+2026-10-22 13:12:43 | UPDATE | _fcrm_last_email_process_cleanup | cron/scheduler/lock | no
+2026-10-22 13:12:43 | UPDATE | _fc_funnel_processor_lock | cron/scheduler/lock | no
+2026-10-22 13:12:43 | UPDATE | _fc_last_funnel_processor_ran | cron/scheduler/lock | no
+2026-10-22 13:12:43 | UPDATE | _fc_funnel_processor_lock | cron/scheduler/lock | no
+2026-10-22 13:12:43 | UPDATE | _fluentcrm_lock_minute_scheduler | cron/scheduler/lock | no
+2026-10-22 13:12:43 | DELETE | _transient_doing_cron | cron/scheduler/lock | no
+2026-10-22 13:12:58 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:12:58 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:12:58 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:12:58 | INSERT | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:12:58 | INSERT | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:12:58 | DELETE | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:12:58 | DELETE | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:12:59 | INSERT | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:12:59 | INSERT | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:12:59 | DELETE | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:12:59 | DELETE | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:13:11 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:13:11 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:13:11 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:13:11 | INSERT | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:13:11 | INSERT | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:13:11 | DELETE | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:13:11 | DELETE | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:13:11 | INSERT | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:13:11 | INSERT | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:13:11 | DELETE | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:13:11 | DELETE | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:13:12 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:13:12 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:13:12 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:13:12 | INSERT | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:13:12 | INSERT | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:13:12 | DELETE | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:13:12 | DELETE | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:13:13 | INSERT | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:13:13 | INSERT | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:13:13 | DELETE | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:13:13 | DELETE | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:13:17 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:13:17 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:13:17 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:13:17 | INSERT | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:13:17 | INSERT | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:13:17 | DELETE | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:13:17 | DELETE | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:13:18 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:13:18 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:13:18 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:13:18 | INSERT | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:13:18 | INSERT | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:13:18 | DELETE | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:13:18 | DELETE | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:13:18 | INSERT | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:13:18 | INSERT | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:13:18 | DELETE | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:13:18 | DELETE | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:13:19 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:13:19 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:13:19 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:13:19 | INSERT | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:13:19 | INSERT | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:13:19 | DELETE | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:13:19 | DELETE | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:13:54 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:13:54 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:13:54 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:13:54 | INSERT | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:13:54 | INSERT | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:13:54 | DELETE | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:13:54 | DELETE | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:13:54 | INSERT | _transient_doing_cron | cron/scheduler/lock | no
+2026-10-22 13:13:54 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:13:54 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:13:54 | UPDATE | _fluentcrm_lock_minute_scheduler | cron/scheduler/lock | no
+2026-10-22 13:13:54 | INSERT | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:13:54 | UPDATE | _fcrm_last_scheduler | cron/scheduler/lock | no
+2026-10-22 13:13:54 | INSERT | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:13:54 | UPDATE | fluentcrm_is_sending_emails | cron/scheduler/lock | no
+2026-10-22 13:13:54 | DELETE | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:13:54 | DELETE | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:13:54 | UPDATE | fluentcrm_is_sending_emails | cron/scheduler/lock | no
+2026-10-22 13:13:54 | UPDATE | _fc_funnel_processor_lock | cron/scheduler/lock | no
+2026-10-22 13:13:54 | UPDATE | _fc_last_funnel_processor_ran | cron/scheduler/lock | no
+2026-10-22 13:13:54 | UPDATE | _fc_funnel_processor_lock | cron/scheduler/lock | no
+2026-10-22 13:13:54 | UPDATE | _fluentcrm_lock_minute_scheduler | cron/scheduler/lock | no
+2026-10-22 13:13:54 | DELETE | _transient_doing_cron | cron/scheduler/lock | no
+2026-10-22 13:13:55 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:13:55 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:13:55 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:13:55 | INSERT | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:13:55 | INSERT | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:13:55 | DELETE | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:13:55 | DELETE | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:13:56 | INSERT | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:13:56 | INSERT | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:13:56 | DELETE | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:13:56 | DELETE | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:16:01 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:16:01 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:16:01 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:16:01 | UPDATE | novamira_mcp_last_request | plugin operational housekeeping | no
+2026-10-22 13:16:01 | INSERT | _transient_doing_cron | cron/scheduler/lock | no
+2026-10-22 13:16:01 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:16:01 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:16:01 | UPDATE | _fluentcrm_lock_minute_scheduler | cron/scheduler/lock | no
+2026-10-22 13:16:01 | UPDATE | _fcrm_last_scheduler | cron/scheduler/lock | no
+2026-10-22 13:16:01 | UPDATE | fluentcrm_is_sending_emails | cron/scheduler/lock | no
+2026-10-22 13:16:01 | UPDATE | fluentcrm_is_sending_emails | cron/scheduler/lock | no
+2026-10-22 13:16:01 | UPDATE | _fc_funnel_processor_lock | cron/scheduler/lock | no
+2026-10-22 13:16:01 | UPDATE | _fc_last_funnel_processor_ran | cron/scheduler/lock | no
+2026-10-22 13:16:01 | UPDATE | _fc_funnel_processor_lock | cron/scheduler/lock | no
+2026-10-22 13:16:01 | UPDATE | _fluentcrm_lock_minute_scheduler | cron/scheduler/lock | no
+2026-10-22 13:16:02 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:16:02 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:16:02 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:16:02 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:16:02 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:16:02 | INSERT | _transient_timeout_vgmp_redemption_reservation_cleanup_lock | cron/scheduler/lock | no
+2026-10-22 13:16:02 | INSERT | _transient_vgmp_redemption_reservation_cleanup_lock | cron/scheduler/lock | no
+2026-10-22 13:16:02 | DELETE | _transient_vgmp_redemption_reservation_cleanup_lock | cron/scheduler/lock | no
+2026-10-22 13:16:02 | DELETE | _transient_timeout_vgmp_redemption_reservation_cleanup_lock | cron/scheduler/lock | no
+2026-10-22 13:16:02 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:16:02 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:16:02 | UPDATE | bricks_indexer_running | cron/scheduler/lock | no
+2026-10-22 13:16:02 | UPDATE | bricks_indexer_running | cron/scheduler/lock | no
+2026-10-22 13:16:02 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:16:02 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:16:02 | UPDATE | _fluentcrm_lock_five_minute_scheduler | cron/scheduler/lock | no
+2026-10-22 13:16:02 | UPDATE | _fcrm_last_five_minutes_run | cron/scheduler/lock | no
+2026-10-22 13:16:02 | UPDATE | _fluentcrm_lock_hourly_scheduler | cron/scheduler/lock | no
+2026-10-22 13:16:02 | UPDATE | _fluentcrm_lock_hourly_scheduler | cron/scheduler/lock | no
+2026-10-22 13:16:02 | UPDATE | _fluentcrm_lock_five_minute_scheduler | cron/scheduler/lock | no
+2026-10-22 13:16:02 | DELETE | _transient_doing_cron | cron/scheduler/lock | no
+2026-10-22 13:16:03 | INSERT | _transient_doing_cron | cron/scheduler/lock | no
+2026-10-22 13:16:03 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:16:03 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:16:03 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:16:03 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:16:03 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:16:03 | DELETE | _transient_doing_cron | cron/scheduler/lock | no
+2026-10-22 13:17:04 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:17:04 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:17:04 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:17:04 | INSERT | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:17:04 | INSERT | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:17:04 | DELETE | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:17:04 | DELETE | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:17:05 | INSERT | _transient_doing_cron | cron/scheduler/lock | no
+2026-10-22 13:17:05 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:17:05 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:17:05 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:17:05 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:17:05 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:17:05 | UPDATE | _fluentcrm_lock_minute_scheduler | cron/scheduler/lock | no
+2026-10-22 13:17:05 | UPDATE | _fcrm_last_scheduler | cron/scheduler/lock | no
+2026-10-22 13:17:05 | UPDATE | fluentcrm_is_sending_emails | cron/scheduler/lock | no
+2026-10-22 13:17:05 | UPDATE | fluentcrm_is_sending_emails | cron/scheduler/lock | no
+2026-10-22 13:17:05 | UPDATE | _fcrm_last_email_process_cleanup | cron/scheduler/lock | no
+2026-10-22 13:17:05 | UPDATE | _fc_funnel_processor_lock | cron/scheduler/lock | no
+2026-10-22 13:17:05 | UPDATE | _fc_last_funnel_processor_ran | cron/scheduler/lock | no
+2026-10-22 13:17:05 | UPDATE | _fc_funnel_processor_lock | cron/scheduler/lock | no
+2026-10-22 13:17:05 | UPDATE | _fluentcrm_lock_minute_scheduler | cron/scheduler/lock | no
+2026-10-22 13:17:05 | DELETE | _transient_doing_cron | cron/scheduler/lock | no
+2026-10-22 13:19:42 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:19:42 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:19:42 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:19:43 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:19:43 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:19:43 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:19:43 | INSERT | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:19:43 | INSERT | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:19:43 | DELETE | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:19:43 | DELETE | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:19:43 | INSERT | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:19:43 | INSERT | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:19:43 | DELETE | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:19:43 | DELETE | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:19:43 | INSERT | _transient_doing_cron | cron/scheduler/lock | no
+2026-10-22 13:19:43 | INSERT | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:19:43 | INSERT | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:19:43 | DELETE | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:19:43 | DELETE | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:19:44 | INSERT | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:19:44 | INSERT | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:19:44 | DELETE | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:19:44 | DELETE | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:19:44 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:19:44 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:19:44 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:19:44 | INSERT | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:19:44 | INSERT | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:19:44 | DELETE | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:19:44 | DELETE | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:19:44 | INSERT | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:19:44 | INSERT | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:19:44 | DELETE | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:19:44 | DELETE | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:19:44 | INSERT | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:19:44 | INSERT | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:19:44 | DELETE | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:19:44 | DELETE | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:19:45 | INSERT | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:19:45 | INSERT | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:19:45 | DELETE | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:19:45 | DELETE | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:19:45 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:19:45 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:19:45 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:19:45 | INSERT | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:19:45 | INSERT | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:19:45 | DELETE | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:19:45 | DELETE | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:19:45 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:19:45 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:19:45 | UPDATE | _fluentcrm_lock_minute_scheduler | cron/scheduler/lock | no
+2026-10-22 13:19:45 | UPDATE | _fcrm_last_scheduler | cron/scheduler/lock | no
+2026-10-22 13:19:45 | UPDATE | fluentcrm_is_sending_emails | cron/scheduler/lock | no
+2026-10-22 13:19:45 | UPDATE | fluentcrm_is_sending_emails | cron/scheduler/lock | no
+2026-10-22 13:19:45 | UPDATE | _fcrm_last_email_process_cleanup | cron/scheduler/lock | no
+2026-10-22 13:19:45 | UPDATE | _fc_funnel_processor_lock | cron/scheduler/lock | no
+2026-10-22 13:19:45 | UPDATE | _fc_last_funnel_processor_ran | cron/scheduler/lock | no
+2026-10-22 13:19:45 | UPDATE | _fc_funnel_processor_lock | cron/scheduler/lock | no
+2026-10-22 13:19:45 | UPDATE | _fluentcrm_lock_minute_scheduler | cron/scheduler/lock | no
+2026-10-22 13:19:45 | DELETE | _transient_doing_cron | cron/scheduler/lock | no
+2026-10-22 13:19:45 | INSERT | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:19:45 | INSERT | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:19:45 | DELETE | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:19:45 | DELETE | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:19:45 | INSERT | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:19:45 | INSERT | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:19:45 | DELETE | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:19:45 | DELETE | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:19:46 | INSERT | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:19:46 | INSERT | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:19:46 | DELETE | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:19:46 | DELETE | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:19:46 | INSERT | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:19:46 | INSERT | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:19:46 | DELETE | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:19:46 | DELETE | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:19:46 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:19:46 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:19:46 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:19:46 | INSERT | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:19:46 | INSERT | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:19:46 | DELETE | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:19:46 | DELETE | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:19:46 | INSERT | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:19:46 | INSERT | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:19:46 | DELETE | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:19:46 | DELETE | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:19:46 | INSERT | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:19:46 | INSERT | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:19:46 | DELETE | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:19:46 | DELETE | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:19:46 | INSERT | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:19:46 | INSERT | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:19:46 | DELETE | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:19:46 | DELETE | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:19:47 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:19:47 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:19:47 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:19:47 | INSERT | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:19:47 | INSERT | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:19:47 | DELETE | _transient_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:19:47 | DELETE | _transient_timeout_automaticcss_database_upgrade_lock | cron/scheduler/lock | no
+2026-10-22 13:20:35 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:20:35 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:20:35 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:20:35 | UPDATE | novamira_mcp_last_request | plugin operational housekeeping | no
+2026-10-22 13:20:35 | INSERT | _transient_doing_cron | cron/scheduler/lock | no
+2026-10-22 13:20:35 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:20:35 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:20:35 | INSERT | _transient_timeout_vgmp_runtime_status_batch_lock | cron/scheduler/lock | no
+2026-10-22 13:20:35 | INSERT | _transient_vgmp_runtime_status_batch_lock | cron/scheduler/lock | no
+2026-10-22 13:20:35 | DELETE | _transient_vgmp_runtime_status_batch_lock | cron/scheduler/lock | no
+2026-10-22 13:20:35 | DELETE | _transient_timeout_vgmp_runtime_status_batch_lock | cron/scheduler/lock | no
+2026-10-22 13:20:35 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:20:35 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:20:35 | DELETE | _transient_doing_cron | cron/scheduler/lock | no
+2026-10-22 13:23:56 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:23:56 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:23:56 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:23:56 | UPDATE | pmpro_visits | plugin operational housekeeping | no
+2026-10-22 13:23:56 | UPDATE | pmpro_views | plugin operational housekeeping | no
+2026-10-22 13:23:56 | INSERT | _transient_doing_cron | cron/scheduler/lock | no
+2026-10-22 13:23:56 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:23:56 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:23:56 | UPDATE | bricks_indexer_running | cron/scheduler/lock | no
+2026-10-22 13:23:56 | UPDATE | bricks_indexer_running | cron/scheduler/lock | no
+2026-10-22 13:23:56 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:23:56 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:23:56 | UPDATE | _fluentcrm_lock_five_minute_scheduler | cron/scheduler/lock | no
+2026-10-22 13:23:56 | UPDATE | _fcrm_last_five_minutes_run | cron/scheduler/lock | no
+2026-10-22 13:23:56 | UPDATE | _fc_funnel_processor_lock | cron/scheduler/lock | no
+2026-10-22 13:23:56 | UPDATE | _fc_last_funnel_processor_ran | cron/scheduler/lock | no
+2026-10-22 13:23:57 | UPDATE | _fc_funnel_processor_lock | cron/scheduler/lock | no
+2026-10-22 13:23:57 | UPDATE | _fluentcrm_lock_hourly_scheduler | cron/scheduler/lock | no
+2026-10-22 13:23:57 | UPDATE | _fluentcrm_lock_hourly_scheduler | cron/scheduler/lock | no
+2026-10-22 13:23:57 | UPDATE | _fluentcrm_lock_five_minute_scheduler | cron/scheduler/lock | no
+2026-10-22 13:23:57 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:23:57 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:23:57 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:23:57 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:23:57 | UPDATE | _fluentcrm_lock_minute_scheduler | cron/scheduler/lock | no
+2026-10-22 13:23:57 | UPDATE | _fcrm_last_scheduler | cron/scheduler/lock | no
+2026-10-22 13:23:57 | UPDATE | fluentcrm_is_sending_emails | cron/scheduler/lock | no
+2026-10-22 13:23:57 | UPDATE | fluentcrm_is_sending_emails | cron/scheduler/lock | no
+2026-10-22 13:23:57 | UPDATE | _fluentcrm_lock_minute_scheduler | cron/scheduler/lock | no
+2026-10-22 13:23:57 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:23:57 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:23:57 | UPDATE | fs_accounts | plugin licensing/account housekeeping | no
+2026-10-22 13:23:57 | UPDATE | fs_accounts | plugin licensing/account housekeeping | no
+2026-10-22 13:23:57 | UPDATE | fs_accounts | plugin licensing/account housekeeping | no
+2026-10-22 13:23:59 | UPDATE | fs_api_cache | plugin licensing/account housekeeping | no
+2026-10-22 13:24:01 | UPDATE | fs_api_cache | plugin licensing/account housekeeping | no
+2026-10-22 13:24:02 | UPDATE | fs_api_cache | plugin licensing/account housekeeping | no
+2026-10-22 13:24:04 | UPDATE | fs_accounts | plugin licensing/account housekeeping | no
+2026-10-22 13:24:04 | DELETE | _transient_doing_cron | cron/scheduler/lock | no
+2026-10-22 13:24:31 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:24:31 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:24:31 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:24:31 | UPDATE | pmpro_visits | plugin operational housekeeping | no
+2026-10-22 13:24:31 | UPDATE | pmpro_views | plugin operational housekeeping | no
+2026-10-22 13:24:31 | INSERT | _transient_doing_cron | cron/scheduler/lock | no
+2026-10-22 13:24:31 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:24:31 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:24:31 | DELETE | _transient_doing_cron | cron/scheduler/lock | no
+2026-10-22 13:24:52 | UPDATE | acf_pro_license | plugin licensing/account housekeeping | no
+2026-10-22 13:24:52 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:24:53 | UPDATE | automatic_css_generated_inventory | plugin operational housekeeping | no
+2026-10-22 13:24:53 | INSERT | _site_transient_timeout_wp_theme_files_patterns-0f4b92cb7c48d54feb765374a51ce6b6 | transient/cache | no
+2026-10-22 13:24:53 | INSERT | _site_transient_wp_theme_files_patterns-0f4b92cb7c48d54feb765374a51ce6b6 | transient/cache | no
+2026-10-22 13:24:53 | INSERT | _site_transient_timeout_wp_theme_files_patterns-8519a50e2e18bd05e68a0dfe762bc948 | transient/cache | no
+2026-10-22 13:24:53 | INSERT | _site_transient_wp_theme_files_patterns-8519a50e2e18bd05e68a0dfe762bc948 | transient/cache | no
+2026-10-22 13:24:53 | UPDATE | _transient_jetpack_autoloader_plugin_paths | transient/cache | no
+2026-10-22 13:24:59 | UPDATE | acf_pro_license | plugin licensing/account housekeeping | no
+2026-10-22 13:24:59 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:24:59 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:24:59 | UPDATE | automatic_css_generated_inventory | plugin operational housekeeping | no
+2026-10-22 13:24:59 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:25:00 | UPDATE | pmpro_views | plugin operational housekeeping | no
+2026-10-22 13:25:00 | UPDATE | _transient_jetpack_autoloader_plugin_paths | transient/cache | no
+2026-10-22 13:25:06 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:25:06 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:25:06 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:25:06 | UPDATE | pmpro_visits | plugin operational housekeeping | no
+2026-10-22 13:25:06 | UPDATE | pmpro_views | plugin operational housekeeping | no
+2026-10-22 13:25:49 | UPDATE | acf_pro_license | plugin licensing/account housekeeping | no
+2026-10-22 13:25:49 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:25:49 | UPDATE | automatic_css_generated_inventory | plugin operational housekeeping | no
+2026-10-22 13:25:49 | UPDATE | _transient_jetpack_autoloader_plugin_paths | transient/cache | no
+2026-10-22 13:25:49 | INSERT | _transient_doing_cron | cron/scheduler/lock | no
+2026-10-22 13:25:49 | UPDATE | acf_pro_license | plugin licensing/account housekeeping | no
+2026-10-22 13:25:49 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:25:49 | UPDATE | automatic_css_generated_inventory | plugin operational housekeeping | no
+2026-10-22 13:25:49 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:25:49 | DELETE | _site_transient_wp_theme_files_patterns-00a082e825adedd84468f69e7ff6d5e7 | transient/cache | no
+2026-10-22 13:25:49 | DELETE | _site_transient_timeout_wp_theme_files_patterns-00a082e825adedd84468f69e7ff6d5e7 | transient/cache | no
+2026-10-22 13:25:49 | INSERT | _site_transient_timeout_wp_theme_files_patterns-00a082e825adedd84468f69e7ff6d5e7 | transient/cache | no
+2026-10-22 13:25:49 | INSERT | _site_transient_wp_theme_files_patterns-00a082e825adedd84468f69e7ff6d5e7 | transient/cache | no
+2026-10-22 13:25:49 | DELETE | _site_transient_wp_theme_files_patterns-31a4822cca43c06bedc5c50f6a061ff9 | transient/cache | no
+2026-10-22 13:25:49 | DELETE | _site_transient_timeout_wp_theme_files_patterns-31a4822cca43c06bedc5c50f6a061ff9 | transient/cache | no
+2026-10-22 13:25:49 | INSERT | _site_transient_timeout_wp_theme_files_patterns-31a4822cca43c06bedc5c50f6a061ff9 | transient/cache | no
+2026-10-22 13:25:49 | INSERT | _site_transient_wp_theme_files_patterns-31a4822cca43c06bedc5c50f6a061ff9 | transient/cache | no
+2026-10-22 13:25:49 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:25:49 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:25:49 | UPDATE | _fluentcrm_lock_minute_scheduler | cron/scheduler/lock | no
+2026-10-22 13:25:49 | UPDATE | _fcrm_last_scheduler | cron/scheduler/lock | no
+2026-10-22 13:25:49 | UPDATE | fluentcrm_is_sending_emails | cron/scheduler/lock | no
+2026-10-22 13:25:49 | UPDATE | fluentcrm_is_sending_emails | cron/scheduler/lock | no
+2026-10-22 13:25:49 | UPDATE | _fcrm_last_email_process_cleanup | cron/scheduler/lock | no
+2026-10-22 13:25:49 | UPDATE | _fc_funnel_processor_lock | cron/scheduler/lock | no
+2026-10-22 13:25:49 | UPDATE | _fc_last_funnel_processor_ran | cron/scheduler/lock | no
+2026-10-22 13:25:49 | UPDATE | _fc_funnel_processor_lock | cron/scheduler/lock | no
+2026-10-22 13:25:49 | UPDATE | _fluentcrm_lock_minute_scheduler | cron/scheduler/lock | no
+2026-10-22 13:25:49 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:25:49 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:25:49 | UPDATE | bricks_indexer_running | cron/scheduler/lock | no
+2026-10-22 13:25:49 | UPDATE | bricks_indexer_running | cron/scheduler/lock | no
+2026-10-22 13:25:49 | DELETE | _transient_doing_cron | cron/scheduler/lock | no
+2026-10-22 13:25:49 | UPDATE | _transient_jetpack_autoloader_plugin_paths | transient/cache | no
+2026-10-22 13:26:18 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:26:18 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:26:18 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:26:18 | UPDATE | novamira_mcp_last_request | plugin operational housekeeping | no
+2026-10-22 13:26:18 | INSERT | _transient_doing_cron | cron/scheduler/lock | no
+2026-10-22 13:26:19 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:26:19 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:26:19 | UPDATE | _fluentcrm_lock_five_minute_scheduler | cron/scheduler/lock | no
+2026-10-22 13:26:19 | UPDATE | _fcrm_last_five_minutes_run | cron/scheduler/lock | no
+2026-10-22 13:26:19 | UPDATE | _fc_funnel_processor_lock | cron/scheduler/lock | no
+2026-10-22 13:26:19 | UPDATE | _fc_last_funnel_processor_ran | cron/scheduler/lock | no
+2026-10-22 13:26:19 | UPDATE | _fc_funnel_processor_lock | cron/scheduler/lock | no
+2026-10-22 13:26:19 | UPDATE | _fluentcrm_lock_hourly_scheduler | cron/scheduler/lock | no
+2026-10-22 13:26:19 | UPDATE | _fluentcrm_lock_hourly_scheduler | cron/scheduler/lock | no
+2026-10-22 13:26:19 | UPDATE | _fluentcrm_lock_five_minute_scheduler | cron/scheduler/lock | no
+2026-10-22 13:26:19 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:26:19 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:26:19 | DELETE | _transient_doing_cron | cron/scheduler/lock | no
+2026-10-22 13:26:19 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:26:19 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:26:19 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:27:06 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:27:07 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:27:07 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:27:07 | INSERT | _transient_doing_cron | cron/scheduler/lock | no
+2026-10-22 13:27:07 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:27:07 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:27:07 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:27:07 | UPDATE | _fluentcrm_lock_minute_scheduler | cron/scheduler/lock | no
+2026-10-22 13:27:07 | UPDATE | _fcrm_last_scheduler | cron/scheduler/lock | no
+2026-10-22 13:27:07 | UPDATE | fluentcrm_is_sending_emails | cron/scheduler/lock | no
+2026-10-22 13:27:07 | UPDATE | fluentcrm_is_sending_emails | cron/scheduler/lock | no
+2026-10-22 13:27:07 | UPDATE | _fc_funnel_processor_lock | cron/scheduler/lock | no
+2026-10-22 13:27:07 | UPDATE | _fc_last_funnel_processor_ran | cron/scheduler/lock | no
+2026-10-22 13:27:07 | UPDATE | _fc_funnel_processor_lock | cron/scheduler/lock | no
+2026-10-22 13:27:07 | UPDATE | _fluentcrm_lock_minute_scheduler | cron/scheduler/lock | no
+2026-10-22 13:27:07 | DELETE | _transient_doing_cron | cron/scheduler/lock | no
+2026-10-22 13:27:13 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:27:13 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:27:13 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:27:14 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:27:14 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:27:14 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:27:20 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:27:21 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:27:21 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:27:21 | UPDATE | novamira_mcp_last_request | plugin operational housekeeping | no
+2026-10-22 13:27:33 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:27:33 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:27:33 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:27:33 | INSERT | _transient_doing_cron | cron/scheduler/lock | no
+2026-10-22 13:27:34 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:27:34 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:27:34 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:27:34 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:27:34 | DELETE | _transient_doing_cron | cron/scheduler/lock | no
+2026-10-22 13:27:34 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:27:35 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:27:35 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:27:36 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:27:36 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:27:36 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:28:26 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:28:26 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:28:26 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:28:26 | UPDATE | novamira_mcp_last_request | plugin operational housekeeping | no
+2026-10-22 13:28:27 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:28:27 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:28:27 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:28:39 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:28:39 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:28:39 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:28:39 | INSERT | _transient_doing_cron | cron/scheduler/lock | no
+2026-10-22 13:28:40 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:28:40 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:28:40 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:28:40 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:28:40 | UPDATE | _fluentcrm_lock_minute_scheduler | cron/scheduler/lock | no
+2026-10-22 13:28:40 | UPDATE | _fcrm_last_scheduler | cron/scheduler/lock | no
+2026-10-22 13:28:40 | UPDATE | fluentcrm_is_sending_emails | cron/scheduler/lock | no
+2026-10-22 13:28:40 | UPDATE | fluentcrm_is_sending_emails | cron/scheduler/lock | no
+2026-10-22 13:28:40 | UPDATE | _fc_funnel_processor_lock | cron/scheduler/lock | no
+2026-10-22 13:28:40 | UPDATE | _fc_last_funnel_processor_ran | cron/scheduler/lock | no
+2026-10-22 13:28:40 | UPDATE | _fc_funnel_processor_lock | cron/scheduler/lock | no
+2026-10-22 13:28:40 | UPDATE | _fluentcrm_lock_minute_scheduler | cron/scheduler/lock | no
+2026-10-22 13:28:40 | DELETE | _transient_doing_cron | cron/scheduler/lock | no
+2026-10-22 13:28:40 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:28:41 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:28:41 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:28:41 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:28:42 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:28:42 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:28:43 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:28:43 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:28:43 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:28:44 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:28:44 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:28:44 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:28:45 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:28:45 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:28:46 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:28:46 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:28:46 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:29:06 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:29:06 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:29:06 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:29:07 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:29:07 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:29:07 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:29:08 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:29:08 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:29:08 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:29:09 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:29:09 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:29:09 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:29:10 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:29:10 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:29:10 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:29:11 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:29:11 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:29:11 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:29:12 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:29:12 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:29:12 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:29:13 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:29:13 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:29:13 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:29:14 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:29:14 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:29:14 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:29:15 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:29:15 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:29:15 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:29:45 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:29:45 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:29:45 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:29:45 | UPDATE | pmpro_visits | plugin operational housekeeping | no
+2026-10-22 13:29:45 | UPDATE | pmpro_views | plugin operational housekeeping | no
+2026-10-22 13:29:45 | INSERT | _transient_doing_cron | cron/scheduler/lock | no
+2026-10-22 13:29:45 | UPDATE | _transient_doing_cron | cron/scheduler/lock | no
+2026-10-22 13:29:46 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:29:46 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:29:46 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:29:46 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:29:46 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:29:46 | UPDATE | _fluentcrm_lock_minute_scheduler | cron/scheduler/lock | no
+2026-10-22 13:29:46 | UPDATE | _fcrm_last_scheduler | cron/scheduler/lock | no
+2026-10-22 13:29:46 | UPDATE | fluentcrm_is_sending_emails | cron/scheduler/lock | no
+2026-10-22 13:29:46 | UPDATE | fluentcrm_is_sending_emails | cron/scheduler/lock | no
+2026-10-22 13:29:46 | UPDATE | _fcrm_last_email_process_cleanup | cron/scheduler/lock | no
+2026-10-22 13:29:46 | UPDATE | _fc_funnel_processor_lock | cron/scheduler/lock | no
+2026-10-22 13:29:46 | UPDATE | _fc_last_funnel_processor_ran | cron/scheduler/lock | no
+2026-10-22 13:29:46 | UPDATE | _fc_funnel_processor_lock | cron/scheduler/lock | no
+2026-10-22 13:29:46 | UPDATE | _fluentcrm_lock_minute_scheduler | cron/scheduler/lock | no
+2026-10-22 13:29:46 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:29:46 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:29:46 | DELETE | _transient_doing_cron | cron/scheduler/lock | no
+2026-10-22 13:29:50 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:29:50 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:29:50 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:29:51 | UPDATE | pmpro_views | plugin operational housekeeping | no
+2026-10-22 13:29:51 | INSERT | _transient_doing_cron | cron/scheduler/lock | no
+2026-10-22 13:29:51 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:29:51 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:29:51 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:29:51 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:29:51 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:29:51 | INSERT | _transient_timeout_vgmp_redemption_reservation_cleanup_lock | cron/scheduler/lock | no
+2026-10-22 13:29:51 | INSERT | _transient_vgmp_redemption_reservation_cleanup_lock | cron/scheduler/lock | no
+2026-10-22 13:29:51 | DELETE | _transient_vgmp_redemption_reservation_cleanup_lock | cron/scheduler/lock | no
+2026-10-22 13:29:51 | DELETE | _transient_timeout_vgmp_redemption_reservation_cleanup_lock | cron/scheduler/lock | no
+2026-10-22 13:29:51 | DELETE | _transient_doing_cron | cron/scheduler/lock | no
+2026-10-22 13:29:59 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:30:00 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:30:00 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:30:00 | UPDATE | pmpro_views | plugin operational housekeeping | no
+2026-10-22 13:30:20 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:30:20 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:30:20 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:30:20 | UPDATE | novamira_mcp_last_request | plugin operational housekeeping | no
+2026-10-22 13:30:21 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:30:21 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:30:26 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:30:27 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:30:27 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:30:27 | UPDATE | pmpro_views | plugin operational housekeeping | no
+2026-10-22 13:31:21 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:31:21 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:31:21 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:31:21 | UPDATE | pmpro_visits | plugin operational housekeeping | no
+2026-10-22 13:31:21 | UPDATE | pmpro_views | plugin operational housekeeping | no
+2026-10-22 13:31:21 | INSERT | _transient_doing_cron | cron/scheduler/lock | no
+2026-10-22 13:31:21 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:31:21 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:31:21 | UPDATE | _fluentcrm_lock_minute_scheduler | cron/scheduler/lock | no
+2026-10-22 13:31:21 | UPDATE | _fcrm_last_scheduler | cron/scheduler/lock | no
+2026-10-22 13:31:21 | UPDATE | fluentcrm_is_sending_emails | cron/scheduler/lock | no
+2026-10-22 13:31:21 | UPDATE | fluentcrm_is_sending_emails | cron/scheduler/lock | no
+2026-10-22 13:31:21 | UPDATE | _fcrm_last_email_process_cleanup | cron/scheduler/lock | no
+2026-10-22 13:31:21 | UPDATE | _fc_funnel_processor_lock | cron/scheduler/lock | no
+2026-10-22 13:31:21 | UPDATE | _fc_last_funnel_processor_ran | cron/scheduler/lock | no
+2026-10-22 13:31:21 | UPDATE | _fc_funnel_processor_lock | cron/scheduler/lock | no
+2026-10-22 13:31:21 | UPDATE | _fluentcrm_lock_minute_scheduler | cron/scheduler/lock | no
+2026-10-22 13:31:21 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:31:21 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:31:21 | UPDATE | bricks_indexer_running | cron/scheduler/lock | no
+2026-10-22 13:31:21 | UPDATE | bricks_indexer_running | cron/scheduler/lock | no
+2026-10-22 13:31:21 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:31:21 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:31:21 | UPDATE | _fluentcrm_lock_hourly_scheduler | cron/scheduler/lock | no
+2026-10-22 13:31:21 | UPDATE | _fluentcrm_lock_hourly_scheduler | cron/scheduler/lock | no
+2026-10-22 13:31:21 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:31:21 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:31:21 | UPDATE | _fluentcrm_lock_five_minute_scheduler | cron/scheduler/lock | no
+2026-10-22 13:31:21 | UPDATE | _fcrm_last_five_minutes_run | cron/scheduler/lock | no
+2026-10-22 13:31:21 | UPDATE | _fluentcrm_lock_hourly_scheduler | cron/scheduler/lock | no
+2026-10-22 13:31:21 | UPDATE | _fluentcrm_lock_hourly_scheduler | cron/scheduler/lock | no
+2026-10-22 13:31:21 | UPDATE | _fluentcrm_lock_five_minute_scheduler | cron/scheduler/lock | no
+2026-10-22 13:31:21 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:31:21 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:31:21 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:31:21 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:31:21 | DELETE | _transient_doing_cron | cron/scheduler/lock | no
+2026-10-22 13:31:25 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:31:25 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:31:25 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:31:25 | UPDATE | pmpro_views | plugin operational housekeeping | no
+2026-10-22 13:31:42 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:31:42 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:31:42 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:31:42 | UPDATE | novamira_mcp_last_request | plugin operational housekeeping | no
+2026-10-22 13:31:42 | INSERT | _transient_doing_cron | cron/scheduler/lock | no
+2026-10-22 13:31:42 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:31:42 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:31:42 | DELETE | _transient_doing_cron | cron/scheduler/lock | no
+2026-10-22 13:31:58 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:31:58 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:31:58 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:31:59 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:31:59 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:31:59 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:32:00 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:32:00 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:32:00 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:32:22 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:32:22 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:32:22 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:33:13 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:33:13 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:33:13 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:33:14 | UPDATE | novamira_mcp_last_request | plugin operational housekeeping | no
+2026-10-22 13:33:14 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:33:14 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:33:15 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:33:15 | INSERT | _transient_doing_cron | cron/scheduler/lock | no
+2026-10-22 13:33:15 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:33:15 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:33:15 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:33:15 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:33:15 | UPDATE | _fluentcrm_lock_minute_scheduler | cron/scheduler/lock | no
+2026-10-22 13:33:15 | UPDATE | _fcrm_last_scheduler | cron/scheduler/lock | no
+2026-10-22 13:33:15 | UPDATE | fluentcrm_is_sending_emails | cron/scheduler/lock | no
+2026-10-22 13:33:15 | UPDATE | fluentcrm_is_sending_emails | cron/scheduler/lock | no
+2026-10-22 13:33:15 | UPDATE | _fc_funnel_processor_lock | cron/scheduler/lock | no
+2026-10-22 13:33:15 | UPDATE | _fc_last_funnel_processor_ran | cron/scheduler/lock | no
+2026-10-22 13:33:15 | UPDATE | _fc_funnel_processor_lock | cron/scheduler/lock | no
+2026-10-22 13:33:15 | UPDATE | _fluentcrm_lock_minute_scheduler | cron/scheduler/lock | no
+2026-10-22 13:33:15 | DELETE | _transient_doing_cron | cron/scheduler/lock | no
+2026-10-22 13:33:20 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:33:20 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:33:20 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:33:20 | UPDATE | pmpro_visits | plugin operational housekeeping | no
+2026-10-22 13:33:21 | UPDATE | pmpro_views | plugin operational housekeeping | no
+2026-10-22 13:33:27 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:33:27 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:33:27 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:33:27 | UPDATE | pmpro_views | plugin operational housekeeping | no
+2026-10-22 13:34:00 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:34:00 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:34:00 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:34:00 | INSERT | _transient_doing_cron | cron/scheduler/lock | no
+2026-10-22 13:34:00 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:34:00 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:34:00 | DELETE | _transient_doing_cron | cron/scheduler/lock | no
+2026-10-22 13:34:01 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:34:41 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:34:41 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:34:41 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:34:41 | UPDATE | novamira_mcp_last_request | plugin operational housekeeping | no
+2026-10-22 13:34:41 | INSERT | _transient_doing_cron | cron/scheduler/lock | no
+2026-10-22 13:34:42 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:34:42 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:34:42 | UPDATE | _fluentcrm_lock_minute_scheduler | cron/scheduler/lock | no
+2026-10-22 13:34:42 | UPDATE | _fcrm_last_scheduler | cron/scheduler/lock | no
+2026-10-22 13:34:42 | UPDATE | fluentcrm_is_sending_emails | cron/scheduler/lock | no
+2026-10-22 13:34:42 | UPDATE | fluentcrm_is_sending_emails | cron/scheduler/lock | no
+2026-10-22 13:34:42 | UPDATE | _fcrm_last_email_process_cleanup | cron/scheduler/lock | no
+2026-10-22 13:34:42 | UPDATE | _fc_funnel_processor_lock | cron/scheduler/lock | no
+2026-10-22 13:34:42 | UPDATE | _fc_last_funnel_processor_ran | cron/scheduler/lock | no
+2026-10-22 13:34:42 | UPDATE | _fc_funnel_processor_lock | cron/scheduler/lock | no
+2026-10-22 13:34:42 | UPDATE | _fluentcrm_lock_minute_scheduler | cron/scheduler/lock | no
+2026-10-22 13:34:42 | DELETE | _transient_doing_cron | cron/scheduler/lock | no
+2026-10-22 13:34:42 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:34:42 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:34:42 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:35:05 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:35:05 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:35:05 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:35:06 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:35:06 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:35:06 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:35:07 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:35:07 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:35:07 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:35:07 | UPDATE | pmpro_visits | plugin operational housekeeping | no
+2026-10-22 13:35:07 | UPDATE | pmpro_views | plugin operational housekeeping | no
+2026-10-22 13:35:18 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:35:18 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:35:18 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:35:19 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:35:19 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:35:45 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:35:45 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:35:45 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:35:45 | UPDATE | novamira_mcp_last_request | plugin operational housekeeping | no
+2026-10-22 13:35:45 | INSERT | _transient_doing_cron | cron/scheduler/lock | no
+2026-10-22 13:35:46 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:35:46 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:35:46 | INSERT | _transient_timeout_vgmp_runtime_status_batch_lock | cron/scheduler/lock | no
+2026-10-22 13:35:46 | INSERT | _transient_vgmp_runtime_status_batch_lock | cron/scheduler/lock | no
+2026-10-22 13:35:46 | DELETE | _transient_vgmp_runtime_status_batch_lock | cron/scheduler/lock | no
+2026-10-22 13:35:46 | DELETE | _transient_timeout_vgmp_runtime_status_batch_lock | cron/scheduler/lock | no
+2026-10-22 13:35:46 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:35:46 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:35:46 | UPDATE | _fluentcrm_lock_minute_scheduler | cron/scheduler/lock | no
+2026-10-22 13:35:46 | UPDATE | _fcrm_last_scheduler | cron/scheduler/lock | no
+2026-10-22 13:35:46 | UPDATE | fluentcrm_is_sending_emails | cron/scheduler/lock | no
+2026-10-22 13:35:46 | UPDATE | fluentcrm_is_sending_emails | cron/scheduler/lock | no
+2026-10-22 13:35:46 | UPDATE | _fc_funnel_processor_lock | cron/scheduler/lock | no
+2026-10-22 13:35:46 | UPDATE | _fc_last_funnel_processor_ran | cron/scheduler/lock | no
+2026-10-22 13:35:46 | UPDATE | _fc_funnel_processor_lock | cron/scheduler/lock | no
+2026-10-22 13:35:46 | UPDATE | _fluentcrm_lock_minute_scheduler | cron/scheduler/lock | no
+2026-10-22 13:35:46 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:35:46 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:35:46 | UPDATE | bricks_indexer_running | cron/scheduler/lock | no
+2026-10-22 13:35:46 | UPDATE | bricks_indexer_running | cron/scheduler/lock | no
+2026-10-22 13:35:46 | DELETE | _transient_doing_cron | cron/scheduler/lock | no
+2026-10-22 13:35:46 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:35:46 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:35:46 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:36:33 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:36:33 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:36:33 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:36:33 | INSERT | _transient_doing_cron | cron/scheduler/lock | no
+2026-10-22 13:36:33 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:36:33 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:36:33 | UPDATE | _fluentcrm_lock_five_minute_scheduler | cron/scheduler/lock | no
+2026-10-22 13:36:33 | UPDATE | _fcrm_last_five_minutes_run | cron/scheduler/lock | no
+2026-10-22 13:36:34 | UPDATE | _fc_funnel_processor_lock | cron/scheduler/lock | no
+2026-10-22 13:36:34 | UPDATE | _fc_last_funnel_processor_ran | cron/scheduler/lock | no
+2026-10-22 13:36:34 | UPDATE | _fc_funnel_processor_lock | cron/scheduler/lock | no
+2026-10-22 13:36:34 | UPDATE | _fluentcrm_lock_hourly_scheduler | cron/scheduler/lock | no
+2026-10-22 13:36:34 | UPDATE | _fluentcrm_lock_hourly_scheduler | cron/scheduler/lock | no
+2026-10-22 13:36:34 | UPDATE | _fluentcrm_lock_five_minute_scheduler | cron/scheduler/lock | no
+2026-10-22 13:36:34 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:36:34 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:36:34 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:36:34 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:36:34 | DELETE | _transient_doing_cron | cron/scheduler/lock | no
+2026-10-22 13:36:34 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:36:34 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:36:34 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:38:55 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:38:55 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:38:55 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:38:55 | UPDATE | pmpro_visits | plugin operational housekeeping | no
+2026-10-22 13:38:55 | UPDATE | pmpro_views | plugin operational housekeeping | no
+2026-10-22 13:38:55 | INSERT | _transient_doing_cron | cron/scheduler/lock | no
+2026-10-22 13:38:55 | UPDATE | novamira_mcp_last_request | plugin operational housekeeping | no
+2026-10-22 13:38:55 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:38:55 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:38:55 | UPDATE | _fluentcrm_lock_minute_scheduler | cron/scheduler/lock | no
+2026-10-22 13:38:55 | UPDATE | _fcrm_last_scheduler | cron/scheduler/lock | no
+2026-10-22 13:38:55 | UPDATE | fluentcrm_is_sending_emails | cron/scheduler/lock | no
+2026-10-22 13:38:55 | UPDATE | fluentcrm_is_sending_emails | cron/scheduler/lock | no
+2026-10-22 13:38:55 | UPDATE | _fc_funnel_processor_lock | cron/scheduler/lock | no
+2026-10-22 13:38:55 | UPDATE | _fc_last_funnel_processor_ran | cron/scheduler/lock | no
+2026-10-22 13:38:55 | UPDATE | _fc_funnel_processor_lock | cron/scheduler/lock | no
+2026-10-22 13:38:55 | UPDATE | _fluentcrm_lock_minute_scheduler | cron/scheduler/lock | no
+2026-10-22 13:38:55 | DELETE | _transient_doing_cron | cron/scheduler/lock | no
+2026-10-22 13:39:03 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:39:04 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:39:04 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:39:26 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:39:26 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:39:26 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:39:27 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:39:27 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:39:27 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:39:54 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:39:54 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:39:54 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:39:54 | INSERT | _transient_doing_cron | cron/scheduler/lock | no
+2026-10-22 13:39:54 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:39:54 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:39:54 | DELETE | _transient_doing_cron | cron/scheduler/lock | no
+2026-10-22 13:39:55 | UPDATE | novamira_mcp_last_request | plugin operational housekeeping | no
+2026-10-22 13:39:55 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:39:55 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:39:55 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:39:56 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:39:56 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:39:56 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:39:57 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:39:57 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:39:57 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:39:58 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:39:58 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:39:58 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:39:59 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:39:59 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:40:40 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:40:40 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:40:40 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:40:41 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:40:41 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:40:42 | INSERT | _transient_doing_cron | cron/scheduler/lock | no
+2026-10-22 13:40:42 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:40:42 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:40:42 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:40:42 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:40:42 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:40:42 | UPDATE | _fluentcrm_lock_minute_scheduler | cron/scheduler/lock | no
+2026-10-22 13:40:42 | UPDATE | _fcrm_last_scheduler | cron/scheduler/lock | no
+2026-10-22 13:40:42 | UPDATE | fluentcrm_is_sending_emails | cron/scheduler/lock | no
+2026-10-22 13:40:42 | UPDATE | fluentcrm_is_sending_emails | cron/scheduler/lock | no
+2026-10-22 13:40:42 | UPDATE | _fcrm_last_email_process_cleanup | cron/scheduler/lock | no
+2026-10-22 13:40:42 | UPDATE | _fc_funnel_processor_lock | cron/scheduler/lock | no
+2026-10-22 13:40:42 | UPDATE | _fc_last_funnel_processor_ran | cron/scheduler/lock | no
+2026-10-22 13:40:42 | UPDATE | _fc_funnel_processor_lock | cron/scheduler/lock | no
+2026-10-22 13:40:42 | UPDATE | _fluentcrm_lock_minute_scheduler | cron/scheduler/lock | no
+2026-10-22 13:40:42 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:40:42 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:40:42 | UPDATE | bricks_indexer_running | cron/scheduler/lock | no
+2026-10-22 13:40:42 | UPDATE | bricks_indexer_running | cron/scheduler/lock | no
+2026-10-22 13:40:42 | DELETE | _transient_doing_cron | cron/scheduler/lock | no
+2026-10-22 13:40:42 | UPDATE | pmpro_visits | plugin operational housekeeping | no
+2026-10-22 13:40:42 | UPDATE | pmpro_views | plugin operational housekeeping | no
+2026-10-22 13:40:42 | UPDATE | pmpro_visits | plugin operational housekeeping | no
+2026-10-22 13:40:42 | UPDATE | pmpro_views | plugin operational housekeeping | no
+2026-10-22 13:40:43 | UPDATE | pmpro_visits | plugin operational housekeeping | no
+2026-10-22 13:40:43 | UPDATE | pmpro_views | plugin operational housekeeping | no
+2026-10-22 13:40:43 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:40:43 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:40:43 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:40:43 | UPDATE | pmpro_visits | plugin operational housekeeping | no
+2026-10-22 13:40:43 | UPDATE | pmpro_views | plugin operational housekeeping | no
+2026-10-22 13:41:18 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:41:18 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:41:18 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:41:18 | UPDATE | novamira_mcp_last_request | plugin operational housekeeping | no
+2026-10-22 13:41:19 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:41:19 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:41:19 | INSERT | _transient_doing_cron | cron/scheduler/lock | no
+2026-10-22 13:41:19 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:41:20 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:41:20 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:41:20 | UPDATE | _fluentcrm_lock_five_minute_scheduler | cron/scheduler/lock | no
+2026-10-22 13:41:20 | UPDATE | _fcrm_last_five_minutes_run | cron/scheduler/lock | no
+2026-10-22 13:41:20 | UPDATE | _fc_funnel_processor_lock | cron/scheduler/lock | no
+2026-10-22 13:41:20 | UPDATE | _fc_last_funnel_processor_ran | cron/scheduler/lock | no
+2026-10-22 13:41:20 | UPDATE | _fc_funnel_processor_lock | cron/scheduler/lock | no
+2026-10-22 13:41:20 | UPDATE | _fluentcrm_lock_hourly_scheduler | cron/scheduler/lock | no
+2026-10-22 13:41:20 | UPDATE | _fluentcrm_lock_hourly_scheduler | cron/scheduler/lock | no
+2026-10-22 13:41:20 | UPDATE | _fluentcrm_lock_five_minute_scheduler | cron/scheduler/lock | no
+2026-10-22 13:41:20 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:41:20 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:41:20 | DELETE | _transient_doing_cron | cron/scheduler/lock | no
+2026-10-22 13:41:20 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:41:20 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:41:21 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:41:21 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:41:21 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:41:22 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:41:22 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:41:22 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:41:23 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:41:23 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:41:23 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:41:24 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:41:24 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:41:24 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:41:25 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:41:25 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:41:25 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:41:26 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:41:26 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:41:27 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:41:27 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:41:27 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:41:28 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:41:28 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:41:28 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:41:29 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:41:29 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:41:30 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:41:30 | INSERT | _transient_doing_cron | cron/scheduler/lock | no
+2026-10-22 13:41:30 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:41:30 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:41:30 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:41:30 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:41:30 | DELETE | _transient_doing_cron | cron/scheduler/lock | no
+2026-10-22 13:41:31 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:41:31 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:41:31 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:41:32 | INSERT | _transient_doing_cron | cron/scheduler/lock | no
+2026-10-22 13:41:32 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:41:32 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:41:32 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:41:32 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:41:32 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:41:32 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:41:32 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:41:32 | DELETE | _transient_doing_cron | cron/scheduler/lock | no
+2026-10-22 13:41:33 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:41:33 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:41:34 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:41:34 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:41:34 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:41:35 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:41:35 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:41:35 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:41:36 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:41:36 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:41:37 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:41:37 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:41:37 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:41:57 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:41:57 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:41:57 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:41:57 | INSERT | _transient_doing_cron | cron/scheduler/lock | no
+2026-10-22 13:41:58 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:41:58 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:41:58 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:41:58 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:41:58 | DELETE | _transient_doing_cron | cron/scheduler/lock | no
+2026-10-22 13:41:58 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:41:59 | UPDATE | pmpro_visits | plugin operational housekeeping | no
+2026-10-22 13:41:59 | UPDATE | pmpro_views | plugin operational housekeeping | no
+2026-10-22 13:41:59 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:41:59 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:41:59 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:41:59 | UPDATE | pmpro_visits | plugin operational housekeeping | no
+2026-10-22 13:41:59 | UPDATE | pmpro_views | plugin operational housekeeping | no
+2026-10-22 13:41:59 | UPDATE | pmpro_visits | plugin operational housekeeping | no
+2026-10-22 13:41:59 | UPDATE | pmpro_views | plugin operational housekeeping | no
+2026-10-22 13:42:00 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:42:00 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:42:00 | UPDATE | pmpro_visits | plugin operational housekeeping | no
+2026-10-22 13:42:00 | UPDATE | pmpro_views | plugin operational housekeeping | no
+2026-10-22 13:42:00 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:42:29 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:42:29 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:42:29 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:42:29 | UPDATE | novamira_mcp_last_request | plugin operational housekeeping | no
+2026-10-22 13:42:29 | INSERT | _transient_doing_cron | cron/scheduler/lock | no
+2026-10-22 13:42:30 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:42:30 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:42:30 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:42:30 | UPDATE | _fluentcrm_lock_minute_scheduler | cron/scheduler/lock | no
+2026-10-22 13:42:30 | UPDATE | _fcrm_last_scheduler | cron/scheduler/lock | no
+2026-10-22 13:42:30 | UPDATE | fluentcrm_is_sending_emails | cron/scheduler/lock | no
+2026-10-22 13:42:30 | UPDATE | fluentcrm_is_sending_emails | cron/scheduler/lock | no
+2026-10-22 13:42:30 | UPDATE | _fcrm_last_email_process_cleanup | cron/scheduler/lock | no
+2026-10-22 13:42:30 | UPDATE | _fc_funnel_processor_lock | cron/scheduler/lock | no
+2026-10-22 13:42:30 | UPDATE | _fc_last_funnel_processor_ran | cron/scheduler/lock | no
+2026-10-22 13:42:30 | UPDATE | _fc_funnel_processor_lock | cron/scheduler/lock | no
+2026-10-22 13:42:30 | UPDATE | _fluentcrm_lock_minute_scheduler | cron/scheduler/lock | no
+2026-10-22 13:42:30 | DELETE | _transient_doing_cron | cron/scheduler/lock | no
+2026-10-22 13:42:38 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:42:38 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:42:38 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:42:38 | UPDATE | pmpro_visits | plugin operational housekeeping | no
+2026-10-22 13:42:38 | UPDATE | pmpro_views | plugin operational housekeeping | no
+2026-10-22 13:42:38 | UPDATE | pmpro_visits | plugin operational housekeeping | no
+2026-10-22 13:42:38 | UPDATE | pmpro_views | plugin operational housekeeping | no
+2026-10-22 13:42:39 | UPDATE | pmpro_visits | plugin operational housekeeping | no
+2026-10-22 13:42:39 | UPDATE | pmpro_views | plugin operational housekeeping | no
+2026-10-22 13:42:39 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:42:39 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:42:39 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:42:39 | UPDATE | pmpro_visits | plugin operational housekeeping | no
+2026-10-22 13:42:39 | UPDATE | pmpro_views | plugin operational housekeeping | no
+2026-10-22 13:43:03 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:43:03 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:43:03 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:43:04 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:43:44 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:43:44 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:43:44 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:43:44 | UPDATE | novamira_mcp_last_request | plugin operational housekeeping | no
+2026-10-22 13:43:44 | INSERT | _transient_doing_cron | cron/scheduler/lock | no
+2026-10-22 13:43:44 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:43:44 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:43:44 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:43:44 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:43:44 | UPDATE | _fluentcrm_lock_minute_scheduler | cron/scheduler/lock | no
+2026-10-22 13:43:44 | UPDATE | _fcrm_last_scheduler | cron/scheduler/lock | no
+2026-10-22 13:43:44 | UPDATE | fluentcrm_is_sending_emails | cron/scheduler/lock | no
+2026-10-22 13:43:44 | UPDATE | fluentcrm_is_sending_emails | cron/scheduler/lock | no
+2026-10-22 13:43:44 | UPDATE | _fc_funnel_processor_lock | cron/scheduler/lock | no
+2026-10-22 13:43:44 | UPDATE | _fc_last_funnel_processor_ran | cron/scheduler/lock | no
+2026-10-22 13:43:44 | UPDATE | _fc_funnel_processor_lock | cron/scheduler/lock | no
+2026-10-22 13:43:44 | UPDATE | _fluentcrm_lock_minute_scheduler | cron/scheduler/lock | no
+2026-10-22 13:43:44 | DELETE | _transient_doing_cron | cron/scheduler/lock | no
+2026-10-22 13:43:53 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:43:53 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:43:53 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:43:54 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:43:54 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:43:54 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:44:17 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:44:17 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:44:17 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:44:18 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:44:18 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:44:18 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:44:42 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:44:42 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:44:42 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:44:42 | INSERT | _transient_doing_cron | cron/scheduler/lock | no
+2026-10-22 13:44:42 | UPDATE | _transient_doing_cron | cron/scheduler/lock | no
+2026-10-22 13:44:43 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:44:43 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:44:43 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:44:44 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:44:44 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:44:44 | UPDATE | _fluentcrm_lock_minute_scheduler | cron/scheduler/lock | no
+2026-10-22 13:44:44 | UPDATE | _fcrm_last_scheduler | cron/scheduler/lock | no
+2026-10-22 13:44:44 | UPDATE | fluentcrm_is_sending_emails | cron/scheduler/lock | no
+2026-10-22 13:44:44 | UPDATE | fluentcrm_is_sending_emails | cron/scheduler/lock | no
+2026-10-22 13:44:44 | UPDATE | _fc_funnel_processor_lock | cron/scheduler/lock | no
+2026-10-22 13:44:44 | UPDATE | _fc_last_funnel_processor_ran | cron/scheduler/lock | no
+2026-10-22 13:44:44 | UPDATE | _fc_funnel_processor_lock | cron/scheduler/lock | no
+2026-10-22 13:44:44 | UPDATE | _fluentcrm_lock_minute_scheduler | cron/scheduler/lock | no
+2026-10-22 13:44:44 | DELETE | _transient_doing_cron | cron/scheduler/lock | no
+2026-10-22 13:44:51 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:44:51 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:44:51 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:44:51 | UPDATE | novamira_mcp_last_request | plugin operational housekeeping | no
+2026-10-22 13:44:51 | INSERT | _transient_doing_cron | cron/scheduler/lock | no
+2026-10-22 13:44:52 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:44:52 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:44:52 | INSERT | _transient_timeout_vgmp_redemption_reservation_cleanup_lock | cron/scheduler/lock | no
+2026-10-22 13:44:52 | INSERT | _transient_vgmp_redemption_reservation_cleanup_lock | cron/scheduler/lock | no
+2026-10-22 13:44:52 | DELETE | _transient_vgmp_redemption_reservation_cleanup_lock | cron/scheduler/lock | no
+2026-10-22 13:44:52 | DELETE | _transient_timeout_vgmp_redemption_reservation_cleanup_lock | cron/scheduler/lock | no
+2026-10-22 13:44:52 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:44:52 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:44:52 | DELETE | _transient_doing_cron | cron/scheduler/lock | no
+2026-10-22 13:44:52 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:44:52 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:44:52 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:44:53 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:44:53 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:44:53 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:44:54 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:44:54 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:44:54 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:44:55 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:44:55 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:44:55 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:45:05 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:45:05 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:45:05 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:45:06 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:45:06 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:45:06 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:57:18 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:57:18 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:57:19 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:57:19 | DELETE | _site_transient_wp_theme_files_patterns-00a082e825adedd84468f69e7ff6d5e7 | transient/cache | no
+2026-10-22 13:57:19 | DELETE | _site_transient_timeout_wp_theme_files_patterns-00a082e825adedd84468f69e7ff6d5e7 | transient/cache | no
+2026-10-22 13:57:19 | INSERT | _site_transient_timeout_wp_theme_files_patterns-00a082e825adedd84468f69e7ff6d5e7 | transient/cache | no
+2026-10-22 13:57:19 | INSERT | _site_transient_wp_theme_files_patterns-00a082e825adedd84468f69e7ff6d5e7 | transient/cache | no
+2026-10-22 13:57:19 | DELETE | _site_transient_wp_theme_files_patterns-31a4822cca43c06bedc5c50f6a061ff9 | transient/cache | no
+2026-10-22 13:57:19 | DELETE | _site_transient_timeout_wp_theme_files_patterns-31a4822cca43c06bedc5c50f6a061ff9 | transient/cache | no
+2026-10-22 13:57:19 | INSERT | _site_transient_timeout_wp_theme_files_patterns-31a4822cca43c06bedc5c50f6a061ff9 | transient/cache | no
+2026-10-22 13:57:19 | INSERT | _site_transient_wp_theme_files_patterns-31a4822cca43c06bedc5c50f6a061ff9 | transient/cache | no
+2026-10-22 13:57:19 | UPDATE | novamira_mcp_last_request | plugin operational housekeeping | no
+2026-10-22 13:57:19 | INSERT | _transient_doing_cron | cron/scheduler/lock | no
+2026-10-22 13:57:19 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:57:19 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:57:19 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:57:19 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:57:19 | UPDATE | _fluentcrm_lock_minute_scheduler | cron/scheduler/lock | no
+2026-10-22 13:57:19 | UPDATE | _fcrm_last_scheduler | cron/scheduler/lock | no
+2026-10-22 13:57:19 | UPDATE | fluentcrm_is_sending_emails | cron/scheduler/lock | no
+2026-10-22 13:57:19 | UPDATE | fluentcrm_is_sending_emails | cron/scheduler/lock | no
+2026-10-22 13:57:19 | UPDATE | _fc_funnel_processor_lock | cron/scheduler/lock | no
+2026-10-22 13:57:19 | UPDATE | _fc_last_funnel_processor_ran | cron/scheduler/lock | no
+2026-10-22 13:57:19 | UPDATE | _fc_funnel_processor_lock | cron/scheduler/lock | no
+2026-10-22 13:57:19 | UPDATE | _fluentcrm_lock_minute_scheduler | cron/scheduler/lock | no
+2026-10-22 13:57:19 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:57:19 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:57:19 | UPDATE | bricks_indexer_running | cron/scheduler/lock | no
+2026-10-22 13:57:19 | UPDATE | bricks_indexer_running | cron/scheduler/lock | no
+2026-10-22 13:57:19 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:57:19 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:57:19 | UPDATE | _fluentcrm_lock_five_minute_scheduler | cron/scheduler/lock | no
+2026-10-22 13:57:19 | UPDATE | _fcrm_last_five_minutes_run | cron/scheduler/lock | no
+2026-10-22 13:57:19 | UPDATE | _fluentcrm_lock_hourly_scheduler | cron/scheduler/lock | no
+2026-10-22 13:57:19 | UPDATE | _fluentcrm_lock_hourly_scheduler | cron/scheduler/lock | no
+2026-10-22 13:57:19 | UPDATE | _fluentcrm_lock_five_minute_scheduler | cron/scheduler/lock | no
+2026-10-22 13:57:19 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:57:19 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:57:19 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:57:19 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:57:19 | INSERT | _transient_timeout_vgmp_runtime_status_batch_lock | cron/scheduler/lock | no
+2026-10-22 13:57:19 | INSERT | _transient_vgmp_runtime_status_batch_lock | cron/scheduler/lock | no
+2026-10-22 13:57:19 | DELETE | _transient_vgmp_runtime_status_batch_lock | cron/scheduler/lock | no
+2026-10-22 13:57:19 | DELETE | _transient_timeout_vgmp_runtime_status_batch_lock | cron/scheduler/lock | no
+2026-10-22 13:57:19 | DELETE | _transient_doing_cron | cron/scheduler/lock | no
+2026-10-22 13:58:35 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:58:35 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:58:35 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:58:35 | UPDATE | novamira_mcp_last_request | plugin operational housekeeping | no
+2026-10-22 13:58:35 | INSERT | _transient_doing_cron | cron/scheduler/lock | no
+2026-10-22 13:58:35 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:58:35 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 13:58:35 | UPDATE | _fluentcrm_lock_minute_scheduler | cron/scheduler/lock | no
+2026-10-22 13:58:35 | UPDATE | _fcrm_last_scheduler | cron/scheduler/lock | no
+2026-10-22 13:58:35 | UPDATE | fluentcrm_is_sending_emails | cron/scheduler/lock | no
+2026-10-22 13:58:35 | UPDATE | fluentcrm_is_sending_emails | cron/scheduler/lock | no
+2026-10-22 13:58:35 | UPDATE | _fc_funnel_processor_lock | cron/scheduler/lock | no
+2026-10-22 13:58:35 | UPDATE | _fc_last_funnel_processor_ran | cron/scheduler/lock | no
+2026-10-22 13:58:35 | UPDATE | _fc_funnel_processor_lock | cron/scheduler/lock | no
+2026-10-22 13:58:35 | UPDATE | _fluentcrm_lock_minute_scheduler | cron/scheduler/lock | no
+2026-10-22 13:58:35 | DELETE | _transient_doing_cron | cron/scheduler/lock | no
+2026-10-22 13:58:36 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:58:36 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:58:36 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:58:44 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:58:44 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:58:44 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:58:45 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:58:45 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:58:45 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:58:55 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:58:55 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:58:55 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:58:56 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:58:56 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:58:56 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:59:07 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:59:07 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:59:07 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 13:59:08 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 13:59:08 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 13:59:08 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 14:01:07 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 14:01:07 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 14:01:07 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 14:01:07 | UPDATE | novamira_mcp_last_request | plugin operational housekeeping | no
+2026-10-22 14:01:07 | INSERT | _transient_doing_cron | cron/scheduler/lock | no
+2026-10-22 14:01:08 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 14:01:08 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 14:01:08 | UPDATE | _fluentcrm_lock_minute_scheduler | cron/scheduler/lock | no
+2026-10-22 14:01:08 | UPDATE | _fcrm_last_scheduler | cron/scheduler/lock | no
+2026-10-22 14:01:08 | UPDATE | fluentcrm_is_sending_emails | cron/scheduler/lock | no
+2026-10-22 14:01:08 | UPDATE | fluentcrm_is_sending_emails | cron/scheduler/lock | no
+2026-10-22 14:01:08 | UPDATE | _fcrm_last_email_process_cleanup | cron/scheduler/lock | no
+2026-10-22 14:01:08 | UPDATE | _fc_funnel_processor_lock | cron/scheduler/lock | no
+2026-10-22 14:01:08 | UPDATE | _fc_last_funnel_processor_ran | cron/scheduler/lock | no
+2026-10-22 14:01:08 | UPDATE | _fc_funnel_processor_lock | cron/scheduler/lock | no
+2026-10-22 14:01:08 | UPDATE | _fluentcrm_lock_minute_scheduler | cron/scheduler/lock | no
+2026-10-22 14:01:08 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 14:01:08 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 14:01:08 | INSERT | _transient_timeout_vgmp_redemption_reservation_cleanup_lock | cron/scheduler/lock | no
+2026-10-22 14:01:08 | INSERT | _transient_vgmp_redemption_reservation_cleanup_lock | cron/scheduler/lock | no
+2026-10-22 14:01:08 | DELETE | _transient_vgmp_redemption_reservation_cleanup_lock | cron/scheduler/lock | no
+2026-10-22 14:01:08 | DELETE | _transient_timeout_vgmp_redemption_reservation_cleanup_lock | cron/scheduler/lock | no
+2026-10-22 14:01:08 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 14:01:08 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 14:01:08 | UPDATE | bricks_indexer_running | cron/scheduler/lock | no
+2026-10-22 14:01:08 | UPDATE | bricks_indexer_running | cron/scheduler/lock | no
+2026-10-22 14:01:08 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 14:01:08 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 14:01:08 | UPDATE | _fluentcrm_lock_five_minute_scheduler | cron/scheduler/lock | no
+2026-10-22 14:01:08 | UPDATE | _fcrm_last_five_minutes_run | cron/scheduler/lock | no
+2026-10-22 14:01:08 | UPDATE | _fluentcrm_lock_hourly_scheduler | cron/scheduler/lock | no
+2026-10-22 14:01:08 | UPDATE | _fluentcrm_lock_hourly_scheduler | cron/scheduler/lock | no
+2026-10-22 14:01:08 | UPDATE | _fluentcrm_lock_five_minute_scheduler | cron/scheduler/lock | no
+2026-10-22 14:01:08 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 14:01:08 | UPDATE | cron | cron/scheduler/lock | no
+2026-10-22 14:01:08 | DELETE | _transient_doing_cron | cron/scheduler/lock | no
+2026-10-22 14:01:16 | UPDATE | acf_pro_license_status | plugin licensing/account housekeeping | no
+2026-10-22 14:01:17 | UPDATE | pmpro_library_conflicts | plugin operational housekeeping | no
+2026-10-22 14:01:17 | UPDATE | _transient_timeout_wcs_woocommerce_active_version | transient/cache | no
+2026-10-22 14:01:17 | UPDATE | pmpro_visits | plugin operational housekeeping | no
+2026-10-22 14:01:17 | DELETE | _transient_masteriyo_wc_orders_exist | transient/cache | no
+2026-10-22 14:01:17 | DELETE | _transient_timeout_masteriyo_wc_orders_exist | transient/cache | no
+2026-10-22 14:01:17 | INSERT | _transient_timeout_masteriyo_wc_orders_exist | transient/cache | no
+2026-10-22 14:01:17 | INSERT | _transient_masteriyo_wc_orders_exist | transient/cache | no
+2026-10-22 14:01:17 | UPDATE | pmpro_views | plugin operational housekeeping | no
+~~~
+
+</details>
+
+The pre/post option metadata and safe value hashes are:
+
+| Option | Option ID | Autoload | Current value length in bytes | Current value SHA-256 | Retained binlog history |
+|---|---:|---|---:|---|---|
+| acf_pro_license | 27252 | auto | 128 | 3b6f443efd05294b1a4ed304f5f88f57392557bd2ae87f55da69dc50b9ae30ca | UPDATEs, 2026-10-07 13:25:06 to 2026-10-22 13:25:49 |
+| acf_pro_license_status | 27253 | on | 273 | 67e33f57619a0c13f1c501266c89f7de804d76ab7b0d705348cc605b5ba3aafd | UPDATEs, 2026-09-21 19:39:06 to 2026-10-22 14:53:14 |
+| bricks_license_key | 596 | auto | 32 | feff649e59f8d57aa41815ccc9be85753babba1e04601396d592498a3356ebe6 | No retained-binlog event |
+| fs_accounts | 1080 | auto | 92,512 | 34ac1b4f85dcda44df3dd91385c2ef07e56ea984c19c4210a90abbd430017129 | UPDATEs, 2026-09-21 19:39:07 to 2026-10-22 13:24:04 |
+| fs_api_cache | 1081 | off | 233,311 | 36a9584cb6b6d9170050e1a688bae5981cba32593400c97e05fe3e8903b2e6d7 | UPDATEs, 2026-09-21 19:39:21 to 2026-10-22 13:24:02 |
+
+These hashes cover option values only. Raw option values, account payloads, API tokens, and licensing credentials were not recorded.
+
+### Corrections to earlier diagnostic claims
+
+The earlier diagnostic called acf_pro_license, acf_pro_license_status, bricks_license_key, and fs_accounts new based on their absence from a saved per-key listing. That conclusion was not supported. The original pre-state option-list predicate is unknown, so absence from that subset cannot establish creation. Retained binlog history shows UPDATE-only events for the relevant existing options where events exist. bricks_license_key has no retained-binlog event. The four alleged new keys were not proven new.
+
+The earlier claim that fs_api_cache continued to drift is withdrawn. The retained binlog shows its last update at 13:24:02 SAST, before the 14:03:45 post-state capture. The prior per-key digest projection could not be reconciled with the saved digest, but no later write appears in the retained log.
+
+The first protected-postmeta query checked meta_id and was invalid. The corrected check uses post_id. Corrected binlog inspection found no protected post, postmeta, or term-relationship write during the audit window. Historical protected postmeta updates occurred before the audit window only.
+
+### Attribution ruling
+
+- Drift content: PROVEN.
+- Cause of the whole-options fingerprint mismatch: STRONGLY_SUPPORTED.
+- Attribution: ATTRIBUTION_UNRESOLVED.
+
+Scheduled or background runtime work is the leading explanation. An audit-triggered WP-Cron spawn cannot be excluded. Existing HTTP access logs do not cover the burst; the PHP error log has no entries from 13:23 to 13:26 SAST. No further access-log reconstruction or live reproduction was performed, as the reviewer ruled that neither is needed for Task 7C.
+
+### Separate ACF security and licensing review
+
+Classification: SEPARATE_SECURITY_AND_LICENSING_REVIEW_REQUIRED.
+
+The diagnostic reported a deployed modification in wp-content/plugins/advanced-custom-fields-pro/acf.php. It found a pre_http_request interception for ACF's connect.advancedcustomfields.com licensing endpoint, a hard-coded license credential, and top-level writes to ACF license-status options during plugin loading. The current filesystem record has mtime 2026-05-27 10:05:26 SAST, size 31,697 bytes, and SHA-256 c8778a95da2b4d771d9e80c8bad380ece06a3c3d1c844ebd595db1bb2f5a3e7e. The file's provenance is unverified, so treat it as untrusted until a separate review establishes provenance. No license value is reproduced here.
+
+Task 7C does not remediate the code or validate the legitimacy of the ACF license. ACF licensing state is not stable fingerprint evidence. This finding blocks promotion or trust of this runtime's ACF licensing integrity, but does not invalidate the Person consumer findings by itself. It grants no authority to modify or replace the plugin. Preserve the sanitized provenance record and source hash for the separate review.
+
+### Task 10 artifact and repository checks
+
+The saved pre-audit inventory records no .crashed marker, task-7c-named file, or trace-named file under the runtime root. The post-audit scan found no .crashed marker anywhere under the authorized Local site, no task-7c-named runtime artifact, no trace file, and no PHP or trace file with a modification time after the pre-audit inventory. The external evidence directory contains no executable, PHP, or trace artifact. The earlier diagnostic also disclosed a php -r no-op invocation from the webroot that did not load WordPress or create a file. No cleanup was performed.
+
+### Repository validation
+
+The standard-library CSV parser accepted all 37 data rows with 13 fields per row. The non-writing Markdown check validated 18 tables and one local file link across the audit report and current-state document; it found no missing local link or table-width mismatch. The embedded ledger check found 1,720 rows with five fields each and only approved classifications. git diff --check passed.
+
+The tracked diff against execution baseline abde5c4689ed2b15f3b97bc6b1b3e04d65618f64 contains exactly these approved evidence documents: docs/architecture/PERSON_CONSUMER_DECOMMISSION_READINESS_AUDIT.md, docs/architecture/PERSON_CONSUMER_INVENTORY.csv, and docs/architecture/POST_TASK_7C_CURRENT_STATE.md. No product-code, runtime-source, or legacy-register file changed.
+
+Future read-only WordPress audits must compare explicit protected-state fingerprints and track volatile option writes separately. A whole wp_options digest is not a standalone mutation detector.
+
+**Task 7C status: COMPLETE_WITH_RUNTIME_VOLATILITY_DISCLOSURE.** This status does not claim zero database writes. No protected Task 7C architectural state mutation was found. The audit window contained background and volatile WordPress option writes documented above; attribution of the triggering request remains unresolved.
