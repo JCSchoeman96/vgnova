@@ -227,7 +227,12 @@ final class ProductContributionService
                     ProductContributionRepository::ROLE_TAXONOMY,
                     ['fields' => 'ids']
                 );
-                if (is_wp_error($persisted_role_ids) || ! is_array($persisted_role_ids)) {
+                global $wpdb;
+                if (
+                    is_wp_error($persisted_role_ids)
+                    || ! is_array($persisted_role_ids)
+                    || (is_object($wpdb) && (string) ($wpdb->last_error ?? '') !== '')
+                ) {
                     return $this->rollback_new_contribution(
                         $contribution_id,
                         'product_contribution_role_persistence_failed',
@@ -358,12 +363,43 @@ final class ProductContributionService
                     $rollback_error = 'WordPress could not clear the new contribution cache for rollback verification.';
                 } else {
                     clean_post_cache($contribution_id);
+                    if (function_exists('clean_object_term_cache')) {
+                        clean_object_term_cache($contribution_id, ProductContributionRepository::POST_TYPE);
+                    }
+
+                    $verification_errors = [];
                     $remaining_post = get_post($contribution_id);
                     global $wpdb;
                     if (is_object($wpdb) && (string) ($wpdb->last_error ?? '') !== '') {
-                        $rollback_error = 'WordPress could not verify that the new contribution was deleted.';
+                        $verification_errors[] = 'WordPress could not verify that the new contribution post was deleted.';
                     } elseif (is_object($remaining_post)) {
-                        $rollback_error = 'The new contribution still exists after the hard-delete attempt.';
+                        $verification_errors[] = 'The new contribution post still exists after the hard-delete attempt.';
+                    }
+
+                    $remaining_meta = get_post_meta($contribution_id);
+                    if (is_object($wpdb) && (string) ($wpdb->last_error ?? '') !== '') {
+                        $verification_errors[] = 'WordPress could not verify that the new contribution metadata was deleted.';
+                    } elseif (! is_array($remaining_meta) || $remaining_meta !== []) {
+                        $verification_errors[] = 'Contribution metadata remains after the hard-delete attempt.';
+                    }
+
+                    $remaining_roles = wp_get_object_terms(
+                        $contribution_id,
+                        ProductContributionRepository::ROLE_TAXONOMY,
+                        ['fields' => 'ids']
+                    );
+                    if (
+                        is_wp_error($remaining_roles)
+                        || ! is_array($remaining_roles)
+                        || (is_object($wpdb) && (string) ($wpdb->last_error ?? '') !== '')
+                    ) {
+                        $verification_errors[] = 'WordPress could not verify that native Product Role relationships were deleted.';
+                    } elseif ($remaining_roles !== []) {
+                        $verification_errors[] = 'Native Product Role relationships remain after the hard-delete attempt.';
+                    }
+
+                    if ($verification_errors !== []) {
+                        $rollback_error = implode(' ', $verification_errors);
                     }
                 }
             }
@@ -374,7 +410,7 @@ final class ProductContributionService
         if ($rollback_error !== null) {
             return new \WP_Error(
                 'product_contribution_rollback_failed',
-                $message . ' Rollback failed: ' . $rollback_error,
+                $message . ' Rollback failed for Product Contribution ' . $contribution_id . ': ' . $rollback_error,
                 ['original_error_code' => $code, 'contribution_id' => $contribution_id]
             );
         }

@@ -67,8 +67,15 @@ final class ProductContributionAdmin
             return;
         }
 
+        if (function_exists('clean_post_cache')) {
+            clean_post_cache($post_id);
+        }
         $post = get_post($post_id);
         if (! is_object($post)) {
+            global $wpdb;
+            if (is_object($wpdb) && (string) ($wpdb->last_error ?? '') !== '') {
+                $this->retry_future_publication_later($post_id);
+            }
             return;
         }
 

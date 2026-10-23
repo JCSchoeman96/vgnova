@@ -27,7 +27,40 @@ namespace Voelgoed\PlatformCore\Product {
             $GLOBALS['vgpc_test_fail_delete_post'] = false;
             return false;
         }
-        return \wp_delete_post($post_id, $force_delete);
+        $deleted = \wp_delete_post($post_id, $force_delete);
+        if ($deleted && ! empty($GLOBALS['vgpc_test_fail_rollback_role_read_now'])) {
+            $GLOBALS['vgpc_test_fail_rollback_role_read_now'] = false;
+            $GLOBALS['vgpc_test_fail_rollback_role_read'] = true;
+        }
+        if ($deleted && ! empty($GLOBALS['vgpc_test_leave_rollback_metadata'])) {
+            $GLOBALS['vgpc_test_meta'][$post_id]['orphaned_test_meta'] = 'partial';
+            $GLOBALS['vgpc_test_leave_rollback_metadata'] = false;
+        }
+        if ($deleted && ! empty($GLOBALS['vgpc_test_leave_rollback_role'])) {
+            $GLOBALS['vgpc_test_relationships'][ProductRoleVocabulary::TAXONOMY][$post_id] = [
+                (int) $GLOBALS['vgpc_test_leave_rollback_role'],
+            ];
+            $GLOBALS['vgpc_test_leave_rollback_role'] = false;
+        }
+        return $deleted;
+    }
+
+    function wp_get_object_terms(int $object_id, string $taxonomy, array $args = []): array|\WP_Error
+    {
+        if (
+            $taxonomy === ProductRoleVocabulary::TAXONOMY
+            && ($args['fields'] ?? '') === 'ids'
+            && (! empty($GLOBALS['vgpc_test_fail_empty_role_read']) || ! empty($GLOBALS['vgpc_test_fail_rollback_role_read']))
+        ) {
+            if (! empty($GLOBALS['vgpc_test_fail_empty_role_read'])) {
+                $GLOBALS['vgpc_test_fail_empty_role_read'] = false;
+            } else {
+                $GLOBALS['vgpc_test_fail_rollback_role_read'] = false;
+            }
+            $GLOBALS['wpdb']->last_error = 'Injected Product Role read failure.';
+            return [];
+        }
+        return \wp_get_object_terms($object_id, $taxonomy, $args);
     }
 
     function wp_set_object_terms(int $object_id, array|string|int $terms, string $taxonomy, bool $append = false): array|\WP_Error
@@ -331,6 +364,19 @@ final class ProductContributionServiceTest
         vgpc_test_same([], $GLOBALS['vgpc_test_relationships'][ProductRoleVocabulary::TAXONOMY][5000] ?? [], 'No native role relationship may survive the rollback.');
     }
 
+    public function test_empty_role_read_with_database_error_fails_closed(): void
+    {
+        $service = $this->service();
+        $this->add_product(self::PRODUCT, 'manual');
+        $this->add_endpoint(self::PERSON, 'person', 'Mia Botha');
+        $GLOBALS['vgpc_test_fail_empty_role_read'] = true;
+
+        $result = $service->create(self::PRODUCT, self::PERSON, [], 4, 'draft');
+
+        vgpc_test_true(is_wp_error($result), 'An empty role read with a database error must not be treated as a verified empty set.');
+        vgpc_test_true(($GLOBALS['vgpc_test_posts'][5000] ?? false) === false, 'An uncertain native role read must hard-roll back the new contribution.');
+    }
+
     public function test_failed_hard_rollback_is_reported_explicitly(): void
     {
         $service = $this->service();
@@ -363,6 +409,55 @@ final class ProductContributionServiceTest
         vgpc_test_true(is_wp_error($result), 'A deletion filter that leaves the post must fail the create operation.');
         vgpc_test_same('product_contribution_rollback_failed', $result->get_error_code(), 'A surviving partial row must be reported as rollback failure.');
         vgpc_test_true(isset($GLOBALS['vgpc_test_posts'][5000]), 'The regression must prove the pre-delete short-circuit left the row behind.');
+    }
+
+    public function test_hard_rollback_reports_orphaned_metadata_after_post_deletion(): void
+    {
+        $service = $this->service();
+        $this->add_product(self::PRODUCT, 'manual');
+        $this->add_endpoint(self::PERSON, 'person', 'Mia Botha');
+        $roles = $this->approved_roles();
+        $GLOBALS['vgpc_test_fail_update_field_name'] = ProductContributionRepository::PRODUCT_FIELD;
+        $GLOBALS['vgpc_test_leave_rollback_metadata'] = true;
+
+        $result = $service->create(self::PRODUCT, self::PERSON, [$roles['aanbieder']], 4, 'draft');
+
+        vgpc_test_true(is_wp_error($result), 'Rollback must fail when contribution metadata remains after post deletion.');
+        vgpc_test_same('product_contribution_rollback_failed', $result->get_error_code(), 'Orphaned metadata must be reported as rollback failure.');
+        vgpc_test_true(get_post(5000) === false, 'The post row may be deleted while its orphaned metadata remains.');
+        vgpc_test_true(get_post_meta(5000) !== [], 'The test must prove post metadata survived the delete.');
+    }
+
+    public function test_hard_rollback_reports_orphaned_native_role_relationships(): void
+    {
+        $service = $this->service();
+        $this->add_product(self::PRODUCT, 'manual');
+        $this->add_endpoint(self::PERSON, 'person', 'Mia Botha');
+        $roles = $this->approved_roles();
+        $GLOBALS['vgpc_test_fail_update_field_name'] = ProductContributionRepository::PRODUCT_FIELD;
+        $GLOBALS['vgpc_test_leave_rollback_role'] = $roles['aanbieder'];
+
+        $result = $service->create(self::PRODUCT, self::PERSON, [$roles['aanbieder']], 4, 'draft');
+
+        vgpc_test_true(is_wp_error($result), 'Rollback must fail when a native Product Role relationship remains.');
+        vgpc_test_same('product_contribution_rollback_failed', $result->get_error_code(), 'An orphaned role relationship must be reported as rollback failure.');
+        vgpc_test_true(get_post(5000) === false, 'The post row may be deleted while its taxonomy relationship remains.');
+        vgpc_test_same([$roles['aanbieder']], $GLOBALS['vgpc_test_relationships'][ProductRoleVocabulary::TAXONOMY][5000] ?? [], 'The test must prove the native role relationship survived the delete.');
+    }
+
+    public function test_hard_rollback_reports_uncertain_native_role_cleanup_read(): void
+    {
+        $service = $this->service();
+        $this->add_product(self::PRODUCT, 'manual');
+        $this->add_endpoint(self::PERSON, 'person', 'Mia Botha');
+        $roles = $this->approved_roles();
+        $GLOBALS['vgpc_test_fail_update_field_name'] = ProductContributionRepository::PRODUCT_FIELD;
+        $GLOBALS['vgpc_test_fail_rollback_role_read_now'] = true;
+
+        $result = $service->create(self::PRODUCT, self::PERSON, [$roles['aanbieder']], 4, 'draft');
+
+        vgpc_test_true(is_wp_error($result), 'An uncertain taxonomy cleanup read must fail rollback verification.');
+        vgpc_test_same('product_contribution_rollback_failed', $result->get_error_code(), 'An uncertain cleanup read must be a rollback failure.');
     }
 
     public function test_incomplete_draft_can_be_created_without_roles_or_publish_mode(): void

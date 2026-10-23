@@ -361,6 +361,29 @@ final class ProductContributionAdminTest
         do_action('shutdown');
     }
 
+    public function test_scheduled_publication_retries_after_initial_post_read_error(): void
+    {
+        [$repository] = $this->fixture();
+        $this->add_product(101, 'manual');
+        $this->add_endpoint(201, 'person', 'Mia Botha');
+        $roles = $this->approved_roles();
+        $this->add_contribution(401, 'future', 101, 201);
+        $GLOBALS['vgpc_test_posts'][401]->post_date_gmt = '2000-01-01 00:00:00';
+        $GLOBALS['vgpc_test_relationships'][ProductRoleVocabulary::TAXONOMY][401] = [$roles['aanbieder']];
+        $GLOBALS['vgpc_test_schedule_clears'] = [];
+        $GLOBALS['vgpc_test_scheduled_events'] = [];
+        add_action('publish_future_post', 'check_and_publish_future_post', 10, 1);
+        $admin = new ProductContributionAdmin($repository);
+        $admin->register();
+        $GLOBALS['vgpc_test_fail_get_post_id'] = 401;
+
+        do_action('publish_future_post', 401);
+
+        vgpc_test_same('future', $GLOBALS['vgpc_test_posts'][401]->post_status, 'An uncertain initial post read must not publish.');
+        vgpc_test_same(1, count($GLOBALS['vgpc_test_scheduled_events']), 'An initial database read error must leave a retry event.');
+        do_action('shutdown');
+    }
+
     public function test_scheduled_publication_retries_after_fresh_product_read_error(): void
     {
         [$repository] = $this->fixture();
