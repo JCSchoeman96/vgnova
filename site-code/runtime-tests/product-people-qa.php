@@ -12,6 +12,7 @@ declare(strict_types=1);
 use Voelgoed\PlatformCore\Event\EventParticipationRepository;
 use Voelgoed\PlatformCore\Event\EventParticipationService;
 use Voelgoed\PlatformCore\Product\ProductContributionRepository;
+use Voelgoed\PlatformCore\Product\ProductContributionService;
 use Voelgoed\PlatformCore\Product\ProductPeopleFields;
 use Voelgoed\PlatformCore\Product\ProductPeopleResolver;
 use Voelgoed\PlatformCore\Product\ProductRoleVocabulary;
@@ -49,6 +50,8 @@ const VG_PRODUCT_PEOPLE_QA_CANONICAL_KEYS = [
 const VG_PRODUCT_PEOPLE_QA_VOLATILE_META = ['_edit_lock', '_edit_last'];
 const VG_PRODUCT_PEOPLE_QA_LEGACY_SOURCE_FIELD = 'produk_bron_event';
 const VG_PRODUCT_PEOPLE_QA_LEGACY_MEDEWERKER_FIELD = 'produk_medewerkers';
+
+require_once __DIR__ . '/product-people-qa-contributions.php';
 
 function vg_product_people_qa_check(bool $condition, string $message): void
 {
@@ -568,6 +571,8 @@ try {
     vg_product_people_qa_check(class_exists(ProductPeopleResolver::class), 'Platform Core ProductPeopleResolver is not loaded.');
     vg_product_people_qa_check(class_exists(ProductContributionRepository::class), 'Platform Core ProductContributionRepository is not loaded.');
     vg_product_people_qa_check(class_exists(ProductRoleVocabulary::class), 'Platform Core ProductRoleVocabulary is not loaded.');
+    vg_product_people_qa_check(class_exists(ProductContributionService::class), 'Platform Core ProductContributionService is not loaded.');
+    vg_product_people_qa_assert_approved_product_role_vocabulary();
     vg_product_people_qa_check(class_exists(EventParticipationRepository::class), 'Platform Core EventParticipationRepository is not loaded.');
     vg_product_people_qa_check(class_exists(EventParticipationService::class), 'Platform Core EventParticipationService is not loaded.');
     foreach (['product', 'tc_events', 'person', EventParticipationRepository::POST_TYPE, ProductContributionRepository::POST_TYPE] as $post_type) {
@@ -836,18 +841,20 @@ try {
             $owned['contributions'],
             static fn (int $id, string $type, string $owner_marker) => vg_product_people_qa_mark($id, $type, $owner_marker)
         );
-        $draft_id = wp_insert_post(['post_type' => ProductContributionRepository::POST_TYPE, 'post_status' => 'publish', 'post_title' => $owner . ' roleless'], true);
-        vg_product_people_qa_check(! is_wp_error($draft_id), 'Could not create a role-less QA contribution.');
-        $draft_id = (int) $draft_id;
-        vg_product_people_qa_mark($draft_id, ProductContributionRepository::POST_TYPE, $owner);
-        update_field(ProductContributionRepository::PRODUCT_FIELD, $pid, $draft_id);
-        update_field(ProductContributionRepository::PERSON_FIELD, $person_b, $draft_id);
-        update_field(ProductContributionRepository::DISPLAY_ORDER_FIELD, 0, $draft_id);
-        $owned['contributions'][$draft_id] = ['product_id' => $pid, 'person_id' => $person_b];
-        vg_product_people_qa_check($resolver->people_for_product($pid) === [$person_a], 'Role-less contributions must not affect manual membership.');
+        vg_product_people_qa_create_owned_contribution(
+            $pid,
+            $person_b,
+            0,
+            $owner,
+            $owned['contributions'],
+            static fn (int $id, string $type, string $owner_marker) => vg_product_people_qa_mark($id, $type, $owner_marker),
+            'draft',
+            []
+        );
+        vg_product_people_qa_check($resolver->people_for_product($pid) === [$person_a], 'Role-less draft contributions must not affect manual membership.');
     });
 
-    $run('S08', 'invalid stored mode returns empty', static function () use ($pid, $resolver, $person_a): void {
+    $run('S08', 'invalid stored mode returns empty', static function () use ($pid, $resolver, $person_a, $set_manual_people): void {
         foreach (['bogus', 'Event'] as $invalid_mode) {
             update_post_meta($pid, ProductPeopleFields::MODE_FIELD, $invalid_mode);
             acf_flush_value_cache($pid, ProductPeopleFields::MODE_FIELD);

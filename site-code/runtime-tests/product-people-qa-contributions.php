@@ -6,18 +6,13 @@ declare(strict_types=1);
  */
 
 use Voelgoed\PlatformCore\Product\ProductContributionRepository;
+use Voelgoed\PlatformCore\Product\ProductContributionService;
 use Voelgoed\PlatformCore\Product\ProductPeopleFields;
 use Voelgoed\PlatformCore\Product\ProductPeopleResolver;
 use Voelgoed\PlatformCore\Product\ProductRoleVocabulary;
 
-/** Resolve one approved Product Role term for QA contribution fixtures. */
-function vg_product_people_qa_default_product_role_term_id(): int
+function vg_product_people_qa_assert_approved_product_role_vocabulary(): void
 {
-    static $cached = null;
-    if (is_int($cached)) {
-        return $cached;
-    }
-
     vg_product_people_qa_check(
         class_exists(ProductRoleVocabulary::class),
         'ProductRoleVocabulary must be loaded before QA Product Contribution fixtures run.'
@@ -29,23 +24,96 @@ function vg_product_people_qa_default_product_role_term_id(): int
 
     foreach (ProductRoleVocabulary::approved_terms() as $slug => $label) {
         $term = get_term_by('slug', $slug, ProductRoleVocabulary::TAXONOMY);
-        if (is_object($term) && ! is_wp_error($term) && ProductRoleVocabulary::is_approved_term_id((int) $term->term_id)) {
-            $cached = (int) $term->term_id;
+        vg_product_people_qa_check(
+            is_object($term)
+                && ! is_wp_error($term)
+                && ($term->name ?? null) === $label
+                && ProductRoleVocabulary::is_approved_term_id((int) $term->term_id),
+            'Approved Product Role vocabulary is incomplete; run ProductRoleSeeder before QA (missing or invalid term: ' . $slug . ').'
+        );
+    }
+}
 
-            return $cached;
-        }
+/** Resolve the canonical Aanbieder role for QA contribution fixtures. */
+function vg_product_people_qa_default_product_role_term_id(): int
+{
+    static $cached = null;
+    if (is_int($cached)) {
+        return $cached;
     }
 
-    $slug = 'aanbieder';
-    $label = ProductRoleVocabulary::approved_terms()[$slug];
-    $created = wp_insert_term($label, ProductRoleVocabulary::TAXONOMY, ['slug' => $slug]);
-    vg_product_people_qa_check(! is_wp_error($created), 'Could not seed the default QA Product Role term.');
-    $term_id = (int) ($created['term_id'] ?? 0);
-    vg_product_people_qa_check(ProductRoleVocabulary::is_approved_term_id($term_id), 'The default QA Product Role term is not approved.');
+    vg_product_people_qa_assert_approved_product_role_vocabulary();
+    $term = get_term_by('slug', 'aanbieder', ProductRoleVocabulary::TAXONOMY);
+    vg_product_people_qa_check(
+        is_object($term) && ! is_wp_error($term) && ProductRoleVocabulary::is_approved_term_id((int) $term->term_id),
+        'The canonical Aanbieder Product Role term must exist before QA contributions are created.'
+    );
 
-    $cached = $term_id;
+    $cached = (int) $term->term_id;
 
     return $cached;
+}
+
+function vg_product_people_qa_contribution_service(): ProductContributionService
+{
+    vg_product_people_qa_check(
+        class_exists(ProductContributionService::class),
+        'ProductContributionService must be loaded before QA Product Contribution fixtures run.'
+    );
+
+    return new ProductContributionService();
+}
+
+/** @param array{product_id:int,person_id:int} $expected_pair */
+function vg_product_people_qa_assert_owned_contribution_delete_target(int $contribution_id, string $owner, array $expected_pair): void
+{
+    vg_product_people_qa_check($contribution_id > 0, 'A contribution delete target must have a positive ID.');
+    vg_product_people_qa_check(
+        get_post_meta($contribution_id, VG_PRODUCT_PEOPLE_QA_OWNER_META, true) === $owner,
+        'Cleanup refused an unowned Product Contribution.'
+    );
+    $post = get_post($contribution_id);
+    vg_product_people_qa_check(
+        $post instanceof WP_Post && $post->post_type === ProductContributionRepository::POST_TYPE,
+        'Cleanup refused a Product Contribution with an unexpected post type.'
+    );
+    vg_product_people_qa_check(
+        (int) get_field(ProductContributionRepository::PRODUCT_FIELD, $contribution_id) === (int) $expected_pair['product_id']
+            && (int) get_field(ProductContributionRepository::PERSON_FIELD, $contribution_id) === (int) $expected_pair['person_id'],
+        'Cleanup refused a Product Contribution with unexpected endpoints.'
+    );
+}
+
+/**
+ * @param array<int, array{product_id:int, person_id:int}> $owned_contributions
+ */
+function vg_product_people_qa_create_owned_contribution(
+    int $product_id,
+    int $person_id,
+    int $display_order,
+    string $owner,
+    array &$owned_contributions,
+    callable $mark,
+    string $status = 'publish',
+    array $product_role_term_ids = null
+): int {
+    if ($product_role_term_ids === null) {
+        $product_role_term_ids = [vg_product_people_qa_default_product_role_term_id()];
+    }
+
+    $created = vg_product_people_qa_contribution_service()->create(
+        $product_id,
+        $person_id,
+        $product_role_term_ids,
+        $display_order,
+        $status
+    );
+    vg_product_people_qa_check(! is_wp_error($created) && (int) $created > 0, 'Could not create a QA Product Contribution through the canonical service.');
+    $contribution_id = (int) $created;
+    $mark($contribution_id, ProductContributionRepository::POST_TYPE, $owner);
+    $owned_contributions[$contribution_id] = ['product_id' => $product_id, 'person_id' => $person_id];
+
+    return $contribution_id;
 }
 
 /**
@@ -70,7 +138,11 @@ function vg_product_people_qa_replace_owned_contributions(
     );
 
     $delete = $delete_owned ?? static function (int $contribution_id, string $post_type, string $owner_marker, ?callable $endpoint_check = null): void {
-        vg_product_people_qa_check(get_post_meta($contribution_id, VG_PRODUCT_PEOPLE_QA_OWNER_META, true) === $owner_marker, 'Cleanup refused an unowned Product Contribution.');
+        $pair = [
+            'product_id' => (int) get_field(ProductContributionRepository::PRODUCT_FIELD, $contribution_id),
+            'person_id' => (int) get_field(ProductContributionRepository::PERSON_FIELD, $contribution_id),
+        ];
+        vg_product_people_qa_assert_owned_contribution_delete_target($contribution_id, $owner_marker, $pair);
         if ($endpoint_check !== null) {
             $endpoint_check();
         }
@@ -83,31 +155,27 @@ function vg_product_people_qa_replace_owned_contributions(
         if (($owned_contributions[$contribution_id]['product_id'] ?? 0) !== $product_id) {
             continue;
         }
+        $pair = $owned_contributions[$contribution_id];
+        vg_product_people_qa_assert_owned_contribution_delete_target($contribution_id, $owner, $pair);
         $delete($contribution_id, ProductContributionRepository::POST_TYPE, $owner, null);
         unset($owned_contributions[$contribution_id]);
     }
 
-    $role_term_id = vg_product_people_qa_default_product_role_term_id();
     foreach (array_values($person_ids) as $index => $person_id) {
         $person_id = (int) $person_id;
         if ($person_id <= 0) {
             continue;
         }
 
-        $contribution_id = wp_insert_post([
-            'post_type' => ProductContributionRepository::POST_TYPE,
-            'post_status' => 'publish',
-            'post_title' => $owner . ' Contribution ' . $product_id . '-' . $person_id,
-        ], true);
-        vg_product_people_qa_check(! is_wp_error($contribution_id) && (int) $contribution_id > 0, 'Could not create a QA Product Contribution.');
-        $contribution_id = (int) $contribution_id;
-        $mark($contribution_id, ProductContributionRepository::POST_TYPE, $owner);
-        update_field(ProductContributionRepository::PRODUCT_FIELD, $product_id, $contribution_id);
-        update_field(ProductContributionRepository::PERSON_FIELD, $person_id, $contribution_id);
-        update_field(ProductContributionRepository::DISPLAY_ORDER_FIELD, $index, $contribution_id);
-        update_field('product_contribution_roles', [$role_term_id], $contribution_id);
-        wp_set_object_terms($contribution_id, [$role_term_id], ProductContributionRepository::ROLE_TAXONOMY, false);
-        $owned_contributions[$contribution_id] = ['product_id' => $product_id, 'person_id' => $person_id];
+        vg_product_people_qa_create_owned_contribution(
+            $product_id,
+            $person_id,
+            $index,
+            $owner,
+            $owned_contributions,
+            $mark,
+            'publish'
+        );
     }
 }
 
@@ -160,15 +228,15 @@ function vg_product_people_qa_delete_owned_contributions(
     foreach (array_keys($owned_contributions) as $contribution_id) {
         $contribution_id = (int) $contribution_id;
         $pair = $owned_contributions[$contribution_id];
-        $endpoint_check = static function () use ($contribution_id, $pair): void {
-            vg_product_people_qa_check(
-                (int) get_field(ProductContributionRepository::PRODUCT_FIELD, $contribution_id) === (int) $pair['product_id']
-                    && (int) get_field(ProductContributionRepository::PERSON_FIELD, $contribution_id) === (int) $pair['person_id'],
-                'Cleanup refused a changed Product Contribution endpoint.'
-            );
-        };
         try {
-            $result = $delete_owned($contribution_id, ProductContributionRepository::POST_TYPE, $owner, $endpoint_check);
+            vg_product_people_qa_assert_owned_contribution_delete_target($contribution_id, $owner, $pair);
+            $result = $delete_owned($contribution_id, ProductContributionRepository::POST_TYPE, $owner, static function () use ($contribution_id, $pair): void {
+                vg_product_people_qa_check(
+                    (int) get_field(ProductContributionRepository::PRODUCT_FIELD, $contribution_id) === (int) $pair['product_id']
+                        && (int) get_field(ProductContributionRepository::PERSON_FIELD, $contribution_id) === (int) $pair['person_id'],
+                    'Cleanup refused a changed Product Contribution endpoint.'
+                );
+            });
             if ($result === false) {
                 $all_clear = false;
                 continue;

@@ -31,6 +31,22 @@ if (! defined('ABSPATH')) {
     exit(1);
 }
 
+const VG_PRODUCT_SINGLE_124_QA_OWNER_META = '_vg_task_7b_qa_owner';
+const VG_PRODUCT_SINGLE_124_QA_OWNER_LABEL = '[QA][AUTOMATED] Task 7B';
+const VG_PRODUCT_SINGLE_124_QA_TEMPLATE = 124;
+const VG_PRODUCT_SINGLE_124_QA_EVENT = 763;
+const VG_PRODUCT_SINGLE_124_QA_PROFILES = [753, 754, 755, 756, 757];
+const VG_PRODUCT_SINGLE_124_QA_PRODUCTS = [765, 767, 768];
+const VG_PRODUCT_SINGLE_124_QA_TEMPLATES = [772, 774];
+const VG_PRODUCT_SINGLE_124_QA_COMPONENTS = ['6b463f', '194bba'];
+const VG_PRODUCT_SINGLE_124_QA_PRODUCT_FIELDS = [
+    'product_people_mode',
+    'canonical_people_resolver',
+    'produk_bron_event',
+    'produk_medewerkers',
+    '_event_name',
+];
+
 require_once __DIR__ . '/product-people-qa-side-effects.php';
 require_once __DIR__ . '/product-single-124-qa-request.php';
 
@@ -63,21 +79,6 @@ if (! function_exists('vg_product_people_qa_ints')) {
 }
 require_once __DIR__ . '/product-people-qa-contributions.php';
 
-const VG_PRODUCT_SINGLE_124_QA_OWNER_META = '_vg_task_7b_qa_owner';
-const VG_PRODUCT_SINGLE_124_QA_OWNER_LABEL = '[QA][AUTOMATED] Task 7B';
-const VG_PRODUCT_SINGLE_124_QA_TEMPLATE = 124;
-const VG_PRODUCT_SINGLE_124_QA_EVENT = 763;
-const VG_PRODUCT_SINGLE_124_QA_PROFILES = [753, 754, 755, 756, 757];
-const VG_PRODUCT_SINGLE_124_QA_PRODUCTS = [765, 767, 768];
-const VG_PRODUCT_SINGLE_124_QA_TEMPLATES = [772, 774];
-const VG_PRODUCT_SINGLE_124_QA_COMPONENTS = ['6b463f', '194bba'];
-const VG_PRODUCT_SINGLE_124_QA_PRODUCT_FIELDS = [
-    'product_people_mode',
-    'canonical_people_resolver',
-    'produk_bron_event',
-    'produk_medewerkers',
-    '_event_name',
-];
 const VG_PRODUCT_SINGLE_124_QA_EXPECTED_PRODUCT_IDS = [
     525, 527, 529, 531, 642, 765, 767, 768, 842, 844, 845, 846,
     905, 908, 911, 914, 917, 920, 923, 1186,
@@ -1176,9 +1177,11 @@ try {
         EventParticipationService::class,
         \Voelgoed\PlatformCore\Product\ProductRoleVocabulary::class,
         \Voelgoed\PlatformCore\Product\ProductContributionRepository::class,
+        \Voelgoed\PlatformCore\Product\ProductContributionService::class,
     ] as $class) {
         vg_product_single_124_qa_check(class_exists($class), 'Required Platform Core class is not loaded: ' . $class);
     }
+    vg_product_people_qa_assert_approved_product_role_vocabulary();
     foreach (['product', 'tc_events', 'person', EventParticipationRepository::POST_TYPE, 'product_contribution'] as $post_type) {
         vg_product_single_124_qa_check(post_type_exists($post_type), 'Required post type is not registered: ' . $post_type);
     }
