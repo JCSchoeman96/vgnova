@@ -95,7 +95,7 @@ function vg_product_people_qa_create_owned_contribution(
     array &$owned_contributions,
     callable $mark,
     string $status = 'publish',
-    array $product_role_term_ids = null
+    ?array $product_role_term_ids = null
 ): int {
     if ($product_role_term_ids === null) {
         $product_role_term_ids = [vg_product_people_qa_default_product_role_term_id()];
@@ -110,8 +110,8 @@ function vg_product_people_qa_create_owned_contribution(
     );
     vg_product_people_qa_check(! is_wp_error($created) && (int) $created > 0, 'Could not create a QA Product Contribution through the canonical service.');
     $contribution_id = (int) $created;
-    $mark($contribution_id, ProductContributionRepository::POST_TYPE, $owner);
     $owned_contributions[$contribution_id] = ['product_id' => $product_id, 'person_id' => $person_id];
+    $mark($contribution_id, ProductContributionRepository::POST_TYPE, $owner);
 
     return $contribution_id;
 }
