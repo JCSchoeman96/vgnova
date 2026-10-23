@@ -370,10 +370,7 @@ final class ProductPeopleResolverTest
         $dir = dirname(__DIR__) . '/includes';
         $code = "define('ABSPATH', '/');"
             . " function get_post_type(\$post = null) { return 'product'; }"
-            . " function get_post(\$id) { return (object) ['ID' => (int) \$id, 'post_type' => 'product', 'post_status' => 'publish']; }"
             . " function get_post_meta(\$id, \$key = '', \$single = false) { return \$key === 'product_people_mode' ? " . var_export($mode, true) . " : ''; }"
-            . " function get_field(\$key, \$post_id = false, \$format = true) { return \$key === 'product_people_mode' ? " . var_export($mode, true) . " : false; }"
-            . " function get_posts(\$args = []) { return []; }"
             . " require " . var_export($dir . '/Event/EventParticipationRepository.php', true) . ";"
             . " require " . var_export($dir . '/Product/ProductRoleVocabulary.php', true) . ";"
             . " require " . var_export($dir . '/Product/ProductContributionRepository.php', true) . ";"

@@ -11,8 +11,10 @@ declare(strict_types=1);
 
 use Voelgoed\PlatformCore\Event\EventParticipationRepository;
 use Voelgoed\PlatformCore\Event\EventParticipationService;
+use Voelgoed\PlatformCore\Product\ProductContributionRepository;
 use Voelgoed\PlatformCore\Product\ProductPeopleFields;
 use Voelgoed\PlatformCore\Product\ProductPeopleResolver;
+use Voelgoed\PlatformCore\Product\ProductRoleVocabulary;
 
 if (! defined('ABSPATH')) {
     echo json_encode([
@@ -85,6 +87,8 @@ function vg_product_people_qa_sorted_ids(mixed $value): array
 
     return $ids;
 }
+
+require_once __DIR__ . '/product-people-qa-contributions.php';
 
 function vg_product_people_qa_db_count(string $sql, string $description): int
 {
@@ -495,6 +499,13 @@ function vg_product_people_qa_cleanup(array $owned, string $owner, array $pre_ap
         }
     };
 
+    $contributions_clear = vg_product_people_qa_delete_owned_contributions(
+        $owned['contributions'],
+        $owner,
+        static fn (int $id, string $type, string $owner_marker, ?callable $endpoint_check = null): bool => $delete($id, $type, $owner_marker, $endpoint_check)
+    );
+    $dependencies_clear = $contributions_clear && $dependencies_clear;
+
     if ($owned['product'] > 0) {
         $dependencies_clear = $delete((int) $owned['product'], 'product', $owner) && $dependencies_clear;
     }
@@ -555,9 +566,11 @@ $preflight_failure = null;
 try {
     vg_product_people_qa_check(class_exists(ProductPeopleFields::class), 'Platform Core ProductPeopleFields is not loaded.');
     vg_product_people_qa_check(class_exists(ProductPeopleResolver::class), 'Platform Core ProductPeopleResolver is not loaded.');
+    vg_product_people_qa_check(class_exists(ProductContributionRepository::class), 'Platform Core ProductContributionRepository is not loaded.');
+    vg_product_people_qa_check(class_exists(ProductRoleVocabulary::class), 'Platform Core ProductRoleVocabulary is not loaded.');
     vg_product_people_qa_check(class_exists(EventParticipationRepository::class), 'Platform Core EventParticipationRepository is not loaded.');
     vg_product_people_qa_check(class_exists(EventParticipationService::class), 'Platform Core EventParticipationService is not loaded.');
-    foreach (['product', 'tc_events', 'person', EventParticipationRepository::POST_TYPE] as $post_type) {
+    foreach (['product', 'tc_events', 'person', EventParticipationRepository::POST_TYPE, ProductContributionRepository::POST_TYPE] as $post_type) {
         vg_product_people_qa_check(post_type_exists($post_type), 'Required post type ' . $post_type . ' is not registered.');
     }
 
@@ -565,8 +578,7 @@ try {
     $group = acf_get_field_group('group_vg_product_people');
     vg_product_people_qa_check(is_array($group) && ($group['active'] ?? false) === true, 'Product People ACF group must exist and be active.');
     $mode_field = acf_get_field(ProductPeopleFields::MODE_FIELD_KEY);
-    $override_field = acf_get_field(ProductPeopleFields::OVERRIDE_FIELD_KEY);
-    vg_product_people_qa_check(is_array($mode_field) && is_array($override_field), 'Product People ACF fields must be registered.');
+    vg_product_people_qa_check(is_array($mode_field), 'Product People mode field must be registered.');
     vg_product_people_qa_check(
         $mode_field['type'] === 'select'
             && $mode_field['name'] === ProductPeopleFields::MODE_FIELD
@@ -579,15 +591,13 @@ try {
         'product_people_mode does not match the locked schema.'
     );
     vg_product_people_qa_check(
-        $override_field['type'] === 'relationship'
-            && $override_field['name'] === ProductPeopleFields::OVERRIDE_FIELD
-            && $override_field['post_type'] === ['person']
-            && (int) $override_field['min'] === 0
-            && (int) $override_field['max'] === 0
-            && (int) $override_field['required'] === 0
-            && $override_field['return_format'] === 'id'
-            && $override_field['conditional_logic'] === [[['field' => ProductPeopleFields::MODE_FIELD_KEY, 'operator' => '==', 'value' => 'manual']]],
-        'product_people_override does not match the locked schema.'
+        is_string($mode_field['instructions'] ?? null)
+            && str_contains((string) $mode_field['instructions'], 'Product Contributions'),
+        'Manual-mode guidance must direct editors to Product Contributions.'
+    );
+    vg_product_people_qa_check(
+        acf_get_field('field_vg_product_people_override') === false,
+        'product_people_override must not remain registered in the Product People group.'
     );
     $legacy_source = acf_get_field('field_produk_bron_event');
     $legacy_medewerkers = acf_get_field('field_produk_medewerkers');
@@ -658,6 +668,7 @@ $owned = [
     'event' => 0,
     'persons' => ['A' => 0, 'B' => 0, 'C' => 0],
     'participations' => [],
+    'contributions' => [],
 ];
 $scenarios = [];
 $scenario_failure = null;
@@ -738,6 +749,17 @@ try {
     // Legacy source Event attaches to the owned draft Product through ACF.
     $set_source_event($pid, $event);
 
+    $set_manual_people = static function (?string $mode, array $people) use ($pid, $owner, &$owned): void {
+        vg_product_people_qa_configure_product_people(
+            $pid,
+            $mode,
+            $people,
+            $owner,
+            $owned['contributions'],
+            static fn (int $id, string $type, string $owner_marker) => vg_product_people_qa_mark($id, $type, $owner_marker)
+        );
+    };
+
     $run('S01', 'absent mode with valid source Event returns empty', static function () use ($pid, $resolver): void {
         delete_field(ProductPeopleFields::MODE_FIELD, $pid);
         vg_product_people_qa_check(get_post_meta($pid, ProductPeopleFields::MODE_FIELD, true) === '', 'Absent mode must have no stored value before the scenario.');
@@ -788,32 +810,41 @@ try {
         vg_product_people_qa_check(get_post_status($pid) === 'draft', 'The Product must still be draft to prove draft Products resolve.');
     });
 
-    $run('S04', 'event mode ignores a stale manual override', static function () use ($pid, $resolver, $person_a, $person_b): void {
-        update_field(ProductPeopleFields::OVERRIDE_FIELD, [$person_a], $pid);
-        vg_product_people_qa_check($resolver->people_for_product($pid) === [$person_b, $person_a], 'Event mode must ignore the stale manual override.');
+    $run('S04', 'event mode ignores stale legacy override meta', static function () use ($pid, $resolver, $person_a, $person_b): void {
+        update_field(ProductPeopleFields::MODE_FIELD, ProductPeopleFields::MODE_EVENT, $pid);
+        update_post_meta($pid, 'product_people_override', [$person_a]);
+        vg_product_people_qa_check($resolver->people_for_product($pid) === [$person_b, $person_a], 'Event mode must ignore stale manual authority data.');
     });
 
-    $run('S05', 'manual mode returns the override in editor order', static function () use ($pid, $resolver, $person_a, $person_b): void {
-        update_field(ProductPeopleFields::MODE_FIELD, ProductPeopleFields::MODE_MANUAL, $pid);
-        update_field(ProductPeopleFields::OVERRIDE_FIELD, [$person_a, $person_b], $pid);
-        vg_product_people_qa_check($resolver->people_for_product($pid) === [$person_a, $person_b], 'Manual mode must preserve the editor-selected order.');
+    $run('S05', 'manual mode returns Product Contributions in editor order', static function () use ($pid, $resolver, $person_a, $person_b, $set_manual_people): void {
+        $set_manual_people(ProductPeopleFields::MODE_MANUAL, [$person_a, $person_b]);
+        vg_product_people_qa_check($resolver->people_for_product($pid) === [$person_a, $person_b], 'Manual mode must preserve the contribution order.');
     });
 
-    $run('S06', 'empty manual override returns empty despite a valid source Event', static function () use ($pid, $resolver, $event): void {
-        update_field(ProductPeopleFields::OVERRIDE_FIELD, [], $pid);
-        vg_product_people_qa_check(vg_product_people_qa_ints(get_field(VG_PRODUCT_PEOPLE_QA_LEGACY_SOURCE_FIELD, $pid, false)) === [$event], 'The source Event must remain valid during the empty-override proof.');
-        vg_product_people_qa_check($resolver->people_for_product($pid) === [], 'An empty manual override must resolve to no People.');
+    $run('S06', 'empty manual contributions return empty despite a valid source Event', static function () use ($pid, $resolver, $event, $set_manual_people): void {
+        $set_manual_people(ProductPeopleFields::MODE_MANUAL, []);
+        vg_product_people_qa_check(vg_product_people_qa_ints(get_field(VG_PRODUCT_PEOPLE_QA_LEGACY_SOURCE_FIELD, $pid, false)) === [$event], 'The source Event must remain valid during the empty manual proof.');
+        vg_product_people_qa_check($resolver->people_for_product($pid) === [], 'Manual mode without Product Contributions must resolve to no People.');
     });
 
-    $run('S07', 'malformed manual endpoints are filtered to published Persons', static function () use ($pid, $resolver, $event, $person_a, $person_c): void {
-        // Guarded raw injection: explicitly malformed QA state, restored in this scenario.
-        update_post_meta($pid, ProductPeopleFields::OVERRIDE_FIELD, [$person_a, $event, $person_c]);
-        acf_flush_value_cache($pid, ProductPeopleFields::OVERRIDE_FIELD);
-        try {
-            vg_product_people_qa_check($resolver->people_for_product($pid) === [$person_a], 'Only the valid published Person must survive malformed manual endpoints.');
-        } finally {
-            update_field(ProductPeopleFields::OVERRIDE_FIELD, [$person_a], $pid);
-        }
+    $run('S07', 'role-less and invalid Product Contributions do not leak into manual membership', static function () use ($pid, $resolver, $person_a, $person_b, $owner, &$owned): void {
+        vg_product_people_qa_configure_product_people(
+            $pid,
+            ProductPeopleFields::MODE_MANUAL,
+            [$person_a],
+            $owner,
+            $owned['contributions'],
+            static fn (int $id, string $type, string $owner_marker) => vg_product_people_qa_mark($id, $type, $owner_marker)
+        );
+        $draft_id = wp_insert_post(['post_type' => ProductContributionRepository::POST_TYPE, 'post_status' => 'publish', 'post_title' => $owner . ' roleless'], true);
+        vg_product_people_qa_check(! is_wp_error($draft_id), 'Could not create a role-less QA contribution.');
+        $draft_id = (int) $draft_id;
+        vg_product_people_qa_mark($draft_id, ProductContributionRepository::POST_TYPE, $owner);
+        update_field(ProductContributionRepository::PRODUCT_FIELD, $pid, $draft_id);
+        update_field(ProductContributionRepository::PERSON_FIELD, $person_b, $draft_id);
+        update_field(ProductContributionRepository::DISPLAY_ORDER_FIELD, 0, $draft_id);
+        $owned['contributions'][$draft_id] = ['product_id' => $pid, 'person_id' => $person_b];
+        vg_product_people_qa_check($resolver->people_for_product($pid) === [$person_a], 'Role-less contributions must not affect manual membership.');
     });
 
     $run('S08', 'invalid stored mode returns empty', static function () use ($pid, $resolver, $person_a): void {
@@ -822,8 +853,7 @@ try {
             acf_flush_value_cache($pid, ProductPeopleFields::MODE_FIELD);
             vg_product_people_qa_check($resolver->people_for_product($pid) === [], 'Invalid stored mode "' . $invalid_mode . '" must return no People.');
         }
-        update_field(ProductPeopleFields::MODE_FIELD, ProductPeopleFields::MODE_MANUAL, $pid);
-        update_field(ProductPeopleFields::OVERRIDE_FIELD, [$person_a], $pid);
+        $set_manual_people(ProductPeopleFields::MODE_MANUAL, [$person_a]);
     });
 
     $run('S09', 'wrong-type source Event returns empty', static function () use ($pid, $resolver, $event, $person_a, $set_source_event): void {
@@ -868,20 +898,18 @@ try {
         }
     });
 
-    $run('S12', 'manual mode ignores a valid source Event', static function () use ($pid, $resolver, $event, $person_a, $person_b): void {
-        update_field(ProductPeopleFields::MODE_FIELD, ProductPeopleFields::MODE_MANUAL, $pid);
-        update_field(ProductPeopleFields::OVERRIDE_FIELD, [$person_a, $person_b], $pid);
+    $run('S12', 'manual mode ignores a valid source Event', static function () use ($pid, $resolver, $event, $person_a, $person_b, $set_manual_people): void {
+        $set_manual_people(ProductPeopleFields::MODE_MANUAL, [$person_a, $person_b]);
         vg_product_people_qa_check(vg_product_people_qa_ints(get_field(VG_PRODUCT_PEOPLE_QA_LEGACY_SOURCE_FIELD, $pid, false)) === [$event], 'The source Event must be valid during the manual-isolation proof.');
         vg_product_people_qa_check($resolver->people_for_product($pid) === [$person_a, $person_b], 'Manual mode must ignore the source Event entirely.');
     });
 
-    $run('S13', 'legacy produk_medewerkers never influences the canonical result', static function () use ($pid, $resolver, $event, $person_b, $person_a): void {
+    $run('S13', 'legacy produk_medewerkers never influences the canonical result', static function () use ($pid, $resolver, $event, $person_b, $person_a, $set_manual_people): void {
         update_field(VG_PRODUCT_PEOPLE_QA_LEGACY_MEDEWERKER_FIELD, [753], $pid);
         vg_product_people_qa_check(vg_product_people_qa_ints(get_field(VG_PRODUCT_PEOPLE_QA_LEGACY_MEDEWERKER_FIELD, $pid, false)) === [753], 'The legacy Medewerker value must be populated for the isolation proof.');
 
-        update_field(ProductPeopleFields::MODE_FIELD, ProductPeopleFields::MODE_MANUAL, $pid);
-        update_field(ProductPeopleFields::OVERRIDE_FIELD, [], $pid);
-        vg_product_people_qa_check($resolver->people_for_product($pid) === [], 'Manual mode with an empty override must not fall back to produk_medewerkers.');
+        $set_manual_people(ProductPeopleFields::MODE_MANUAL, []);
+        vg_product_people_qa_check($resolver->people_for_product($pid) === [], 'Manual mode without Product Contributions must not fall back to produk_medewerkers.');
 
         update_field(ProductPeopleFields::MODE_FIELD, ProductPeopleFields::MODE_EVENT, $pid);
         vg_product_people_qa_check($resolver->people_for_product($pid) === [$person_b, $person_a], 'Event mode must not be influenced by produk_medewerkers.');

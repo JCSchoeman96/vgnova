@@ -8,8 +8,16 @@ final class ProductPeopleIntegrationTest
         $added = $this->added_lines();
 
         vgpc_test_true(
+            in_array("'includes/Product/ProductRoleVocabulary.php',", $added, true),
+            'integration.patch must load includes/Product/ProductRoleVocabulary.php in the bootstrap.'
+        );
+        vgpc_test_true(
             in_array("'includes/Product/ProductPeopleFields.php',", $added, true),
             'integration.patch must load includes/Product/ProductPeopleFields.php in the bootstrap.'
+        );
+        vgpc_test_true(
+            in_array("'includes/Product/ProductContributionRepository.php',", $added, true),
+            'integration.patch must load includes/Product/ProductContributionRepository.php in the bootstrap.'
         );
         vgpc_test_true(
             in_array("'includes/Product/ProductPeopleResolver.php',", $added, true),
@@ -65,6 +73,22 @@ final class ProductPeopleIntegrationTest
             vgpc_test_true(
                 ! str_contains($line, "register_component('product_people_resolver'"),
                 'ProductPeopleResolver must not have a lifecycle registration key: ' . $line
+            );
+            vgpc_test_true(
+                ! str_contains($line, 'ProductRoleVocabulary::class'),
+                'ProductRoleVocabulary must not be registered as a lifecycle component: ' . $line
+            );
+            vgpc_test_true(
+                ! str_contains($line, 'ProductContributionRepository::class'),
+                'ProductContributionRepository must not be registered as a lifecycle component: ' . $line
+            );
+            vgpc_test_true(
+                ! str_contains($line, "register_component('product_role_vocabulary'"),
+                'ProductRoleVocabulary must not have a lifecycle registration key: ' . $line
+            );
+            vgpc_test_true(
+                ! str_contains($line, "register_component('product_contribution_repository'"),
+                'ProductContributionRepository must not have a lifecycle registration key: ' . $line
             );
         }
     }

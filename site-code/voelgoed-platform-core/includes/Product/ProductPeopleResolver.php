@@ -28,6 +28,15 @@ final class ProductPeopleResolver
     /** @return list<int> */
     public function people_for_product(int $product_id): array
     {
+        if ($product_id <= 0 || get_post_type($product_id) !== self::PRODUCT_POST_TYPE) {
+            return [];
+        }
+
+        // Fail closed when ACF field reads are unavailable: configured Products resolve to [] rather than fataling.
+        if (! function_exists('get_field')) {
+            return [];
+        }
+
         return $this->repository->people_for_product($product_id);
     }
 }

@@ -1,6 +1,6 @@
 --- a/voelgoed-platform-core.php
 +++ b/voelgoed-platform-core.php
-@@ -25,0 +26,13 @@
+@@ -25,0 +26,15 @@
 +    'includes/Taxonomy/ContentTopicTaxonomy.php',
 +    'includes/Taxonomy/ContentTopicMigration.php',
 +    'includes/Taxonomy/ContentTopicRoles.php',
@@ -10,7 +10,9 @@
 +    'includes/Event/EventParticipationAdmin.php',
 +    'includes/Event/EventRoleSeeder.php',
 +    'includes/Event/EventParticipationBricks.php',
++    'includes/Product/ProductRoleVocabulary.php',
 +    'includes/Product/ProductPeopleFields.php',
++    'includes/Product/ProductContributionRepository.php',
 +    'includes/Product/ProductPeopleResolver.php',
 +    'includes/Product/ProductPeopleBricks.php',
 +    'includes/Product/ProductSourceEventBricks.php',
