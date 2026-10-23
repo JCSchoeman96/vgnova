@@ -221,6 +221,31 @@ final class ProductContributionService
                         'WordPress returned an invalid result while assigning Product Contribution roles.'
                     );
                 }
+
+                $persisted_role_ids = wp_get_object_terms(
+                    $contribution_id,
+                    ProductContributionRepository::ROLE_TAXONOMY,
+                    ['fields' => 'ids']
+                );
+                if (is_wp_error($persisted_role_ids) || ! is_array($persisted_role_ids)) {
+                    return $this->rollback_new_contribution(
+                        $contribution_id,
+                        'product_contribution_role_persistence_failed',
+                        'Could not verify the Product Contribution role relationships.'
+                    );
+                }
+
+                $expected_role_ids = $role_ids;
+                $persisted_role_ids = array_values(array_unique(array_map('intval', $persisted_role_ids)));
+                sort($expected_role_ids, SORT_NUMERIC);
+                sort($persisted_role_ids, SORT_NUMERIC);
+                if ($persisted_role_ids !== $expected_role_ids) {
+                    return $this->rollback_new_contribution(
+                        $contribution_id,
+                        'product_contribution_role_persistence_failed',
+                        'The requested Product Roles were not persisted as native taxonomy relationships.'
+                    );
+                }
             } catch (\Throwable $error) {
                 return $this->rollback_new_contribution(
                     $contribution_id,

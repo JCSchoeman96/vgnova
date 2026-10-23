@@ -29,6 +29,16 @@ namespace Voelgoed\PlatformCore\Product {
         }
         return \wp_delete_post($post_id, $force_delete);
     }
+
+    function wp_set_object_terms(int $object_id, array|string|int $terms, string $taxonomy, bool $append = false): array|\WP_Error
+    {
+        if (! empty($GLOBALS['vgpc_test_succeed_without_term_relationships'])) {
+            $GLOBALS['vgpc_test_succeed_without_term_relationships'] = false;
+            ++$GLOBALS['vgpc_test_set_term_calls'];
+            return array_map('intval', (array) $terms);
+        }
+        return \wp_set_object_terms($object_id, $terms, $taxonomy, $append);
+    }
 }
 
 namespace {
@@ -303,6 +313,22 @@ final class ProductContributionServiceTest
         vgpc_test_same([], $GLOBALS['vgpc_test_posts'][5000] ?? [], 'A role-write failure must hard-delete the new contribution.');
         vgpc_test_same([], $GLOBALS['vgpc_test_meta'][5000] ?? [], 'A role-write failure must remove partial ACF metadata.');
         vgpc_test_same([['post_id' => 5000, 'force_delete' => true]], $GLOBALS['vgpc_test_delete_post_calls'], 'A role-write failure must invoke hard rollback.');
+    }
+
+    public function test_native_role_assignment_array_result_must_be_verified_before_success(): void
+    {
+        $service = $this->service();
+        $this->add_product(self::PRODUCT, 'manual');
+        $this->add_endpoint(self::PERSON, 'person', 'Mia Botha');
+        $roles = $this->approved_roles();
+        $GLOBALS['vgpc_test_succeed_without_term_relationships'] = true;
+
+        $result = $service->create(self::PRODUCT, self::PERSON, [$roles['aanbieder']], 4, 'publish');
+
+        vgpc_test_true(is_wp_error($result), 'A successful return from wp_set_object_terms must not hide missing persisted relationships.');
+        vgpc_test_same('product_contribution_role_persistence_failed', $result->get_error_code(), 'A role persistence mismatch must have a dedicated write error.');
+        vgpc_test_same([], $GLOBALS['vgpc_test_posts'][5000] ?? [], 'A published contribution without its requested native role must be hard-rolled back.');
+        vgpc_test_same([], $GLOBALS['vgpc_test_relationships'][ProductRoleVocabulary::TAXONOMY][5000] ?? [], 'No native role relationship may survive the rollback.');
     }
 
     public function test_failed_hard_rollback_is_reported_explicitly(): void
