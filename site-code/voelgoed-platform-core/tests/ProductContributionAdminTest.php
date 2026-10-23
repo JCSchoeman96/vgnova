@@ -21,6 +21,10 @@ namespace Voelgoed\PlatformCore\Product {
     /** Model wp_insert_post's promotion of an overdue future row to publish. */
     function wp_update_post(array $postarr, bool $wp_error = false): int|\WP_Error
     {
+        if (! empty($GLOBALS['vgpc_test_fail_scheduled_wp_update']) && ($postarr['post_status'] ?? null) === 'publish') {
+            $GLOBALS['vgpc_test_fail_scheduled_wp_update'] = false;
+            return new \WP_Error('injected_scheduled_update_failure', 'Injected scheduled update failure.');
+        }
         $post_id = (int) ($postarr['ID'] ?? 0);
         $post = \get_post($post_id);
         if (
@@ -199,6 +203,106 @@ final class ProductContributionAdminTest
             [['timestamp' => strtotime($new_date_gmt . ' GMT'), 'hook' => 'publish_future_post', 'args' => [401]]],
             $GLOBALS['vgpc_test_scheduled_events'],
             'Cron must schedule the fresh post date after a concurrent reschedule.'
+        );
+        do_action('shutdown');
+    }
+
+    public function test_early_cron_event_uses_the_fresh_date_after_acquiring_the_row_lock(): void
+    {
+        [$repository] = $this->fixture();
+        $this->add_product(101, 'manual');
+        $this->add_endpoint(201, 'person', 'Mia Botha');
+        $roles = $this->approved_roles();
+        $this->add_contribution(401, 'future', 101, 201);
+        $fresh_date_gmt = gmdate('Y-m-d H:i:s', time() + 3600);
+        $stale_date_gmt = gmdate('Y-m-d H:i:s', time() + 10800);
+        $GLOBALS['vgpc_test_posts'][401]->post_date_gmt = $fresh_date_gmt;
+        $GLOBALS['vgpc_test_relationships'][ProductRoleVocabulary::TAXONOMY][401] = [$roles['aanbieder']];
+        $GLOBALS['vgpc_test_enable_query_cache'] = true;
+        $stale_post = clone $GLOBALS['vgpc_test_posts'][401];
+        $stale_post->post_date_gmt = $stale_date_gmt;
+        $GLOBALS['vgpc_test_get_post_cache'][401] = $stale_post;
+        $GLOBALS['vgpc_test_schedule_clears'] = [];
+        $GLOBALS['vgpc_test_scheduled_events'] = [];
+        add_action('publish_future_post', 'check_and_publish_future_post', 10, 1);
+        $admin = new ProductContributionAdmin($repository);
+        $admin->register();
+        $GLOBALS['vgpc_test_apply_wp_update_filter'] = true;
+
+        do_action('publish_future_post', 401);
+
+        vgpc_test_same(
+            [['timestamp' => strtotime($fresh_date_gmt . ' GMT'), 'hook' => 'publish_future_post', 'args' => [401]]],
+            $GLOBALS['vgpc_test_scheduled_events'],
+            'An early cron callback must requeue using the fresh date instead of its stale cached date.'
+        );
+        vgpc_test_same(
+            $this->expected_row_lock(401),
+            $GLOBALS['wpdb']->queries[0]['args'][0] ?? null,
+            'Cron must hold the contribution-row lock before replacing a scheduled event.'
+        );
+        vgpc_test_same('future', $GLOBALS['vgpc_test_posts'][401]->post_status, 'An early scheduled contribution must remain inactive.');
+        do_action('shutdown');
+    }
+
+    public function test_scheduled_publication_retries_after_a_transient_row_lock_failure(): void
+    {
+        [$repository] = $this->fixture();
+        $this->add_product(101, 'manual');
+        $this->add_endpoint(201, 'person', 'Mia Botha');
+        $roles = $this->approved_roles();
+        $this->add_contribution(401, 'future', 101, 201);
+        $GLOBALS['vgpc_test_posts'][401]->post_date_gmt = '2000-01-01 00:00:00';
+        $GLOBALS['vgpc_test_relationships'][ProductRoleVocabulary::TAXONOMY][401] = [$roles['aanbieder']];
+        $GLOBALS['vgpc_test_schedule_clears'] = [];
+        $GLOBALS['vgpc_test_scheduled_events'] = [];
+        add_action('publish_future_post', 'check_and_publish_future_post', 10, 1);
+        $admin = new ProductContributionAdmin($repository);
+        $admin->register();
+        $GLOBALS['vgpc_test_apply_wp_update_filter'] = true;
+        $row_lock = $this->expected_row_lock(401);
+        $GLOBALS['wpdb']->get_var_handler = static fn (string $query, array $args): string =>
+            $query === 'SELECT GET_LOCK(%s, %d)' && ($args[0] ?? null) === $row_lock ? '0' : '1';
+        $started_at = time();
+
+        do_action('publish_future_post', 401);
+
+        vgpc_test_same('future', $GLOBALS['vgpc_test_posts'][401]->post_status, 'A transient row lock failure must leave the contribution inactive.');
+        vgpc_test_same(1, count($GLOBALS['vgpc_test_scheduled_events']), 'A transient row lock failure must leave a retry event.');
+        vgpc_test_true(
+            $GLOBALS['vgpc_test_scheduled_events'][0]['timestamp'] >= $started_at + 59
+            && $GLOBALS['vgpc_test_scheduled_events'][0]['timestamp'] <= $started_at + 61,
+            'A transient row lock failure must retry after a short delay.'
+        );
+        do_action('shutdown');
+    }
+
+    public function test_scheduled_publication_retries_after_wp_update_post_error(): void
+    {
+        [$repository] = $this->fixture();
+        $this->add_product(101, 'manual');
+        $this->add_endpoint(201, 'person', 'Mia Botha');
+        $roles = $this->approved_roles();
+        $this->add_contribution(401, 'future', 101, 201);
+        $GLOBALS['vgpc_test_posts'][401]->post_date_gmt = '2000-01-01 00:00:00';
+        $GLOBALS['vgpc_test_relationships'][ProductRoleVocabulary::TAXONOMY][401] = [$roles['aanbieder']];
+        $GLOBALS['vgpc_test_schedule_clears'] = [];
+        $GLOBALS['vgpc_test_scheduled_events'] = [];
+        $GLOBALS['vgpc_test_fail_scheduled_wp_update'] = true;
+        add_action('publish_future_post', 'check_and_publish_future_post', 10, 1);
+        $admin = new ProductContributionAdmin($repository);
+        $admin->register();
+        $GLOBALS['vgpc_test_apply_wp_update_filter'] = true;
+        $started_at = time();
+
+        do_action('publish_future_post', 401);
+
+        vgpc_test_same('future', $GLOBALS['vgpc_test_posts'][401]->post_status, 'An update error must leave the contribution inactive.');
+        vgpc_test_same(1, count($GLOBALS['vgpc_test_scheduled_events']), 'A failed scheduled status update must leave a retry event.');
+        vgpc_test_true(
+            $GLOBALS['vgpc_test_scheduled_events'][0]['timestamp'] >= $started_at + 59
+            && $GLOBALS['vgpc_test_scheduled_events'][0]['timestamp'] <= $started_at + 61,
+            'A failed scheduled status update must retry after a short delay.'
         );
         do_action('shutdown');
     }

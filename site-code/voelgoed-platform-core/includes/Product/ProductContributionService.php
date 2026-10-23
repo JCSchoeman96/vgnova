@@ -303,10 +303,24 @@ final class ProductContributionService
 
     private function rollback_new_contribution(int $contribution_id, string $code, string $message): \WP_Error
     {
+        $rollback_error = null;
         try {
-            wp_delete_post($contribution_id, true);
+            $deleted = wp_delete_post($contribution_id, true);
+            if ($deleted === false || $deleted === null || is_wp_error($deleted)) {
+                $rollback_error = is_wp_error($deleted)
+                    ? $deleted->get_error_message()
+                    : 'WordPress did not confirm hard deletion of the new contribution.';
+            }
         } catch (\Throwable $error) {
-            $message .= ' Rollback failed: ' . $error->getMessage();
+            $rollback_error = $error->getMessage();
+        }
+
+        if ($rollback_error !== null) {
+            return new \WP_Error(
+                'product_contribution_rollback_failed',
+                $message . ' Rollback failed: ' . $rollback_error,
+                ['original_error_code' => $code, 'contribution_id' => $contribution_id]
+            );
         }
 
         return new \WP_Error($code, $message);

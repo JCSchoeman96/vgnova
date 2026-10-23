@@ -80,13 +80,6 @@ final class ProductContributionAdmin
             return;
         }
 
-        $time = strtotime((string) ($post->post_date_gmt ?? '') . ' GMT');
-        if ($time > time()) {
-            wp_clear_scheduled_hook('publish_future_post', [$post_id]);
-            wp_schedule_single_event($time, 'publish_future_post', [$post_id]);
-            return;
-        }
-
         $this->captured_save_validation_error = null;
         $this->scheduled_publish_candidate_id = $post_id;
         $this->capture_save_validation_error = true;
@@ -107,6 +100,8 @@ final class ProductContributionAdmin
             $this->captured_save_validation_error = null;
             if ($validation_error->get_error_code() === 'scheduled_product_contribution_not_due') {
                 $this->reschedule_if_future_date_changed($post_id);
+            } elseif ($this->is_transient_scheduled_publish_error($validation_error)) {
+                $this->retry_future_publication_later($post_id);
             }
             return;
         } finally {
@@ -117,11 +112,17 @@ final class ProductContributionAdmin
         $this->captured_save_validation_error = null;
         $this->scheduled_publish_validated_id = $post_id;
         try {
-            wp_update_post([
+            $updated = wp_update_post([
                 'ID' => $post_id,
                 'post_status' => 'publish',
                 'post_title' => $validated_data['post_title'],
             ], true);
+            if (is_wp_error($updated) || (int) $updated !== $post_id) {
+                $this->retry_future_publication_later($post_id);
+            }
+        } catch (\Throwable $error) {
+            $this->retry_future_publication_later($post_id);
+            throw $error;
         } finally {
             $this->scheduled_publish_validated_id = null;
         }
@@ -257,7 +258,13 @@ final class ProductContributionAdmin
                     ));
                 }
                 $scheduled_time = strtotime((string) ($fresh_post->post_date_gmt ?? '') . ' GMT');
-                if ($scheduled_time === false || $scheduled_time > time()) {
+                if ($scheduled_time === false) {
+                    $this->stop_save(new \WP_Error(
+                        'scheduled_product_contribution_schedule_read_failed',
+                        'Could not verify the Product Contribution publication time. Try again.'
+                    ));
+                }
+                if ($scheduled_time > time()) {
                     $this->stop_save(new \WP_Error(
                         'scheduled_product_contribution_not_due',
                         'The Product Contribution is not due for publication yet.'
@@ -510,6 +517,25 @@ final class ProductContributionAdmin
 
         wp_clear_scheduled_hook('publish_future_post', [$post_id]);
         wp_schedule_single_event($time, 'publish_future_post', [$post_id]);
+    }
+
+    private function retry_future_publication_later(int $post_id): void
+    {
+        wp_clear_scheduled_hook('publish_future_post', [$post_id]);
+        wp_schedule_single_event(time() + 60, 'publish_future_post', [$post_id]);
+    }
+
+    private function is_transient_scheduled_publish_error(\WP_Error $error): bool
+    {
+        return in_array($error->get_error_code(), [
+            'product_contribution_row_lock_failed',
+            'product_contribution_pair_lock_failed',
+            'product_contribution_fresh_read_failed',
+            'product_contribution_fresh_check_failed',
+            'product_contribution_roles_read_failed',
+            'scheduled_product_contribution_fresh_read_failed',
+            'scheduled_product_contribution_schedule_read_failed',
+        ], true);
     }
 
     private function request_role_ids(int $contribution_id): array|\WP_Error

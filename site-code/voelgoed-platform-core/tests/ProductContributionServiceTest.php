@@ -8,6 +8,19 @@ namespace Voelgoed\PlatformCore\Product {
         $postarr = \apply_filters('wp_insert_post_data', $postarr, $postarr);
         return \wp_insert_post($postarr, $wp_error);
     }
+
+    function wp_delete_post(int $post_id, bool $force_delete = false): object|false
+    {
+        if (! empty($GLOBALS['vgpc_test_fail_delete_post'])) {
+            $GLOBALS['vgpc_test_delete_post_calls'][] = [
+                'post_id' => $post_id,
+                'force_delete' => $force_delete,
+            ];
+            $GLOBALS['vgpc_test_fail_delete_post'] = false;
+            return false;
+        }
+        return \wp_delete_post($post_id, $force_delete);
+    }
 }
 
 namespace {
@@ -282,6 +295,24 @@ final class ProductContributionServiceTest
         vgpc_test_same([], $GLOBALS['vgpc_test_posts'][5000] ?? [], 'A role-write failure must hard-delete the new contribution.');
         vgpc_test_same([], $GLOBALS['vgpc_test_meta'][5000] ?? [], 'A role-write failure must remove partial ACF metadata.');
         vgpc_test_same([['post_id' => 5000, 'force_delete' => true]], $GLOBALS['vgpc_test_delete_post_calls'], 'A role-write failure must invoke hard rollback.');
+    }
+
+    public function test_failed_hard_rollback_is_reported_explicitly(): void
+    {
+        $service = $this->service();
+        $this->add_product(self::PRODUCT, 'manual');
+        $this->add_endpoint(self::PERSON, 'person', 'Mia Botha');
+        $roles = $this->approved_roles();
+        $GLOBALS['vgpc_test_fail_update_field_name'] = ProductContributionRepository::PRODUCT_FIELD;
+        $GLOBALS['vgpc_test_fail_delete_post'] = true;
+
+        $result = $service->create(self::PRODUCT, self::PERSON, [$roles['aanbieder']], 4, 'draft');
+
+        vgpc_test_true(is_wp_error($result), 'A field-write failure must still fail create when rollback also fails.');
+        vgpc_test_same('product_contribution_rollback_failed', $result->get_error_code(), 'A failed hard delete must have a distinct rollback error code.');
+        vgpc_test_true(str_contains($result->get_error_message(), 'Rollback failed'), 'The error must state that the newly inserted row could not be removed.');
+        vgpc_test_true(isset($GLOBALS['vgpc_test_posts'][5000]), 'The test must prove the failed deletion left the partial row behind.');
+        vgpc_test_same([['post_id' => 5000, 'force_delete' => true]], $GLOBALS['vgpc_test_delete_post_calls'], 'Rollback must attempt a force delete of only the new contribution.');
     }
 
     public function test_incomplete_draft_can_be_created_without_roles_or_publish_mode(): void
