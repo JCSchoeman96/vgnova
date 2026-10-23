@@ -193,6 +193,7 @@ $GLOBALS['vgpc_test_acf_save_release_counts'] = [];
 $GLOBALS['vgpc_test_apply_wp_update_filter'] = false;
 $GLOBALS['vgpc_test_enable_query_cache'] = false;
 $GLOBALS['vgpc_test_get_posts_cache'] = [];
+$GLOBALS['vgpc_test_get_posts_handler'] = null;
 $GLOBALS['vgpc_test_get_post_cache'] = [];
 $GLOBALS['vgpc_test_get_field_cache'] = [];
 
@@ -227,6 +228,7 @@ $GLOBALS['vgpc_test_acf_save_release_counts'] = [];
 $GLOBALS['vgpc_test_apply_wp_update_filter'] = false;
     $GLOBALS['vgpc_test_enable_query_cache'] = false;
     $GLOBALS['vgpc_test_get_posts_cache'] = [];
+$GLOBALS['vgpc_test_get_posts_handler'] = null;
     $GLOBALS['vgpc_test_get_post_cache'] = [];
     $GLOBALS['vgpc_test_get_field_cache'] = [];
     $GLOBALS['wpdb'] = new VGPC_TestWpdb();
@@ -775,6 +777,13 @@ function delete_field(string|int $selector, int|string|false $post_id = false): 
 
 function get_posts(array $args = []): array
 {
+    if (is_callable($GLOBALS['vgpc_test_get_posts_handler'] ?? null)) {
+        $handled_posts = ($GLOBALS['vgpc_test_get_posts_handler'])($args);
+        if (is_array($handled_posts)) {
+            return $handled_posts;
+        }
+    }
+
     $cache_key = serialize($args);
     if (
         ! empty($GLOBALS['vgpc_test_enable_query_cache'])
