@@ -599,7 +599,12 @@ final class ProductContributionAdmin
     private function stored_role_ids(int $contribution_id): array|\WP_Error
     {
         $term_ids = wp_get_object_terms($contribution_id, ProductContributionRepository::ROLE_TAXONOMY, ['fields' => 'ids']);
-        if (is_wp_error($term_ids) || ! is_array($term_ids)) {
+        global $wpdb;
+        if (
+            is_wp_error($term_ids)
+            || ! is_array($term_ids)
+            || (is_object($wpdb) && (string) ($wpdb->last_error ?? '') !== '')
+        ) {
             return new \WP_Error('product_contribution_roles_read_failed', 'Could not read Product Contribution roles. Try again.');
         }
         return $this->normalize_role_submission($term_ids);

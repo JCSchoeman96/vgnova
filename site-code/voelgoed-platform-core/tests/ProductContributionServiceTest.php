@@ -50,12 +50,18 @@ namespace Voelgoed\PlatformCore\Product {
         if (
             $taxonomy === ProductRoleVocabulary::TAXONOMY
             && ($args['fields'] ?? '') === 'ids'
-            && (! empty($GLOBALS['vgpc_test_fail_empty_role_read']) || ! empty($GLOBALS['vgpc_test_fail_rollback_role_read']))
+            && (
+                ! empty($GLOBALS['vgpc_test_fail_empty_role_read'])
+                || ! empty($GLOBALS['vgpc_test_fail_rollback_role_read'])
+                || ! empty($GLOBALS['vgpc_test_fail_stored_role_read'])
+            )
         ) {
             if (! empty($GLOBALS['vgpc_test_fail_empty_role_read'])) {
                 $GLOBALS['vgpc_test_fail_empty_role_read'] = false;
-            } else {
+            } elseif (! empty($GLOBALS['vgpc_test_fail_rollback_role_read'])) {
                 $GLOBALS['vgpc_test_fail_rollback_role_read'] = false;
+            } else {
+                $GLOBALS['vgpc_test_fail_stored_role_read'] = false;
             }
             $GLOBALS['wpdb']->last_error = 'Injected Product Role read failure.';
             return [];
