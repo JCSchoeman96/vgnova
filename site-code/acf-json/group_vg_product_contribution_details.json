@@ -1,0 +1,122 @@
+{
+    "key": "group_vg_product_contribution_details",
+    "title": "Product Contribution Details",
+    "fields": [
+        {
+            "key": "field_vg_product_contribution_product",
+            "label": "Product Contribution: Product",
+            "name": "product_contribution_product",
+            "aria-label": "",
+            "type": "post_object",
+            "instructions": "Select the Product for this contribution.",
+            "required": 0,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "50",
+                "class": "",
+                "id": ""
+            },
+            "post_type": [
+                "product"
+            ],
+            "taxonomy": "",
+            "return_format": "id",
+            "multiple": 0,
+            "allow_null": 0,
+            "bidirectional_target": [],
+            "ui": 1
+        },
+        {
+            "key": "field_vg_product_contribution_person",
+            "label": "Product Contribution: Person",
+            "name": "product_contribution_person",
+            "aria-label": "",
+            "type": "post_object",
+            "instructions": "Select the Person involved with this Product.",
+            "required": 0,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "50",
+                "class": "",
+                "id": ""
+            },
+            "post_type": [
+                "person"
+            ],
+            "taxonomy": "",
+            "return_format": "id",
+            "multiple": 0,
+            "allow_null": 0,
+            "bidirectional_target": [],
+            "ui": 1
+        },
+        {
+            "key": "field_vg_product_contribution_roles",
+            "label": "Product Contribution: Roles",
+            "name": "product_contribution_roles",
+            "aria-label": "",
+            "type": "taxonomy",
+            "instructions": "Choose the approved roles this Person has for this Product.",
+            "required": 0,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "100",
+                "class": "",
+                "id": ""
+            },
+            "taxonomy": "product_role",
+            "add_term": 0,
+            "save_terms": 1,
+            "load_terms": 1,
+            "return_format": "id",
+            "field_type": "multi_select",
+            "multiple": 1,
+            "allow_null": 0,
+            "default_value": [],
+            "bidirectional_target": []
+        },
+        {
+            "key": "field_vg_product_contribution_display_order",
+            "label": "Product Contribution: Display Order",
+            "name": "product_contribution_display_order",
+            "aria-label": "",
+            "type": "number",
+            "instructions": "Controls this Person's order on the Product.",
+            "required": 0,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "25",
+                "class": "",
+                "id": ""
+            },
+            "default_value": 0,
+            "min": 0,
+            "max": "",
+            "step": "1",
+            "prepend": "",
+            "append": ""
+        }
+    ],
+    "location": [
+        [
+            {
+                "param": "post_type",
+                "operator": "==",
+                "value": "product_contribution"
+            }
+        ]
+    ],
+    "menu_order": 0,
+    "position": "normal",
+    "style": "default",
+    "label_placement": "top",
+    "instruction_placement": "label",
+    "hide_on_screen": [],
+    "active": true,
+    "description": "Product-specific relationship details for a Person.",
+    "show_in_rest": false,
+    "display_title": "",
+    "allow_ai_access": false,
+    "ai_description": "",
+    "modified": 1792747055
+}
