@@ -10,6 +10,8 @@ $implementation_files = [
     dirname(__DIR__) . '/includes/Product/ProductRoleSeeder.php',
     dirname(__DIR__) . '/includes/Product/ProductContributionRepository.php',
     dirname(__DIR__) . '/includes/Product/ProductContributionPairLock.php',
+    dirname(__DIR__) . '/includes/Product/ProductContributionService.php',
+    dirname(__DIR__) . '/includes/Product/ProductContributionAdmin.php',
     dirname(__DIR__) . '/includes/Event/EventParticipationPairLock.php',
 ];
 foreach ($implementation_files as $implementation_file) {
@@ -23,6 +25,8 @@ require_once __DIR__ . '/ProductRoleVocabularyTest.php';
 require_once __DIR__ . '/ProductRoleSeederTest.php';
 require_once __DIR__ . '/ProductContributionRepositoryTest.php';
 require_once __DIR__ . '/ProductContributionPairLockTest.php';
+require_once __DIR__ . '/ProductContributionServiceTest.php';
+require_once __DIR__ . '/ProductContributionAdminTest.php';
 
 $test_suites = [
     new ProductContributionSchemaTest(),
@@ -30,6 +34,8 @@ $test_suites = [
     new ProductRoleSeederTest(),
     new ProductContributionRepositoryTest(),
     new ProductContributionPairLockTest(),
+    new ProductContributionServiceTest(),
+    new ProductContributionAdminTest(),
 ];
 $passed = 0;
 $failed = 0;
