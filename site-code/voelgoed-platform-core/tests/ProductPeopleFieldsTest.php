@@ -45,13 +45,22 @@ final class ProductPeopleFieldsTest
         vgpc_test_same(true, $group['active'], 'The Product People group must be active.');
     }
 
-    public function test_group_defines_exactly_the_two_canonical_fields_and_no_legacy_product_fields(): void
+    public function test_group_defines_only_the_mode_field_and_no_legacy_product_fields(): void
     {
         $names = array_column($this->group()['fields'], 'name');
 
-        vgpc_test_same(['product_people_mode', 'product_people_override'], $names, 'The group must define exactly the two canonical Product People fields.');
+        vgpc_test_same(['product_people_mode'], $names, 'The group must define only the canonical Product People mode field.');
+        vgpc_test_true(! in_array('product_people_override', $names, true), 'The group must not register product_people_override.');
         vgpc_test_true(! in_array('produk_bron_event', $names, true), 'The group must not define produk_bron_event.');
         vgpc_test_true(! in_array('produk_medewerkers', $names, true), 'The group must not define produk_medewerkers.');
+    }
+
+    public function test_override_field_constants_are_retired(): void
+    {
+        $constants = (new ReflectionClass(ProductPeopleFields::class))->getConstants();
+
+        vgpc_test_true(! array_key_exists('OVERRIDE_FIELD_KEY', $constants), 'OVERRIDE_FIELD_KEY must be removed from ProductPeopleFields.');
+        vgpc_test_true(! array_key_exists('OVERRIDE_FIELD', $constants), 'OVERRIDE_FIELD must be removed from ProductPeopleFields.');
     }
 
     public function test_mode_field_is_an_optional_single_select_with_only_event_and_manual(): void
@@ -72,21 +81,13 @@ final class ProductPeopleFieldsTest
         );
     }
 
-    public function test_override_field_is_an_optional_ordered_person_relationship_shown_only_in_manual_mode(): void
+    public function test_mode_instructions_direct_editors_to_product_contributions(): void
     {
-        $field = $this->field('product_people_override');
+        $field = $this->field('product_people_mode');
 
-        vgpc_test_same('field_vg_product_people_override', $field['key'], 'The override field key must be canonical.');
-        vgpc_test_same('relationship', $field['type'], 'The override field must be an ACF Relationship.');
-        vgpc_test_same(['person'], $field['post_type'], 'The override field must target person only.');
-        vgpc_test_same(0, $field['required'], 'The override field must be optional.');
-        vgpc_test_same(0, $field['min'], 'The override field must allow zero selections.');
-        vgpc_test_same(0, $field['max'], 'The override field must be unlimited (max 0).');
-        vgpc_test_same('id', $field['return_format'], 'The override field must return IDs.');
-        vgpc_test_same(
-            [[['field' => 'field_vg_product_people_mode', 'operator' => '==', 'value' => 'manual']]],
-            $field['conditional_logic'],
-            'The override field must be shown only when the mode is manual.'
+        vgpc_test_true(
+            str_contains($field['instructions'], 'Product Contributions'),
+            'Manual-mode guidance must direct editors to Product Contributions.'
         );
     }
 

@@ -1,9 +1,11 @@
 <?php
 declare(strict_types=1);
 
+use Voelgoed\PlatformCore\Product\ProductContributionRepository;
 use Voelgoed\PlatformCore\Product\ProductPeopleFields;
 use Voelgoed\PlatformCore\Product\ProductPeopleResolver;
 use Voelgoed\PlatformCore\Product\ProductPeopleBricks;
+use Voelgoed\PlatformCore\Product\ProductRoleVocabulary;
 
 if (! class_exists('VGPC_TestBricksDatabase', false)) {
     class VGPC_TestBricksDatabase
@@ -331,7 +333,10 @@ final class ProductPeopleBricksTest
             'key' => 'group_product_people_bricks_test',
             'fields' => [
                 ['key' => ProductPeopleFields::MODE_FIELD_KEY, 'name' => ProductPeopleFields::MODE_FIELD],
-                ['key' => ProductPeopleFields::OVERRIDE_FIELD_KEY, 'name' => ProductPeopleFields::OVERRIDE_FIELD],
+                ['key' => 'field_pc_product_bricks', 'name' => ProductContributionRepository::PRODUCT_FIELD],
+                ['key' => 'field_pc_person_bricks', 'name' => ProductContributionRepository::PERSON_FIELD],
+                ['key' => 'field_pc_roles_bricks', 'name' => 'product_contribution_roles'],
+                ['key' => 'field_pc_order_bricks', 'name' => ProductContributionRepository::DISPLAY_ORDER_FIELD],
             ],
         ]);
 
@@ -348,7 +353,45 @@ final class ProductPeopleBricksTest
     private function set_people(int $product_id, array $people): void
     {
         update_post_meta($product_id, ProductPeopleFields::MODE_FIELD, ProductPeopleFields::MODE_MANUAL);
-        update_post_meta($product_id, ProductPeopleFields::OVERRIDE_FIELD, $people);
+        foreach (array_keys($GLOBALS['vgpc_test_posts'] ?? []) as $post_id) {
+            $post = $GLOBALS['vgpc_test_posts'][$post_id] ?? null;
+            if (
+                ! is_object($post)
+                || ($post->post_type ?? null) !== ProductContributionRepository::POST_TYPE
+            ) {
+                continue;
+            }
+
+            if ((int) get_post_meta($post_id, ProductContributionRepository::PRODUCT_FIELD, true) === $product_id) {
+                unset($GLOBALS['vgpc_test_posts'][$post_id], $GLOBALS['vgpc_test_meta'][$post_id]);
+            }
+        }
+
+        if ($people === []) {
+            return;
+        }
+
+        $approved = $this->approved_role_ids();
+        foreach ($people as $index => $person_id) {
+            $contribution_id = 6000 + ($product_id * 10) + $index;
+            $this->post($contribution_id, ProductContributionRepository::POST_TYPE);
+            update_post_meta($contribution_id, ProductContributionRepository::PRODUCT_FIELD, $product_id);
+            update_post_meta($contribution_id, ProductContributionRepository::PERSON_FIELD, $person_id);
+            update_post_meta($contribution_id, ProductContributionRepository::DISPLAY_ORDER_FIELD, $index);
+            update_post_meta($contribution_id, 'product_contribution_roles', [$approved['aanbieder']]);
+            wp_set_object_terms($contribution_id, [$approved['aanbieder']], ProductContributionRepository::ROLE_TAXONOMY, false);
+        }
+    }
+
+    /** @return array<string, int> */
+    private function approved_role_ids(): array
+    {
+        $ids = [];
+        foreach (ProductRoleVocabulary::approved_terms() as $slug => $label) {
+            $ids[$slug] = vgpc_test_add_term($label, $slug, 0, ProductRoleVocabulary::TAXONOMY)->term_id;
+        }
+
+        return $ids;
     }
 
     private function post(int $id, string $post_type, string $post_status = 'publish'): void
