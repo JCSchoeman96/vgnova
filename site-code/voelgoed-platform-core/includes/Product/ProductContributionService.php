@@ -245,6 +245,12 @@ final class ProductContributionService
             ? $this->repository->is_valid_product_fresh($product_id)
             : $this->repository->is_valid_product($product_id);
         if (! $valid_product) {
+            if ($fresh && $this->fresh_endpoint_read_failed()) {
+                return new \WP_Error(
+                    'product_contribution_fresh_endpoint_read_failed',
+                    'Could not verify the Product. Try again.'
+                );
+            }
             return new \WP_Error('invalid_product', 'The Product must be an existing, non-trashed WooCommerce Product.');
         }
 
@@ -252,6 +258,12 @@ final class ProductContributionService
             ? $this->repository->is_valid_person_fresh($person_id)
             : $this->repository->is_valid_person($person_id);
         if (! $valid_person) {
+            if ($fresh && $this->fresh_endpoint_read_failed()) {
+                return new \WP_Error(
+                    'product_contribution_fresh_endpoint_read_failed',
+                    'Could not verify the Person. Try again.'
+                );
+            }
             return new \WP_Error('invalid_person', 'The Person must be an existing, non-trashed Person.');
         }
 
@@ -275,6 +287,12 @@ final class ProductContributionService
         }
 
         return true;
+    }
+
+    private function fresh_endpoint_read_failed(): bool
+    {
+        global $wpdb;
+        return is_object($wpdb) && (string) ($wpdb->last_error ?? '') !== '';
     }
 
     /**
@@ -310,6 +328,19 @@ final class ProductContributionService
                 $rollback_error = is_wp_error($deleted)
                     ? $deleted->get_error_message()
                     : 'WordPress did not confirm hard deletion of the new contribution.';
+            } else {
+                if (! function_exists('clean_post_cache')) {
+                    $rollback_error = 'WordPress could not clear the new contribution cache for rollback verification.';
+                } else {
+                    clean_post_cache($contribution_id);
+                    $remaining_post = get_post($contribution_id);
+                    global $wpdb;
+                    if (is_object($wpdb) && (string) ($wpdb->last_error ?? '') !== '') {
+                        $rollback_error = 'WordPress could not verify that the new contribution was deleted.';
+                    } elseif (is_object($remaining_post)) {
+                        $rollback_error = 'The new contribution still exists after the hard-delete attempt.';
+                    }
+                }
             }
         } catch (\Throwable $error) {
             $rollback_error = $error->getMessage();

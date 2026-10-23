@@ -11,6 +11,14 @@ namespace Voelgoed\PlatformCore\Product {
 
     function wp_delete_post(int $post_id, bool $force_delete = false): object|false
     {
+        if (! empty($GLOBALS['vgpc_test_skip_delete_post'])) {
+            $GLOBALS['vgpc_test_delete_post_calls'][] = [
+                'post_id' => $post_id,
+                'force_delete' => $force_delete,
+            ];
+            $GLOBALS['vgpc_test_skip_delete_post'] = false;
+            return \get_post($post_id);
+        }
         if (! empty($GLOBALS['vgpc_test_fail_delete_post'])) {
             $GLOBALS['vgpc_test_delete_post_calls'][] = [
                 'post_id' => $post_id,
@@ -313,6 +321,22 @@ final class ProductContributionServiceTest
         vgpc_test_true(str_contains($result->get_error_message(), 'Rollback failed'), 'The error must state that the newly inserted row could not be removed.');
         vgpc_test_true(isset($GLOBALS['vgpc_test_posts'][5000]), 'The test must prove the failed deletion left the partial row behind.');
         vgpc_test_same([['post_id' => 5000, 'force_delete' => true]], $GLOBALS['vgpc_test_delete_post_calls'], 'Rollback must attempt a force delete of only the new contribution.');
+    }
+
+    public function test_pre_delete_short_circuit_cannot_be_mistaken_for_a_hard_rollback(): void
+    {
+        $service = $this->service();
+        $this->add_product(self::PRODUCT, 'manual');
+        $this->add_endpoint(self::PERSON, 'person', 'Mia Botha');
+        $roles = $this->approved_roles();
+        $GLOBALS['vgpc_test_fail_update_field_name'] = ProductContributionRepository::PRODUCT_FIELD;
+        $GLOBALS['vgpc_test_skip_delete_post'] = true;
+
+        $result = $service->create(self::PRODUCT, self::PERSON, [$roles['aanbieder']], 4, 'draft');
+
+        vgpc_test_true(is_wp_error($result), 'A deletion filter that leaves the post must fail the create operation.');
+        vgpc_test_same('product_contribution_rollback_failed', $result->get_error_code(), 'A surviving partial row must be reported as rollback failure.');
+        vgpc_test_true(isset($GLOBALS['vgpc_test_posts'][5000]), 'The regression must prove the pre-delete short-circuit left the row behind.');
     }
 
     public function test_incomplete_draft_can_be_created_without_roles_or_publish_mode(): void

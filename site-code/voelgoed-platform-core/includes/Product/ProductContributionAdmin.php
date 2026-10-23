@@ -515,14 +515,55 @@ final class ProductContributionAdmin
             return;
         }
 
-        wp_clear_scheduled_hook('publish_future_post', [$post_id]);
-        wp_schedule_single_event($time, 'publish_future_post', [$post_id]);
+        $this->replace_future_publication_event($post_id, $time);
     }
 
     private function retry_future_publication_later(int $post_id): void
     {
-        wp_clear_scheduled_hook('publish_future_post', [$post_id]);
-        wp_schedule_single_event(time() + 60, 'publish_future_post', [$post_id]);
+        $this->replace_future_publication_event($post_id, time() + 60);
+    }
+
+    private function replace_future_publication_event(int $post_id, int $timestamp): void
+    {
+        $clear_result = wp_clear_scheduled_hook('publish_future_post', [$post_id]);
+        if (is_wp_error($clear_result) || $clear_result === false) {
+            $this->log_future_schedule_failure('clear', $post_id, $clear_result);
+        }
+
+        $schedule_result = wp_schedule_single_event($timestamp, 'publish_future_post', [$post_id]);
+        if ($schedule_result === true) {
+            return;
+        }
+
+        $scheduled_time = wp_next_scheduled('publish_future_post', [$post_id]);
+        if ($scheduled_time !== false && (int) $scheduled_time === $timestamp) {
+            return;
+        }
+
+        $this->log_future_schedule_failure('schedule', $post_id, $schedule_result);
+        $retry_time = time() + 60;
+        $retry_result = wp_schedule_single_event($retry_time, 'publish_future_post', [$post_id]);
+        if ($retry_result === true) {
+            return;
+        }
+
+        $next_scheduled_time = wp_next_scheduled('publish_future_post', [$post_id]);
+        if ($next_scheduled_time === false || (int) $next_scheduled_time > $retry_time) {
+            $this->log_future_schedule_failure('retry schedule', $post_id, $retry_result);
+        }
+    }
+
+    private function log_future_schedule_failure(string $operation, int $post_id, mixed $result): void
+    {
+        $detail = is_wp_error($result)
+            ? $result->get_error_message()
+            : 'WordPress returned false.';
+        error_log(sprintf(
+            'Product Contribution scheduled publication %s failed for post %d: %s',
+            $operation,
+            $post_id,
+            $detail
+        ));
     }
 
     private function is_transient_scheduled_publish_error(\WP_Error $error): bool
@@ -531,6 +572,7 @@ final class ProductContributionAdmin
             'product_contribution_row_lock_failed',
             'product_contribution_pair_lock_failed',
             'product_contribution_fresh_read_failed',
+            'product_contribution_fresh_endpoint_read_failed',
             'product_contribution_fresh_check_failed',
             'product_contribution_roles_read_failed',
             'scheduled_product_contribution_fresh_read_failed',

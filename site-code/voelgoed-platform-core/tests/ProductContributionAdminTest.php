@@ -38,15 +38,42 @@ namespace Voelgoed\PlatformCore\Product {
         return \wp_update_post($postarr, $wp_error);
     }
 
-    function wp_clear_scheduled_hook(string $hook, array $args = []): int
+    function wp_clear_scheduled_hook(string $hook, array $args = []): int|false
     {
         $GLOBALS['vgpc_test_schedule_clears'][] = ['hook' => $hook, 'args' => $args];
+        if (! empty($GLOBALS['vgpc_test_fail_next_schedule_clear'])) {
+            $GLOBALS['vgpc_test_fail_next_schedule_clear'] = false;
+            return false;
+        }
         return 1;
     }
 
     function wp_schedule_single_event(int $timestamp, string $hook, array $args = []): bool
     {
+        $GLOBALS['vgpc_test_schedule_attempts'] ??= [];
+        $GLOBALS['vgpc_test_schedule_attempts'][] = ['timestamp' => $timestamp, 'hook' => $hook, 'args' => $args];
+        if ((int) ($GLOBALS['vgpc_test_fail_schedule_attempts'] ?? 0) > 0) {
+            --$GLOBALS['vgpc_test_fail_schedule_attempts'];
+            return false;
+        }
         $GLOBALS['vgpc_test_scheduled_events'][] = ['timestamp' => $timestamp, 'hook' => $hook, 'args' => $args];
+        return true;
+    }
+
+    function wp_next_scheduled(string $hook, array $args = []): int|false
+    {
+        foreach ($GLOBALS['vgpc_test_scheduled_events'] ?? [] as $event) {
+            if (($event['hook'] ?? null) === $hook && ($event['args'] ?? []) === $args) {
+                return (int) $event['timestamp'];
+            }
+        }
+        return false;
+    }
+
+    function error_log(string $message): bool
+    {
+        $GLOBALS['vgpc_test_error_log'] ??= [];
+        $GLOBALS['vgpc_test_error_log'][] = $message;
         return true;
     }
 }
@@ -288,6 +315,8 @@ final class ProductContributionAdminTest
         $GLOBALS['vgpc_test_relationships'][ProductRoleVocabulary::TAXONOMY][401] = [$roles['aanbieder']];
         $GLOBALS['vgpc_test_schedule_clears'] = [];
         $GLOBALS['vgpc_test_scheduled_events'] = [];
+        $GLOBALS['vgpc_test_schedule_attempts'] = [];
+        $GLOBALS['vgpc_test_fail_schedule_attempts'] = 1;
         $GLOBALS['vgpc_test_fail_scheduled_wp_update'] = true;
         add_action('publish_future_post', 'check_and_publish_future_post', 10, 1);
         $admin = new ProductContributionAdmin($repository);
@@ -299,10 +328,95 @@ final class ProductContributionAdminTest
 
         vgpc_test_same('future', $GLOBALS['vgpc_test_posts'][401]->post_status, 'An update error must leave the contribution inactive.');
         vgpc_test_same(1, count($GLOBALS['vgpc_test_scheduled_events']), 'A failed scheduled status update must leave a retry event.');
+        vgpc_test_same(2, count($GLOBALS['vgpc_test_schedule_attempts']), 'A failed schedule attempt must be followed by a retry attempt.');
         vgpc_test_true(
             $GLOBALS['vgpc_test_scheduled_events'][0]['timestamp'] >= $started_at + 59
             && $GLOBALS['vgpc_test_scheduled_events'][0]['timestamp'] <= $started_at + 61,
             'A failed scheduled status update must retry after a short delay.'
+        );
+        do_action('shutdown');
+    }
+
+    public function test_scheduled_publication_retries_after_transient_endpoint_read_failure(): void
+    {
+        [$repository] = $this->fixture();
+        $this->add_product(101, 'manual');
+        $this->add_endpoint(201, 'person', 'Mia Botha');
+        $roles = $this->approved_roles();
+        $this->add_contribution(401, 'future', 101, 201);
+        $GLOBALS['vgpc_test_posts'][401]->post_date_gmt = '2000-01-01 00:00:00';
+        $GLOBALS['vgpc_test_relationships'][ProductRoleVocabulary::TAXONOMY][401] = [$roles['aanbieder']];
+        $GLOBALS['vgpc_test_schedule_clears'] = [];
+        $GLOBALS['vgpc_test_scheduled_events'] = [];
+        add_action('publish_future_post', 'check_and_publish_future_post', 10, 1);
+        $admin = new ProductContributionAdmin($repository);
+        $admin->register();
+        $GLOBALS['vgpc_test_apply_wp_update_filter'] = true;
+        $GLOBALS['vgpc_test_fail_get_post_id'] = 101;
+
+        do_action('publish_future_post', 401);
+
+        vgpc_test_same('future', $GLOBALS['vgpc_test_posts'][401]->post_status, 'An uncertain endpoint read must not publish the contribution.');
+        vgpc_test_same(1, count($GLOBALS['vgpc_test_scheduled_events']), 'An uncertain endpoint read must leave a retry event.');
+        do_action('shutdown');
+    }
+
+    public function test_scheduled_publication_retries_after_fresh_product_read_error(): void
+    {
+        [$repository] = $this->fixture();
+        $this->add_product(101, 'manual');
+        $this->add_endpoint(201, 'person', 'Mia Botha');
+        $roles = $this->approved_roles();
+        $this->add_contribution(401, 'future', 101, 201);
+        $GLOBALS['vgpc_test_posts'][401]->post_date_gmt = '2000-01-01 00:00:00';
+        $GLOBALS['vgpc_test_relationships'][ProductRoleVocabulary::TAXONOMY][401] = [$roles['aanbieder']];
+        $GLOBALS['vgpc_test_schedule_clears'] = [];
+        $GLOBALS['vgpc_test_scheduled_events'] = [];
+        add_action('publish_future_post', 'check_and_publish_future_post', 10, 1);
+        $admin = new ProductContributionAdmin($repository);
+        $admin->register();
+        $GLOBALS['vgpc_test_apply_wp_update_filter'] = true;
+        $GLOBALS['vgpc_test_fail_get_post_id'] = 101;
+
+        do_action('publish_future_post', 401);
+
+        vgpc_test_same('future', $GLOBALS['vgpc_test_posts'][401]->post_status, 'A Product read error must not publish the contribution.');
+        vgpc_test_same(1, count($GLOBALS['vgpc_test_scheduled_events']), 'A transient fresh Product read error must leave a retry event.');
+        do_action('shutdown');
+    }
+
+    public function test_failed_cron_event_clear_is_reported_while_replacement_is_scheduled(): void
+    {
+        [$repository] = $this->fixture();
+        $this->add_product(101, 'manual');
+        $this->add_endpoint(201, 'person', 'Mia Botha');
+        $roles = $this->approved_roles();
+        $this->add_contribution(401, 'future', 101, 201);
+        $GLOBALS['vgpc_test_posts'][401]->post_date_gmt = '2000-01-01 00:00:00';
+        $GLOBALS['vgpc_test_relationships'][ProductRoleVocabulary::TAXONOMY][401] = [$roles['aanbieder']];
+        $GLOBALS['vgpc_test_schedule_clears'] = [];
+        $GLOBALS['vgpc_test_scheduled_events'] = [];
+        $GLOBALS['vgpc_test_error_log'] = [];
+        $GLOBALS['vgpc_test_fail_next_schedule_clear'] = true;
+        add_action('publish_future_post', 'check_and_publish_future_post', 10, 1);
+        $admin = new ProductContributionAdmin($repository);
+        $admin->register();
+        $GLOBALS['vgpc_test_apply_wp_update_filter'] = true;
+        $row_lock = $this->expected_row_lock(401);
+        $new_date_gmt = gmdate('Y-m-d H:i:s', time() + 3600);
+        $GLOBALS['wpdb']->get_var_handler = static function (string $query, array $args) use ($row_lock, $new_date_gmt): string {
+            if ($query === 'SELECT GET_LOCK(%s, %d)' && ($args[0] ?? null) === $row_lock) {
+                $GLOBALS['vgpc_test_posts'][401]->post_date_gmt = $new_date_gmt;
+            }
+            return '1';
+        };
+
+        do_action('publish_future_post', 401);
+
+        vgpc_test_same(1, count($GLOBALS['vgpc_test_scheduled_events']), 'A failed clear must not prevent a replacement event from being scheduled.');
+        vgpc_test_true(
+            count($GLOBALS['vgpc_test_error_log']) === 1 && str_contains($GLOBALS['vgpc_test_error_log'][0], 'clear'),
+            'The cron clear failure must be recorded for operators.'
         );
         do_action('shutdown');
     }
