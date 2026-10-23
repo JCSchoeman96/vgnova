@@ -4,7 +4,7 @@
 
 **Goal:** Add the role-aware canonical Product Contribution foundation, cut manual Product People authority from `product_people_override` to Product Contribution only after a fresh zero-value/zero-required-caller gate passes, and expose safe forward/reverse Product↔Person reads without duplicate reverse storage.
 
-**Architecture:** ACF Pro Local JSON owns the non-public `product_contribution` CPT, `product_role` taxonomy, and contribution fields. Platform Core owns role seeding, endpoint validation, pair uniqueness, canonical writes, mode-aware Product People reads, reverse Person→Product reads, and optional Bricks adaptation. Event-derived Product membership remains live-owned by Event Participation; Product Contribution may annotate event-derived membership with Product-specific roles but can never create it.
+**Architecture:** ACF Pro Local JSON owns the non-public `product_contribution` CPT, `product_role` taxonomy, and contribution fields. Platform Core owns role seeding, endpoint validation, pair uniqueness, canonical writes, mode-aware Product People reads, rich Product↔Person association reads, reverse Person→Product reads, and optional Bricks adaptation. Event-derived Product membership remains live-owned by Event Participation; Product Contribution may annotate event-derived membership with Product-specific roles but can never create it.
 
 **Tech Stack:** WordPress, WooCommerce Product posts, ACF Pro Local JSON, PHP 8+, Voelgoed Platform Core, existing standalone PHP test harness, Bricks filters, Novamira/WP-CLI runtime operations, Git worktrees.
 
@@ -18,8 +18,9 @@
 - Task 1 is a binding preflight. If non-empty `product_people_override` values or any required external consumer are found, STOP before the manual-authority cutover or ACF-field retirement. Record the evidence; do not invent a migration.
 - Historical Task 7C evidence is context only. It does not satisfy the fresh implementation-time `product_people_override` gate.
 - ACF Pro is the editor/schema layer. New CPT/taxonomy/field definitions are source-controlled Local JSON; do not hand-build duplicate editors.
-- New ACF keys are exactly `post_type_product_contribution`, `taxonomy_product_role`, and `group_vg_product_contribution_details` unless the actual ACF exporter proves a required generated key variation before implementation. Any variation must be documented before sync.
+- New ACF keys are exactly `post_type_product_contribution`, `taxonomy_product_role`, and `group_vg_product_contribution_details`, following the existing Event Participation Local JSON convention.
 - Sync only the three named Product Contribution ACF definitions. Do not run unrestricted ACF JSON sync.
+- The Product Contribution CPT is administrative only: `public=false`, `publicly_queryable=false`, `exclude_from_search=true`, `show_ui=true`, `show_in_rest=true`, no archive/rewrite/query var, and native support limited to `title`.
 - `product_people_mode` remains explicit with `event`, `manual`, or blank/invalid fail-closed behavior.
 - `produk_bron_event` remains the Product source/provenance Event concept and must not be renamed, copied, or conflated with `_event_name`.
 - `_event_name` remains commerce/Event presentation state and is never part of Product People or reverse Product membership.
@@ -28,6 +29,7 @@
 - Event roles and Product roles are separate contextual facts. Never auto-map `event_role` to `product_role`.
 - Initial Product Role vocabulary is exactly: `Aanbieder`/`aanbieder`, `Skrywer`/`skrywer`, `Instrukteur`/`instrukteur`, `Skepper`/`skepper`.
 - Every published Product Contribution requires at least one approved `product_role`, in both manual and event mode.
+- ACF field-level `required` flags for Product, Person, and Roles remain `0` so an incomplete draft can be saved; `ProductContributionService`/`ProductContributionAdmin` enforce the publication requirements. Do not use ACF's unconditional required flag in a way that makes incomplete drafts impossible.
 - One non-retired Product × Person pair owns one Product Contribution; multiple Product roles belong on that single record.
 - Duplicate prevention includes `publish`, `draft`, `pending`, `private`, and `future`; `trash` and `auto-draft` do not block pair reuse.
 - Forward Product→People public results expose only valid published `person` endpoints. The Product itself may be non-published in editor/preview contexts.
@@ -35,6 +37,7 @@
 - `product_contribution_display_order` controls Product-side Person ordering only. It never becomes Person-page Product ordering.
 - Manual Product→People ordering is contribution display order ASC, contribution ID ASC. Event mode preserves Event Participation ordering.
 - Reverse `products_for_person()` must be deterministic and deduplicated; use Product ID ASC as the repository default ordering. Presentation may later impose another explicit sort without changing relationship meaning.
+- Rich association reads must work in both directions: Product→Person and Person→Product. They are in-memory array views, never another stored relationship.
 - No ACF bidirectional storage, Person-side Product list, persistent reverse index, transient relationship cache, cron sync, or background synchronization.
 - Request-scoped memoization is allowed only where source tests prove it does not change freshness semantics across requests.
 - Never read `produk_medewerkers`, `event_medewerkers`, `medewerker`, or `_event_name` as a canonical fallback.
@@ -47,7 +50,7 @@
 - Runtime identity must be re-proven before any write: expected WordPress root `/home/jcschoeman96/Local Sites/voelgoed-novamira/app/public/`, home `http://localhost:10039`, database `local`; do not operate on the separate localhost:10049 installation.
 - Whole-`wp_options` hashing is not a sole hard gate. Protected architectural fingerprints are hard gates; volatile option writes, if observed, are accounted separately without claiming zero database writes.
 - Temporary QA records must carry unique `[QA][AUTOMATED] Product Contribution` ownership markers and be hard-deleted with guarded cleanup. Do not select cleanup targets by title alone.
-- Runtime QA must finish with no owned temporary Person, Product Contribution, Event Participation, or Product records remaining.
+- Runtime QA must finish with no owned temporary Person, Product Contribution, Event Participation, Product, or Event records remaining.
 - Any stop condition from the spec or this plan is binding. Stop and report evidence rather than inventing fallback architecture.
 
 ## Review Focus
@@ -242,6 +245,17 @@ public function products_for_person(int $person_id): array;
  *   membership_source:string
  * }>
  */
+public function associations_for_product(int $product_id): array;
+
+/**
+ * @return list<array{
+ *   product_id:int,
+ *   person_id:int,
+ *   product_role_ids:list<int>,
+ *   display_order:int,
+ *   membership_source:string
+ * }>
+ */
 public function associations_for_person(int $person_id): array;
 ```
 
@@ -275,13 +289,15 @@ products_for_person(published Person)
 → published manual Products with an active valid contribution for Person
 UNION
 → published event-mode Products whose current source Event is in EventParticipationRepository::events_for_person(Person)
-→ deduplicate
+→ defensive dedupe of candidate Product IDs
 → Product ID ASC
 ```
 
 `contributions_for_product()` and `contributions_for_person()` return only published, endpoint-valid, role-valid, current-mode-valid contribution records. For event-mode Products, a contribution is current-mode-valid only while its Person remains canonically derived from that Product's source Event. Invalid/unconfigured Products contribute no active records.
 
-`associations_for_person()` uses the same canonical membership as `products_for_person()` and returns one association per Product. Manual associations take role IDs and display order from Product Contribution and `membership_source='manual'`. Event associations use `membership_source='event'`, Event Participation order for `display_order`, and role IDs from an optional currently valid matching Product Contribution; if no annotation exists, `product_role_ids=[]`.
+`associations_for_product()` returns one canonical association per Person in Product-side order. Manual associations use contribution roles/order and `membership_source='manual'`. Event associations preserve Event Participation order, use `membership_source='event'`, and add role IDs only from an optional currently valid matching Product Contribution; a Person with no annotation still has an event association with `product_role_ids=[]`.
+
+`associations_for_person()` uses the same canonical membership as `products_for_person()` and returns one association per Product in Product ID ASC. Manual associations take role IDs and display order from Product Contribution. Event associations use Event Participation order for the association's Product-side `display_order` and role IDs from an optional currently valid matching Product Contribution.
 
 Product role IDs in association views are sorted numerically for deterministic output; role order is not business data.
 
@@ -552,7 +568,7 @@ git commit -m "docs: record Product Contribution preflight"
 
 - [ ] **Step 1: Write failing schema tests**
 
-Tests must assert exact CPT visibility/route settings, taxonomy settings/attachment, field names/types/targets/return formats, `bidirectional_target=[]`, taxonomy save/load behavior, display-order min/default/step, and that no Person-side/Product-side duplicate relationship field is created.
+Tests must assert exact CPT visibility/route settings, native support limited to `title`, taxonomy settings/attachment only to `product_contribution`, field names/types/targets/return formats, Product/Person/Role field `required=0`, `bidirectional_target=[]`, role `add_term=0`, `save_terms=1`, `load_terms=1`, role return IDs/multiple selection, display-order min/default/step, and that no Person-side/Product-side duplicate relationship field is created.
 
 - [ ] **Step 2: Run the new Product Contribution runner and verify RED**
 
@@ -564,7 +580,7 @@ Expected: schema/seeder classes or JSON definitions are missing.
 
 - [ ] **Step 3: Create the three ACF Local JSON definitions**
 
-Use the Event Participation JSON shape as the structural precedent. Product/Person Post Object fields are single-value, required for publication, return IDs, and have no bidirectional target. Roles use `product_role`, multiple selection, save/load native terms, no add-term from the field. Display order is integer-like number, default `0`, min `0`, step `1`.
+Use the Event Participation JSON shape as the structural precedent. Product/Person Post Object fields are single-value, return IDs, `required=0`, no bidirectional target. The Product Role field is `required=0` at ACF level, uses `product_role`, multiple selection, save/load native terms, no add-term, return IDs, and no bidirectional target. Display order is a number with default `0`, min `0`, step `1`. Publication requirements remain service/admin rules so drafts may be incomplete.
 
 - [ ] **Step 4: Write failing ProductRoleSeeder tests**
 
@@ -589,7 +605,7 @@ git add site-code/acf-json site-code/voelgoed-platform-core/includes/Product/Pro
 git commit -m "feat: add Product Contribution schema"
 ```
 
-### Task 3: Implement canonical contribution reads, pair identity, and reverse Product queries
+### Task 3: Implement canonical contribution reads, pair identity, rich associations, and reverse Product queries
 
 **Files:**
 - Create: `site-code/voelgoed-platform-core/includes/Product/ProductContributionRepository.php`
@@ -616,11 +632,11 @@ Prove `people_for_product()` delegates membership to Event Participation, preser
 
 - [ ] **Step 4: Write failing reverse-query tests**
 
-For a published Person, prove `products_for_person()` returns the union of manual contribution Products and event-derived Products, deduplicates a Product reachable through both test paths, excludes unpublished Products and invalid modes, never reads legacy Product/Medewerker fields, and returns Product IDs ASC.
+For a published Person, prove `products_for_person()` returns the union of manual contribution Products and event-derived Products, defensively deduplicates duplicate candidate Product IDs returned by discovery, excludes unpublished Products and invalid modes, never reads legacy Product/Medewerker fields, and returns Product IDs ASC.
 
-- [ ] **Step 5: Write failing association-view tests**
+- [ ] **Step 5: Write failing rich association tests in both directions**
 
-Manual association: role IDs + contribution display order + `membership_source=manual`. Event association: Event Participation display order + optional Product role annotation + `membership_source=event`; no annotation returns empty role IDs. Verify one association per Product.
+`associations_for_product()` must return one association per canonical Person in Product-side order. `associations_for_person()` must return one association per canonical Product in Product ID ASC. Manual associations use contribution role IDs/order/source. Event associations use Event Participation order/source plus optional Product role annotation; no annotation returns empty role IDs. Verify role IDs are numerically deterministic and stale annotations do not appear.
 
 - [ ] **Step 6: Write failing pair-lock tests**
 
@@ -634,7 +650,7 @@ php site-code/voelgoed-platform-core/tests/run-product-contribution-tests.php
 
 - [ ] **Step 8: Implement `ProductContributionRepository`**
 
-Use WordPress/ACF APIs for canonical field reads and targeted fresh SQL only for the post-lock uniqueness recheck pattern already established by Event Participation. Keep event eligibility delegated to `EventParticipationRepository`; do not reimplement Event Participation publication rules.
+Use WordPress/ACF APIs for canonical field reads and targeted fresh SQL only for the post-lock uniqueness recheck pattern already established by Event Participation. Keep Event eligibility delegated to `EventParticipationRepository`; do not reimplement Event Participation publication rules. For event association display order, identify the matching active Event Participation and read its canonical `event_participation_display_order` value without creating a second Product-side order.
 
 - [ ] **Step 9: Implement `ProductContributionPairLock`**
 
@@ -907,27 +923,27 @@ QA creates only uniquely marked temporary data and tracks exact inserted IDs imm
 
 - [ ] **Step 6: Prove manual-mode behavior**
 
-Create manual Product Contribution through `ProductContributionService` with multiple Product roles and non-default display order. Prove `people_for_product()` returns the Person, `products_for_person()` returns the Product, association roles/source/order are correct, duplicate pair creation is rejected, role-less publication is rejected, and Product People ignores any test legacy/override noise.
+Create manual Product Contribution through `ProductContributionService` with multiple Product roles and non-default display order. Prove `people_for_product()` returns the Person, `products_for_person()` returns the Product, both association directions report correct roles/source/order, duplicate pair creation is rejected, role-less publication is rejected, and Product People ignores any test legacy/override noise.
 
 - [ ] **Step 7: Prove event-mode behavior and no role inheritance**
 
-Create canonical Event Participation for the temporary Person, configure Product event mode/source Event, prove Product People membership derives live from Event Participation, create a Product Contribution role annotation, prove Product role data is explicit and no Event role is auto-mapped.
+Create canonical Event Participation for the temporary Person, configure Product event mode/source Event, prove Product People membership derives live from Event Participation, create a Product Contribution role annotation, prove both association directions preserve Event membership/order while Product role data is explicit, and prove no Event role is auto-mapped.
 
 - [ ] **Step 8: Prove stale event annotation behavior**
 
 Retire/remove the temporary Event Participation while leaving the Product Contribution annotation in place long enough to query. Expected: Person disappears from Product People and reverse Product membership; stale annotation does not resurrect membership. Restore only owned QA state if needed for later assertions, never protected state.
 
-- [ ] **Step 9: Prove reverse public filtering and deduplication**
+- [ ] **Step 9: Prove reverse public filtering and defensive deduplication**
 
-Exercise manual + event paths, unpublished Product exclusion, non-Person context fail-closed behavior, and one Product ID per association. If `PersonProductsBricks` exists, prove its safe context and empty-section behavior against the temporary Person without editing a production Bricks template.
+Exercise manual + event paths, unpublished Product exclusion, non-published Person exclusion, duplicate candidate discovery defense, non-Person context fail-closed behavior, and one Product ID per association. If `PersonProductsBricks` exists, prove its safe context and empty-section behavior against the temporary Person without editing a production Bricks template.
 
 - [ ] **Step 10: Prove admin/title/schema behavior**
 
-Verify no public Product Contribution route/archive, exact admin title derivation, ACF endpoint restrictions, taxonomy save/load, display order, and publication validation where practical through the supported admin/business layer.
+Verify no public Product Contribution route/archive, exact admin title derivation, ACF endpoint restrictions, draft-save behavior with incomplete fields, taxonomy save/load, display order, and publication validation where practical through the supported admin/business layer.
 
 - [ ] **Step 11: Run guarded cleanup in `finally` or equivalent**
 
-Before deleting each temporary record, verify post type and exact ownership marker. Hard-delete owned Product Contributions, Event Participations, Person, Product, and any temporary Event. Verify no matching post/meta/term relationship remains. Keep the four approved Product Role terms.
+Before deleting each temporary record, verify post type and exact ownership marker. Hard-delete owned Product Contributions, Event Participations, Person, Product, and any temporary Event. Verify no matching post/meta/term relationship or WooCommerce-owned lookup residue remains for the temporary Product. Keep the four approved Product Role terms.
 
 - [ ] **Step 12: Compare protected post-state**
 
@@ -959,7 +975,7 @@ git commit -m "test: verify Product Contribution runtime"
 
 - [ ] **Step 1: Write implementation documentation from evidence only**
 
-Record schema ownership, exact Product roles, uniqueness, validation, mode authority, reverse query semantics, resolver compatibility, override-field retirement gate/outcome, optional Bricks outcome, runtime deployment, test commands/pass counts, cleanup, and protected-state result.
+Record schema ownership, exact Product roles, uniqueness, validation, mode authority, forward/reverse rich association semantics, resolver compatibility, override-field retirement gate/outcome, optional Bricks outcome, runtime deployment, test commands/pass counts, cleanup, and protected-state result.
 
 - [ ] **Step 2: Update the current-state snapshot**
 
@@ -967,16 +983,7 @@ State clearly what is now canonical and what remains legacy. Do not mark Templat
 
 - [ ] **Step 3: Update the inventory/register only where classification evidence changed**
 
-Expected examples if implementation succeeds:
-
-```text
-canonical Person→Product read contract: AVAILABLE
-product_people_override: RETIRED_FROM_CANONICAL_SOURCE only if Task 1 PASS and source field removed
-legacy medewerker_products: still RETIRE_PENDING_DEPENDENCY until its actual consumer cutover
-produk_medewerkers + snippet 9: still governed by existing dependency chain
-```
-
-Use the register's existing classification vocabulary; do not invent a new state if an existing one fits.
+Use only the register's existing classification/lifecycle vocabulary. For `product_people_override`, record the factual outcome (source field definition removed, canonical resolver no longer reads it, historical DB meta not automatically deleted) and select an existing classification only if the register actually tracks that surface. Do not invent a new status. Existing legacy surfaces such as `medewerker_products`, `produk_medewerkers`, and snippet 9 retain their prior dependency/access rulings unless this task's fresh evidence directly changes them.
 
 - [ ] **Step 4: Run final full verification from a clean worktree state**
 
@@ -1005,6 +1012,7 @@ Before declaring the implementation branch review-ready, prove all of the follow
 [ ] Task 1 override gate PASS
 [ ] three source-controlled ACF definitions only
 [ ] no public Product Contribution route/archive
+[ ] Product/Person/Role ACF fields allow incomplete drafts; publication rules enforced in service/admin
 [ ] exact four Product Role terms
 [ ] pair uniqueness across non-retired statuses
 [ ] race-safe fresh post-lock duplicate rejection
@@ -1016,9 +1024,10 @@ Before declaring the implementation branch review-ready, prove all of the follow
 [ ] unconfigured/invalid mode fails closed
 [ ] existing ProductPeopleResolver public method remains stable
 [ ] ProductPeopleBricks behavior remains stable
-[ ] reverse Products = manual union event-derived, deduped
+[ ] reverse Products = manual union event-derived, defensively deduped
 [ ] reverse output excludes unpublished Products and non-published Persons
 [ ] reverse default ordering is Product ID ASC
+[ ] rich associations work Product→Person and Person→Product
 [ ] rich association source/role/order semantics match spec
 [ ] stale event annotation cannot resurrect membership
 [ ] no legacy fallback reads
