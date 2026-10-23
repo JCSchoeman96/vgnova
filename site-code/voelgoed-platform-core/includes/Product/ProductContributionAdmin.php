@@ -23,6 +23,12 @@ final class ProductContributionAdmin
 
     private bool $syncing_titles = false;
 
+    private ?int $scheduled_publish_validated_id = null;
+
+    private bool $capture_save_validation_error = false;
+
+    private ?\WP_Error $captured_save_validation_error = null;
+
     public function __construct(
         ?ProductContributionRepository $repository = null,
         ?ProductContributionService $service = null,
@@ -40,9 +46,73 @@ final class ProductContributionAdmin
         add_filter('acf/validate_value/key=' . self::ROLES_FIELD_KEY, [$this, 'validate_roles_field'], 10, 4);
         add_filter('acf/validate_value/key=' . self::DISPLAY_ORDER_FIELD_KEY, [$this, 'validate_display_order_field'], 10, 4);
         add_filter('wp_insert_post_data', [$this, 'validate_pair_before_post_save'], 10, 2);
+        remove_action('publish_future_post', 'check_and_publish_future_post', 10);
+        add_action('publish_future_post', [$this, 'handle_future_publication'], 10, 1);
         add_action('acf/save_post', [$this, 'handle_acf_save'], 20, 1);
         add_action('post_updated', [$this, 'handle_post_updated'], 10, 3);
         add_action('shutdown', [$this, 'release_pair_locks'], 1);
+    }
+
+    /** Route scheduled contribution publishing through the canonical save validation. */
+    public function handle_future_publication(mixed $post_id): void
+    {
+        $post_id = $this->normalize_id($post_id);
+        if ($post_id <= 0) {
+            return;
+        }
+
+        $post = get_post($post_id);
+        if (! is_object($post)) {
+            return;
+        }
+
+        if (($post->post_type ?? null) !== ProductContributionRepository::POST_TYPE) {
+            check_and_publish_future_post($post_id);
+            return;
+        }
+        if (($post->post_status ?? null) !== 'future') {
+            return;
+        }
+
+        $time = strtotime((string) ($post->post_date_gmt ?? '') . ' GMT');
+        if ($time > time()) {
+            wp_clear_scheduled_hook('publish_future_post', [$post_id]);
+            wp_schedule_single_event($time, 'publish_future_post', [$post_id]);
+            return;
+        }
+
+        $this->captured_save_validation_error = null;
+        $this->capture_save_validation_error = true;
+        try {
+            $validated_data = $this->validate_pair_before_post_save(
+                [
+                    'ID' => $post_id,
+                    'post_type' => ProductContributionRepository::POST_TYPE,
+                    'post_status' => 'publish',
+                ],
+                ['ID' => $post_id]
+            );
+        } catch (\RuntimeException $error) {
+            if ($this->captured_save_validation_error === null) {
+                throw $error;
+            }
+            $this->captured_save_validation_error = null;
+            return;
+        } finally {
+            $this->capture_save_validation_error = false;
+        }
+
+        $this->captured_save_validation_error = null;
+        $this->scheduled_publish_validated_id = $post_id;
+        try {
+            wp_update_post([
+                'ID' => $post_id,
+                'post_status' => 'publish',
+                'post_title' => $validated_data['post_title'],
+            ], true);
+        } finally {
+            $this->scheduled_publish_validated_id = null;
+        }
     }
 
     public function validate_product_field(mixed $valid, mixed $value, array $field, string $input_name): mixed
@@ -93,6 +163,13 @@ final class ProductContributionAdmin
     public function validate_pair_before_post_save(array $data, array $postarr): array
     {
         if (($data['post_type'] ?? null) !== ProductContributionRepository::POST_TYPE) {
+            return $data;
+        }
+        if (
+            $this->scheduled_publish_validated_id !== null
+            && $this->normalize_id($postarr['ID'] ?? $data['ID'] ?? 0) === $this->scheduled_publish_validated_id
+            && ($data['post_status'] ?? null) === 'publish'
+        ) {
             return $data;
         }
         if (ProductContributionService::is_service_insert_in_progress() || $this->syncing_titles) {
@@ -387,6 +464,9 @@ final class ProductContributionAdmin
 
     private function normalize_role_submission(mixed $value): array|\WP_Error
     {
+        if ($value === '') {
+            return [];
+        }
         if (! is_array($value)) {
             return new \WP_Error('invalid_product_role', 'Product Roles must be submitted as a list of approved term IDs.');
         }
@@ -460,6 +540,11 @@ final class ProductContributionAdmin
 
     private function stop_save(\WP_Error $error): never
     {
+        if ($this->capture_save_validation_error) {
+            $this->captured_save_validation_error = $error;
+            throw new \RuntimeException($error->get_error_message());
+        }
+
         $code = $error->get_error_code();
         $response = in_array($code, [
             'product_contribution_row_lock_failed',

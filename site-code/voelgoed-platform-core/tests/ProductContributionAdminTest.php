@@ -1,6 +1,36 @@
 <?php
 declare(strict_types=1);
 
+namespace Voelgoed\PlatformCore\Product {
+    /** Allow the test harness to model replacement of WordPress's cron callback. */
+    function remove_action(string $hook, callable|string $callback, int $priority = 10): bool
+    {
+        $actions = $GLOBALS['vgpc_test_actions'][$hook] ?? [];
+        $remaining = array_values(array_filter(
+            $actions,
+            static fn (array $action): bool => ! (
+                (int) ($action['priority'] ?? 10) === $priority
+                && ($action['callback'] ?? null) === $callback
+            )
+        ));
+        $removed = count($actions) !== count($remaining);
+        $GLOBALS['vgpc_test_actions'][$hook] = $remaining;
+        return $removed;
+    }
+}
+
+namespace {
+
+if (! function_exists('check_and_publish_future_post')) {
+    function check_and_publish_future_post(int $post_id): void
+    {
+        $post = get_post($post_id);
+        if ($post && ($post->post_status ?? null) === 'future') {
+            $post->post_status = 'publish';
+        }
+    }
+}
+
 use Voelgoed\PlatformCore\Event\EventParticipationRepository;
 use Voelgoed\PlatformCore\Product\ProductContributionAdmin;
 use Voelgoed\PlatformCore\Product\ProductContributionPairLock;
@@ -11,6 +41,89 @@ use Voelgoed\PlatformCore\Product\ProductRoleVocabulary;
 
 final class ProductContributionAdminTest
 {
+    public function test_scheduled_future_publication_runs_through_canonical_validation(): void
+    {
+        [$repository] = $this->fixture();
+        $this->add_product(101, 'manual');
+        $this->add_endpoint(201, 'person', 'Mia Botha');
+        $this->add_contribution(401, 'future', 101, 201);
+
+        add_action('publish_future_post', 'check_and_publish_future_post', 10, 1);
+        $admin = new ProductContributionAdmin($repository);
+        $admin->register();
+        $GLOBALS['vgpc_test_apply_wp_update_filter'] = true;
+
+        vgpc_test_true(! in_array('check_and_publish_future_post', array_column($GLOBALS['vgpc_test_actions']['publish_future_post'] ?? [], 'callback'), true), 'The unguarded WordPress cron handler must be removed before the event runs. Registered: ' . var_export(array_column($GLOBALS['vgpc_test_actions']['publish_future_post'] ?? [], 'callback'), true));
+
+        do_action('publish_future_post', 401);
+
+        vgpc_test_same('future', $GLOBALS['vgpc_test_posts'][401]->post_status, 'Scheduled publication must leave an invalid contribution inactive.');
+        vgpc_test_same([], $GLOBALS['vgpc_test_update_post_calls'], 'Rejected scheduled publication must not write the post status.');
+        vgpc_test_true(! in_array('check_and_publish_future_post', array_column($GLOBALS['vgpc_test_actions']['publish_future_post'] ?? [], 'callback'), true), 'The unguarded WordPress cron handler must not remain registered.');
+        do_action('shutdown');
+    }
+
+    public function test_valid_scheduled_future_publication_uses_guarded_post_update(): void
+    {
+        [$repository] = $this->fixture();
+        $this->add_product(101, 'manual');
+        $this->add_endpoint(201, 'person', 'Mia Botha');
+        $roles = $this->approved_roles();
+        $this->add_contribution(401, 'future', 101, 201);
+        $GLOBALS['vgpc_test_relationships'][ProductRoleVocabulary::TAXONOMY][401] = [$roles['aanbieder']];
+
+        add_action('publish_future_post', 'check_and_publish_future_post', 10, 1);
+        $admin = new ProductContributionAdmin($repository);
+        $admin->register();
+        $GLOBALS['vgpc_test_apply_wp_update_filter'] = true;
+
+        do_action('publish_future_post', 401);
+
+        vgpc_test_same('publish', $GLOBALS['vgpc_test_posts'][401]->post_status, 'A valid due contribution must become active.');
+        vgpc_test_same(401, $GLOBALS['vgpc_test_update_post_calls'][0]['ID'] ?? null, 'A scheduled contribution must use wp_update_post so canonical filters run.');
+        vgpc_test_same('publish', $GLOBALS['vgpc_test_update_post_calls'][0]['post_status'] ?? null, 'The guarded update must transition the post to publish.');
+        vgpc_test_same('vgpc_pc_' . substr(hash('sha256', $this->lock_scope('contribution', 401)), 0, 56), $GLOBALS['wpdb']->queries[0]['args'][0] ?? null, 'Scheduled transition must acquire the contribution-row lock first.');
+        do_action('shutdown');
+    }
+
+    public function test_other_scheduled_post_types_still_use_the_wordpress_publish_handler(): void
+    {
+        [$repository] = $this->fixture();
+        $this->add_endpoint(501, 'post', 'Scheduled article', 'future');
+        add_action('publish_future_post', 'check_and_publish_future_post', 10, 1);
+        $admin = new ProductContributionAdmin($repository);
+        $admin->register();
+
+        do_action('publish_future_post', 501);
+
+        vgpc_test_same('publish', $GLOBALS['vgpc_test_posts'][501]->post_status, 'Non-contribution scheduled posts must keep WordPress publishing behavior.');
+    }
+
+    public function test_empty_acf_role_value_is_allowed_for_a_draft_but_not_publish(): void
+    {
+        [$repository] = $this->fixture();
+        $admin = new ProductContributionAdmin($repository);
+        $_POST['post_status'] = 'draft';
+
+        $draft_valid = $admin->validate_roles_field(
+            true,
+            '',
+            ['key' => ProductContributionAdmin::ROLES_FIELD_KEY],
+            'acf[roles]'
+        );
+
+        $_POST['post_status'] = 'publish';
+        $publish_valid = $admin->validate_roles_field(
+            true,
+            '',
+            ['key' => ProductContributionAdmin::ROLES_FIELD_KEY],
+            'acf[roles]'
+        );
+
+        vgpc_test_same(true, $draft_valid, 'An empty ACF role selection must normalize to an empty list for drafts.');
+        vgpc_test_true(is_string($publish_valid) && str_contains($publish_valid, 'at least one approved Product Role'), 'An empty ACF role selection must still be rejected for publication.');
+    }
+
     public function test_existing_edit_acquires_row_lock_before_fresh_endpoints_then_target_pair_lock(): void
     {
         [$repository, $product_fields] = $this->fixture();
@@ -736,4 +849,6 @@ final class ProductContributionAdminTest
             : implode(':', [(string) ($wpdb->dbname ?? ''), (string) ($wpdb->prefix ?? ''), function_exists('get_current_blog_id') ? (int) get_current_blog_id() : 0, $kind, $id_or_person, $person_id]);
         return $scope;
     }
+}
+
 }
