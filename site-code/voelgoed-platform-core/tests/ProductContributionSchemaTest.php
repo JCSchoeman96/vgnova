@@ -10,13 +10,27 @@ final class ProductContributionSchemaTest
         vgpc_test_same('post_type_product_contribution', $post_type['key'] ?? null, 'The Product Contribution post type key must be canonical.');
         vgpc_test_same('product_contribution', $post_type['post_type'] ?? null, 'The Product Contribution post type must be canonical.');
         vgpc_test_same(false, $post_type['public'] ?? null, 'Product Contribution must not be public.');
+        vgpc_test_same(false, $post_type['hierarchical'] ?? null, 'Product Contribution must not be hierarchical.');
         vgpc_test_same(false, $post_type['publicly_queryable'] ?? null, 'Product Contribution must not be publicly queryable.');
         vgpc_test_same(true, $post_type['exclude_from_search'] ?? null, 'Product Contribution must be excluded from search.');
+        vgpc_test_same('Product Contributions', $post_type['labels']['menu_name'] ?? null, 'Product Contribution must have its canonical admin menu name.');
         vgpc_test_same(true, $post_type['show_ui'] ?? null, 'Product Contribution must have an admin UI.');
+        vgpc_test_same(true, $post_type['show_in_menu'] ?? null, 'Product Contribution must appear in its own admin menu.');
+        vgpc_test_same('', $post_type['admin_menu_parent'] ?? null, 'Product Contribution must not be nested under another admin menu.');
+        vgpc_test_same(false, $post_type['show_in_admin_bar'] ?? null, 'Product Contribution must not appear in the admin bar.');
+        vgpc_test_same(false, $post_type['show_in_nav_menus'] ?? null, 'Product Contribution must not appear in navigation menus.');
         vgpc_test_same(true, $post_type['show_in_rest'] ?? null, 'Product Contribution must be available in the REST API for editor support.');
+        vgpc_test_same('product_contribution', $post_type['rest_base'] ?? null, 'The Product Contribution REST route base must be canonical.');
+        vgpc_test_same('wp/v2', $post_type['rest_namespace'] ?? null, 'The Product Contribution REST route namespace must be canonical.');
+        vgpc_test_same('WP_REST_Posts_Controller', $post_type['rest_controller_class'] ?? null, 'Product Contribution must use the WordPress post REST controller.');
         vgpc_test_same(false, $post_type['has_archive'] ?? null, 'Product Contribution must not have an archive.');
+        vgpc_test_same('', $post_type['has_archive_slug'] ?? null, 'Product Contribution must not define an archive slug.');
         vgpc_test_same('no_permalink', $post_type['rewrite']['permalink_rewrite'] ?? null, 'Product Contribution must not have a public permalink route.');
+        vgpc_test_same('', $post_type['rewrite']['slug'] ?? null, 'Product Contribution must not define a rewrite slug.');
+        vgpc_test_same(false, $post_type['rewrite']['with_front'] ?? null, 'Product Contribution rewrites must not use the site permalink front.');
         vgpc_test_same(false, $post_type['query_var'] ?? null, 'Product Contribution must not register a query var.');
+        vgpc_test_same('', $post_type['query_var_name'] ?? null, 'Product Contribution must not define a query variable name.');
+        vgpc_test_same(false, $post_type['show_in_graphql'] ?? null, 'Product Contribution must not register a GraphQL route.');
         vgpc_test_same(['title'], $post_type['supports'] ?? null, 'Product Contribution must support the title only.');
     }
 
@@ -28,12 +42,28 @@ final class ProductContributionSchemaTest
         vgpc_test_same('product_role', $taxonomy['taxonomy'] ?? null, 'The Product Role taxonomy name must be canonical.');
         vgpc_test_same(['product_contribution'], $taxonomy['object_type'] ?? null, 'Product Role must attach only to Product Contribution.');
         vgpc_test_same(false, $taxonomy['public'] ?? null, 'Product Role must not be public.');
+        vgpc_test_same(false, $taxonomy['hierarchical'] ?? null, 'Product Role must be a flat taxonomy.');
         vgpc_test_same(false, $taxonomy['publicly_queryable'] ?? null, 'Product Role must not be publicly queryable.');
+        vgpc_test_same('Product Roles', $taxonomy['labels']['menu_name'] ?? null, 'Product Role must have its canonical admin menu name.');
+        vgpc_test_same('Product Role', $taxonomy['labels']['name_admin_bar'] ?? null, 'Product Role must have its canonical admin bar name.');
         vgpc_test_same(true, $taxonomy['show_ui'] ?? null, 'Product Role must have an admin UI.');
+        vgpc_test_same(true, $taxonomy['show_in_menu'] ?? null, 'Product Role must appear in its own admin menu.');
         vgpc_test_same(true, $taxonomy['show_in_rest'] ?? null, 'Product Role must be available in the REST API for editor support.');
+        vgpc_test_same('product_role', $taxonomy['rest_base'] ?? null, 'The Product Role REST route base must be canonical.');
+        vgpc_test_same('wp/v2', $taxonomy['rest_namespace'] ?? null, 'The Product Role REST route namespace must be canonical.');
+        vgpc_test_same('WP_REST_Terms_Controller', $taxonomy['rest_controller_class'] ?? null, 'Product Role must use the WordPress terms REST controller.');
         vgpc_test_same(false, $taxonomy['show_in_nav_menus'] ?? null, 'Product Role must not appear in navigation menus.');
+        vgpc_test_same(false, $taxonomy['show_tagcloud'] ?? null, 'Product Role must not appear in tag clouds.');
+        vgpc_test_same(false, $taxonomy['show_in_quick_edit'] ?? null, 'Product Role must not appear in quick edit.');
+        vgpc_test_same(false, $taxonomy['show_admin_column'] ?? null, 'Product Role must not add a post list column.');
+        vgpc_test_same('disabled', $taxonomy['meta_box'] ?? null, 'Product Role must use the dedicated ACF field instead of a second taxonomy meta box.');
         vgpc_test_same('no_permalink', $taxonomy['rewrite']['permalink_rewrite'] ?? null, 'Product Role must not have a public archive route.');
+        vgpc_test_same('', $taxonomy['rewrite']['slug'] ?? null, 'Product Role must not define a public rewrite slug.');
+        vgpc_test_same(false, $taxonomy['rewrite']['with_front'] ?? null, 'Product Role rewrites must not use the site permalink front.');
+        vgpc_test_same(false, $taxonomy['rewrite']['rewrite_hierarchical'] ?? null, 'Product Role rewrites must not be hierarchical.');
         vgpc_test_same('none', $taxonomy['query_var'] ?? null, 'Product Role must not register a query var.');
+        vgpc_test_same('', $taxonomy['query_var_name'] ?? null, 'Product Role must not define a query variable name.');
+        vgpc_test_same(false, $taxonomy['show_in_graphql'] ?? null, 'Product Role must not register a GraphQL route.');
     }
 
     public function test_contribution_field_group_has_exactly_four_fields_and_targets_only_contributions(): void
