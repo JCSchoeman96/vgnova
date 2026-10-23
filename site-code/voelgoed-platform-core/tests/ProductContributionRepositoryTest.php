@@ -231,7 +231,7 @@ final class ProductContributionRepositoryTest
         $this->add_product(self::PRODUCT, 'manual');
         $this->add_post(self::PERSON, 'person');
         $this->set_legacy_values(self::PRODUCT, [self::PERSON]);
-        $GLOBALS['vgpc_test_meta'][self::PRODUCT][ProductPeopleFields::OVERRIDE_FIELD] = [self::PERSON];
+        $GLOBALS['vgpc_test_meta'][self::PRODUCT]['product_people_override'] = [self::PERSON];
 
         vgpc_test_same([], $repository->people_for_product(self::PRODUCT), 'Manual mode with no canonical Product Contribution must not fall back to the old override.');
 

@@ -2,8 +2,10 @@
 declare(strict_types=1);
 
 use Voelgoed\PlatformCore\Event\EventParticipationRepository;
+use Voelgoed\PlatformCore\Product\ProductContributionRepository;
 use Voelgoed\PlatformCore\Product\ProductPeopleFields;
 use Voelgoed\PlatformCore\Product\ProductPeopleResolver;
+use Voelgoed\PlatformCore\Product\ProductRoleVocabulary;
 
 final class ProductPeopleResolverTest
 {
@@ -196,80 +198,81 @@ final class ProductPeopleResolverTest
         );
     }
 
-    public function test_event_mode_ignores_populated_manual_override(): void
+    public function test_event_mode_ignores_populated_legacy_override_meta(): void
     {
         $this->event_fixture();
         $this->set_mode(self::PRODUCT, 'event');
         $this->set_source(self::PRODUCT, self::EVENT);
-        $this->set_override(self::PRODUCT, [self::PERSON_E]);
+        $this->set_legacy_override(self::PRODUCT, [self::PERSON_E]);
 
         vgpc_test_same(
             [self::PERSON_B, self::PERSON_A],
             $this->resolver()->people_for_product(self::PRODUCT),
-            'Event mode must ignore stale manual override data.'
+            'Event mode must ignore stale product_people_override meta.'
         );
     }
 
-    public function test_manual_mode_preserves_override_order(): void
+    public function test_manual_mode_preserves_canonical_contribution_order(): void
     {
         $this->event_fixture();
         $this->set_mode(self::PRODUCT, 'manual');
-        $this->set_override(self::PRODUCT, [self::PERSON_E, self::PERSON_A, self::PERSON_B]);
+        $approved = $this->approved_role_ids();
+        $this->add_contribution(520, 'publish', self::PRODUCT, self::PERSON_E, [$approved['aanbieder']], 2);
+        $this->add_contribution(521, 'publish', self::PRODUCT, self::PERSON_A, [$approved['aanbieder']], 0);
+        $this->add_contribution(522, 'publish', self::PRODUCT, self::PERSON_B, [$approved['aanbieder']], 1);
 
         vgpc_test_same(
-            [self::PERSON_E, self::PERSON_A, self::PERSON_B],
+            [self::PERSON_A, self::PERSON_B, self::PERSON_E],
             $this->resolver()->people_for_product(self::PRODUCT),
-            'Manual mode must preserve the editor-selected order.'
+            'Manual mode must preserve canonical Product Contribution display order.'
         );
     }
 
-    public function test_manual_mode_accepts_numeric_string_ids_and_returns_integers(): void
-    {
-        $this->event_fixture();
-        $this->set_mode(self::PRODUCT, 'manual');
-        $this->set_override(self::PRODUCT, [(string) self::PERSON_B, (string) self::PERSON_A]);
-
-        $result = $this->resolver()->people_for_product(self::PRODUCT);
-        vgpc_test_same([self::PERSON_B, self::PERSON_A], $result, 'Digit-only numeric strings must resolve to Person IDs.');
-        vgpc_test_true(array_is_list($result), 'People results must be a zero-indexed list.');
-        vgpc_test_true(is_int($result[0]) && is_int($result[1]), 'People results must contain integers.');
-    }
-
-    public function test_manual_mode_empty_override_returns_empty_despite_valid_source_event(): void
+    public function test_manual_mode_with_no_contributions_returns_empty_despite_valid_source_event(): void
     {
         $this->event_fixture();
         $this->set_mode(self::PRODUCT, 'manual');
         $this->set_source(self::PRODUCT, self::EVENT);
-        $this->set_override(self::PRODUCT, []);
 
-        vgpc_test_same([], $this->resolver()->people_for_product(self::PRODUCT), 'An intentionally empty manual override must never fall back to Event People.');
+        vgpc_test_same([], $this->resolver()->people_for_product(self::PRODUCT), 'Manual mode without Product Contributions must never fall back to Event People.');
     }
 
-    public function test_manual_mode_filters_invalid_override_endpoints(): void
+    public function test_manual_mode_omits_draft_roleless_and_stale_contributions(): void
     {
         $this->event_fixture();
         $this->set_mode(self::PRODUCT, 'manual');
-        $this->set_override(self::PRODUCT, [0, -5, 'abc', '12abc', 1.5, null, true, 999, self::MEDEWERKER, self::PERSON_B]);
+        $approved = $this->approved_role_ids();
+        $this->add_contribution(530, 'draft', self::PRODUCT, self::PERSON_E, [$approved['aanbieder']], 0);
+        $this->add_contribution(531, 'publish', self::PRODUCT, self::PERSON_A, [], 0);
+        $this->add_contribution(532, 'publish', self::PRODUCT, 999, [$approved['aanbieder']], 0);
+        $this->add_contribution(533, 'publish', self::PRODUCT, self::MEDEWERKER, [$approved['aanbieder']], 0);
+        $this->add_contribution(534, 'publish', self::PRODUCT, self::PERSON_B, [$approved['aanbieder']], 0);
 
-        vgpc_test_same([self::PERSON_B], $this->resolver()->people_for_product(self::PRODUCT), 'Only positive integer or digit-string IDs that are published Persons may survive.');
+        vgpc_test_same([self::PERSON_B], $this->resolver()->people_for_product(self::PRODUCT), 'Only active published contributions with approved roles and published Persons may survive.');
     }
 
     public function test_manual_mode_filters_draft_and_private_persons(): void
     {
         $this->event_fixture();
         $this->set_mode(self::PRODUCT, 'manual');
-        $this->set_override(self::PRODUCT, [self::PERSON_DRAFT, self::PERSON_PRIVATE, self::PERSON_A]);
+        $approved = $this->approved_role_ids();
+        $this->add_contribution(540, 'publish', self::PRODUCT, self::PERSON_DRAFT, [$approved['aanbieder']], 0);
+        $this->add_contribution(541, 'publish', self::PRODUCT, self::PERSON_PRIVATE, [$approved['aanbieder']], 1);
+        $this->add_contribution(542, 'publish', self::PRODUCT, self::PERSON_A, [$approved['aanbieder']], 2);
 
         vgpc_test_same([self::PERSON_A], $this->resolver()->people_for_product(self::PRODUCT), 'Manual mode must filter draft and private Persons.');
     }
 
-    public function test_manual_mode_deduplicates_preserving_first_occurrence(): void
+    public function test_manual_mode_deduplicates_people_preserving_first_contribution_occurrence(): void
     {
         $this->event_fixture();
         $this->set_mode(self::PRODUCT, 'manual');
-        $this->set_override(self::PRODUCT, [self::PERSON_A, self::PERSON_B, self::PERSON_A, (string) self::PERSON_B]);
+        $approved = $this->approved_role_ids();
+        $this->add_contribution(550, 'publish', self::PRODUCT, self::PERSON_A, [$approved['aanbieder']], 0);
+        $this->add_contribution(551, 'publish', self::PRODUCT, self::PERSON_B, [$approved['aanbieder']], 1);
+        $this->add_contribution(552, 'publish', self::PRODUCT, self::PERSON_A, [$approved['skepper']], 2);
 
-        vgpc_test_same([self::PERSON_A, self::PERSON_B], $this->resolver()->people_for_product(self::PRODUCT), 'Manual duplicates must be removed after the first occurrence.');
+        vgpc_test_same([self::PERSON_A, self::PERSON_B], $this->resolver()->people_for_product(self::PRODUCT), 'Manual duplicates must be removed after the first contribution position.');
     }
 
     public function test_manual_mode_ignores_produk_bron_event(): void
@@ -277,20 +280,21 @@ final class ProductPeopleResolverTest
         $this->event_fixture();
         $this->set_mode(self::PRODUCT, 'manual');
         $this->set_source(self::PRODUCT, self::EVENT);
-        $this->set_override(self::PRODUCT, [self::PERSON_E]);
+        $approved = $this->approved_role_ids();
+        $this->add_contribution(560, 'publish', self::PRODUCT, self::PERSON_E, [$approved['aanbieder']], 0);
 
         vgpc_test_same([self::PERSON_E], $this->resolver()->people_for_product(self::PRODUCT), 'Manual mode must ignore the source Event entirely.');
     }
 
-    public function test_non_array_manual_value_fails_closed(): void
+    public function test_manual_mode_ignores_populated_legacy_override_meta(): void
     {
         $this->event_fixture();
         $this->set_mode(self::PRODUCT, 'manual');
+        $this->set_legacy_override(self::PRODUCT, [self::PERSON_E, self::PERSON_A, self::PERSON_B]);
+        $approved = $this->approved_role_ids();
+        $this->add_contribution(570, 'publish', self::PRODUCT, self::PERSON_A, [$approved['aanbieder']], 0);
 
-        foreach ([self::PERSON_A, (string) self::PERSON_A, false, null, '', 'abc'] as $value) {
-            $this->set_override(self::PRODUCT, $value);
-            vgpc_test_same([], $this->resolver()->people_for_product(self::PRODUCT), 'A non-array manual value must fail closed.');
-        }
+        vgpc_test_same([self::PERSON_A], $this->resolver()->people_for_product(self::PRODUCT), 'Legacy product_people_override meta must not affect manual resolution.');
     }
 
     public function test_produk_medewerkers_is_never_used_as_a_fallback(): void
@@ -312,7 +316,8 @@ final class ProductPeopleResolverTest
     {
         $this->event_fixture();
         $this->set_source(self::PRODUCT, self::EVENT);
-        $this->set_override(self::PRODUCT, [self::PERSON_A]);
+        $approved = $this->approved_role_ids();
+        $this->add_contribution(580, 'publish', self::PRODUCT, self::PERSON_A, [$approved['aanbieder']], 0);
         $this->set_meta(self::PRODUCT, 'produk_medewerkers', [self::MEDEWERKER]);
         $resolver = $this->resolver();
 
@@ -341,7 +346,7 @@ final class ProductPeopleResolverTest
         vgpc_test_same(
             [self::PERSON_B, self::PERSON_A],
             (new ProductPeopleResolver())->people_for_product(self::PRODUCT),
-            'The default constructor must use the canonical Event Participation repository.'
+            'The default constructor must use the canonical Product Contribution repository.'
         );
     }
 
@@ -367,6 +372,8 @@ final class ProductPeopleResolverTest
             . " function get_post_type(\$post = null) { return 'product'; }"
             . " function get_post_meta(\$id, \$key = '', \$single = false) { return \$key === 'product_people_mode' ? " . var_export($mode, true) . " : ''; }"
             . " require " . var_export($dir . '/Event/EventParticipationRepository.php', true) . ";"
+            . " require " . var_export($dir . '/Product/ProductRoleVocabulary.php', true) . ";"
+            . " require " . var_export($dir . '/Product/ProductContributionRepository.php', true) . ";"
             . " require " . var_export($dir . '/Product/ProductPeopleFields.php', true) . ";"
             . " require " . var_export($dir . '/Product/ProductPeopleResolver.php', true) . ";"
             . " try { echo json_encode((new Voelgoed\\PlatformCore\\Product\\ProductPeopleResolver())->people_for_product(401)); }"
@@ -382,7 +389,7 @@ final class ProductPeopleResolverTest
 
     private function resolver(): ProductPeopleResolver
     {
-        return new ProductPeopleResolver(new EventParticipationRepository());
+        return new ProductPeopleResolver(new ProductContributionRepository(new EventParticipationRepository()));
     }
 
     /** Base fixture: field definitions plus Events, Persons, Products, and a legacy Medewerker. */
@@ -395,7 +402,10 @@ final class ProductPeopleResolverTest
                 ['key' => 'field_produk_bron_event', 'name' => 'produk_bron_event'],
                 ['key' => 'field_produk_medewerkers', 'name' => 'produk_medewerkers'],
                 ['key' => ProductPeopleFields::MODE_FIELD_KEY, 'name' => ProductPeopleFields::MODE_FIELD],
-                ['key' => ProductPeopleFields::OVERRIDE_FIELD_KEY, 'name' => ProductPeopleFields::OVERRIDE_FIELD],
+                ['key' => 'field_pc_product', 'name' => ProductContributionRepository::PRODUCT_FIELD],
+                ['key' => 'field_pc_person', 'name' => ProductContributionRepository::PERSON_FIELD],
+                ['key' => 'field_pc_roles', 'name' => 'product_contribution_roles'],
+                ['key' => 'field_pc_order', 'name' => ProductContributionRepository::DISPLAY_ORDER_FIELD],
                 ['key' => 'field_event_participation_event', 'name' => 'event_participation_event'],
                 ['key' => 'field_event_participation_person', 'name' => 'event_participation_person'],
                 ['key' => 'field_event_participation_display_order', 'name' => 'event_participation_display_order'],
@@ -449,9 +459,28 @@ final class ProductPeopleResolverTest
     }
 
     /** @param list<mixed> $person_ids */
-    private function set_override(int $product_id, mixed $person_ids): void
+    private function set_legacy_override(int $product_id, mixed $person_ids): void
     {
-        $this->set_meta($product_id, ProductPeopleFields::OVERRIDE_FIELD, $person_ids);
+        $this->set_meta($product_id, 'product_people_override', $person_ids);
+    }
+
+    /** @param list<int> $role_ids */
+    private function add_contribution(
+        int $id,
+        string $post_status,
+        int $product_id,
+        int $person_id,
+        array $role_ids,
+        int $display_order
+    ): void {
+        $this->post($id, ProductContributionRepository::POST_TYPE, $post_status);
+        $this->set_meta($id, ProductContributionRepository::PRODUCT_FIELD, $product_id);
+        $this->set_meta($id, ProductContributionRepository::PERSON_FIELD, $person_id);
+        $this->set_meta($id, ProductContributionRepository::DISPLAY_ORDER_FIELD, $display_order);
+        $this->set_meta($id, 'product_contribution_roles', $role_ids);
+        if ($role_ids !== []) {
+            wp_set_object_terms($id, $role_ids, ProductContributionRepository::ROLE_TAXONOMY, false);
+        }
     }
 
     private function participation(
@@ -465,5 +494,16 @@ final class ProductPeopleResolverTest
         $this->set_meta($id, 'event_participation_event', $event_id);
         $this->set_meta($id, 'event_participation_person', $person_id);
         $this->set_meta($id, 'event_participation_display_order', $display_order);
+    }
+
+    /** @return array<string, int> */
+    private function approved_role_ids(): array
+    {
+        $ids = [];
+        foreach (ProductRoleVocabulary::approved_terms() as $slug => $label) {
+            $ids[$slug] = vgpc_test_add_term($label, $slug, 0, ProductRoleVocabulary::TAXONOMY)->term_id;
+        }
+
+        return $ids;
     }
 }

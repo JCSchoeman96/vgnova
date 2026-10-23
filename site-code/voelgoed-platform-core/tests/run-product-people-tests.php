@@ -7,6 +7,15 @@ $repository_file = dirname(__DIR__) . '/includes/Event/EventParticipationReposit
 if (is_file($repository_file)) {
     require_once $repository_file;
 }
+$contribution_dependency_files = [
+    dirname(__DIR__) . '/includes/Product/ProductRoleVocabulary.php',
+    dirname(__DIR__) . '/includes/Product/ProductContributionRepository.php',
+];
+foreach ($contribution_dependency_files as $contribution_dependency_file) {
+    if (is_file($contribution_dependency_file)) {
+        require_once $contribution_dependency_file;
+    }
+}
 $product_files = [
     dirname(__DIR__) . '/includes/Product/ProductPeopleFields.php',
     dirname(__DIR__) . '/includes/Product/ProductPeopleResolver.php',

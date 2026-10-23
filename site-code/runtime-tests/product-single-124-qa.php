@@ -31,9 +31,6 @@ if (! defined('ABSPATH')) {
     exit(1);
 }
 
-require_once __DIR__ . '/product-people-qa-side-effects.php';
-require_once __DIR__ . '/product-single-124-qa-request.php';
-
 const VG_PRODUCT_SINGLE_124_QA_OWNER_META = '_vg_task_7b_qa_owner';
 const VG_PRODUCT_SINGLE_124_QA_OWNER_LABEL = '[QA][AUTOMATED] Task 7B';
 const VG_PRODUCT_SINGLE_124_QA_TEMPLATE = 124;
@@ -44,36 +41,69 @@ const VG_PRODUCT_SINGLE_124_QA_TEMPLATES = [772, 774];
 const VG_PRODUCT_SINGLE_124_QA_COMPONENTS = ['6b463f', '194bba'];
 const VG_PRODUCT_SINGLE_124_QA_PRODUCT_FIELDS = [
     'product_people_mode',
-    'product_people_override',
+    'canonical_people_resolver',
     'produk_bron_event',
     'produk_medewerkers',
     '_event_name',
 ];
+
+require_once __DIR__ . '/product-people-qa-side-effects.php';
+require_once __DIR__ . '/product-single-124-qa-request.php';
+
+if (! defined('VG_PRODUCT_PEOPLE_QA_OWNER_META')) {
+    define('VG_PRODUCT_PEOPLE_QA_OWNER_META', VG_PRODUCT_SINGLE_124_QA_OWNER_META);
+}
+if (! function_exists('vg_product_people_qa_check')) {
+    function vg_product_people_qa_check(bool $condition, string $message): void
+    {
+        vg_product_single_124_qa_check($condition, $message);
+    }
+}
+if (! function_exists('vg_product_people_qa_ints')) {
+    /** @return list<int> */
+    function vg_product_people_qa_ints(mixed $value): array
+    {
+        if ($value === null || $value === false || $value === '') {
+            return [];
+        }
+        $values = is_array($value) ? $value : [$value];
+        $ids = [];
+        foreach ($values as $item) {
+            if (is_int($item) || (is_string($item) && ctype_digit($item))) {
+                $ids[] = (int) $item;
+            }
+        }
+
+        return $ids;
+    }
+}
+require_once __DIR__ . '/product-people-qa-contributions.php';
+
 const VG_PRODUCT_SINGLE_124_QA_EXPECTED_PRODUCT_IDS = [
     525, 527, 529, 531, 642, 765, 767, 768, 842, 844, 845, 846,
     905, 908, 911, 914, 917, 920, 923, 1186,
 ];
 const VG_PRODUCT_SINGLE_124_QA_EXPECTED_PRODUCT_FIELDS = [
-    525 => [null, null, null, null, ''],
-    527 => [null, null, null, null, ''],
-    529 => [null, null, null, null, ''],
-    531 => [null, null, null, null, ''],
-    642 => [null, null, null, null, ''],
-    765 => [null, null, '763', null, ''],
-    767 => [null, null, '763', ['753'], ''],
-    768 => [null, null, '763', ['753', '757'], ''],
-    842 => [null, null, '', '', '763'],
-    844 => [null, null, '', '', '763'],
-    845 => [null, null, '', '', '763'],
-    846 => [null, null, '', '', '763'],
-    905 => [null, null, null, null, ''],
-    908 => [null, null, null, null, ''],
-    911 => [null, null, null, null, ''],
-    914 => [null, null, null, null, ''],
-    917 => [null, null, null, null, ''],
-    920 => [null, null, null, null, ''],
-    923 => [null, null, null, null, ''],
-    1186 => [null, null, null, null, ''],
+    525 => [null, [], null, null, ''],
+    527 => [null, [], null, null, ''],
+    529 => [null, [], null, null, ''],
+    531 => [null, [], null, null, ''],
+    642 => [null, [], null, null, ''],
+    765 => [null, [], '763', null, ''],
+    767 => [null, [], '763', ['753'], ''],
+    768 => [null, [], '763', ['753', '757'], ''],
+    842 => [null, [], '', '', '763'],
+    844 => [null, [], '', '', '763'],
+    845 => [null, [], '', '', '763'],
+    846 => [null, [], '', '', '763'],
+    905 => [null, [], null, null, ''],
+    908 => [null, [], null, null, ''],
+    911 => [null, [], null, null, ''],
+    914 => [null, [], null, null, ''],
+    917 => [null, [], null, null, ''],
+    920 => [null, [], null, null, ''],
+    923 => [null, [], null, null, ''],
+    1186 => [null, [], null, null, ''],
 ];
 const VG_PRODUCT_SINGLE_124_QA_EXPECTED_RECORD_HASHES = [
     753 => ['18b7b826b29f9a05a2e3d2fb771a9439311b8a95178f93065cca1e3200d8185f', '987899ce4d75fa9da3f5058fdd11f2251e9721e5404f390ecf9c66bb3e416181'],
@@ -436,11 +466,12 @@ function vg_product_single_124_qa_query_callers(): array
 /** @return array<int, array<string, mixed>> */
 function vg_product_single_124_qa_existing_product_fields(): array
 {
+    $resolver = new ProductPeopleResolver();
     $result = [];
     foreach (VG_PRODUCT_SINGLE_124_QA_EXPECTED_PRODUCT_IDS as $id) {
         $result[$id] = [
             get_field('product_people_mode', $id, false),
-            get_field('product_people_override', $id, false),
+            $resolver->people_for_product($id),
             get_field('produk_bron_event', $id, false),
             get_field('produk_medewerkers', $id, false),
             get_post_meta($id, '_event_name', true),
@@ -564,7 +595,20 @@ function vg_product_single_124_qa_cleanup(array $owned, string $owner, array $pr
 {
     $failures = [];
     $tickera = ['deleted' => [], 'unexplained' => [], 'failures' => []];
-    $participations_clear = true;
+    $contributions_clear = vg_product_people_qa_delete_owned_contributions(
+        $owned['contributions'],
+        $owner,
+        static function (int $id, string $type, string $owner_marker, ?callable $endpoint_check = null): bool {
+            try {
+                vg_product_single_124_qa_delete_owned($id, $type, $owner_marker, $endpoint_check);
+                return true;
+            } catch (Throwable) {
+                return false;
+            }
+        }
+    );
+
+    $participations_clear = $contributions_clear;
     foreach ($owned['participations'] as $id => $pair) {
         try {
             vg_product_single_124_qa_delete_owned(
@@ -845,25 +889,20 @@ function vg_product_single_124_qa_set_source_event(int $product_id, int|string $
 
 function vg_product_single_124_qa_set_people(int $product_id, ?string $mode, array $people): void
 {
-    if ($mode === null) {
-        delete_field(ProductPeopleFields::MODE_FIELD, $product_id);
-        delete_field(ProductPeopleFields::OVERRIDE_FIELD, $product_id);
-    } else {
-        update_field(ProductPeopleFields::MODE_FIELD, $mode, $product_id);
-        update_field(ProductPeopleFields::OVERRIDE_FIELD, $people, $product_id);
-    }
-    acf_flush_value_cache($product_id, ProductPeopleFields::MODE_FIELD);
-    acf_flush_value_cache($product_id, ProductPeopleFields::OVERRIDE_FIELD);
-    $stored_mode = get_post_meta($product_id, ProductPeopleFields::MODE_FIELD, true);
-    vg_product_single_124_qa_check(
-        $mode === null
-            ? ! in_array($stored_mode, [ProductPeopleFields::MODE_EVENT, ProductPeopleFields::MODE_MANUAL], true)
-            : $stored_mode === $mode,
-        'Product People mode did not read back through ACF.'
-    );
-    vg_product_single_124_qa_check(
-        vg_product_single_124_qa_ids(get_field(ProductPeopleFields::OVERRIDE_FIELD, $product_id, false)) === $people,
-        'Product People override did not read back through ACF in the expected order.'
+    $state = $GLOBALS['vg_product_single_124_qa_people_state'] ?? null;
+    vg_product_single_124_qa_check(is_array($state), 'Product People QA state is unavailable.');
+    vg_product_people_qa_configure_product_people(
+        $product_id,
+        $mode,
+        $people,
+        (string) $state['owner'],
+        $state['owned']['contributions'],
+        static function (int $id, string $type, string $owner_marker): void {
+            vg_product_single_124_qa_mark($id, $type, $owner_marker);
+        },
+        static function (int $id, string $type, string $owner_marker, ?callable $endpoint_check = null): void {
+            vg_product_single_124_qa_delete_owned($id, $type, $owner_marker, $endpoint_check);
+        },
     );
 }
 
@@ -969,7 +1008,9 @@ function vg_product_single_124_qa_no_acf_process(): array
     $plugin_dir = WP_PLUGIN_DIR . '/voelgoed-platform-core';
     $files = [
         $plugin_dir . '/includes/Event/EventParticipationRepository.php',
+        $plugin_dir . '/includes/Product/ProductRoleVocabulary.php',
         $plugin_dir . '/includes/Product/ProductPeopleFields.php',
+        $plugin_dir . '/includes/Product/ProductContributionRepository.php',
         $plugin_dir . '/includes/Product/ProductPeopleResolver.php',
         $plugin_dir . '/includes/Product/ProductPeopleBricks.php',
         $plugin_dir . '/includes/Product/ProductSourceEventBricks.php',
@@ -1007,7 +1048,9 @@ function vg_product_single_124_qa_builder_process(string $context): array
     $plugin_dir = WP_PLUGIN_DIR . '/voelgoed-platform-core';
     $files = [
         $plugin_dir . '/includes/Event/EventParticipationRepository.php',
+        $plugin_dir . '/includes/Product/ProductRoleVocabulary.php',
         $plugin_dir . '/includes/Product/ProductPeopleFields.php',
+        $plugin_dir . '/includes/Product/ProductContributionRepository.php',
         $plugin_dir . '/includes/Product/ProductPeopleResolver.php',
         $plugin_dir . '/includes/Product/ProductPeopleBricks.php',
     ];
@@ -1132,10 +1175,14 @@ try {
         ProductSourceEventBricks::class,
         EventParticipationRepository::class,
         EventParticipationService::class,
+        \Voelgoed\PlatformCore\Product\ProductRoleVocabulary::class,
+        \Voelgoed\PlatformCore\Product\ProductContributionRepository::class,
+        \Voelgoed\PlatformCore\Product\ProductContributionService::class,
     ] as $class) {
         vg_product_single_124_qa_check(class_exists($class), 'Required Platform Core class is not loaded: ' . $class);
     }
-    foreach (['product', 'tc_events', 'person', EventParticipationRepository::POST_TYPE] as $post_type) {
+    vg_product_people_qa_assert_approved_product_role_vocabulary();
+    foreach (['product', 'tc_events', 'person', EventParticipationRepository::POST_TYPE, 'product_contribution'] as $post_type) {
         vg_product_single_124_qa_check(post_type_exists($post_type), 'Required post type is not registered: ' . $post_type);
     }
     vg_product_single_124_qa_check(function_exists('get_field') && function_exists('update_field'), 'ACF runtime is unavailable.');
@@ -1187,7 +1234,8 @@ if ($preflight_only) {
 }
 
 $pre_api_ids = array_map('intval', array_column($before['api_keys'], 'id'));
-$owned = ['product' => 0, 'events' => [], 'persons' => [], 'participations' => []];
+$owned = ['product' => 0, 'events' => [], 'persons' => [], 'participations' => [], 'contributions' => []];
+$GLOBALS['vg_product_single_124_qa_people_state'] = ['owner' => $owner, 'owned' => &$owned];
 $scenarios = [];
 $qa_failure = null;
 $cleanup = ['failures' => [], 'tickera' => ['deleted' => [], 'unexplained' => [], 'failures' => []]];
