@@ -28,10 +28,13 @@
 - Event mode membership authority remains live Event Participation only. Product Contribution is optional role annotation and never creates event-derived membership.
 - Event roles and Product roles are separate contextual facts. Never auto-map `event_role` to `product_role`.
 - Initial Product Role vocabulary is exactly: `Aanbieder`/`aanbieder`, `Skrywer`/`skrywer`, `Instrukteur`/`instrukteur`, `Skepper`/`skepper`.
+- `ProductRoleVocabulary` is the only source for the approved Product Role labels and slugs. The seeder and every publication validator must read that source; they must not keep separate copies of the four-role map.
 - Every published Product Contribution requires at least one approved `product_role`, in both manual and event mode.
 - ACF field-level `required` flags for Product, Person, and Roles remain `0` so an incomplete draft can be saved; `ProductContributionService`/`ProductContributionAdmin` enforce the publication requirements. Do not use ACF's unconditional required flag in a way that makes incomplete drafts impossible.
 - One non-retired Product × Person pair owns one Product Contribution; multiple Product roles belong on that single record.
 - Duplicate prevention includes `publish`, `draft`, `pending`, `private`, and `future`; `trash` and `auto-draft` do not block pair reuse.
+- Every existing-row save locks that contribution row before reading stored endpoints, then locks the resolved Product × Person pair before the authoritative fresh duplicate check. Trash retirement takes the row lock but bypasses endpoint, role, mode, and Event-membership validation.
+- Contribution titles always derive from the current Product and Person titles. Product or Person title changes resync related non-retired contributions under contribution-row locks.
 - Forward Product→People public results expose only valid published `person` endpoints. The Product itself may be non-published in editor/preview contexts.
 - Reverse Person→Product public results require the Person and returned Product endpoints to be published.
 - `product_contribution_display_order` controls Product-side Person ordering only. It never becomes Person-page Product ordering.
@@ -57,8 +60,8 @@
 
 1. **Override-gate false negative:** non-empty `product_people_override` data or a required external caller must block cutover even if the historical audit was zero; source-only references being intentionally replaced are not external blockers.
 2. **Mode-switch stale leakage:** a contribution valid in manual mode but invalid after switching to event mode, or an event annotation whose Person leaves the source Event, must stay stored if appropriate but disappear from canonical active reads.
-3. **Duplicate/race safety:** two writers attempting the same Product × Person pair must not both succeed; the post-lock fresh check must be authoritative rather than request-cache dependent.
-4. **Role integrity:** a published contribution with zero roles, an unknown role term, a wrong-taxonomy term, or a malformed role ID must fail without partially persisting canonical state.
+3. **Duplicate/race safety:** two create writers and two existing rows moving toward the same Product × Person pair must not both succeed; the post-lock fresh check must be authoritative rather than request-cache dependent.
+4. **Role integrity:** a published contribution with zero roles, an unknown role term, an unapproved fifth term in the correct taxonomy, a wrong-taxonomy term, or a malformed role ID must fail without partially persisting canonical state.
 5. **Reverse-query leakage:** manual + event-derived membership must union and deduplicate correctly while excluding unpublished Products, non-published Persons, invalid modes, stale event annotations, and every legacy fallback field.
 
 ---
@@ -84,6 +87,7 @@ site-code/voelgoed-platform-core/includes/Product/ProductContributionRepository.
 site-code/voelgoed-platform-core/includes/Product/ProductContributionPairLock.php
 site-code/voelgoed-platform-core/includes/Product/ProductContributionService.php
 site-code/voelgoed-platform-core/includes/Product/ProductContributionAdmin.php
+site-code/voelgoed-platform-core/includes/Product/ProductRoleVocabulary.php
 site-code/voelgoed-platform-core/includes/Product/ProductRoleSeeder.php
 ```
 
@@ -100,6 +104,7 @@ site-code/voelgoed-platform-core/includes/Product/ProductPeopleFields.php
 site-code/voelgoed-platform-core/includes/Product/ProductPeopleResolver.php
 site-code/voelgoed-platform-core/integration.patch
 site-code/voelgoed-platform-core/README.md
+site-code/voelgoed-platform-core/includes/Event/EventParticipationRepository.php
 ```
 
 `ProductPeopleBricks.php` must remain API-stable and should require no behavioral rewrite beyond dependency loading if tests prove the existing `ProductPeopleResolver` contract remains intact.
@@ -115,6 +120,7 @@ site-code/voelgoed-platform-core/tests/ProductContributionRepositoryTest.php
 site-code/voelgoed-platform-core/tests/ProductContributionPairLockTest.php
 site-code/voelgoed-platform-core/tests/ProductContributionServiceTest.php
 site-code/voelgoed-platform-core/tests/ProductContributionAdminTest.php
+site-code/voelgoed-platform-core/tests/ProductRoleVocabularyTest.php
 site-code/voelgoed-platform-core/tests/run-product-contribution-tests.php
 ```
 
@@ -131,6 +137,8 @@ site-code/voelgoed-platform-core/tests/ProductPeopleFieldsTest.php
 site-code/voelgoed-platform-core/tests/ProductPeopleResolverTest.php
 site-code/voelgoed-platform-core/tests/ProductPeopleIntegrationTest.php
 site-code/voelgoed-platform-core/tests/run-product-people-tests.php
+site-code/voelgoed-platform-core/tests/EventParticipationRepositoryTest.php
+site-code/voelgoed-platform-core/tests/run-event-participation-tests.php
 ```
 
 Modify shared test bootstrap only if a genuinely generic WordPress/ACF primitive is missing:
@@ -236,6 +244,12 @@ public function people_for_product(int $product_id): array;
 /** @return list<int> */
 public function products_for_person(int $person_id): array;
 
+/** @return list<int> Non-retired rows for title resync; no publication or role filtering. */
+public function non_retired_contributions_for_product(int $product_id): array;
+
+/** @return list<int> Non-retired rows for title resync; no publication or role filtering. */
+public function non_retired_contributions_for_person(int $person_id): array;
+
 /**
  * @return list<array{
  *   product_id:int,
@@ -301,6 +315,16 @@ UNION
 
 Product role IDs in association views are sorted numerically for deterministic output; role order is not business data.
 
+For event-derived association order, add this method to `EventParticipationRepository` and cover it in its repository tests:
+
+```php
+public function display_order_for_pair(int $event_id, int $person_id): ?int;
+```
+
+Product Contribution must call that method. It must not query the Event Participation post type or read `event_participation_display_order` directly. Return no event association if the canonical read no longer finds an active pair.
+
+The two `non_retired_contributions_for_*` methods return matching contribution IDs in ascending ID order for `publish`, `draft`, `pending`, `private`, and `future` only. They do not filter by role validity, Product mode, or current Event membership. Title synchronization uses these methods, then checks the stored endpoints fresh under each row lock.
+
 ## `ProductContributionPairLock`
 
 Namespace:
@@ -313,10 +337,14 @@ Public interface mirrors the Event Participation pair-lock pattern:
 
 ```php
 public function acquire(int $product_id, int $person_id): bool;
-public function release(int $product_id, int $person_id): void;
+public function acquire_contribution(int $contribution_id): bool;
+public function with_scoped_locks(callable $operation): mixed;
+public function release(int $product_id, int $person_id): bool;
+public function release_contribution(int $contribution_id): bool;
+public function release_all(): void;
 ```
 
-The lock key must be domain-specific so it cannot collide with Event Participation locks. Release only a lock acquired by this instance.
+Use a domain-specific key namespace that cannot collide with Event Participation locks. Track locks acquired by this instance. Scoped release must release only locks acquired inside that scope, in reverse acquisition order. Release-all must release every lock still held by this instance. For an existing contribution save, acquire the contribution-row lock first, read stored endpoints fresh, then acquire the endpoint-pair lock. New contribution creation acquires the endpoint-pair lock. Never read stored endpoints before acquiring the row lock.
 
 ## `ProductContributionService`
 
@@ -329,7 +357,7 @@ Voelgoed\PlatformCore\Product
 Allowed canonical write statuses:
 
 ```php
-['publish', 'draft', 'pending', 'private']
+['publish', 'draft', 'pending', 'private', 'future']
 ```
 
 Constructor:
@@ -368,9 +396,25 @@ public function create(
 ): int|\WP_Error;
 ```
 
-`validate_publishable()` must verify Product and Person endpoints, uniqueness, exact approved `product_role` term IDs, at least one role, and mode semantics. For `event` Products it additionally requires the Person to be in `ProductContributionRepository::people_for_product($product_id)` as derived from Event Participation. For `manual` Products the contribution itself establishes membership. Blank/invalid Product mode is not publishable.
+`validate_publishable()` must verify Product and Person endpoints, uniqueness, at least one role, and mode semantics. It must call `ProductRoleVocabulary::is_approved_term_id()` for each selected term ID. A term in the correct taxonomy is still rejected unless its taxonomy, slug, and label match the shared approved vocabulary. For `event` Products it additionally requires the Person to be in `ProductContributionRepository::people_for_product($product_id)` as derived from Event Participation. For `manual` Products the contribution itself establishes membership. Blank/invalid Product mode is not publishable.
 
-`create()` must validate inputs, acquire the Product×Person lock, perform a fresh post-lock recheck, derive `{Product title} — {Person title}`, write the three ACF values plus taxonomy terms, and rollback the newly created contribution on any partial-write failure. Draft/pending/private creation still requires valid Product/Person endpoints and valid supplied role terms if terms are supplied; only publication requires non-empty roles and current mode semantics.
+`create()` must validate inputs, acquire the Product×Person lock, perform a fresh post-lock recheck, derive `{Product title} — {Person title}`, write the three ACF values plus taxonomy terms, and rollback the newly created contribution on any partial-write failure. Draft/pending/private/future creation still requires valid Product/Person endpoints and valid supplied role terms if terms are supplied; only publication requires non-empty roles and current mode semantics.
+
+## Contribution lifecycle matrix
+
+Apply these rules to every create, update, status transition, and restore. The admin path must enforce them before WordPress persists the post row or ACF fields.
+
+| Target status | Active public read | Reserves Product × Person pair | Save and transition guards | Side effects |
+|---|---|---|---|---|
+| `publish` | Yes, only while endpoints, roles, Product mode, and any event membership remain valid | Yes | Require a valid non-trashed Product and Person, at least one approved Product Role, a unique pair after the locks, exact `event` or `manual` mode, and current Event Participation membership in event mode. | Save canonical fields and roles. Derive the title from the current Product and Person titles. |
+| `draft` | No | Yes when both endpoint IDs form a pair | Incomplete drafts are allowed. When both endpoints are supplied, require valid endpoint types and IDs, approved role IDs when roles are supplied, and a unique pair after the locks. Do not require publish-only role cardinality or current event membership. | Save the valid submitted fields. Derive the title when both endpoints are present. |
+| `pending`, `private`, `future` | No | Yes | Require a complete valid Product × Person pair and approved role IDs when roles are supplied. Check pair uniqueness after the locks. Do not apply publish-only role cardinality or current event membership. | Save canonical fields and roles. Derive the title from the endpoints. |
+| `trash` | No | No | Retirement from any non-trash status must succeed after acquiring the contribution-row lock, even if either endpoint is missing, trashed, or the wrong type, Product mode is invalid, Product Roles are invalid, or Event membership is stale. Skip endpoint, pair, role, mode, and publication validation. | Set the status to trash. Keep fields and taxonomy terms intact for recovery. |
+| `auto-draft` | No | No | Treat as a WordPress editing placeholder, not a contribution. Do not reserve a pair or require contribution fields. | No canonical relationship writes. |
+
+A restore from trash to any non-trash status runs the target status guards and fresh duplicate check before WordPress restores the row. A trashed row stays retired and absent from active reads and pair uniqueness until a valid restore succeeds. A save that moves a published contribution to another non-trash status removes it from active reads but keeps its pair reserved. Any status change to trash uses the retirement exception above.
+
+For an existing contribution, acquire its row lock before reading stored endpoints. Resolve submitted endpoints and any omitted stored endpoint values under that lock. If the target is not trash and a complete pair exists, acquire that pair lock, then run the fresh duplicate check excluding the current contribution. A lock or fresh-read failure must fail the save closed. Keep locks through the WordPress/ACF save and release scoped locks after title-sync operations; release remaining request locks on shutdown. New-record creation uses the pair lock and fresh duplicate check, without a row lock.
 
 ## `ProductContributionAdmin`
 
@@ -383,7 +427,11 @@ Voelgoed\PlatformCore\Product
 Public interface:
 
 ```php
-public function __construct(?ProductContributionService $service = null);
+public function __construct(
+    ?ProductContributionRepository $repository = null,
+    ?ProductContributionService $service = null,
+    ?ProductContributionPairLock $pair_lock = null
+);
 public function register(): void;
 ```
 
@@ -391,15 +439,45 @@ Responsibilities:
 
 ```text
 ACF/admin validation uses the same service pair/publication rules
-publishing requires Product + Person + >=1 role
-publishing an event-mode annotation requires current Event-derived membership
+apply the lifecycle matrix to every save and transition
+lock an existing contribution row before reading stored endpoints
+after fresh endpoint resolution, acquire the Product × Person lock before checking uniqueness
 updates exclude the current contribution from duplicate detection
-administrative title is always re-derived from Product + Person
+retirement to trash bypasses invalid endpoint, role, mode, and Event-membership checks
+ACF field validation never blocks a submitted transition to trash
 manual title edits never become business data
-incomplete drafts may remain drafts but never appear in active repository reads
+incomplete drafts remain inactive and never appear in active repository reads
+Product and Person title changes resync related non-retired contribution titles under row locks
+unchanged Product or Person titles do not trigger contribution writes
+trashed and auto-draft contributions are excluded from title resync
 ```
 
-Do not invent a second validation rule set in admin code.
+Use the service for endpoint, role, pair, and publication validation. The admin class owns the save choreography and the trash-retirement exception, not a duplicate set of domain validation rules.
+
+Register `wp_insert_post_data`, `acf/save_post`, `post_updated`, and `shutdown` hooks. Preliminary ACF field checks may validate submitted values for editor feedback, but they are advisory and must return success for a submitted transition to trash. In `wp_insert_post_data`, acquire the contribution-row lock first. If the target status is trash, return the post data without endpoint, role, mode, or membership checks. Otherwise, call `stored_pair_ids_fresh()` only after taking the row lock, resolve submitted and omitted stored endpoints, acquire the pair lock, and run the fresh duplicate check before allowing the post save. Keep both locks through `acf/save_post`. A lock failure or fresh pair-read failure stops the save with an error response. Release remaining request locks on `shutdown`.
+
+On Product or Person `post_updated`, skip unchanged titles. Query related non-retired contribution IDs through the repository. For each row, use scoped locks, acquire its contribution lock, read the stored pair fresh, confirm the row is not trash or auto-draft and both endpoints remain valid, then update only when the derived title differs. Do not filter these title updates by Product mode, role validity, or Event membership. A trashed contribution must never be updated by a Product or Person title change.
+
+## `ProductRoleVocabulary`
+
+Namespace:
+
+```php
+Voelgoed\PlatformCore\Product
+```
+
+This class owns the approved Product Role vocabulary and exposes one runtime check to the seeder and publication validator:
+
+```php
+public const TAXONOMY = 'product_role';
+
+/** @return array<string, string> slug => approved label */
+public static function approved_terms(): array;
+
+public static function is_approved_term_id(int $term_id): bool;
+```
+
+`approved_terms()` returns the four labels and slugs from the global constraint. `is_approved_term_id()` resolves the term and requires its taxonomy, slug, and label to match that map exactly. The service and seeder must not define their own role maps. A fifth term in `product_role` is not approved and cannot satisfy publication validation.
 
 ## `ProductRoleSeeder`
 
@@ -409,16 +487,7 @@ Namespace:
 Voelgoed\PlatformCore\Product
 ```
 
-Exact vocabulary:
-
-```php
-Aanbieder => aanbieder
-Skrywer => skrywer
-Instrukteur => instrukteur
-Skepper => skepper
-```
-
-Seeder behavior mirrors the proven Event Role seeder: taxonomy must exist; same-slug/wrong-name, same-name/wrong-slug, and unexpected-term conflicts stop before mutation; clean/partial expected vocabulary is completed idempotently; no term relationships are created.
+Read the exact vocabulary from `ProductRoleVocabulary::approved_terms()`. The seeder must not keep a second copy. Behavior mirrors the proven Event Role seeder: taxonomy must exist; same-slug/wrong-name, same-name/wrong-slug, and unexpected-term conflicts stop before mutation; clean/partial expected vocabulary is completed idempotently; no term relationships are created.
 
 ## `ProductPeopleFields`
 
@@ -558,8 +627,10 @@ git commit -m "docs: record Product Contribution preflight"
 - Create: `site-code/acf-json/taxonomy_product_role.json`
 - Create: `site-code/acf-json/group_vg_product_contribution_details.json`
 - Create: `site-code/voelgoed-platform-core/includes/Product/ProductRoleSeeder.php`
+- Create: `site-code/voelgoed-platform-core/includes/Product/ProductRoleVocabulary.php`
 - Create: `site-code/voelgoed-platform-core/tests/ProductContributionSchemaTest.php`
 - Create: `site-code/voelgoed-platform-core/tests/ProductRoleSeederTest.php`
+- Create: `site-code/voelgoed-platform-core/tests/ProductRoleVocabularyTest.php`
 - Create: `site-code/voelgoed-platform-core/tests/run-product-contribution-tests.php`
 
 **Interfaces:**
@@ -582,15 +653,23 @@ Expected: schema/seeder classes or JSON definitions are missing.
 
 Use the Event Participation JSON shape as the structural precedent. Product/Person Post Object fields are single-value, return IDs, `required=0`, no bidirectional target. The Product Role field is `required=0` at ACF level, uses `product_role`, multiple selection, save/load native terms, no add-term, return IDs, and no bidirectional target. Display order is a number with default `0`, min `0`, step `1`. Publication requirements remain service/admin rules so drafts may be incomplete.
 
-- [ ] **Step 4: Write failing ProductRoleSeeder tests**
+- [ ] **Step 4: Write failing ProductRoleVocabulary tests**
 
-Cover empty vocabulary, partial expected vocabulary, rerun idempotence, exact final vocabulary, same-slug/wrong-name conflict, same-name/wrong-slug conflict, unexpected term, missing taxonomy, and proof that no term relationships are created.
+Assert the exact four label/slug pairs and that `is_approved_term_id()` accepts only a term whose taxonomy, slug, and label match the shared map. Add a fifth term in `product_role` and prove it is rejected.
 
-- [ ] **Step 5: Implement `ProductRoleSeeder` minimally**
+- [ ] **Step 5: Write failing ProductRoleSeeder tests**
 
-Follow EventRoleSeeder conflict-first semantics. Never delete/rename unexpected terms automatically.
+Cover empty vocabulary, partial expected vocabulary, rerun idempotence, exact final vocabulary, same-slug/wrong-name conflict, same-name/wrong-slug conflict, unexpected term, missing taxonomy, proof that no term relationships are created, and proof that the seeder reads the shared `ProductRoleVocabulary` map.
 
-- [ ] **Step 6: Run schema + seeder tests GREEN**
+- [ ] **Step 6: Run the vocabulary and seeder tests RED**
+
+Include `ProductRoleVocabularyTest` and `ProductRoleSeederTest` in the Product Contribution runner. Run it and confirm the new vocabulary and seeder tests fail before their implementation exists.
+
+- [ ] **Step 7: Implement `ProductRoleVocabulary` and `ProductRoleSeeder`**
+
+Make the seeder consume `ProductRoleVocabulary::approved_terms()`, follow EventRoleSeeder conflict-first semantics, and never delete/rename unexpected terms automatically.
+
+- [ ] **Step 8: Run schema, vocabulary, and seeder tests GREEN**
 
 ```bash
 php site-code/voelgoed-platform-core/tests/run-product-contribution-tests.php
@@ -598,10 +677,10 @@ php site-code/voelgoed-platform-core/tests/run-product-contribution-tests.php
 
 Expected: all Task 2 tests pass.
 
-- [ ] **Step 7: Commit**
+- [ ] **Step 9: Commit**
 
 ```bash
-git add site-code/acf-json site-code/voelgoed-platform-core/includes/Product/ProductRoleSeeder.php site-code/voelgoed-platform-core/tests
+git add site-code/acf-json site-code/voelgoed-platform-core/includes/Product/ProductRoleVocabulary.php site-code/voelgoed-platform-core/includes/Product/ProductRoleSeeder.php site-code/voelgoed-platform-core/tests
 git commit -m "feat: add Product Contribution schema"
 ```
 
@@ -612,6 +691,9 @@ git commit -m "feat: add Product Contribution schema"
 - Create: `site-code/voelgoed-platform-core/includes/Product/ProductContributionPairLock.php`
 - Create: `site-code/voelgoed-platform-core/tests/ProductContributionRepositoryTest.php`
 - Create: `site-code/voelgoed-platform-core/tests/ProductContributionPairLockTest.php`
+- Modify: `site-code/voelgoed-platform-core/includes/Event/EventParticipationRepository.php`
+- Modify: `site-code/voelgoed-platform-core/tests/EventParticipationRepositoryTest.php`
+- Modify: `site-code/voelgoed-platform-core/tests/run-event-participation-tests.php`
 - Modify: `site-code/voelgoed-platform-core/tests/run-product-contribution-tests.php`
 
 **Interfaces:**
@@ -620,7 +702,7 @@ git commit -m "feat: add Product Contribution schema"
 
 - [ ] **Step 1: Write failing endpoint and pair-lookup tests**
 
-Cover valid/non-trashed Product and Person endpoints, wrong post type, missing/trash endpoint, uniqueness statuses, exclude-current behavior, fresh cache-bypassing pair lookup, and deterministic numeric pair IDs.
+Cover valid/non-trashed Product and Person endpoints, wrong post type, missing/trash endpoint, uniqueness statuses, exclude-current behavior, fresh cache-bypassing pair lookup, deterministic numeric pair IDs, and non-retired title-resync lookups that exclude trash and auto-draft without applying role or mode filters.
 
 - [ ] **Step 2: Write failing forward-read tests**
 
@@ -638,9 +720,11 @@ For a published Person, prove `products_for_person()` returns the union of manua
 
 `associations_for_product()` must return one association per canonical Person in Product-side order. `associations_for_person()` must return one association per canonical Product in Product ID ASC. Manual associations use contribution role IDs/order/source. Event associations use Event Participation order/source plus optional Product role annotation; no annotation returns empty role IDs. Verify role IDs are numerically deterministic and stale annotations do not appear.
 
+Prove Product Contribution obtains Event order through the Event Participation repository contract and never reads Event Participation fields or rows directly.
+
 - [ ] **Step 6: Write failing pair-lock tests**
 
-Cover domain-specific lock key, acquire/release, failed acquire, release-without-acquire no-op, and separate Product pairs not sharing a lock key.
+Cover domain-specific lock keys, pair and contribution-row acquire/release, failed acquire, release-without-acquire no-op, separate Product pairs not sharing a lock key, scoped release preserving locks held before scope entry, and release-all cleanup.
 
 - [ ] **Step 7: Run RED**
 
@@ -648,24 +732,33 @@ Cover domain-specific lock key, acquire/release, failed acquire, release-without
 php site-code/voelgoed-platform-core/tests/run-product-contribution-tests.php
 ```
 
-- [ ] **Step 8: Implement `ProductContributionRepository`**
+- [ ] **Step 8: Write failing Event Participation display-order tests**
 
-Use WordPress/ACF APIs for canonical field reads and targeted fresh SQL only for the post-lock uniqueness recheck pattern already established by Event Participation. Keep Event eligibility delegated to `EventParticipationRepository`; do not reimplement Event Participation publication rules. For event association display order, identify the matching active Event Participation and read its canonical `event_participation_display_order` value without creating a second Product-side order.
+Add `EventParticipationRepositoryTest` cases for a valid active pair, a missing pair, a trashed participation, and an invalid endpoint. Run the Event Participation test runner and confirm the new cases fail before implementation.
 
-- [ ] **Step 9: Implement `ProductContributionPairLock`**
+- [ ] **Step 9: Implement the Event Participation display-order read**
 
-Mirror the proven named-lock pattern with a Product Contribution-specific key namespace.
+Implement `EventParticipationRepository::display_order_for_pair($event_id, $person_id)` as the Product repository's only source for an active Event Participation's display order. Return `null` when no active, valid participation exists.
 
-- [ ] **Step 10: Run GREEN**
+- [ ] **Step 10: Implement `ProductContributionRepository`**
+
+Use WordPress/ACF APIs for canonical field reads and targeted fresh SQL only for the post-lock uniqueness recheck pattern already established by Event Participation. Keep Event eligibility delegated to `EventParticipationRepository`; do not reimplement Event Participation publication rules. Use `EventParticipationRepository::display_order_for_pair()` for event association order. Product Contribution code must not query Event Participation rows or read `event_participation_display_order` itself.
+
+- [ ] **Step 11: Implement `ProductContributionPairLock`**
+
+Mirror the proven named-lock pattern with a Product Contribution-specific key namespace. Add the contribution-ID lock, scoped release, and release-all behavior. Row locks serialize edits to an existing contribution; pair locks serialize a Product × Person identity across different rows.
+
+- [ ] **Step 12: Run GREEN**
 
 ```bash
 php site-code/voelgoed-platform-core/tests/run-product-contribution-tests.php
+php site-code/voelgoed-platform-core/tests/run-event-participation-tests.php
 ```
 
-- [ ] **Step 11: Commit**
+- [ ] **Step 13: Commit**
 
 ```bash
-git add site-code/voelgoed-platform-core/includes/Product/ProductContributionRepository.php site-code/voelgoed-platform-core/includes/Product/ProductContributionPairLock.php site-code/voelgoed-platform-core/tests
+git add site-code/voelgoed-platform-core/includes/Product/ProductContributionRepository.php site-code/voelgoed-platform-core/includes/Product/ProductContributionPairLock.php site-code/voelgoed-platform-core/includes/Event/EventParticipationRepository.php site-code/voelgoed-platform-core/tests
 git commit -m "feat: add Product Contribution repository"
 ```
 
@@ -684,11 +777,11 @@ git commit -m "feat: add Product Contribution repository"
 
 - [ ] **Step 1: Write failing service validation tests**
 
-Cover invalid Product/Person, duplicate pair, negative display order, invalid status, zero roles on publish, unknown/wrong-taxonomy role IDs, manual-mode publish success, invalid/blank-mode publish rejection, and event-mode Person-not-in-source-Event rejection.
+Cover invalid Product/Person, duplicate pair, negative display order, invalid status, zero roles on publish, unknown/wrong-taxonomy role IDs, a valid same-taxonomy fifth role rejected by the shared vocabulary check, manual-mode publish success, invalid/blank-mode publish rejection, and event-mode Person-not-in-source-Event rejection.
 
 - [ ] **Step 2: Add the Review Focus race test**
 
-Simulate a stale pre-lock view followed by a fresh duplicate appearing before the post-lock check. Expected: create returns duplicate/error and does not create a second live pair.
+Simulate a stale pre-lock view followed by a fresh duplicate appearing before the post-lock check. First prove create returns duplicate/error and creates no second live pair. Then test two existing contribution rows with different stored pairs racing toward the same target pair. Let request A acquire row A's lock, resolve its old pair, acquire the target pair lock, pass its fresh check, save, and release the pair lock. Let request B acquire row B's lock, resolve its old pair, then acquire the same target pair lock and run its fresh check. Assert request B returns a duplicate error and only row A owns the target pair.
 
 - [ ] **Step 3: Write failing write/rollback/title tests**
 
@@ -696,7 +789,9 @@ Prove canonical title `{Product title} — {Person title}`, one row for multiple
 
 - [ ] **Step 4: Write failing admin tests**
 
-Prove ACF/admin publication uses the service rules, update excludes current ID, role-less publish is blocked, stale event annotation cannot publish, incomplete draft can remain inactive, and saved title is re-derived rather than editor-authored.
+Prove ACF/admin publication uses the service rules, an existing contribution row lock is acquired before stored endpoint reads, update excludes current ID, role-less publish is blocked, stale event annotation cannot publish, incomplete draft can remain inactive, and saved titles are derived rather than editor-authored. Cover every row in the lifecycle matrix, including a move to trash with a deleted endpoint, a trashed endpoint, invalid Product Role IDs, and stale Event membership. ACF field validators must allow each trash transition, and each retirement must succeed and release locks. Cover restoration from trash running the target-status validation.
+
+Add title-sync tests for Product rename, Person rename, no-op title update, and trashed contribution exclusion. Verify each related non-retired row is locked before its endpoints are read, only changed derived titles are written, and title sync does not require valid roles or current Event membership.
 
 - [ ] **Step 5: Run RED**
 
@@ -706,11 +801,11 @@ php site-code/voelgoed-platform-core/tests/run-product-contribution-tests.php
 
 - [ ] **Step 6: Implement `ProductContributionService`**
 
-Keep one validation path. Acquire the pair lock before the authoritative fresh duplicate check. Do not auto-create Product roles or Event relationships.
+Keep one validation path. Acquire the pair lock before the authoritative fresh duplicate check. Use `ProductRoleVocabulary` for role approval. Support `future` as a non-public status that reserves a complete valid pair. Do not auto-create Product roles or Event relationships.
 
 - [ ] **Step 7: Implement `ProductContributionAdmin`**
 
-Reuse service validation; do not duplicate pair/mode/role rules in UI-only code.
+Reuse service validation; do not duplicate pair/mode/role rules in UI-only code. For existing rows, acquire the contribution lock before any stored endpoint read, then acquire the resolved pair lock before the fresh duplicate check. Apply the lifecycle matrix, including the unconditional trash-retirement path. Register save hooks that retain locks through the ACF write and release them after the save or on shutdown. Register a Product/Person title-change hook that resyncs related non-retired titles under scoped contribution-row locks.
 
 - [ ] **Step 8: Run GREEN**
 
@@ -837,13 +932,23 @@ git commit -m "feat: add Person reverse Product adapter"
 - Consumes: Tasks 2–6 classes.
 - Produces: source bootstrap/lifecycle wiring ready for controlled runtime deployment.
 
+| Product Contribution class | Load from source | Register as lifecycle component |
+|---|---|---|
+| ProductRoleVocabulary | Yes | No |
+| ProductContributionRepository | Yes | No |
+| ProductContributionPairLock | Yes | No |
+| ProductContributionService | Yes | No |
+| ProductContributionAdmin | Yes | Yes |
+| ProductRoleSeeder | Yes | Yes |
+| PersonProductsBricks | Only if Task 6 passes | Only if Task 6 passes |
+
 - [ ] **Step 1: Write/extend integration tests RED**
 
-Assert source bootstrap/integration patch includes Product Contribution repository, pair lock, service, admin, role seeder, and conditional PersonProductsBricks only if Task 6 PASS. Assert existing Event Participation and Product People registrations remain present.
+Assert the bootstrap loads `ProductRoleVocabulary`, repository, pair lock, service, admin, seeder, and conditional `PersonProductsBricks` only if Task 6 passes. Assert lifecycle registration includes only `ProductContributionAdmin`, `ProductRoleSeeder`, and conditional `PersonProductsBricks` from the new Product Contribution classes. Assert vocabulary, repository, pair lock, and service are loaded dependencies and are not lifecycle-registered. Assert existing Event Participation and Product People registrations remain present.
 
 - [ ] **Step 2: Update `integration.patch` and README minimally**
 
-Register lifecycle components using existing Platform Core conventions. Do not refactor unrelated bootstrap code.
+Load all required source files through the bootstrap list, with the existing Event repository available before Product Contribution uses it. Require `ProductRoleVocabulary` before the service and seeder use it. Register only lifecycle components through `Plugin::register_component()`: `ProductContributionAdmin`, `ProductRoleSeeder`, and conditional `PersonProductsBricks`. Do not lifecycle-register `ProductRoleVocabulary`, `ProductContributionRepository`, `ProductContributionPairLock`, or `ProductContributionService`; other classes instantiate those dependencies. Keep the `EventParticipationRepository` extension in the existing Event repository load path. Do not refactor unrelated bootstrap code.
 
 - [ ] **Step 3: Run the focused suites**
 
