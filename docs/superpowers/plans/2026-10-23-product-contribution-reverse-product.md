@@ -354,10 +354,10 @@ Namespace:
 Voelgoed\PlatformCore\Product
 ```
 
-Allowed canonical write statuses:
+Statuses accepted by the programmatic `create()` API, which has no scheduled publication date/time parameter:
 
 ```php
-['publish', 'draft', 'pending', 'private', 'future']
+['publish', 'draft', 'pending', 'private']
 ```
 
 Constructor:
@@ -398,7 +398,7 @@ public function create(
 
 `validate_publishable()` must verify Product and Person endpoints, uniqueness, at least one role, and mode semantics. It must call `ProductRoleVocabulary::is_approved_term_id()` for each selected term ID. A term in the correct taxonomy is still rejected unless its taxonomy, slug, and label match the shared approved vocabulary. For `event` Products it additionally requires the Person to be in `ProductContributionRepository::people_for_product($product_id)` as derived from Event Participation. For `manual` Products the contribution itself establishes membership. Blank/invalid Product mode is not publishable.
 
-`create()` must validate inputs, acquire the Product×Person lock, perform a fresh post-lock recheck, derive `{Product title} — {Person title}`, write the three ACF values plus taxonomy terms, and rollback the newly created contribution on any partial-write failure. Draft/pending/private/future creation still requires valid Product/Person endpoints and valid supplied role terms if terms are supplied; only publication requires non-empty roles and current mode semantics.
+`create()` must accept only the statuses listed above. Reject `future` as unsupported before creating a post because this API has no scheduled publication date/time contract. Validate inputs, acquire the Product×Person lock, perform a fresh post-lock recheck, derive `{Product title} — {Person title}`, write the three ACF values plus taxonomy terms, and rollback the newly created contribution on any partial-write failure. Draft/pending/private creation still requires valid Product/Person endpoints and valid supplied role terms if terms are supplied; only publication requires non-empty roles and current mode semantics. This API restriction does not remove `future` from the lifecycle matrix, admin/edit transitions, restore validation, or repository duplicate detection; future-dated records still reserve their pair.
 
 ## Contribution lifecycle matrix
 
@@ -777,7 +777,7 @@ git commit -m "feat: add Product Contribution repository"
 
 - [ ] **Step 1: Write failing service validation tests**
 
-Cover invalid Product/Person, duplicate pair, negative display order, invalid status, zero roles on publish, unknown/wrong-taxonomy role IDs, a valid same-taxonomy fifth role rejected by the shared vocabulary check, manual-mode publish success, invalid/blank-mode publish rejection, and event-mode Person-not-in-source-Event rejection.
+Cover invalid Product/Person, duplicate pair, negative display order, invalid status, zero roles on publish, unknown/wrong-taxonomy role IDs, a valid same-taxonomy fifth role rejected by the shared vocabulary check, manual-mode publish success, invalid/blank-mode publish rejection, and event-mode Person-not-in-source-Event rejection. Prove `create(..., status: 'future')` returns an unsupported-status error before any contribution is created because the API accepts no scheduled publication date/time; retain separate admin/lifecycle coverage proving future-dated records reserve their pair.
 
 - [ ] **Step 2: Add the Review Focus race test**
 
@@ -801,7 +801,7 @@ php site-code/voelgoed-platform-core/tests/run-product-contribution-tests.php
 
 - [ ] **Step 6: Implement `ProductContributionService`**
 
-Keep one validation path. Acquire the pair lock before the authoritative fresh duplicate check. Use `ProductRoleVocabulary` for role approval. Support `future` as a non-public status that reserves a complete valid pair. Do not auto-create Product roles or Event relationships.
+Keep one validation path. Acquire the pair lock before the authoritative fresh duplicate check. Use `ProductRoleVocabulary` for role approval. Accept only `publish`, `draft`, `pending`, and `private` in programmatic `create()`; reject `future` before creating a post because the method has no schedule date/time parameter. Keep `future` in repository duplicate detection and admin/edit/restore lifecycle handling. Do not auto-create Product roles or Event relationships.
 
 - [ ] **Step 7: Implement `ProductContributionAdmin`**
 
