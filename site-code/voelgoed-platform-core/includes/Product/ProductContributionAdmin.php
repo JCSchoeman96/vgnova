@@ -23,7 +23,13 @@ final class ProductContributionAdmin
 
     private bool $syncing_titles = false;
 
+    private ?int $syncing_title_contribution_id = null;
+
+    private ?string $syncing_title_original_status = null;
+
     private ?int $scheduled_publish_validated_id = null;
+
+    private ?int $scheduled_publish_candidate_id = null;
 
     private bool $capture_save_validation_error = false;
 
@@ -82,6 +88,7 @@ final class ProductContributionAdmin
         }
 
         $this->captured_save_validation_error = null;
+        $this->scheduled_publish_candidate_id = $post_id;
         $this->capture_save_validation_error = true;
         try {
             $validated_data = $this->validate_pair_before_post_save(
@@ -93,13 +100,18 @@ final class ProductContributionAdmin
                 ['ID' => $post_id]
             );
         } catch (\RuntimeException $error) {
-            if ($this->captured_save_validation_error === null) {
+            $validation_error = $this->captured_save_validation_error;
+            if ($validation_error === null) {
                 throw $error;
             }
             $this->captured_save_validation_error = null;
+            if ($validation_error->get_error_code() === 'scheduled_product_contribution_not_due') {
+                $this->reschedule_if_future_date_changed($post_id);
+            }
             return;
         } finally {
             $this->capture_save_validation_error = false;
+            $this->scheduled_publish_candidate_id = null;
         }
 
         $this->captured_save_validation_error = null;
@@ -172,7 +184,18 @@ final class ProductContributionAdmin
         ) {
             return $data;
         }
-        if (ProductContributionService::is_service_insert_in_progress() || $this->syncing_titles) {
+        if (ProductContributionService::is_service_insert_in_progress()) {
+            return $data;
+        }
+        if ($this->syncing_titles) {
+            if (
+                $this->syncing_title_contribution_id !== null
+                && $this->normalize_id($postarr['ID'] ?? $data['ID'] ?? 0) === $this->syncing_title_contribution_id
+                && $this->syncing_title_original_status === 'future'
+                && ($data['post_status'] ?? null) === 'publish'
+            ) {
+                $data['post_status'] = 'future';
+            }
             return $data;
         }
 
@@ -215,6 +238,31 @@ final class ProductContributionAdmin
                     'product_contribution_fresh_read_failed',
                     'Could not read this Product Contribution. Try again.'
                 ));
+            }
+            if ($this->scheduled_publish_candidate_id === $contribution_id) {
+                $fresh_post = get_post($contribution_id);
+                if (
+                    ! is_object($fresh_post)
+                    || ($fresh_post->post_type ?? null) !== ProductContributionRepository::POST_TYPE
+                ) {
+                    $this->stop_save(new \WP_Error(
+                        'scheduled_product_contribution_fresh_read_failed',
+                        'Could not verify the scheduled Product Contribution. Try again.'
+                    ));
+                }
+                if (($fresh_post->post_status ?? null) !== 'future') {
+                    $this->stop_save(new \WP_Error(
+                        'scheduled_product_contribution_status_changed',
+                        'The Product Contribution is no longer scheduled for publication.'
+                    ));
+                }
+                $scheduled_time = strtotime((string) ($fresh_post->post_date_gmt ?? '') . ' GMT');
+                if ($scheduled_time === false || $scheduled_time > time()) {
+                    $this->stop_save(new \WP_Error(
+                        'scheduled_product_contribution_not_due',
+                        'The Product Contribution is not due for publication yet.'
+                    ));
+                }
             }
         }
 
@@ -432,6 +480,8 @@ final class ProductContributionAdmin
                 return;
             }
 
+            $this->syncing_title_contribution_id = $contribution_id;
+            $this->syncing_title_original_status = (string) $post->post_status;
             $this->syncing_titles = true;
             try {
                 wp_update_post([
@@ -440,8 +490,26 @@ final class ProductContributionAdmin
                 ], true);
             } finally {
                 $this->syncing_titles = false;
+                $this->syncing_title_contribution_id = null;
+                $this->syncing_title_original_status = null;
             }
         });
+    }
+
+    private function reschedule_if_future_date_changed(int $post_id): void
+    {
+        $post = get_post($post_id);
+        if (! is_object($post) || ($post->post_status ?? null) !== 'future') {
+            return;
+        }
+
+        $time = strtotime((string) ($post->post_date_gmt ?? '') . ' GMT');
+        if ($time === false || $time <= time()) {
+            return;
+        }
+
+        wp_clear_scheduled_hook('publish_future_post', [$post_id]);
+        wp_schedule_single_event($time, 'publish_future_post', [$post_id]);
     }
 
     private function request_role_ids(int $contribution_id): array|\WP_Error

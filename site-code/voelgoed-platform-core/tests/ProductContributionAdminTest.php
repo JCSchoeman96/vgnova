@@ -17,6 +17,34 @@ namespace Voelgoed\PlatformCore\Product {
         $GLOBALS['vgpc_test_actions'][$hook] = $remaining;
         return $removed;
     }
+
+    /** Model wp_insert_post's promotion of an overdue future row to publish. */
+    function wp_update_post(array $postarr, bool $wp_error = false): int|\WP_Error
+    {
+        $post_id = (int) ($postarr['ID'] ?? 0);
+        $post = \get_post($post_id);
+        if (
+            $post
+            && ($post->post_status ?? null) === 'future'
+            && ! array_key_exists('post_status', $postarr)
+            && strtotime((string) ($post->post_date_gmt ?? '') . ' GMT') <= time()
+        ) {
+            $postarr['post_status'] = 'publish';
+        }
+        return \wp_update_post($postarr, $wp_error);
+    }
+
+    function wp_clear_scheduled_hook(string $hook, array $args = []): int
+    {
+        $GLOBALS['vgpc_test_schedule_clears'][] = ['hook' => $hook, 'args' => $args];
+        return 1;
+    }
+
+    function wp_schedule_single_event(int $timestamp, string $hook, array $args = []): bool
+    {
+        $GLOBALS['vgpc_test_scheduled_events'][] = ['timestamp' => $timestamp, 'hook' => $hook, 'args' => $args];
+        return true;
+    }
 }
 
 namespace {
@@ -47,6 +75,7 @@ final class ProductContributionAdminTest
         $this->add_product(101, 'manual');
         $this->add_endpoint(201, 'person', 'Mia Botha');
         $this->add_contribution(401, 'future', 101, 201);
+        $GLOBALS['vgpc_test_posts'][401]->post_date_gmt = '2000-01-01 00:00:00';
 
         add_action('publish_future_post', 'check_and_publish_future_post', 10, 1);
         $admin = new ProductContributionAdmin($repository);
@@ -70,6 +99,7 @@ final class ProductContributionAdminTest
         $this->add_endpoint(201, 'person', 'Mia Botha');
         $roles = $this->approved_roles();
         $this->add_contribution(401, 'future', 101, 201);
+        $GLOBALS['vgpc_test_posts'][401]->post_date_gmt = '2000-01-01 00:00:00';
         $GLOBALS['vgpc_test_relationships'][ProductRoleVocabulary::TAXONOMY][401] = [$roles['aanbieder']];
 
         add_action('publish_future_post', 'check_and_publish_future_post', 10, 1);
@@ -97,6 +127,97 @@ final class ProductContributionAdminTest
         do_action('publish_future_post', 501);
 
         vgpc_test_same('publish', $GLOBALS['vgpc_test_posts'][501]->post_status, 'Non-contribution scheduled posts must keep WordPress publishing behavior.');
+    }
+
+    public function test_scheduled_publication_rechecks_status_after_acquiring_the_row_lock(): void
+    {
+        [$repository] = $this->fixture();
+        $this->add_product(101, 'manual');
+        $this->add_endpoint(201, 'person', 'Mia Botha');
+        $roles = $this->approved_roles();
+        $this->add_contribution(401, 'future', 101, 201);
+        $GLOBALS['vgpc_test_posts'][401]->post_date_gmt = '2000-01-01 00:00:00';
+        $GLOBALS['vgpc_test_relationships'][ProductRoleVocabulary::TAXONOMY][401] = [$roles['aanbieder']];
+        add_action('publish_future_post', 'check_and_publish_future_post', 10, 1);
+        $admin = new ProductContributionAdmin($repository);
+        $admin->register();
+        $GLOBALS['vgpc_test_apply_wp_update_filter'] = true;
+        $row_lock = $this->expected_row_lock(401);
+        $GLOBALS['wpdb']->get_var_handler = static function (string $query, array $args) use ($row_lock): string {
+            if ($query === 'SELECT GET_LOCK(%s, %d)' && ($args[0] ?? null) === $row_lock) {
+                // Simulate an editor completing a draft transition before cron acquires this row lock.
+                $GLOBALS['vgpc_test_posts'][401]->post_status = 'draft';
+            }
+            return '1';
+        };
+
+        do_action('publish_future_post', 401);
+
+        vgpc_test_same('draft', $GLOBALS['vgpc_test_posts'][401]->post_status, 'Cron must not overwrite a status transition that completed before its row lock.');
+        vgpc_test_same([], $GLOBALS['vgpc_test_update_post_calls'], 'Cron must stop before writing when the fresh locked row is no longer future.');
+        vgpc_test_same(
+            [$row_lock],
+            array_values(array_map(
+                static fn (array $query): string => (string) ($query['args'][0] ?? ''),
+                array_filter($GLOBALS['wpdb']->queries, static fn (array $query): bool => $query['query'] === 'SELECT GET_LOCK(%s, %d)')
+            )),
+            'A fresh non-future status must stop before acquiring the Product × Person pair lock.'
+        );
+        do_action('shutdown');
+    }
+
+    public function test_scheduled_publication_reschedules_when_date_moves_forward_under_lock(): void
+    {
+        [$repository] = $this->fixture();
+        $this->add_product(101, 'manual');
+        $this->add_endpoint(201, 'person', 'Mia Botha');
+        $roles = $this->approved_roles();
+        $this->add_contribution(401, 'future', 101, 201);
+        $GLOBALS['vgpc_test_posts'][401]->post_date_gmt = '2000-01-01 00:00:00';
+        $GLOBALS['vgpc_test_relationships'][ProductRoleVocabulary::TAXONOMY][401] = [$roles['aanbieder']];
+        $new_date_gmt = gmdate('Y-m-d H:i:s', time() + 3600);
+        $GLOBALS['vgpc_test_schedule_clears'] = [];
+        $GLOBALS['vgpc_test_scheduled_events'] = [];
+        add_action('publish_future_post', 'check_and_publish_future_post', 10, 1);
+        $admin = new ProductContributionAdmin($repository);
+        $admin->register();
+        $GLOBALS['vgpc_test_apply_wp_update_filter'] = true;
+        $row_lock = $this->expected_row_lock(401);
+        $GLOBALS['wpdb']->get_var_handler = static function (string $query, array $args) use ($row_lock, $new_date_gmt): string {
+            if ($query === 'SELECT GET_LOCK(%s, %d)' && ($args[0] ?? null) === $row_lock) {
+                // Another editor rescheduled this contribution before cron acquired its row lock.
+                $GLOBALS['vgpc_test_posts'][401]->post_date_gmt = $new_date_gmt;
+            }
+            return '1';
+        };
+
+        do_action('publish_future_post', 401);
+
+        vgpc_test_same('future', $GLOBALS['vgpc_test_posts'][401]->post_status, 'A contribution rescheduled while cron waited must remain inactive.');
+        vgpc_test_same([], $GLOBALS['vgpc_test_update_post_calls'], 'A not-yet-due contribution must not be published.');
+        vgpc_test_same(
+            [['timestamp' => strtotime($new_date_gmt . ' GMT'), 'hook' => 'publish_future_post', 'args' => [401]]],
+            $GLOBALS['vgpc_test_scheduled_events'],
+            'Cron must schedule the fresh post date after a concurrent reschedule.'
+        );
+        do_action('shutdown');
+    }
+
+    public function test_title_sync_does_not_publish_a_due_future_contribution(): void
+    {
+        [$repository] = $this->fixture();
+        $this->add_product(101, 'manual');
+        $this->add_endpoint(201, 'person', 'Mia Botha');
+        $this->add_contribution(401, 'future', 101, 201);
+        $GLOBALS['vgpc_test_posts'][401]->post_date_gmt = '2000-01-01 00:00:00';
+        $this->new_admin($repository);
+        $GLOBALS['vgpc_test_apply_wp_update_filter'] = true;
+
+        wp_update_post(['ID' => 101, 'post_title' => 'New Product Name'], true);
+
+        vgpc_test_same('New Product Name — Mia Botha', get_the_title(401), 'Title synchronization must still update the derived title on a future contribution.');
+        vgpc_test_same('future', $GLOBALS['vgpc_test_posts'][401]->post_status, 'A title-only endpoint rename must not publish a due future contribution without role validation.');
+        do_action('shutdown');
     }
 
     public function test_empty_acf_role_value_is_allowed_for_a_draft_but_not_publish(): void
