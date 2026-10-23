@@ -46,6 +46,21 @@ final class ProductContributionPairLockTest
         vgpc_test_same(['SELECT GET_LOCK(%s, %d)'], array_column($GLOBALS['wpdb']->queries, 'query'), 'Failed or unheld locks must never be sent RELEASE_LOCK.');
     }
 
+    public function test_contribution_row_lock_releases_once_and_a_second_release_is_a_noop(): void
+    {
+        $lock = $this->lock();
+
+        vgpc_test_true($lock->acquire_contribution(301), 'A contribution-row lock must be acquired before release.');
+        vgpc_test_true($lock->release_contribution(301), 'The acquired contribution-row lock must be released.');
+        vgpc_test_true($lock->release_contribution(301), 'Releasing the same contribution-row lock again must be a no-op.');
+
+        $release_queries = array_values(array_filter(
+            $GLOBALS['wpdb']->queries,
+            static fn (array $query): bool => $query['query'] === 'SELECT RELEASE_LOCK(%s)'
+        ));
+        vgpc_test_same(1, count($release_queries), 'A successful row-lock release must issue one RELEASE_LOCK query, and the second release must issue none.');
+    }
+
     public function test_scoped_locks_release_only_new_locks_in_reverse_order_and_keep_prior_locks(): void
     {
         $lock = $this->lock();

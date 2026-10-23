@@ -182,18 +182,35 @@ final class ProductContributionRepositoryTest
         $this->add_contribution(404, 'publish', self::PRODUCT, self::PERSON_TWO, [$fifth->term_id], 0);
         $this->add_contribution(405, 'publish', self::PRODUCT_TWO, self::PERSON_TWO, [$approved['aanbieder']], 0);
         $this->add_contribution(406, 'publish', self::PRODUCT, 999, [$approved['aanbieder']], 0);
+        $this->add_contribution(408, 'publish', self::PRODUCT, self::PERSON_TWO, [$approved['aanbieder'], $fifth->term_id], 0);
         $this->add_post(207, 'person', 'trash');
         $this->add_contribution(407, 'publish', self::PRODUCT, 207, [$approved['aanbieder']], 0);
 
         vgpc_test_same([401], $repository->contributions_for_product(self::PRODUCT), 'Active contribution reads must omit unpublished, role-less, unapproved, and invalid endpoint rows.');
         vgpc_test_same([401], $repository->contributions_for_person(self::PERSON), 'Person-side active contribution reads must use the same publication and role checks.');
-        vgpc_test_same([], $repository->contributions_for_person(self::PERSON_TWO), 'A role-less or fifth-role contribution must not become an active association.');
+        vgpc_test_same([], $repository->contributions_for_person(self::PERSON_TWO), 'Role-less, unapproved-only, and mixed approved/unapproved role sets must not become active associations.');
+    }
+
+    public function test_low_level_reads_keep_valid_nonpublished_people_but_public_reads_hide_them(): void
+    {
+        $repository = $this->repository();
+        $this->add_product(self::PRODUCT, 'manual');
+        $this->add_post(self::PERSON_DRAFT, 'person', 'draft');
+        $approved = $this->approved_role_ids();
+        $this->add_contribution(401, 'publish', self::PRODUCT, self::PERSON_DRAFT, [$approved['aanbieder']], 0);
+
+        vgpc_test_same([401], $repository->contributions_for_product(self::PRODUCT), 'Low-level contribution reads must accept a valid non-trashed draft Person endpoint.');
+        vgpc_test_same([401], $repository->contributions_for_person(self::PERSON_DRAFT), 'Person-side contribution reads must accept a valid non-trashed draft Person endpoint.');
+        vgpc_test_same([], $repository->people_for_product(self::PRODUCT), 'Public forward reads must hide unpublished People.');
+        vgpc_test_same([], $repository->products_for_person(self::PERSON_DRAFT), 'Public reverse reads must hide unpublished People.');
+        vgpc_test_same([], $repository->associations_for_product(self::PRODUCT), 'Public Product associations must hide unpublished People.');
+        vgpc_test_same([], $repository->associations_for_person(self::PERSON_DRAFT), 'Public Person associations must hide unpublished People.');
     }
 
     public function test_manual_forward_read_orders_by_display_then_id_deduplicates_and_hides_unpublished_people(): void
     {
         $repository = $this->repository();
-        $this->add_product(self::PRODUCT_DRAFT, 'manual');
+        $this->add_product(self::PRODUCT_DRAFT, 'manual', 0, 'draft');
         $this->add_post(self::PERSON, 'person');
         $this->add_post(self::PERSON_TWO, 'person');
         $this->add_post(self::PERSON_THREE, 'person');
@@ -271,6 +288,30 @@ final class ProductContributionRepositoryTest
         vgpc_test_same([], $repository->associations_for_product(self::PRODUCT), 'A stale annotation must not preserve Event-derived membership.');
     }
 
+    public function test_manual_contribution_stops_affecting_membership_after_switch_to_unmatched_event_mode(): void
+    {
+        $repository = $this->repository();
+        $this->add_product(self::PRODUCT, 'manual');
+        $this->add_post(self::EVENT, 'tc_events');
+        $this->add_post(self::PERSON, 'person');
+        $approved = $this->approved_role_ids();
+        $this->add_contribution(401, 'publish', self::PRODUCT, self::PERSON, [$approved['aanbieder']], 2);
+
+        vgpc_test_same([401], $repository->contributions_for_product(self::PRODUCT), 'The contribution must be active while the Product is in manual mode.');
+        vgpc_test_same([self::PERSON], $repository->people_for_product(self::PRODUCT), 'Manual mode must expose the canonical contribution.');
+        vgpc_test_same([self::PRODUCT], $repository->products_for_person(self::PERSON), 'Manual mode must expose the reverse Product membership.');
+
+        $GLOBALS['vgpc_test_meta'][self::PRODUCT][ProductPeopleFields::MODE_FIELD] = 'event';
+        $GLOBALS['vgpc_test_meta'][self::PRODUCT][self::SOURCE_EVENT_FIELD] = self::EVENT;
+
+        vgpc_test_same([], $repository->contributions_for_product(self::PRODUCT), 'A manual contribution must not stay active when the selected Event has no matching participation.');
+        vgpc_test_same([], $repository->contributions_for_person(self::PERSON), 'Person-side active reads must reject an annotation that no longer matches Event membership.');
+        vgpc_test_same([], $repository->people_for_product(self::PRODUCT), 'Event mode must not inherit manual membership.');
+        vgpc_test_same([], $repository->products_for_person(self::PERSON), 'Reverse membership must not inherit a stale manual contribution.');
+        vgpc_test_same([], $repository->associations_for_product(self::PRODUCT), 'Product associations must not retain manual membership after the mode switch.');
+        vgpc_test_same([], $repository->associations_for_person(self::PERSON), 'Person associations must not retain manual membership after the mode switch.');
+    }
+
     public function test_reverse_products_union_manual_and_event_membership_deduplicate_and_sort_published_products(): void
     {
         $repository = $this->repository();
@@ -328,6 +369,27 @@ final class ProductContributionRepositoryTest
 
         vgpc_test_same([$expected], $repository->associations_for_product(self::PRODUCT), 'Manual Product associations must use contribution roles/order/source.');
         vgpc_test_same([$expected], $repository->associations_for_person(self::PERSON), 'Manual Person associations must use the same canonical contribution values.');
+    }
+
+    public function test_person_associations_return_one_association_per_product_in_product_id_order(): void
+    {
+        $repository = $this->repository();
+        $this->add_post(self::PERSON, 'person');
+        $this->add_product(106, 'manual');
+        $this->add_product(self::PRODUCT_TWO, 'manual');
+        $this->add_product(self::PRODUCT, 'manual');
+        $approved = $this->approved_role_ids();
+        $this->add_contribution(401, 'publish', 106, self::PERSON, [$approved['aanbieder']], 0);
+        $this->add_contribution(402, 'publish', self::PRODUCT_TWO, self::PERSON, [$approved['skrywer']], 0);
+        $this->add_contribution(403, 'publish', self::PRODUCT, self::PERSON, [$approved['skepper']], 0);
+        $GLOBALS['vgpc_test_get_posts_handler'] = static function (array $args): ?array {
+            return ($args['post_type'] ?? null) === 'product' ? [106, self::PRODUCT_TWO, self::PRODUCT, 106] : null;
+        };
+
+        $associations = $repository->associations_for_person(self::PERSON);
+
+        vgpc_test_same([self::PRODUCT, self::PRODUCT_TWO, 106], array_column($associations, 'product_id'), 'Person associations must contain one row per Product in numeric Product ID order.');
+        vgpc_test_same(3, count($associations), 'Duplicate Product candidates must not create duplicate Person associations.');
     }
 
     public function test_event_associations_keep_unannotated_members_and_use_event_order_not_annotation_order(): void

@@ -209,7 +209,7 @@ final class ProductContributionRepository
         return array_values(array_unique($ids));
     }
 
-    /** @return list<int> Published, valid contribution rows for this Product. */
+    /** @return list<int> Published contribution rows with valid endpoints for this Product. */
     public function contributions_for_product(int $product_id): array
     {
         if (! $this->is_valid_product($product_id) || ! $this->valid_mode($product_id)) {
@@ -227,10 +227,10 @@ final class ProductContributionRepository
         return $this->sort_contribution_ids_by_display_order($ids);
     }
 
-    /** @return list<int> Published, valid contribution rows for this Person. */
+    /** @return list<int> Published contribution rows with valid endpoints for this Person. */
     public function contributions_for_person(int $person_id): array
     {
-        if (! $this->is_published_person($person_id)) {
+        if (! $this->is_valid_person($person_id)) {
             return [];
         }
 
@@ -260,6 +260,7 @@ final class ProductContributionRepository
                 if (
                     $row !== null
                     && $row['membership_source'] === self::SOURCE_MANUAL
+                    && $this->is_published_person($row['person_id'])
                     && ! in_array($row['person_id'], $people, true)
                 ) {
                     $people[] = $row['person_id'];
@@ -359,6 +360,9 @@ final class ProductContributionRepository
                 if ($row === null || $row['membership_source'] !== self::SOURCE_MANUAL) {
                     continue;
                 }
+                if (! $this->is_published_person($row['person_id'])) {
+                    continue;
+                }
                 if (in_array($row['person_id'], $seen_people, true)) {
                     continue;
                 }
@@ -449,7 +453,7 @@ final class ProductContributionRepository
             || ($expected_product_id !== null && $product_id !== $expected_product_id)
             || ($expected_person_id !== null && $person_id !== $expected_person_id)
             || ! $this->is_valid_product($product_id)
-            || ! $this->is_published_person($person_id)
+            || ! $this->is_valid_person($person_id)
         ) {
             return null;
         }
@@ -460,7 +464,7 @@ final class ProductContributionRepository
         }
 
         $role_ids = $this->approved_role_ids($contribution_id);
-        if ($role_ids === []) {
+        if ($role_ids === null || $role_ids === []) {
             return null;
         }
 
@@ -484,20 +488,21 @@ final class ProductContributionRepository
         ];
     }
 
-    /** @return list<int> */
-    private function approved_role_ids(int $contribution_id): array
+    /** @return list<int>|null Null means at least one stored role is invalid. */
+    private function approved_role_ids(int $contribution_id): ?array
     {
         $term_ids = wp_get_object_terms($contribution_id, self::ROLE_TAXONOMY, ['fields' => 'ids']);
         if (is_wp_error($term_ids) || ! is_array($term_ids)) {
-            return [];
+            return null;
         }
 
         $approved = [];
         foreach ($term_ids as $term_id) {
             $id = $this->positive_id($term_id);
-            if ($id > 0 && ProductRoleVocabulary::is_approved_term_id($id)) {
-                $approved[] = $id;
+            if ($id <= 0 || ! ProductRoleVocabulary::is_approved_term_id($id)) {
+                return null;
             }
+            $approved[] = $id;
         }
         sort($approved, SORT_NUMERIC);
         return array_values(array_unique($approved));
