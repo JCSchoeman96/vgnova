@@ -4,8 +4,13 @@ declare(strict_types=1);
 require_once __DIR__ . '/bootstrap.php';
 
 $implementation_files = [
+    dirname(__DIR__) . '/includes/Event/EventParticipationRepository.php',
+    dirname(__DIR__) . '/includes/Product/ProductPeopleFields.php',
     dirname(__DIR__) . '/includes/Product/ProductRoleVocabulary.php',
     dirname(__DIR__) . '/includes/Product/ProductRoleSeeder.php',
+    dirname(__DIR__) . '/includes/Product/ProductContributionRepository.php',
+    dirname(__DIR__) . '/includes/Product/ProductContributionPairLock.php',
+    dirname(__DIR__) . '/includes/Event/EventParticipationPairLock.php',
 ];
 foreach ($implementation_files as $implementation_file) {
     if (is_file($implementation_file)) {
@@ -16,11 +21,15 @@ foreach ($implementation_files as $implementation_file) {
 require_once __DIR__ . '/ProductContributionSchemaTest.php';
 require_once __DIR__ . '/ProductRoleVocabularyTest.php';
 require_once __DIR__ . '/ProductRoleSeederTest.php';
+require_once __DIR__ . '/ProductContributionRepositoryTest.php';
+require_once __DIR__ . '/ProductContributionPairLockTest.php';
 
 $test_suites = [
     new ProductContributionSchemaTest(),
     new ProductRoleVocabularyTest(),
     new ProductRoleSeederTest(),
+    new ProductContributionRepositoryTest(),
+    new ProductContributionPairLockTest(),
 ];
 $passed = 0;
 $failed = 0;

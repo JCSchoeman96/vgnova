@@ -106,6 +106,41 @@ final class EventParticipationRepositoryTest
         vgpc_test_same([102, 101], $repository->events_for_person(201), 'A Person must see valid Events ordered by display order and participation ID.');
     }
 
+    public function test_display_order_for_pair_returns_order_from_the_first_active_valid_pair(): void
+    {
+        $repository = $this->repository();
+        $this->add_post(101, 'tc_events');
+        $this->add_post(201, 'person');
+        $this->add_participation(301, 'publish', 101, 201, 8);
+        $this->add_participation(302, 'publish', 101, 201, 3);
+        $this->add_participation(303, 'draft', 101, 201, 0);
+
+        vgpc_test_same(3, $this->display_order_for_pair($repository, 101, 201), 'The method must return display order from the first active pair under display-order and row-ID ordering.');
+    }
+
+    public function test_display_order_for_pair_returns_null_when_pair_is_missing_or_trashed(): void
+    {
+        $repository = $this->repository();
+        $this->add_post(101, 'tc_events');
+        $this->add_post(201, 'person');
+        $this->add_participation(301, 'trash', 101, 201, 8);
+
+        vgpc_test_same(null, $this->display_order_for_pair($repository, 101, 201), 'A trashed participation must not supply active Event order.');
+        vgpc_test_same(null, $this->display_order_for_pair($repository, 101, 202), 'A missing pair must return null.');
+    }
+
+    public function test_display_order_for_pair_returns_null_for_invalid_endpoints(): void
+    {
+        $repository = $this->repository();
+        $this->add_post(101, 'tc_events', 'trash');
+        $this->add_post(201, 'medewerker');
+        $this->add_participation(301, 'publish', 101, 201, 8);
+
+        vgpc_test_same(null, $this->display_order_for_pair($repository, 101, 201), 'A published participation with a trashed Event and wrong-type Person must not be active.');
+        vgpc_test_same(null, $this->display_order_for_pair($repository, 0, 201), 'A non-positive Event endpoint must fail closed.');
+        vgpc_test_same(null, $this->display_order_for_pair($repository, 101, 0), 'A non-positive Person endpoint must fail closed.');
+    }
+
     public function test_participation_queries_omit_malformed_endpoint_relationships(): void
     {
         $repository = $this->repository();
@@ -212,5 +247,12 @@ final class EventParticipationRepositoryTest
         $GLOBALS['vgpc_test_meta'][$id]['event_participation_event'] = $event_id;
         $GLOBALS['vgpc_test_meta'][$id]['event_participation_person'] = $person_id;
         $GLOBALS['vgpc_test_meta'][$id]['event_participation_display_order'] = $display_order;
+    }
+
+    private function display_order_for_pair(EventParticipationRepository $repository, int $event_id, int $person_id): ?int
+    {
+        vgpc_test_true(method_exists($repository, 'display_order_for_pair'), 'EventParticipationRepository::display_order_for_pair() is not implemented yet.');
+
+        return $repository->display_order_for_pair($event_id, $person_id);
     }
 }

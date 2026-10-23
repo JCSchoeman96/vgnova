@@ -231,6 +231,22 @@ final class EventParticipationRepository
         return $person_ids;
     }
 
+    /** Return the canonical active Event Participation order for one Event × Person pair. */
+    public function display_order_for_pair(int $event_id, int $person_id): ?int
+    {
+        if (! $this->is_valid_event($event_id) || ! $this->is_valid_person($person_id)) {
+            return null;
+        }
+
+        foreach ($this->participations_for_event($event_id) as $participation_id) {
+            if ($this->field_id(self::PERSON_FIELD, $participation_id) === $person_id) {
+                return $this->display_order($participation_id);
+            }
+        }
+
+        return null;
+    }
+
     /** @return list<int> */
     public function events_for_person(int $person_id): array
     {
