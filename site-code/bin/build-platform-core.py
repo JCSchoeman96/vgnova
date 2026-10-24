@@ -1125,7 +1125,7 @@ def validate_assembled_bootstrap(
     ]
     integration_component_keys = set()
     for line in integration_registrations:
-        key_match = re.match(r"\$this->register_component\('([a-z0-9_]+)'\s*,", line)
+        key_match = re.search(r"\$this->register_component\('([a-z0-9_]+)'\s*,", line)
         if key_match is None:
             fail(f"Integration lifecycle registration has an invalid component key: {line}")
         integration_component_keys.add(key_match.group(1))
