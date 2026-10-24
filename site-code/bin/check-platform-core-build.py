@@ -182,6 +182,17 @@ def verify_archive(archive_path: Path, manifest: dict[str, Any]) -> None:
         raise CheckFailure("Archive is not a single canonical gzip stream with no trailing data.")
     if raw_archive != canonical_tar.getvalue():
         raise CheckFailure("Tar metadata or PAX fields differ from canonical tar encoding.")
+    canonical_gzip = io.BytesIO()
+    with gzip.GzipFile(
+        fileobj=canonical_gzip,
+        mode="wb",
+        filename="",
+        compresslevel=9,
+        mtime=0,
+    ) as compressed:
+        compressed.write(canonical_tar.getvalue())
+    if archive_bytes != canonical_gzip.getvalue():
+        raise CheckFailure("Gzip compression differs from canonical compression settings.")
 
     if roots != {ROOT_PLUGIN}:
         raise CheckFailure(f"Archive must contain only {ROOT_PLUGIN}/ at its top level.")
@@ -644,6 +655,23 @@ def run_verifier_hardening_cases(
         expected_text="canonical gzip stream",
     )
 
+    raw_tar = zlib.decompress(archive_path.read_bytes(), wbits=31)
+    alternate_gzip = io.BytesIO()
+    with gzip.GzipFile(fileobj=alternate_gzip, mode="wb", filename="", compresslevel=1, mtime=0) as target:
+        target.write(raw_tar)
+    alternate_gzip_bytes = bytearray(alternate_gzip.getvalue())
+    alternate_gzip_bytes[:10] = b"\x1f\x8b\x08\x00\x00\x00\x00\x00\x02\xff"
+    alternate_gzip_path = temporary_root / "alternate-gzip-compression.tar.gz"
+    alternate_gzip_path.write_bytes(alternate_gzip_bytes)
+    alternate_gzip_manifest = json.loads(json.dumps(manifest))
+    alternate_gzip_manifest["archive_sha256"] = sha256(alternate_gzip_path.read_bytes())
+    expect_archive_rejected(
+        label="non-canonical gzip compression level is rejected",
+        archive=alternate_gzip_path,
+        manifest=alternate_gzip_manifest,
+        expected_text="gzip compression",
+    )
+
     pax_archive = temporary_root / "pax-metadata-tamper.tar.gz"
     rewrite_archive(
         archive_path,
@@ -1096,6 +1124,78 @@ def run_negative_cases(
         expected_text="no matching assembled module declaration",
     )
 
+    fixture = create_fixture(repo_root, commit, cases / "commented-register-method")
+    plugin_class = fixture / ROOT_PLUGIN / "includes/Plugin.php"
+    plugin_text = plugin_class.read_text(encoding="utf-8")
+    method_start_marker = "    public function register(): void\n    {"
+    next_method_marker = "\n    /**\n     * @return array<string, object>"
+    method_start = plugin_text.find(method_start_marker)
+    next_method = plugin_text.find(next_method_marker, method_start)
+    if method_start < 0 or next_method < 0:
+        raise CheckFailure("Cannot prepare commented register-method fixture.")
+    commented_method = plugin_text[method_start:next_method]
+    plugin_class.write_text(
+        plugin_text[:method_start]
+        + "    /*\n"
+        + commented_method
+        + "\n    */\n\n    public function register(): void\n    {\n    }\n"
+        + plugin_text[next_method:],
+        encoding="utf-8",
+    )
+    commit_fixture_changes(fixture, "fixture: comment out the lifecycle method")
+    expect_build_failure(
+        label="commented lifecycle method with empty executable replacement",
+        builder=builder,
+        fixture=fixture,
+        ref="HEAD",
+        output=cases / "commented-register-method-output",
+        expected_text="idempotency guard",
+    )
+
+    fixture = create_fixture(repo_root, commit, cases / "commented-include-array")
+    entrypoint = fixture / ROOT_PLUGIN / "voelgoed-platform-core.php"
+    entrypoint_text = entrypoint.read_text(encoding="utf-8")
+    array_start = "$vgpc_include_paths = ["
+    array_end = "\n];\n\nforeach ($vgpc_include_paths"
+    if array_start not in entrypoint_text or array_end not in entrypoint_text:
+        raise CheckFailure("Cannot prepare commented include-array fixture.")
+    entrypoint_text = entrypoint_text.replace(array_start, "/* $vgpc_include_paths = [", 1)
+    entrypoint_text = entrypoint_text.replace(
+        array_end,
+        "\n]; */\n$vgpc_include_paths = [];\n\nforeach ($vgpc_include_paths",
+        1,
+    )
+    entrypoint.write_text(entrypoint_text, encoding="utf-8")
+    commit_fixture_changes(fixture, "fixture: comment out the include array")
+    expect_build_failure(
+        label="commented include array with empty executable replacement",
+        builder=builder,
+        fixture=fixture,
+        ref="HEAD",
+        output=cases / "commented-include-array-output",
+        expected_text="executable include array",
+    )
+
+    fixture = create_fixture(repo_root, commit, cases / "cleared-include-array")
+    entrypoint = fixture / ROOT_PLUGIN / "voelgoed-platform-core.php"
+    entrypoint_text = entrypoint.read_text(encoding="utf-8")
+    loop_marker = "\nforeach ($vgpc_include_paths as $vgpc_include_path)"
+    if entrypoint_text.count(loop_marker) != 1:
+        raise CheckFailure("Cannot prepare cleared include-array fixture.")
+    entrypoint.write_text(
+        entrypoint_text.replace(loop_marker, "\nunset($vgpc_include_paths);" + loop_marker, 1),
+        encoding="utf-8",
+    )
+    commit_fixture_changes(fixture, "fixture: clear include array before consumption")
+    expect_build_failure(
+        label="include array cleared before consumption",
+        builder=builder,
+        fixture=fixture,
+        ref="HEAD",
+        output=cases / "cleared-include-array-output",
+        expected_text="immediately",
+    )
+
     fixture = create_fixture(repo_root, commit, cases / "unsafe-output")
     protected_source = fixture / ROOT_PLUGIN / "voelgoed-platform-core.php"
     original_sha = sha256(protected_source.read_bytes())
@@ -1129,7 +1229,12 @@ def run_negative_cases(
     run_output_sentinel_guard_case(fixture=fixture, temporary_root=cases)
 
 
-def run_atomic_publish_case(builder: Path, temporary_root: Path) -> None:
+def run_atomic_publish_case(
+    builder: Path,
+    repo_root: Path,
+    commit: str,
+    temporary_root: Path,
+) -> None:
     spec = importlib.util.spec_from_file_location("pe005_platform_builder_under_test", builder)
     if spec is None or spec.loader is None:
         raise CheckFailure("Cannot load the builder publication primitive for its race fixture.")
@@ -1140,23 +1245,41 @@ def run_atomic_publish_case(builder: Path, temporary_root: Path) -> None:
     if not callable(publish):
         raise CheckFailure("Builder has no atomic no-replace publication primitive.")
 
-    source = temporary_root / "publication-source"
-    source.mkdir()
-    (source / "artifact.txt").write_text("staged artifact\n", encoding="utf-8")
     destination = temporary_root / "publication-destination"
-    destination.mkdir()
+    if destination.exists():
+        raise CheckFailure("Publication race fixture destination must not exist before build starts.")
+    real_publish = module.atomic_publish_no_replace
+    race_injected = False
+
+    def create_destination_at_publish(source: Path, target: Path) -> None:
+        nonlocal race_injected
+        target.mkdir()
+        (target / "sentinel.txt").write_text("preserve concurrent destination\n", encoding="utf-8")
+        race_injected = True
+        real_publish(source, target)
+
+    module.atomic_publish_no_replace = create_destination_at_publish
+    previous_cwd = Path.cwd()
+    previous_argv = sys.argv
     try:
-        publish(source, destination)
+        os.chdir(repo_root)
+        sys.argv = [str(builder), "--ref", commit, "--output", str(destination)]
+        module.main()
     except module.BuildFailure as error:
         if "already exists" not in str(error).lower() and "appeared" not in str(error).lower():
-            raise CheckFailure(f"No-replace publication failed for the wrong reason: {error}") from error
+            raise CheckFailure(f"Concurrent no-replace publication failed for the wrong reason: {error}") from error
     else:
-        raise CheckFailure("Atomic publication replaced a destination that appeared before publish.")
-    if not destination.is_dir() or list(destination.iterdir()):
-        raise CheckFailure("No-replace publication changed the existing empty destination.")
-    if not (source / "artifact.txt").is_file():
-        raise CheckFailure("No-replace publication consumed the staged source after rejection.")
-    print("PASS negative case: atomic publish refuses a destination that appears during assembly")
+        raise CheckFailure("Atomic publication replaced a destination created during build.")
+    finally:
+        sys.argv = previous_argv
+        os.chdir(previous_cwd)
+    if not race_injected:
+        raise CheckFailure("Publication race fixture did not create the destination after the preflight check.")
+    if not destination.is_dir() or (destination / "sentinel.txt").read_text(encoding="utf-8") != "preserve concurrent destination\n":
+        raise CheckFailure("No-replace publication changed the concurrent destination.")
+    if list(temporary_root.glob(".publication-destination.tmp-*")):
+        raise CheckFailure("Builder left its staged output directory after the publication race.")
+    print("PASS negative case: atomic publish preserves a destination created after preflight and cleans staging")
 
 
 def run_integrity_tamper_case(archive_path: Path, manifest: dict[str, Any], temporary_root: Path) -> None:
@@ -1262,7 +1385,7 @@ def main() -> int:
             builder=builder,
             temporary_root=temporary_root,
         )
-        run_atomic_publish_case(builder, temporary_root)
+        run_atomic_publish_case(builder, repo_root, commit, temporary_root)
 
     if temporary_root.exists():
         raise CheckFailure("Temporary verifier state was not cleaned.")

@@ -294,13 +294,96 @@ def apply_patch(staging_root: Path, patch_path: Path, patch_text: str) -> None:
         fail("integration.patch failed to apply:\n" + applied.stderr.decode("utf-8", "replace"))
 
 
-def parse_include_paths(entrypoint: str) -> list[str]:
-    match = re.search(r"\$vgpc_include_paths\s*=\s*\[(.*?)\];", entrypoint, re.S)
-    if match is None:
-        fail("Assembled entrypoint has no recognizable vgpc_include_paths array.")
-    paths = re.findall(r"^\s*'([^']+)'\s*,?\s*$", match.group(1), re.M)
+def parse_include_paths(
+    entrypoint: str,
+) -> list[str]:
+    tokens = significant_php_tokens(php_tokens(entrypoint, "assembled entrypoint include array"))
+    assignments = [
+        index
+        for index in range(len(tokens) - 1)
+        if tokens[index][0:2] == ("T_VARIABLE", "$vgpc_include_paths")
+        and tokens[index + 1][1] == "="
+    ]
+    if len(assignments) != 1:
+        fail("Assembled entrypoint must contain exactly one executable vgpc_include_paths assignment.")
+    assignment_index = assignments[0]
+    direct_assignment, assignment_depth = is_first_statement_token(tokens, assignment_index)
+    if assignment_depth != 0 or not direct_assignment:
+        fail("The vgpc_include_paths array must be an unconditional top-level assignment.")
+    if assignment_index + 2 >= len(tokens) or tokens[assignment_index + 2][1] != "[":
+        fail("The executable vgpc_include_paths assignment must use a literal array.")
+
+    paths: list[str] = []
+    cursor = assignment_index + 3
+    while cursor < len(tokens) and tokens[cursor][1] != "]":
+        token_name, token_text, _, _ = tokens[cursor]
+        if token_name != "T_CONSTANT_ENCAPSED_STRING" or not re.fullmatch(
+            r"'includes/(?:[A-Za-z0-9_-]+/)*[A-Za-z0-9_.-]+\.php'", token_text
+        ):
+            fail("The executable vgpc_include_paths array must contain only literal relative PHP paths.")
+        paths.append(token_text[1:-1])
+        cursor += 1
+        if cursor < len(tokens) and tokens[cursor][1] == ",":
+            cursor += 1
+        elif cursor >= len(tokens) or tokens[cursor][1] != "]":
+            fail("The executable vgpc_include_paths array has malformed separators.")
+    if cursor >= len(tokens) or tokens[cursor][1] != "]":
+        fail("The executable vgpc_include_paths array is not closed.")
+    if cursor + 1 >= len(tokens) or tokens[cursor + 1][1] != ";":
+        fail("The executable vgpc_include_paths array assignment is not a complete statement.")
     if not paths:
-        fail("Assembled entrypoint include array is empty or not structurally valid.")
+        fail("Assembled entrypoint executable include array is empty.")
+
+    assignment_end = cursor + 1
+    loop_header = [
+        ("T_FOREACH", "foreach"),
+        (None, "("),
+        ("T_VARIABLE", "$vgpc_include_paths"),
+        ("T_AS", "as"),
+        ("T_VARIABLE", "$vgpc_include_path"),
+        (None, ")"),
+        (None, "{"),
+    ]
+    loops = [
+        index
+        for index in range(assignment_end + 1, len(tokens))
+        if token_matches(tokens, index, loop_header)
+    ]
+    if len(loops) != 1:
+        fail("The executable include array must be consumed by exactly one foreach loop.")
+    loop_index = loops[0]
+    if loop_index != assignment_end + 1:
+        fail("The include array must be consumed immediately after its assignment with no intervening statement.")
+    loop_direct, loop_depth = is_first_statement_token(tokens, loop_index)
+    if loop_depth != 0 or not loop_direct:
+        fail("The include foreach loop must execute as an unconditional top-level statement.")
+
+    loop_open = loop_index + len(loop_header) - 1
+    brace_depth = 1
+    loop_close = None
+    for index in range(loop_open + 1, len(tokens)):
+        if tokens[index][1] == "{":
+            brace_depth += 1
+        elif tokens[index][1] == "}":
+            brace_depth -= 1
+            if brace_depth == 0:
+                loop_close = index
+                break
+    expected_body_source = """$vgpc_include_file = VGPC_PLUGIN_DIR . $vgpc_include_path;
+if (is_file($vgpc_include_file) && is_readable($vgpc_include_file)) {
+    require_once $vgpc_include_file;
+}"""
+    expected_body = [
+        (token_name, token_text)
+        for token_name, token_text, _, _ in significant_php_tokens(
+            php_tokens(expected_body_source, "expected entrypoint include loop")
+        )
+    ]
+    if loop_close is None or [
+        (token_name, token_text)
+        for token_name, token_text, _, _ in tokens[loop_open + 1:loop_close]
+    ] != expected_body:
+        fail("The include array must be consumed by the executable file-checking require_once loop.")
     return paths
 
 
@@ -527,6 +610,94 @@ def lifecycle_dispatch_header() -> list[tuple[str | None, str]]:
     ]
 
 
+def php_method_body_tokens(
+    source: str,
+    class_name: str,
+    method_name: str,
+    purpose: str,
+) -> list[tuple[str | None, str, int, int]]:
+    tokens = significant_php_tokens(php_tokens(source, purpose))
+    class_declarations = []
+    for index, (token_name, _, _, _) in enumerate(tokens):
+        if token_name != "T_CLASS":
+            continue
+        previous = tokens[index - 1] if index else (None, "", 0, 0)
+        if previous[0] == "T_DOUBLE_COLON":
+            continue
+        if index + 1 < len(tokens) and tokens[index + 1][0:2] == ("T_STRING", class_name):
+            class_declarations.append(index)
+    if len(class_declarations) != 1:
+        fail(f"Expected exactly one executable {class_name} class declaration in {purpose}.")
+
+    class_index = class_declarations[0]
+    declaration_start = class_index
+    while declaration_start > 0 and tokens[declaration_start - 1][0] in {
+        "T_ABSTRACT",
+        "T_FINAL",
+        "T_READONLY",
+    }:
+        declaration_start -= 1
+    class_is_direct, class_brace_depth = is_first_statement_token(tokens, declaration_start)
+    if class_brace_depth != 0 or not class_is_direct:
+        fail(f"The {class_name} class must be an unconditional namespace-scope declaration in {purpose}.")
+
+    class_open = next(
+        (index for index in range(class_index + 2, len(tokens)) if tokens[index][1] == "{"),
+        None,
+    )
+    if class_open is None:
+        fail(f"The {class_name} class has no executable body in {purpose}.")
+    class_depth = 1
+    class_close = None
+    for index in range(class_open + 1, len(tokens)):
+        if tokens[index][1] == "{":
+            class_depth += 1
+        elif tokens[index][1] == "}":
+            class_depth -= 1
+            if class_depth == 0:
+                class_close = index
+                break
+    if class_close is None:
+        fail(f"The {class_name} class body is unterminated in {purpose}.")
+
+    method_header = [
+        ("T_PUBLIC", "public"),
+        ("T_FUNCTION", "function"),
+        ("T_STRING", method_name),
+        (None, "("),
+        (None, ")"),
+        (None, ":"),
+        ("T_STRING", "void"),
+        (None, "{"),
+    ]
+    methods = []
+    member_depth = 0
+    for index in range(class_open + 1, class_close):
+        if member_depth == 0 and token_matches(tokens, index, method_header):
+            methods.append(index)
+        if tokens[index][1] == "{":
+            member_depth += 1
+        elif tokens[index][1] == "}":
+            member_depth = max(0, member_depth - 1)
+    if len(methods) != 1:
+        fail(f"Expected exactly one executable {class_name}::{method_name}() method in {purpose}.")
+
+    method_open = methods[0] + len(method_header) - 1
+    method_depth = 1
+    method_close = None
+    for index in range(method_open + 1, class_close):
+        if tokens[index][1] == "{":
+            method_depth += 1
+        elif tokens[index][1] == "}":
+            method_depth -= 1
+            if method_depth == 0:
+                method_close = index
+                break
+    if method_close is None:
+        fail(f"The executable {class_name}::{method_name}() method is unterminated in {purpose}.")
+    return tokens[method_open + 1:method_close]
+
+
 def validate_assembled_bootstrap(
     plugin_root: Path,
     runtime_php_paths: list[str],
@@ -575,22 +746,12 @@ def validate_assembled_bootstrap(
         ):
             fail(f"Integration lifecycle import must be an executable PHP use statement: {line}")
 
-    register_method_match = re.search(
-        r"\bpublic\s+function\s+register\s*\(\s*\)\s*:\s*void\s*\{",
+    method_tokens = php_method_body_tokens(
         plugin_class,
+        "Plugin",
+        "register",
+        "Plugin::register() structure",
     )
-    if register_method_match is None:
-        fail("Assembled includes/Plugin.php has no recognizable Plugin::register() method.")
-    register_method_tail = plugin_class[register_method_match.end():]
-    next_method_match = re.search(
-        r"^\s*(?:public|protected|private)\s+function\s+[A-Za-z_][A-Za-z0-9_]*\s*\(",
-        register_method_tail,
-        re.M,
-    )
-    if next_method_match is None:
-        fail("Cannot identify the end of Plugin::register() for lifecycle validation.")
-    register_method_body = register_method_tail[:next_method_match.start()]
-    method_tokens = significant_php_tokens(php_tokens(register_method_body, "Plugin::register() structure"))
     guard = method_guard_sequence()
     if not token_matches(method_tokens, 0, guard):
         fail("Plugin::register() is missing its expected idempotency guard.")
@@ -640,8 +801,7 @@ def validate_assembled_bootstrap(
     classes = [class_name for _, class_name in registrations]
     if len(keys) != len(set(keys)) or len(classes) != len(set(classes)):
         fail("Duplicate lifecycle registration keys or classes exist in includes/Plugin.php.")
-    body_tokens = significant_php_tokens(php_tokens(register_method_body, "integration lifecycle registrations"))
-    body_bytes = register_method_body.encode("utf-8")
+    body_tokens = method_tokens
     for line in integration_registrations:
         if sum(existing.strip() == line for existing in plugin_class.splitlines()) != 1:
             fail(f"Integration lifecycle registration must appear exactly once: {line}")
@@ -650,8 +810,7 @@ def validate_assembled_bootstrap(
             line,
         ) is None:
             fail(f"Integration lifecycle registrations must be unconditional direct statements: {line}")
-        position = body_bytes.find(line.encode("utf-8"))
-        target = position if position >= 0 else -1
+        target = plugin_class.encode("utf-8").find(line.encode("utf-8"))
         token_index = next(
             (
                 index
