@@ -1017,6 +1017,61 @@ def php_method_body_tokens(
     return tokens[method_open + 1:method_close]
 
 
+def validate_registration_flag(source: str) -> None:
+    purpose = "Plugin lifecycle registration flag"
+    tokens = significant_php_tokens(php_tokens(source, purpose))
+    class_declarations = [
+        index
+        for index, (token_name, _, _, _) in enumerate(tokens)
+        if token_name == "T_CLASS"
+        and index + 1 < len(tokens)
+        and tokens[index + 1][0:2] == ("T_STRING", "Plugin")
+    ]
+    if len(class_declarations) != 1:
+        fail("Plugin lifecycle idempotency guard must start false.")
+
+    class_index = class_declarations[0]
+    declaration_is_direct, namespace_depth = is_first_statement_token(tokens, class_index)
+    if namespace_depth != 0 or not declaration_is_direct:
+        fail("Plugin lifecycle idempotency guard must start false.")
+    class_open = next(
+        (index for index in range(class_index + 2, len(tokens)) if tokens[index][1] == "{"),
+        None,
+    )
+    if class_open is None:
+        fail("Plugin lifecycle idempotency guard must start false.")
+    depth = 1
+    class_close = None
+    for index in range(class_open + 1, len(tokens)):
+        if tokens[index][1] == "{":
+            depth += 1
+        elif tokens[index][1] == "}":
+            depth -= 1
+            if depth == 0:
+                class_close = index
+                break
+    if class_close is None:
+        fail("Plugin lifecycle idempotency guard must start false.")
+
+    class_members = tokens[class_open + 1:class_close]
+    expected = [
+        (token_name, token_text)
+        for token_name, token_text, _, _ in significant_php_tokens(
+            php_tokens("private bool $registered = false;", purpose)
+        )
+    ]
+    matches = [
+        index
+        for index in range(len(class_members))
+        if token_matches(class_members, index, expected)
+    ]
+    if len(matches) != 1:
+        fail("Plugin lifecycle idempotency guard must start false.")
+    direct, member_depth = is_first_statement_token(class_members, matches[0])
+    if member_depth != 0 or not direct:
+        fail("Plugin lifecycle idempotency guard must start false.")
+
+
 def validate_assembled_bootstrap(
     plugin_root: Path,
     runtime_php_paths: list[str],
@@ -1029,6 +1084,7 @@ def validate_assembled_bootstrap(
     entrypoint = text_file(entrypoint_path, "assembled plugin entrypoint")
     plugin_class = text_file(plugin_class_path, "assembled includes/Plugin.php")
 
+    validate_registration_flag(plugin_class)
     validate_plugin_directory(entrypoint)
     include_paths = parse_include_paths(entrypoint)
     validate_plugins_loaded_hook(entrypoint)
