@@ -886,7 +886,7 @@ def run_negative_cases(
         raise CheckFailure("Replacement-object fixture build failed unexpectedly: " + (result.stdout + result.stderr).decode("utf-8", "replace"))
     built_manifest = json.loads((output / MANIFEST_NAME).read_text(encoding="utf-8"))
     overlay_record = next(
-        (item for item in built_manifest["files"] if item["path"] == "voelgoed-platform-core/includes/Product/ProductRoleVocabulary.php"),
+        (item for item in built_manifest["files"] if item["path"] == "includes/Product/ProductRoleVocabulary.php"),
         None,
     )
     if overlay_record is None or overlay_record["sha256"] != expected_overlay_hash:
