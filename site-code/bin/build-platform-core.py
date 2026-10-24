@@ -6,14 +6,15 @@ from __future__ import annotations
 import argparse
 import ctypes
 import errno
-import gzip
 import hashlib
 import io
 import json
 import os
+import platform
 import re
 import shutil
 import subprocess
+import struct
 import sys
 import tarfile
 import tempfile
@@ -36,6 +37,34 @@ OVERLAY_PATHS = (
 ARCHIVE_NAME = "voelgoed-platform-core.tar.gz"
 MANIFEST_NAME = "voelgoed-platform-core.manifest.json"
 SUPPORTED_FILE_MODES = {"100644": 0o644, "100755": 0o755}
+CANONICAL_PYTHON_IMPLEMENTATION = "CPython"
+CANONICAL_PYTHON_VERSION = "3.14.4"
+CANONICAL_TARFILE_MODULE_SHA256 = "c0db1a21e56ccf002147bffd10d97f452ad842820963ef793117f92a0cdaaad4"
+CANONICAL_ARCHIVE_ENCODER = "vgpc-gzip-stored-v1"
+CANONICAL_BUILD_TOOLCHAIN = {
+    "python_implementation": CANONICAL_PYTHON_IMPLEMENTATION,
+    "python_version": CANONICAL_PYTHON_VERSION,
+    "tarfile_module_sha256": CANONICAL_TARFILE_MODULE_SHA256,
+    "tar_serialization": "CPython-3.14.4-tarfile-pax-utf8-v1",
+    "archive_format": "tar-pax+gzip",
+    "archive_encoder_version": CANONICAL_ARCHIVE_ENCODER,
+    "zlib_encoding": "not-used",
+}
+GZIP_HEADER = b"\x1f\x8b\x08\x00\x00\x00\x00\x00\x00\xff"
+DEFLATE_STORED_BLOCK_SIZE = 65_535
+
+
+def build_crc32_table() -> tuple[int, ...]:
+    values = []
+    for index in range(256):
+        value = index
+        for _ in range(8):
+            value = (value >> 1) ^ (0xEDB88320 if value & 1 else 0)
+        values.append(value)
+    return tuple(values)
+
+
+CRC32_TABLE = build_crc32_table()
 
 
 class BuildFailure(RuntimeError):
@@ -51,6 +80,59 @@ class TreeFile:
 
 def fail(message: str) -> NoReturn:
     raise BuildFailure(message)
+
+
+def ensure_canonical_toolchain(
+    *,
+    implementation: str | None = None,
+    version: str | None = None,
+    tarfile_module_sha256: str | None = None,
+) -> None:
+    actual_implementation = implementation or platform.python_implementation()
+    actual_version = version or platform.python_version()
+    actual_tarfile_sha256 = tarfile_module_sha256 or hashlib.sha256(
+        Path(tarfile.__file__).read_bytes()
+    ).hexdigest()
+    if (
+        actual_implementation != CANONICAL_PYTHON_IMPLEMENTATION
+        or actual_version != CANONICAL_PYTHON_VERSION
+        or actual_tarfile_sha256 != CANONICAL_TARFILE_MODULE_SHA256
+    ):
+        fail(
+            "Unsupported canonical archive toolchain: expected "
+            f"{CANONICAL_PYTHON_IMPLEMENTATION} {CANONICAL_PYTHON_VERSION} with tarfile module "
+            f"SHA-256 {CANONICAL_TARFILE_MODULE_SHA256}; received {actual_implementation} "
+            f"{actual_version} with tarfile module SHA-256 {actual_tarfile_sha256}."
+        )
+
+
+def crc32_ieee(data: bytes) -> int:
+    value = 0xFFFFFFFF
+    for octet in data:
+        value = CRC32_TABLE[(value ^ octet) & 0xFF] ^ (value >> 8)
+    return value ^ 0xFFFFFFFF
+
+
+def gzip_stored_deflate(data: bytes) -> bytes:
+    """Encode one canonical gzip member with DEFLATE stored blocks only."""
+    deflate = bytearray()
+    if not data:
+        chunks = (b"",)
+    else:
+        chunks = (
+            data[offset : offset + DEFLATE_STORED_BLOCK_SIZE]
+            for offset in range(0, len(data), DEFLATE_STORED_BLOCK_SIZE)
+        )
+    chunk_list = list(chunks)
+    for index, chunk in enumerate(chunk_list):
+        is_final = index == len(chunk_list) - 1
+        deflate.append(1 if is_final else 0)
+        length = len(chunk)
+        deflate.extend(struct.pack("<HH", length, length ^ 0xFFFF))
+        deflate.extend(chunk)
+
+    trailer = struct.pack("<II", crc32_ieee(data), len(data) & 0xFFFFFFFF)
+    return GZIP_HEADER + bytes(deflate) + trailer
 
 
 def git_bytes(args: list[str], repo_root: Path, *, check: bool = True) -> bytes:
@@ -1460,7 +1542,13 @@ def archive_bytes(files: list[tuple[str, str, bytes]]) -> bytes:
         directories - {ROOT_PATH}, key=lambda value: value.encode("utf-8")
     )
     raw_tar = io.BytesIO()
-    with tarfile.open(fileobj=raw_tar, mode="w", format=tarfile.PAX_FORMAT) as archive:
+    with tarfile.open(
+        fileobj=raw_tar,
+        mode="w",
+        format=tarfile.PAX_FORMAT,
+        encoding="utf-8",
+        errors="strict",
+    ) as archive:
         for directory in ordered_directories:
             info = tarfile.TarInfo(directory + "/")
             info.type = tarfile.DIRTYPE
@@ -1484,10 +1572,7 @@ def archive_bytes(files: list[tuple[str, str, bytes]]) -> bytes:
             info.size = len(contents)
             archive.addfile(info, io.BytesIO(contents))
 
-    output = io.BytesIO()
-    with gzip.GzipFile(fileobj=output, mode="wb", filename="", compresslevel=9, mtime=0) as compressed:
-        compressed.write(raw_tar.getvalue())
-    return output.getvalue()
+    return gzip_stored_deflate(raw_tar.getvalue())
 
 
 def build_manifest(
@@ -1512,10 +1597,11 @@ def build_manifest(
         f"{record['mode']} {record['sha256']} {record['path']}\n" for record in records
     ).encode("utf-8")
     return {
-        "schema_version": 1,
+        "schema_version": 2,
         "artifact_name": ARCHIVE_NAME,
         "source_commit": commit,
         "source_ref_requested": requested_ref,
+        "build_toolchain": dict(CANONICAL_BUILD_TOOLCHAIN),
         "php_contract": {"minimum": "8.5", "ci": "8.5"},
         "root_source_path": ROOT_PATH,
         "overlay_source_paths": list(OVERLAY_PATHS),
@@ -1540,6 +1626,7 @@ def assemble(
     requested_ref: str,
     temporary_root: Path,
 ) -> tuple[list[tuple[str, str, bytes]], bytes, dict[str, object]]:
+    ensure_canonical_toolchain()
     inputs = tracked_inputs(repo_root, commit)
     builder_blob = check_executing_builder(repo_root, inputs)
     overlay_files = overlay_files_from_tree(inputs)
@@ -1640,6 +1727,11 @@ def main() -> int:
     print(f"file_count={manifest['file_count']}")
     print(f"tree_sha256={manifest['tree_sha256']}")
     print(f"archive_sha256={manifest['archive_sha256']}")
+    print(f"python_implementation={CANONICAL_PYTHON_IMPLEMENTATION}")
+    print(f"python_version={CANONICAL_PYTHON_VERSION}")
+    print(f"tarfile_module_sha256={CANONICAL_TARFILE_MODULE_SHA256}")
+    print(f"archive_encoder_version={CANONICAL_ARCHIVE_ENCODER}")
+    print("zlib_encoding=not-used")
     print(f"output={output}")
     return 0
 

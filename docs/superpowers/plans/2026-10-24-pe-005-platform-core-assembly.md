@@ -18,7 +18,8 @@
 - `.github/workflows/voelgoed-dashboard.yml`: rebuilds and uploads the two canonical files only after `VG Nova Platform Gate` succeeds on a push to `main`; preserves all three governed check names.
 - `.gitignore`: ignores `/dist/` only.
 - `site-code/voelgoed-platform-core/README.md`: replaces manual patch-and-copy deployment instructions with the artifact workflow while preserving domain history.
-- `docs/architecture/PLATFORM_CORE_ASSEMBLY_CONTRACT_v1.0.0.md`: canonical assembly and provenance contract.
+- `docs/architecture/PLATFORM_CORE_ASSEMBLY_CONTRACT_v1.0.0.md`: original PE-005 assembly contract, superseded by v1.1.0 after PE-005A.
+- `docs/architecture/PLATFORM_CORE_ASSEMBLY_CONTRACT_v1.1.0.md`: canonical assembly and pinned archive provenance contract.
 - `docs/superpowers/plans/2026-10-24-pe-005-platform-core-assembly.md`: this implementation sequence.
 
 ## Task 1: Lock the contract and acceptance checks
@@ -97,3 +98,26 @@
 - [ ] Link the PR to this thread immediately. Verify the PR head equals the pushed commit and the base equals the current `main` SHA.
 - [ ] Confirm `Dashboard checks`, `Canonical source checks`, and `VG Nova Platform Gate` succeed on the exact PR head, and inspect logs for the reproducibility verifier.
 - [ ] Stop with the PR open and unmerged.
+
+## PE-005A: close canonical archive verification gaps
+
+The final PE-005 review blocked merge on two gaps: archive output depended on
+an unpinned Python/zlib environment, and the main publisher uploaded a fresh
+build without verifying those exact files.
+
+- [x] Record the old baseline. Local was CPython 3.14.4, `tarfile.py` SHA-256
+  `c0db1a21e56ccf002147bffd10d97f452ad842820963ef793117f92a0cdaaad4`, and
+  zlib 1.3.1 build/runtime on Linux x86_64. The previous GitHub source job was
+  Ubuntu 24.04 image `20261012.334.1`; it did not log Python or zlib versions.
+- [x] Define the canonical build toolchain as CPython 3.14.4 plus the exact
+  `tarfile.py` hash and the `vgpc-gzip-stored-v1` encoder. The encoder writes
+  stored DEFLATE blocks and calculates CRC-32 in Python, independent of zlib.
+- [x] Bump the manifest to schema 2 and record stable toolchain identity.
+- [x] Add `--verify-output` to verify exact existing files against manifest,
+  archive metadata, Git builder/patch hashes, and independently assembled
+  source inventory.
+- [x] Pin CPython 3.14.4 in source and publication jobs. Verify the publisher's
+  `dist/` after build and upload those same files without rewriting them.
+- [ ] Re-run local verification, inspect cross-environment results on the new
+  PR head, obtain independent assembly, manifest, and CI reviews, and stop
+  without merging PR #50.

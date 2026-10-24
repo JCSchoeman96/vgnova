@@ -11,7 +11,14 @@ Build the plugin from an exact committed revision with:
 
 ```sh
 python3 site-code/bin/build-platform-core.py --ref <commit> --output dist
+python3 site-code/bin/check-platform-core-build.py --ref <commit> --verify-output dist
 ```
+
+Canonical archive builds require CPython 3.14.4 and the recorded `tarfile.py`
+module hash. The gzip stream uses the versioned stored-DEFLATE encoder, so zlib
+does not affect archive bytes. The verifier checks the existing output against
+the exact Git commit, manifest, patch, and assembled source inventory without
+rebuilding those files.
 
 The build writes `voelgoed-platform-core.tar.gz` and its provenance manifest.
 Do not manually copy modules or apply `integration.patch` in the WordPress

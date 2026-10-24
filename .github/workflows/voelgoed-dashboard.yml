@@ -61,6 +61,29 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 0
 
+      - name: Set up canonical Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.14.4'
+          check-latest: false
+
+      - name: Record canonical archive toolchain
+        run: |
+          python3 - <<'PY'
+          import hashlib
+          import platform
+          import tarfile
+          import zlib
+          from pathlib import Path
+
+          print(f"python_implementation={platform.python_implementation()}")
+          print(f"python_version={platform.python_version()}")
+          print(f"tarfile_module_sha256={hashlib.sha256(Path(tarfile.__file__).read_bytes()).hexdigest()}")
+          print(f"zlib_build_version={zlib.ZLIB_VERSION}")
+          print(f"zlib_runtime_version={zlib.ZLIB_RUNTIME_VERSION}")
+          print(f"platform={platform.platform()}")
+          PY
+
       - name: Set up PHP
         uses: shivammathur/setup-php@v2
         with:
@@ -103,6 +126,29 @@ jobs:
           ref: ${{ github.sha }}
           fetch-depth: 0
 
+      - name: Set up canonical Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.14.4'
+          check-latest: false
+
+      - name: Record canonical archive toolchain
+        run: |
+          python3 - <<'PY'
+          import hashlib
+          import platform
+          import tarfile
+          import zlib
+          from pathlib import Path
+
+          print(f"python_implementation={platform.python_implementation()}")
+          print(f"python_version={platform.python_version()}")
+          print(f"tarfile_module_sha256={hashlib.sha256(Path(tarfile.__file__).read_bytes()).hexdigest()}")
+          print(f"zlib_build_version={zlib.ZLIB_VERSION}")
+          print(f"zlib_runtime_version={zlib.ZLIB_RUNTIME_VERSION}")
+          print(f"platform={platform.platform()}")
+          PY
+
       - name: Set up PHP
         uses: shivammathur/setup-php@v2
         with:
@@ -111,6 +157,9 @@ jobs:
 
       - name: Build canonical Platform Core artifact
         run: python3 site-code/bin/build-platform-core.py --ref "${GITHUB_SHA}" --output dist
+
+      - name: Verify exact upload directory
+        run: python3 site-code/bin/check-platform-core-build.py --ref "${GITHUB_SHA}" --verify-output dist
 
       - name: Upload canonical Platform Core artifact
         uses: actions/upload-artifact@v4

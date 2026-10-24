@@ -10,9 +10,12 @@ import importlib.util
 import io
 import json
 import os
+import platform
 import re
 import shutil
+import stat
 import subprocess
+import struct
 import sys
 import tarfile
 import tempfile
@@ -32,6 +35,30 @@ OVERLAY_PATHS = (
 FIXTURE_PATHS = (ROOT_PLUGIN, *OVERLAY_PATHS, PATCH_PATH, BUILDER_PATH)
 ARCHIVE_NAME = "voelgoed-platform-core.tar.gz"
 MANIFEST_NAME = "voelgoed-platform-core.manifest.json"
+EXPECTED_BUILD_TOOLCHAIN = {
+    "python_implementation": "CPython",
+    "python_version": "3.14.4",
+    "tarfile_module_sha256": "c0db1a21e56ccf002147bffd10d97f452ad842820963ef793117f92a0cdaaad4",
+    "tar_serialization": "CPython-3.14.4-tarfile-pax-utf8-v1",
+    "archive_format": "tar-pax+gzip",
+    "archive_encoder_version": "vgpc-gzip-stored-v1",
+    "zlib_encoding": "not-used",
+}
+GZIP_HEADER = b"\x1f\x8b\x08\x00\x00\x00\x00\x00\x00\xff"
+DEFLATE_STORED_BLOCK_SIZE = 65_535
+
+
+def build_crc32_table() -> tuple[int, ...]:
+    values = []
+    for index in range(256):
+        value = index
+        for _ in range(8):
+            value = (value >> 1) ^ (0xEDB88320 if value & 1 else 0)
+        values.append(value)
+    return tuple(values)
+
+
+CRC32_TABLE = build_crc32_table()
 
 
 class CheckFailure(RuntimeError):
@@ -82,6 +109,46 @@ def sha256(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
 
+def ensure_canonical_toolchain() -> None:
+    actual = (platform.python_implementation(), platform.python_version())
+    expected = (EXPECTED_BUILD_TOOLCHAIN["python_implementation"], EXPECTED_BUILD_TOOLCHAIN["python_version"])
+    actual_tarfile_sha256 = sha256(Path(tarfile.__file__).read_bytes())
+    if actual != expected or actual_tarfile_sha256 != EXPECTED_BUILD_TOOLCHAIN["tarfile_module_sha256"]:
+        raise CheckFailure(
+            "Unsupported canonical archive toolchain: expected "
+            f"{expected[0]} {expected[1]} with tarfile module SHA-256 "
+            f"{EXPECTED_BUILD_TOOLCHAIN['tarfile_module_sha256']}; received {actual[0]} "
+            f"{actual[1]} with tarfile module SHA-256 {actual_tarfile_sha256}."
+        )
+
+
+def crc32_ieee(data: bytes) -> int:
+    value = 0xFFFFFFFF
+    for octet in data:
+        value = CRC32_TABLE[(value ^ octet) & 0xFF] ^ (value >> 8)
+    return value ^ 0xFFFFFFFF
+
+
+def canonical_gzip_stored_deflate(data: bytes) -> bytes:
+    """Independently encode the canonical single-member, stored-block gzip stream."""
+    deflate = bytearray()
+    if not data:
+        chunks = (b"",)
+    else:
+        chunks = (
+            data[offset : offset + DEFLATE_STORED_BLOCK_SIZE]
+            for offset in range(0, len(data), DEFLATE_STORED_BLOCK_SIZE)
+        )
+    chunk_list = list(chunks)
+    for index, chunk in enumerate(chunk_list):
+        deflate.append(1 if index == len(chunk_list) - 1 else 0)
+        length = len(chunk)
+        deflate.extend(struct.pack("<HH", length, length ^ 0xFFFF))
+        deflate.extend(chunk)
+    trailer = struct.pack("<II", crc32_ieee(data), len(data) & 0xFFFFFFFF)
+    return GZIP_HEADER + bytes(deflate) + trailer
+
+
 def safe_member_name(name: str) -> PurePosixPath:
     normalized = name.rstrip("/")
     path = PurePosixPath(normalized)
@@ -98,14 +165,13 @@ def safe_member_name(name: str) -> PurePosixPath:
     return path
 
 
-def verify_archive(archive_path: Path, manifest: dict[str, Any]) -> None:
+def verify_archive(archive_path: Path, manifest: dict[str, Any]) -> list[dict[str, Any]]:
     archive_bytes = archive_path.read_bytes()
     if sha256(archive_bytes) != manifest.get("archive_sha256"):
         raise CheckFailure("Archive SHA-256 does not match the manifest.")
-    expected_gzip_header = b"\x1f\x8b\x08\x00\x00\x00\x00\x00\x02\xff"
-    if len(archive_bytes) < len(expected_gzip_header) or archive_bytes[:3] != b"\x1f\x8b\x08":
+    if len(archive_bytes) < len(GZIP_HEADER) or archive_bytes[:3] != b"\x1f\x8b\x08":
         raise CheckFailure("Artifact is not a gzip-compressed tar archive.")
-    if archive_bytes[:10] != expected_gzip_header:
+    if archive_bytes[: len(GZIP_HEADER)] != GZIP_HEADER:
         raise CheckFailure("Gzip header does not match normalized deterministic metadata.")
 
     actual_files: list[dict[str, Any]] = []
@@ -166,7 +232,13 @@ def verify_archive(archive_path: Path, manifest: dict[str, Any]) -> None:
         raise CheckFailure(f"Cannot read canonical tar.gz archive: {error}") from error
 
     canonical_tar = io.BytesIO()
-    with tarfile.open(fileobj=canonical_tar, mode="w", format=tarfile.PAX_FORMAT) as writer:
+    with tarfile.open(
+        fileobj=canonical_tar,
+        mode="w",
+        format=tarfile.PAX_FORMAT,
+        encoding="utf-8",
+        errors="strict",
+    ) as writer:
         for name, is_directory, mode, contents in canonical_entries:
             info = tarfile.TarInfo(name)
             info.type = tarfile.DIRTYPE if is_directory else tarfile.REGTYPE
@@ -187,17 +259,8 @@ def verify_archive(archive_path: Path, manifest: dict[str, Any]) -> None:
         raise CheckFailure("Archive is not a single canonical gzip stream with no trailing data.")
     if raw_archive != canonical_tar.getvalue():
         raise CheckFailure("Tar metadata or PAX fields differ from canonical tar encoding.")
-    canonical_gzip = io.BytesIO()
-    with gzip.GzipFile(
-        fileobj=canonical_gzip,
-        mode="wb",
-        filename="",
-        compresslevel=9,
-        mtime=0,
-    ) as compressed:
-        compressed.write(canonical_tar.getvalue())
-    if archive_bytes != canonical_gzip.getvalue():
-        raise CheckFailure("Gzip compression differs from canonical compression settings.")
+    if archive_bytes != canonical_gzip_stored_deflate(canonical_tar.getvalue()):
+        raise CheckFailure("Gzip DEFLATE bytes differ from the canonical stored-block encoder.")
 
     if roots != {ROOT_PLUGIN}:
         raise CheckFailure(f"Archive must contain only {ROOT_PLUGIN}/ at its top level.")
@@ -248,6 +311,7 @@ def verify_archive(archive_path: Path, manifest: dict[str, Any]) -> None:
     )
     if sha256(canonical_lines) != manifest.get("tree_sha256"):
         raise CheckFailure("Archive-derived tree SHA-256 does not match the manifest.")
+    return actual_files
 
 
 def validate_manifest(
@@ -262,6 +326,7 @@ def validate_manifest(
         "artifact_name",
         "source_commit",
         "source_ref_requested",
+        "build_toolchain",
         "php_contract",
         "root_source_path",
         "overlay_source_paths",
@@ -274,13 +339,17 @@ def validate_manifest(
         "tree_sha256",
         "archive_sha256",
     }
-    if not required.issubset(manifest):
-        raise CheckFailure(f"Manifest is missing fields: {sorted(required - set(manifest))}")
+    manifest_fields = set(manifest)
+    if manifest_fields != required:
+        missing = sorted(required - manifest_fields)
+        unexpected = sorted(manifest_fields - required)
+        raise CheckFailure(f"Manifest fields differ from schema 2; missing={missing}, unexpected={unexpected}")
     expected = {
-        "schema_version": 1,
+        "schema_version": 2,
         "artifact_name": ARCHIVE_NAME,
         "source_commit": commit,
         "source_ref_requested": requested_ref,
+        "build_toolchain": EXPECTED_BUILD_TOOLCHAIN,
         "php_contract": {"minimum": "8.5", "ci": "8.5"},
         "root_source_path": ROOT_PLUGIN,
         "overlay_source_paths": list(OVERLAY_PATHS),
@@ -337,6 +406,134 @@ def validate_manifest(
             raise CheckFailure(f"Manifest path is unsafe or non-normalized: {path!r}")
     if paths != sorted(paths, key=lambda value: str(value).encode("utf-8")):
         raise CheckFailure("Manifest files are not sorted by UTF-8 path bytes.")
+
+
+def expected_assembled_inventory_from_git(
+    repo_root: Path,
+    commit: str,
+    destination: Path,
+) -> list[dict[str, Any]]:
+    fixture = create_fixture(repo_root, commit, destination)
+    plugin_root = fixture / ROOT_PLUGIN
+    for overlay_path in OVERLAY_PATHS:
+        source_root = fixture / overlay_path
+        if not source_root.is_dir() or source_root.is_symlink():
+            raise CheckFailure(f"Canonical overlay directory is missing from the Git archive: {overlay_path}")
+        overlay_sources = sorted(
+            (path for path in source_root.rglob("*") if path.is_file() or path.is_symlink()),
+            key=lambda path: path.relative_to(source_root).as_posix().encode("utf-8"),
+        )
+        if not any(path.suffix.lower() == ".php" for path in overlay_sources):
+            raise CheckFailure(f"Canonical overlay contains no runtime PHP modules: {overlay_path}")
+        for source in overlay_sources:
+            if source.is_symlink() or not stat.S_ISREG(source.lstat().st_mode):
+                raise CheckFailure(f"Canonical overlay contains a non-regular file: {source}")
+            mode = stat.S_IMODE(source.lstat().st_mode)
+            if mode not in (0o644, 0o755):
+                raise CheckFailure(f"Canonical overlay PHP module has an unsupported mode: {source}")
+            relative_path = source.relative_to(source_root)
+            destination_path = plugin_root / "includes" / relative_path
+            if destination_path.exists() or destination_path.is_symlink():
+                raise CheckFailure(f"Canonical overlay collides with a root plugin file: {relative_path}")
+            destination_path.parent.mkdir(parents=True, exist_ok=True)
+            destination_path.write_bytes(source.read_bytes())
+            destination_path.chmod(mode)
+
+    patch_path = fixture / PATCH_PATH
+    command(
+        ["git", "apply", "--unidiff-zero", f"--directory={ROOT_PLUGIN}", str(patch_path)],
+        cwd=fixture,
+    )
+
+    expected = []
+    for path in plugin_root.rglob("*"):
+        if path.is_dir() and not path.is_symlink():
+            continue
+        if path.is_symlink() or not stat.S_ISREG(path.lstat().st_mode):
+            raise CheckFailure(f"Expected assembled plugin contains a non-regular file: {path}")
+        mode = stat.S_IMODE(path.lstat().st_mode)
+        if mode not in (0o644, 0o755):
+            raise CheckFailure(f"Expected assembled plugin contains an unsupported mode: {path}")
+        relative_path = path.relative_to(plugin_root).as_posix()
+        contents = path.read_bytes()
+        expected.append(
+            {
+                "path": relative_path,
+                "mode": "100755" if mode == 0o755 else "100644",
+                "size": len(contents),
+                "sha256": sha256(contents),
+            }
+        )
+    expected.sort(key=lambda item: item["path"].encode("utf-8"))
+    return expected
+
+
+def canonical_manifest_bytes(manifest: dict[str, Any]) -> bytes:
+    return (json.dumps(manifest, ensure_ascii=False, sort_keys=True, indent=2) + "\n").encode("utf-8")
+
+
+def reject_duplicate_json_keys(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    result: dict[str, Any] = {}
+    for key, value in pairs:
+        if key in result:
+            raise CheckFailure(f"Manifest contains a duplicate JSON key: {key}")
+        result[key] = value
+    return result
+
+
+def verify_existing_output(
+    output_directory: Path,
+    *,
+    repo_root: Path,
+    commit: str,
+    requested_ref: str,
+    expected_inventory: list[dict[str, Any]] | None = None,
+    temporary_root: Path | None = None,
+) -> dict[str, Any]:
+    if output_directory.is_symlink() or not output_directory.is_dir():
+        raise CheckFailure(f"Output directory is missing or is a symbolic link: {output_directory}")
+    expected_names = {ARCHIVE_NAME, MANIFEST_NAME}
+    entries = list(output_directory.iterdir())
+    if {entry.name for entry in entries} != expected_names or len(entries) != len(expected_names):
+        raise CheckFailure("Output directory must contain exactly the archive and manifest files.")
+    for name in expected_names:
+        candidate = output_directory / name
+        if candidate.is_symlink() or not stat.S_ISREG(candidate.lstat().st_mode):
+            raise CheckFailure(f"Output entry is not a regular file: {candidate}")
+
+    manifest_path = output_directory / MANIFEST_NAME
+    manifest_bytes = manifest_path.read_bytes()
+    try:
+        manifest = json.loads(
+            manifest_bytes.decode("utf-8", "strict"),
+            object_pairs_hook=reject_duplicate_json_keys,
+        )
+    except (UnicodeDecodeError, json.JSONDecodeError) as error:
+        raise CheckFailure(f"Output manifest is not valid UTF-8 JSON: {error}") from error
+    if not isinstance(manifest, dict):
+        raise CheckFailure("Output manifest root must be a JSON object.")
+    if manifest_bytes != canonical_manifest_bytes(manifest):
+        raise CheckFailure("Output manifest bytes are not canonical JSON serialization.")
+
+    ensure_canonical_toolchain()
+    validate_manifest(
+        manifest,
+        repo_root=repo_root,
+        commit=commit,
+        requested_ref=requested_ref,
+    )
+    actual_inventory = verify_archive(output_directory / ARCHIVE_NAME, manifest)
+    if expected_inventory is None:
+        if temporary_root is None:
+            raise CheckFailure("Source-bound verification requires a temporary directory.")
+        expected_inventory = expected_assembled_inventory_from_git(
+            repo_root,
+            commit,
+            temporary_root / "expected-assembled-plugin",
+        )
+    if actual_inventory != expected_inventory:
+        raise CheckFailure("Archive inventory differs from the assembled source tree at the requested Git commit.")
+    return manifest
 
 
 def extract_fixture_archive(archive_bytes: bytes, destination: Path) -> None:
@@ -503,13 +700,16 @@ def tamper_archive(source_archive: Path, destination: Path) -> None:
     if not changed:
         raise CheckFailure("No regular file was available to tamper with.")
     raw_tar = io.BytesIO()
-    with tarfile.open(fileobj=raw_tar, mode="w", format=tarfile.PAX_FORMAT) as target:
+    with tarfile.open(
+        fileobj=raw_tar,
+        mode="w",
+        format=tarfile.PAX_FORMAT,
+        encoding="utf-8",
+        errors="strict",
+    ) as target:
         for info, contents in payloads:
             target.addfile(info, io.BytesIO(contents) if contents is not None else None)
-    compressed = io.BytesIO()
-    with gzip.GzipFile(fileobj=compressed, mode="wb", filename="", compresslevel=9, mtime=0) as target:
-        target.write(raw_tar.getvalue())
-    destination.write_bytes(compressed.getvalue())
+    destination.write_bytes(canonical_gzip_stored_deflate(raw_tar.getvalue()))
 
 
 def rewrite_archive(
@@ -1782,14 +1982,199 @@ def run_integrity_tamper_case(archive_path: Path, manifest: dict[str, Any], temp
     print("PASS negative case: modified artifact bytes disagree with manifest inventory")
 
 
+def run_unsupported_toolchain_case(builder: Path) -> None:
+    specification = importlib.util.spec_from_file_location("vgpc_builder_toolchain_test", builder)
+    if specification is None or specification.loader is None:
+        raise CheckFailure("Cannot load builder module for unsupported-toolchain test.")
+    module = importlib.util.module_from_spec(specification)
+    previous = sys.dont_write_bytecode
+    sys.dont_write_bytecode = True
+    sys.modules[specification.name] = module
+    try:
+        specification.loader.exec_module(module)
+    finally:
+        sys.modules.pop(specification.name, None)
+        sys.dont_write_bytecode = previous
+    guard = getattr(module, "ensure_canonical_toolchain", None)
+    if not callable(guard):
+        raise CheckFailure("Builder does not expose its canonical toolchain guard.")
+    try:
+        guard(implementation="CPython", version="3.14.5")
+    except module.BuildFailure as error:
+        if "unsupported canonical archive toolchain" not in str(error).lower():
+            raise CheckFailure(f"Unsupported toolchain failed for the wrong reason: {error}") from error
+    else:
+        raise CheckFailure("Builder accepted an unsupported canonical Python version.")
+    try:
+        guard(
+            implementation="CPython",
+            version="3.14.4",
+            tarfile_module_sha256="0" * 64,
+        )
+    except module.BuildFailure as error:
+        if "unsupported canonical archive toolchain" not in str(error).lower():
+            raise CheckFailure(f"Unsupported tarfile implementation failed for the wrong reason: {error}") from error
+    else:
+        raise CheckFailure("Builder accepted an unsupported tarfile implementation hash.")
+    print("PASS negative case: unsupported canonical archive toolchain is rejected")
+
+
+def run_exact_output_verification_cases(
+    *,
+    repo_root: Path,
+    commit: str,
+    requested_ref: str,
+    verified_output: Path,
+    temporary_root: Path,
+) -> None:
+    verifier = Path(__file__).resolve()
+    positive = command(
+        [
+            sys.executable,
+            str(verifier),
+            "--ref",
+            requested_ref,
+            "--verify-output",
+            str(verified_output),
+        ],
+        cwd=repo_root,
+        check=False,
+    )
+    if positive.returncode != 0:
+        raise CheckFailure(
+            "Exact-output verifier rejected an intact build:\n"
+            + (positive.stdout + positive.stderr).decode("utf-8", "replace")
+        )
+    positive_output = positive.stdout.decode("utf-8", "replace")
+    if f"source_commit={commit}" not in positive_output or "verified_output=" not in positive_output:
+        raise CheckFailure("Exact-output verifier did not report the verified commit and output directory.")
+    print("PASS exact-output case: intact artifact and manifest are verified without a rebuild")
+
+    tampered = temporary_root / "exact-output-tampered"
+    shutil.copytree(verified_output, tampered)
+    archive_path = tampered / ARCHIVE_NAME
+    archive_bytes = bytearray(archive_path.read_bytes())
+    archive_bytes[-1] ^= 0x01
+    archive_path.write_bytes(archive_bytes)
+    rejected = command(
+        [
+            sys.executable,
+            str(verifier),
+            "--ref",
+            requested_ref,
+            "--verify-output",
+            str(tampered),
+        ],
+        cwd=repo_root,
+        check=False,
+    )
+    combined = (rejected.stdout + rejected.stderr).decode("utf-8", "replace")
+    if rejected.returncode == 0 or "archive sha-256 does not match the manifest" not in combined.lower():
+        raise CheckFailure(f"Exact-output verifier accepted tampered archive bytes:\n{combined}")
+    print("PASS negative case: exact-output verification rejects a modified archive")
+
+    unexpected = temporary_root / "exact-output-extra-file"
+    shutil.copytree(verified_output, unexpected)
+    (unexpected / "unexpected.txt").write_text("not a canonical artifact\n", encoding="utf-8")
+    rejected = command(
+        [
+            sys.executable,
+            str(verifier),
+            "--ref",
+            requested_ref,
+            "--verify-output",
+            str(unexpected),
+        ],
+        cwd=repo_root,
+        check=False,
+    )
+    combined = (rejected.stdout + rejected.stderr).decode("utf-8", "replace")
+    if rejected.returncode == 0 or "output directory must contain exactly" not in combined.lower():
+        raise CheckFailure(f"Exact-output verifier accepted an extra output file:\n{combined}")
+    print("PASS negative case: exact-output verification rejects unlisted output files")
+
+    source_divergent = temporary_root / "exact-output-source-divergent"
+    shutil.copytree(verified_output, source_divergent)
+    divergent_archive = source_divergent / ARCHIVE_NAME
+    tamper_archive(verified_output / ARCHIVE_NAME, divergent_archive)
+    divergent_manifest_path = source_divergent / MANIFEST_NAME
+    divergent_manifest = json.loads(divergent_manifest_path.read_text(encoding="utf-8"))
+    divergent_records = []
+    with tarfile.open(divergent_archive, mode="r:gz") as archive:
+        for member in archive.getmembers():
+            if not member.isfile():
+                continue
+            stream = archive.extractfile(member)
+            if stream is None:
+                raise CheckFailure(f"Cannot read source-divergent fixture member: {member.name}")
+            contents = stream.read()
+            relative_path = PurePosixPath(member.name).relative_to(ROOT_PLUGIN).as_posix()
+            divergent_records.append(
+                {
+                    "path": relative_path,
+                    "mode": "100755" if member.mode == 0o755 else "100644",
+                    "size": len(contents),
+                    "sha256": sha256(contents),
+                }
+            )
+    divergent_records.sort(key=lambda item: item["path"].encode("utf-8"))
+    divergent_manifest["files"] = divergent_records
+    divergent_manifest["file_count"] = len(divergent_records)
+    divergent_manifest["tree_sha256"] = update_tree_hash(divergent_records)
+    divergent_manifest["archive_sha256"] = sha256(divergent_archive.read_bytes())
+    divergent_manifest_path.write_bytes(canonical_manifest_bytes(divergent_manifest))
+    rejected = command(
+        [
+            sys.executable,
+            str(verifier),
+            "--ref",
+            requested_ref,
+            "--verify-output",
+            str(source_divergent),
+        ],
+        cwd=repo_root,
+        check=False,
+    )
+    combined = (rejected.stdout + rejected.stderr).decode("utf-8", "replace")
+    expected_failure = "differs from the assembled source tree at the requested git commit"
+    if rejected.returncode == 0 or expected_failure not in combined.lower():
+        raise CheckFailure(f"Exact-output verifier accepted source-divergent archive bytes:\n{combined}")
+    print("PASS negative case: self-consistent archive and manifest cannot diverge from committed source")
+
+    extra_manifest_field = temporary_root / "exact-output-extra-manifest-field"
+    shutil.copytree(verified_output, extra_manifest_field)
+    extra_manifest_path = extra_manifest_field / MANIFEST_NAME
+    extra_manifest = json.loads(extra_manifest_path.read_text(encoding="utf-8"))
+    extra_manifest["build_host"] = "must-not-enter-canonical-manifest"
+    extra_manifest_path.write_bytes(canonical_manifest_bytes(extra_manifest))
+    rejected = command(
+        [
+            sys.executable,
+            str(verifier),
+            "--ref",
+            requested_ref,
+            "--verify-output",
+            str(extra_manifest_field),
+        ],
+        cwd=repo_root,
+        check=False,
+    )
+    combined = (rejected.stdout + rejected.stderr).decode("utf-8", "replace")
+    if rejected.returncode == 0 or "unexpected=['build_host']" not in combined:
+        raise CheckFailure(f"Exact-output verifier accepted an unrecognized manifest field:\n{combined}")
+    print("PASS negative case: exact-output verification rejects non-schema provenance fields")
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--ref", default="HEAD", help="Git ref resolved once for both builds (default: HEAD)")
+    parser.add_argument("--verify-output", help="Verify these existing artifact files without rebuilding")
     return parser.parse_args()
 
 
 def main() -> int:
     args = parse_args()
+    ensure_canonical_toolchain()
     repo_result = subprocess.run(
         ["git", "rev-parse", "--show-toplevel"],
         stdout=subprocess.PIPE,
@@ -1806,8 +2191,43 @@ def main() -> int:
     commit = resolve_commit(repo_root, args.ref)
     print(f"source_commit={commit}")
 
+    if args.verify_output is not None:
+        output = Path(args.verify_output)
+        if not output.is_absolute():
+            output = repo_root / output
+        with tempfile.TemporaryDirectory(prefix="vgpc-output-verify-") as temporary_name:
+            temporary_root = Path(temporary_name)
+            manifest = verify_existing_output(
+                output,
+                repo_root=repo_root,
+                commit=commit,
+                requested_ref=args.ref,
+                temporary_root=temporary_root,
+            )
+        manifest_path = output / MANIFEST_NAME
+        print(f"file_count={manifest['file_count']}")
+        print(f"tree_sha256={manifest['tree_sha256']}")
+        print(f"archive_sha256={manifest['archive_sha256']}")
+        print(f"manifest_sha256={sha256(manifest_path.read_bytes())}")
+        print(f"verified_output={output}")
+        return 0
+
+    print(f"python_implementation={platform.python_implementation()}")
+    print(f"python_version={platform.python_version()}")
+    print(f"tarfile_module_sha256={sha256(Path(tarfile.__file__).read_bytes())}")
+    print(f"archive_encoder_version={EXPECTED_BUILD_TOOLCHAIN['archive_encoder_version']}")
+    print("zlib_encoding=not-used")
+    print(f"zlib_build_version={zlib.ZLIB_VERSION}")
+    print(f"zlib_runtime_version={zlib.ZLIB_RUNTIME_VERSION}")
+    print(f"platform={platform.platform()}")
+
+    if crc32_ieee(b"123456789") != 0xCBF43926:
+        raise CheckFailure("Canonical gzip encoder CRC-32 implementation failed its standard test vector.")
+    print("PASS encoder case: CRC-32/IEEE standard test vector")
+
     with tempfile.TemporaryDirectory(prefix="vgpc-repro-") as temporary_name:
         temporary_root = Path(temporary_name)
+        run_unsupported_toolchain_case(builder)
         build_a = temporary_root / "build-a"
         build_b = temporary_root / "build-b"
 
@@ -1845,8 +2265,32 @@ def main() -> int:
             raise CheckFailure("Build A and B archive bytes differ.")
         if manifest_a.get("source_commit") != commit:
             raise CheckFailure("Manifest source_commit differs from the resolved verifier commit.")
-        verify_archive(archive_path_a, manifest_a)
-        verify_archive(archive_path_b, manifest_b)
+        expected_inventory = expected_assembled_inventory_from_git(
+            repo_root,
+            commit,
+            temporary_root / "expected-assembled-plugin",
+        )
+        verify_existing_output(
+            build_a,
+            repo_root=repo_root,
+            commit=commit,
+            requested_ref=args.ref,
+            expected_inventory=expected_inventory,
+        )
+        verify_existing_output(
+            build_b,
+            repo_root=repo_root,
+            commit=commit,
+            requested_ref=args.ref,
+            expected_inventory=expected_inventory,
+        )
+        run_exact_output_verification_cases(
+            repo_root=repo_root,
+            commit=commit,
+            requested_ref=args.ref,
+            verified_output=build_a,
+            temporary_root=temporary_root,
+        )
 
         for label, output in (("A", build_a), ("B", build_b)):
             manifest_path = output / MANIFEST_NAME
