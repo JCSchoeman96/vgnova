@@ -77,17 +77,6 @@ jobs:
         if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
         run: python3 site-code/bin/build-platform-core.py --ref "${GITHUB_SHA}" --output dist
 
-      - name: Upload canonical Platform Core artifact
-        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: voelgoed-platform-core-${{ github.sha }}
-          path: |
-            dist/voelgoed-platform-core.tar.gz
-            dist/voelgoed-platform-core.manifest.json
-          if-no-files-found: error
-          compression-level: 0
-
   platform_gate:
     name: VG Nova Platform Gate
     needs: [dashboard, source]
@@ -101,3 +90,34 @@ jobs:
         run: |
           printf 'dashboard=%s\nsource=%s\n' "$DASHBOARD_RESULT" "$SOURCE_RESULT"
           [[ "$DASHBOARD_RESULT" == success && "$SOURCE_RESULT" == success ]]
+
+  publish_platform_core:
+    name: Publish Platform Core artifact
+    needs: [platform_gate]
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.platform_gate.result == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the exact revision
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.5'
+          tools: none
+
+      - name: Build canonical Platform Core artifact
+        run: python3 site-code/bin/build-platform-core.py --ref "${GITHUB_SHA}" --output dist
+
+      - name: Upload canonical Platform Core artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: voelgoed-platform-core-${{ github.sha }}
+          path: |
+            dist/voelgoed-platform-core.tar.gz
+            dist/voelgoed-platform-core.manifest.json
+          if-no-files-found: error
+          compression-level: 0

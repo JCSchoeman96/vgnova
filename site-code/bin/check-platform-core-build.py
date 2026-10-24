@@ -1235,12 +1235,21 @@ def run_atomic_publish_case(
     commit: str,
     temporary_root: Path,
 ) -> None:
+    bytecode_cache = builder.parent / "__pycache__"
+    bytecode_cache_existed = bytecode_cache.exists()
     spec = importlib.util.spec_from_file_location("pe005_platform_builder_under_test", builder)
     if spec is None or spec.loader is None:
         raise CheckFailure("Cannot load the builder publication primitive for its race fixture.")
     module = importlib.util.module_from_spec(spec)
     sys.modules[spec.name] = module
-    spec.loader.exec_module(module)
+    previous_dont_write_bytecode = sys.dont_write_bytecode
+    sys.dont_write_bytecode = True
+    try:
+        spec.loader.exec_module(module)
+    finally:
+        sys.dont_write_bytecode = previous_dont_write_bytecode
+    if not bytecode_cache_existed and bytecode_cache.exists():
+        raise CheckFailure("Builder import unexpectedly created Python bytecode cache state.")
     publish = getattr(module, "atomic_publish_no_replace", None)
     if not callable(publish):
         raise CheckFailure("Builder has no atomic no-replace publication primitive.")

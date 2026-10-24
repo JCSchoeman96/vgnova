@@ -65,8 +65,8 @@
 
 - [ ] Add `python3 site-code/bin/check-platform-core-build.py --ref HEAD` to the canonical source script without removing the existing test suites, static checks, or the `git apply --unidiff-zero --check` applicability check.
 - [ ] Add a step in the existing `source` job after source checks. Run the builder with `${GITHUB_SHA}` only when the event is a push and `github.ref` is `refs/heads/main`.
-- [ ] Upload the tar.gz and manifest from that same `source` job with artifact name `voelgoed-platform-core-${{ github.sha }}` and `if-no-files-found: error`.
-- [ ] Keep `Dashboard checks`, `Canonical source checks`, `VG Nova Platform Gate`, and the gate dependency list unchanged. PR heads run the verifier but do not upload artifacts.
+- [ ] Add a separate publisher job that waits for `VG Nova Platform Gate` success, checks out `${{ github.sha }}`, rebuilds the exact commit, then uploads the tar.gz and manifest with artifact name `voelgoed-platform-core-${{ github.sha }}` and `if-no-files-found: error`.
+- [ ] Keep `Dashboard checks`, `Canonical source checks`, `VG Nova Platform Gate`, and the gate dependency list unchanged. PR heads run the verifier but do not upload artifacts. A source-job build also runs on main so artifact-creation failures fail `Canonical source checks`.
 
 ## Task 6: Update local artifact guidance
 
