@@ -25,12 +25,14 @@ if (is_file($admin_file)) {
 }
 
 require_once __DIR__ . '/EventParticipationRepositoryTest.php';
+require_once __DIR__ . '/EventParticipationSchemaTest.php';
 require_once __DIR__ . '/EventRoleSeederTest.php';
 require_once __DIR__ . '/EventParticipationServiceTest.php';
 require_once __DIR__ . '/EventParticipationAdminTest.php';
 
 $test_suites = [
     new EventParticipationRepositoryTest(),
+    new EventParticipationSchemaTest(),
     new EventRoleSeederTest(),
     new EventParticipationServiceTest(),
     new EventParticipationAdminTest(),

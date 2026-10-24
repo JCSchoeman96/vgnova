@@ -46,7 +46,11 @@ $tests = [
             $config['rewrite']['permalink_rewrite'] ?? null,
             'ACF must disable CPT permalinks using its no_permalink setting.'
         );
-        event_participation_test_assert_same(false, $config['query_var'] ?? null, 'The CPT must not register a query variable.');
+        event_participation_test_assert_same(
+            'none',
+            $config['query_var'] ?? null,
+            'The CPT must use ACF\'s disabled-query-var sentinel so WordPress registers query_var=false.'
+        );
         event_participation_test_assert_same(['title'], $config['supports'] ?? null, 'The CPT must support only the title.');
     },
     'event role is a private taxonomy with no public permalink' => static function (): void {
