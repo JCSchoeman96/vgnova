@@ -2,17 +2,9 @@ name: Voelgoed dashboard checks
 
 on:
   pull_request:
-    paths:
-      - 'voelgoed-platform-core/**'
-      - '.github/workflows/voelgoed-dashboard.yml'
-      - 'docs/development/unified-dashboard-qa.md'
   push:
     branches:
       - main
-      - 'feat/**'
-    paths:
-      - 'voelgoed-platform-core/**'
-      - '.github/workflows/voelgoed-dashboard.yml'
 
 permissions:
   contents: read
@@ -41,5 +33,56 @@ jobs:
         working-directory: voelgoed-platform-core
         run: ./bin/check.sh
 
-      - name: Check patch whitespace
-        run: git diff --check "${{ github.event.pull_request.base.sha || 'HEAD^' }}...${{ github.event.pull_request.head.sha || github.sha }}"
+      - name: Check event patch whitespace
+        if: ${{ always() }}
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PUSH_BEFORE_SHA: ${{ github.event.before }}
+          EVENT_SHA: ${{ github.sha }}
+        run: |
+          if [[ "$EVENT_NAME" == pull_request ]]; then
+            git diff --check "$PR_BASE_SHA...$PR_HEAD_SHA"
+          elif [[ "$EVENT_NAME" == push ]]; then
+            git diff --check "$PUSH_BEFORE_SHA...$EVENT_SHA"
+          else
+            printf 'Unsupported event: %s\n' "$EVENT_NAME" >&2
+            exit 1
+          fi
+
+  source:
+    name: Canonical source checks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the exact revision
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.5'
+          tools: none
+
+      - name: Install ShellCheck
+        run: sudo apt-get update && sudo apt-get install --yes shellcheck
+
+      - name: Run canonical source checks
+        run: ./site-code/bin/check-source.sh
+
+  platform_gate:
+    name: VG Nova Platform Gate
+    needs: [dashboard, source]
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require both checks to succeed
+        env:
+          DASHBOARD_RESULT: ${{ needs.dashboard.result }}
+          SOURCE_RESULT: ${{ needs.source.result }}
+        run: |
+          printf 'dashboard=%s\nsource=%s\n' "$DASHBOARD_RESULT" "$SOURCE_RESULT"
+          [[ "$DASHBOARD_RESULT" == success && "$SOURCE_RESULT" == success ]]
