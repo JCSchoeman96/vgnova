@@ -244,7 +244,7 @@ def patch_integration_markers(patch_text: str) -> tuple[list[str], list[str]]:
 def apply_patch(staging_root: Path, patch_path: Path, patch_text: str) -> None:
     patch_owned_paths(patch_text)
     check = subprocess.run(
-        ["git", "apply", "--check", f"--directory={ROOT_PATH}", str(patch_path)],
+        ["git", "apply", "--unidiff-zero", "--check", f"--directory={ROOT_PATH}", str(patch_path)],
         cwd=staging_root,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
@@ -253,7 +253,7 @@ def apply_patch(staging_root: Path, patch_path: Path, patch_text: str) -> None:
     if check.returncode != 0:
         fail("integration.patch failed git apply --check:\n" + check.stderr.decode("utf-8", "replace"))
     applied = subprocess.run(
-        ["git", "apply", f"--directory={ROOT_PATH}", str(patch_path)],
+        ["git", "apply", "--unidiff-zero", f"--directory={ROOT_PATH}", str(patch_path)],
         cwd=staging_root,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,

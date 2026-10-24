@@ -30,7 +30,7 @@ The plugin tree is assembled in a temporary directory. Source files and `integra
 
 Before applying the patch, the builder inspects the root plugin entrypoint and `includes/Plugin.php`. The base is rejected if it already contains a canonical overlay include path, an integration-owned Taxonomy/Event/Product import, or an integration-owned lifecycle registration. This prevents patching an already integrated bootstrap and recreating duplicate entries.
 
-The builder checks the tracked patch against the disposable tree with `git apply --check`, then applies it exactly once. A missing target, malformed or ambiguous hunk, failed check, or failed application aborts the build and produces no output artifact.
+The builder checks and applies this zero-context patch with `git apply --unidiff-zero`, using `--check` before the single application. A missing target, malformed or ambiguous hunk, failed check, or failed application aborts the build and produces no output artifact. The same applicability mode is used by the independent source-gate check.
 
 After application, the builder:
 

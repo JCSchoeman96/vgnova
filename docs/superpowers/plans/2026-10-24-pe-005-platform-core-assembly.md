@@ -43,7 +43,7 @@
 - [ ] Resolve `--ref` with `git rev-parse --verify --end-of-options <ref>^{commit}` and use the resulting full SHA for every `git ls-tree` and `git cat-file` read.
 - [ ] Read the root plugin, three overlay trees, integration patch, and builder blob from that commit. Require the executing builder bytes to match the commit's `builder_path` blob.
 - [ ] Reject unsupported Git object modes, invalid/unsafe paths, empty overlays, source collisions, missing inputs, and a root bootstrap that already contains integration-owned module includes, imports, or registrations.
-- [ ] Build a staging plugin from the root tree, overlay only the three owned module directories, then run `git apply --check` and `git apply` for the tracked patch exactly once.
+- [ ] Build a staging plugin from the root tree, overlay only the three owned module directories, then run `git apply --unidiff-zero --check` and apply the tracked patch exactly once.
 - [ ] Parse the resulting entrypoint and `Plugin.php`. Require every dynamic overlay PHP path once, every include path to exist, module imports and lifecycle registrations to be unique, and each registered module class to exist. Do not hard-code the historical module or lifecycle counts.
 - [ ] Require PHP major/minor 8.5 and run `php -l` on every staged PHP file.
 - [ ] Write the sorted file inventory, canonical tree hash, normalized PAX tar.gz, and manifest to a temporary sibling directory. Refuse an existing output path and atomically rename the completed output directory into place.
@@ -63,7 +63,7 @@
 
 **Files:** Modify `site-code/bin/check-source.sh` and `.github/workflows/voelgoed-dashboard.yml`.
 
-- [ ] Add `python3 site-code/bin/check-platform-core-build.py --ref HEAD` to the canonical source script without removing the existing test suites, static checks, or `git apply --check`.
+- [ ] Add `python3 site-code/bin/check-platform-core-build.py --ref HEAD` to the canonical source script without removing the existing test suites, static checks, or the `git apply --unidiff-zero --check` applicability check.
 - [ ] Add a step in the existing `source` job after source checks. Run the builder with `${GITHUB_SHA}` only when the event is a push and `github.ref` is `refs/heads/main`.
 - [ ] Upload the tar.gz and manifest from that same `source` job with artifact name `voelgoed-platform-core-${{ github.sha }}` and `if-no-files-found: error`.
 - [ ] Keep `Dashboard checks`, `Canonical source checks`, `VG Nova Platform Gate`, and the gate dependency list unchanged. PR heads run the verifier but do not upload artifacts.
