@@ -907,6 +907,10 @@ def run_negative_cases(
         ),
         ("splice-components-before-dispatch", "array_splice($this->components, 0);"),
         ("dynamic-components-reset-before-dispatch", "$this->{'components'} = [];"),
+        (
+            "variable-components-reset-before-dispatch",
+            "$property = 'components';\n        $this->$property = [];",
+        ),
     ):
         fixture = create_fixture(repo_root, commit, cases / case_name)
         plugin_class = fixture / ROOT_PLUGIN / "includes/Plugin.php"
@@ -942,6 +946,23 @@ def run_negative_cases(
         fixture=fixture,
         ref="HEAD",
         output=cases / "duplicate-module-class-declaration-output",
+        expected_text="Duplicate PHP declaration",
+    )
+
+    fixture = create_fixture(repo_root, commit, cases / "case-insensitive-duplicate-module-class")
+    duplicate_module = fixture / "site-code/voelgoed-platform-core/includes/Event/EventParticipationPairLock.php"
+    duplicate_module.write_text(
+        duplicate_module.read_text(encoding="utf-8")
+        + "\nnamespace Voelgoed\\PlatformCore\\Taxonomy;\nclass contenttopictaxonomy {}\n",
+        encoding="utf-8",
+    )
+    commit_fixture_changes(fixture, "fixture: case-insensitive duplicate PHP declaration")
+    expect_build_failure(
+        label="PHP case-insensitive duplicate declarations across assembled module files",
+        builder=builder,
+        fixture=fixture,
+        ref="HEAD",
+        output=cases / "case-insensitive-duplicate-module-class-output",
         expected_text="Duplicate PHP declaration",
     )
 
@@ -986,6 +1007,30 @@ def run_negative_cases(
         expected_text="Plugin.php",
     )
 
+    fixture = create_fixture(repo_root, commit, cases / "external-entrypoint-require")
+    entrypoint = fixture / ROOT_PLUGIN / "voelgoed-platform-core.php"
+    entrypoint_text = entrypoint.read_text(encoding="utf-8")
+    lifecycle_hook_marker = "add_action('plugins_loaded', static function (): void {"
+    if entrypoint_text.count(lifecycle_hook_marker) != 1:
+        raise CheckFailure("Cannot prepare external entrypoint require fixture.")
+    entrypoint.write_text(
+        entrypoint_text.replace(
+            lifecycle_hook_marker,
+            "require '/tmp/runtime.php';\n\n" + lifecycle_hook_marker,
+            1,
+        ),
+        encoding="utf-8",
+    )
+    commit_fixture_changes(fixture, "fixture: add external entrypoint require")
+    expect_build_failure(
+        label="entrypoint cannot load files outside the assembled artifact",
+        builder=builder,
+        fixture=fixture,
+        ref="HEAD",
+        output=cases / "external-entrypoint-require-output",
+        expected_text="entrypoint may only load the Plugin.php file and canonical module includes",
+    )
+
     fixture = create_fixture(repo_root, commit, cases / "registered-flag-starts-true")
     plugin_class = fixture / ROOT_PLUGIN / "includes/Plugin.php"
     plugin_text = plugin_class.read_text(encoding="utf-8")
@@ -1004,6 +1049,30 @@ def run_negative_cases(
         ref="HEAD",
         output=cases / "registered-flag-starts-true-output",
         expected_text="idempotency guard must start false",
+    )
+
+    fixture = create_fixture(repo_root, commit, cases / "constructor-skips-registration")
+    plugin_class = fixture / ROOT_PLUGIN / "includes/Plugin.php"
+    plugin_text = plugin_class.read_text(encoding="utf-8")
+    register_method = "    public function register(): void\n    {"
+    if plugin_text.count(register_method) != 1:
+        raise CheckFailure("Cannot prepare Plugin constructor lifecycle fixture.")
+    plugin_class.write_text(
+        plugin_text.replace(
+            register_method,
+            "    public function __construct()\n    {\n        $this->registered = true;\n    }\n\n" + register_method,
+            1,
+        ),
+        encoding="utf-8",
+    )
+    commit_fixture_changes(fixture, "fixture: skip registration in Plugin constructor")
+    expect_build_failure(
+        label="Plugin constructor cannot mark lifecycle registration complete",
+        builder=builder,
+        fixture=fixture,
+        ref="HEAD",
+        output=cases / "constructor-skips-registration-output",
+        expected_text="Plugin class must not define a constructor that bypasses lifecycle registration",
     )
 
     fixture = create_fixture(repo_root, commit, cases / "component-collection-reference-alias")
@@ -1093,6 +1162,22 @@ def run_negative_cases(
         ref="HEAD",
         output=cases / "entrypoint-return-before-lifecycle-hook-output",
         expected_text="can exit before the plugins_loaded lifecycle callback",
+    )
+
+    fixture = create_fixture(repo_root, commit, cases / "remove-lifecycle-hook-after-registration")
+    entrypoint = fixture / ROOT_PLUGIN / "voelgoed-platform-core.php"
+    entrypoint.write_text(
+        entrypoint.read_text(encoding="utf-8") + "\nremove_all_actions('plugins_loaded');\n",
+        encoding="utf-8",
+    )
+    commit_fixture_changes(fixture, "fixture: remove lifecycle hook after registration")
+    expect_build_failure(
+        label="entrypoint cannot remove the lifecycle hook after registering it",
+        builder=builder,
+        fixture=fixture,
+        ref="HEAD",
+        output=cases / "remove-lifecycle-hook-after-registration-output",
+        expected_text="plugins_loaded lifecycle callback must be the final executable statement",
     )
 
     fixture = create_fixture(repo_root, commit, cases / "binary-patch-path")

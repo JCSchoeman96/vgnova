@@ -308,6 +308,8 @@ def validate_plugins_loaded_hook(entrypoint: str) -> None:
         fail("Assembled entrypoint must register exactly one plugins_loaded lifecycle callback.")
 
     hook_index = hook_indexes[0]
+    if hook_index + len(expected) != len(tokens):
+        fail("The plugins_loaded lifecycle callback must be the final executable statement.")
     direct, brace_depth = is_first_statement_token(tokens, hook_index)
     if brace_depth != 0 or not direct:
         fail("The plugins_loaded lifecycle callback must be an unconditional top-level statement.")
@@ -350,6 +352,18 @@ def validate_plugins_loaded_hook(entrypoint: str) -> None:
 
 def validate_plugin_directory(entrypoint: str) -> None:
     tokens = significant_php_tokens(php_tokens(entrypoint, "assembled plugin directory constant"))
+    load_tokens = {
+        "T_INCLUDE",
+        "T_INCLUDE_ONCE",
+        "T_REQUIRE",
+        "T_REQUIRE_ONCE",
+    }
+    executable_loads = [token_name for token_name, _, _, _ in tokens if token_name in load_tokens]
+    if executable_loads.count("T_REQUIRE_ONCE") != 2 or any(
+        token_name != "T_REQUIRE_ONCE" for token_name in executable_loads
+    ):
+        fail("The entrypoint may only load the Plugin.php file and canonical module includes.")
+
     expected_statements = (
         (
             "VGPC_PLUGIN_DIR definition",
@@ -767,6 +781,7 @@ def has_unclosed_alternate_control_scope(
 
 def php_classes(module_root: Path) -> dict[str, Path]:
     classes: dict[str, Path] = {}
+    classes_by_casefold: dict[str, tuple[str, Path]] = {}
     declaration_tokens = {"T_CLASS", "T_INTERFACE", "T_TRAIT", "T_ENUM"}
     for path in module_root.rglob("*.php"):
         contents = text_file(path, f"assembled module {path}")
@@ -821,12 +836,15 @@ def php_classes(module_root: Path) -> dict[str, Path]:
                                 f"in assembled module {path}."
                             )
                         qualified = qualified.lstrip("\\")
-                        if qualified in classes:
+                        canonical_name = qualified.casefold()
+                        if canonical_name in classes_by_casefold:
+                            previous_name, previous_path = classes_by_casefold[canonical_name]
                             fail(
-                                f"Duplicate PHP declaration {qualified} in assembled files "
-                                f"{classes[qualified]} and {path}."
+                                f"Duplicate PHP declaration {qualified} (case-insensitive match for {previous_name}) "
+                                f"in assembled files {previous_path} and {path}."
                             )
                         classes[qualified] = path
+                        classes_by_casefold[canonical_name] = (qualified, path)
             if token_text == "{":
                 brace_depth += 1
             elif token_text == "}":
@@ -1061,6 +1079,19 @@ def validate_registration_flag(source: str) -> None:
         fail("Plugin lifecycle idempotency guard must start false.")
 
     class_members = tokens[class_open + 1:class_close]
+    member_depth = 0
+    for token_name, token_text, _, _ in class_members:
+        if (
+            member_depth == 0
+            and token_name == "T_STRING"
+            and token_text.casefold() == "__construct"
+        ):
+            fail("Plugin class must not define a constructor that bypasses lifecycle registration.")
+        if token_text == "{":
+            member_depth += 1
+        elif token_text == "}":
+            member_depth = max(0, member_depth - 1)
+
     expected = [
         (token_name, token_text)
         for token_name, token_text, _, _ in significant_php_tokens(
@@ -1280,6 +1311,13 @@ def validate_assembled_bootstrap(
             [("T_VARIABLE", "$this"), ("T_OBJECT_OPERATOR", "->"), (None, "{")],
         ):
             fail("The component collection cannot be accessed after lifecycle registration before dispatch.")
+        if (
+            index + 2 < len(method_tokens)
+            and method_tokens[index][0:2] == ("T_VARIABLE", "$this")
+            and method_tokens[index + 1][0:2] == ("T_OBJECT_OPERATOR", "->")
+            and method_tokens[index + 2][0] == "T_VARIABLE"
+        ):
+            fail("The component collection cannot be accessed after lifecycle registration before dispatch.")
         if token_matches(method_tokens, index, component_reset) and not is_safe_root_component_assignment(index):
             fail("The component collection cannot be accessed after lifecycle registration before dispatch.")
 
@@ -1358,9 +1396,10 @@ def validate_assembled_bootstrap(
         imported_classes[short_name] = qualified.split(" as ", 1)[0].strip()
 
     declared_classes = php_classes(plugin_root / "includes")
+    declared_class_names = {name.casefold() for name in declared_classes}
     for _, class_name in registrations:
         resolved_name = imported_classes.get(class_name, class_name)
-        if resolved_name not in declared_classes:
+        if resolved_name.casefold() not in declared_class_names:
             fail(f"Lifecycle registration class has no matching assembled module declaration: {class_name}")
 
 
