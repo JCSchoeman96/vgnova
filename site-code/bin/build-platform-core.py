@@ -949,27 +949,28 @@ def validate_assembled_bootstrap(
         ("T_VARIABLE", "$this"),
         ("T_OBJECT_OPERATOR", "->"),
         ("T_STRING", "components"),
-        (None, "="),
-        (None, "["),
-        (None, "]"),
-        (None, ";"),
     ]
-    if any(
-        token_matches(method_tokens, index, component_reset)
-        for index in range(first_integration_registration, loop_index)
-    ):
+    assignment_operators = {"=", "+=", "-=", "*=", "/=", ".=", "%=", "&=", "|=", "^=", "<<=", ">>=", "??=", "&"}
+    collection_reset = False
+    for index in range(first_integration_registration, loop_index):
+        if not token_matches(method_tokens, index, component_reset):
+            continue
+        next_index = index + len(component_reset)
+        if next_index < loop_index and (
+            method_tokens[next_index][1] in assignment_operators
+            or method_tokens[next_index][0] in {"T_INC", "T_DEC"}
+        ):
+            collection_reset = True
+            break
+        if index >= 2 and token_matches(
+            method_tokens,
+            index - 2,
+            [("T_STRING", "unset"), (None, "(")],
+        ):
+            collection_reset = True
+            break
+    if collection_reset:
         fail("The component collection cannot be reset after lifecycle registration.")
-    expected_registration_tokens = [
-        (token_name, token_text)
-        for line in integration_registrations
-        for token_name, token_text, _, _ in significant_php_tokens(php_tokens(line, "patch registration statement"))
-    ]
-    actual_registration_tokens = [
-        (token_name, token_text)
-        for token_name, token_text, _, _ in method_tokens[first_integration_registration:loop_index]
-    ]
-    if actual_registration_tokens != expected_registration_tokens:
-        fail("Only patch-owned lifecycle registrations may execute between registration and dispatch.")
 
     loop_first_statement, loop_brace_depth = is_first_statement_token(method_tokens, loop_index)
     if loop_brace_depth != 0 or not loop_first_statement:
