@@ -1,0 +1,1 @@
+Temporary source-path trigger fixture for PE-003. This file has no runtime or domain behavior and will not be merged.
