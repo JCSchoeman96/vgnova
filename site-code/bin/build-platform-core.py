@@ -319,6 +319,105 @@ def php_classes(module_root: Path) -> set[str]:
     return classes
 
 
+def php_registration_contexts(method_body: str, registration_lines: list[str]) -> dict[str, tuple[int, bool]]:
+    tokenizer = r"""
+$source = stream_get_contents(STDIN);
+$tokens = token_get_all("<?php\n" . $source);
+$result = [];
+foreach ($tokens as $token) {
+    if (is_array($token)) {
+        $result[] = [token_name($token[0]), $token[1]];
+    } else {
+        $result[] = [null, $token];
+    }
+}
+echo json_encode($result, JSON_THROW_ON_ERROR);
+"""
+    source_bytes = method_body.encode("utf-8")
+    prefix_bytes = len(b"<?php\n")
+    targets: dict[int, str] = {}
+    for line in registration_lines:
+        line_bytes = line.encode("utf-8")
+        position = source_bytes.find(line_bytes)
+        if position < 0:
+            fail(f"Cannot locate lifecycle registration for control-flow validation: {line}")
+        call_offset = len(line_bytes) - len(line_bytes.lstrip())
+        targets[position + call_offset] = line
+
+    result = subprocess.run(
+        ["php", "-r", tokenizer],
+        input=source_bytes,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=False,
+    )
+    if result.returncode != 0:
+        fail(
+            "PHP tokenizer could not inspect lifecycle registration control flow: "
+            + result.stderr.decode("utf-8", "replace")
+        )
+    try:
+        tokens = json.loads(result.stdout.decode("utf-8", "strict"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as error:
+        fail(f"PHP tokenizer returned invalid token data: {error}")
+
+    contexts: dict[str, tuple[int, bool]] = {}
+    brace_depth = 0
+    parenthesis_depth = 0
+    pending_control = False
+    offset = -prefix_bytes
+    control_tokens = {
+        "T_IF",
+        "T_ELSEIF",
+        "T_ELSE",
+        "T_FOR",
+        "T_FOREACH",
+        "T_WHILE",
+        "T_DO",
+        "T_SWITCH",
+        "T_CASE",
+        "T_DEFAULT",
+        "T_TRY",
+        "T_CATCH",
+        "T_FINALLY",
+        "T_MATCH",
+        "T_FN",
+        "T_FUNCTION",
+        "T_DECLARE",
+    }
+    alternate_end_tokens = {"T_ENDIF", "T_ENDFOR", "T_ENDFOREACH", "T_ENDWHILE", "T_ENDSWITCH", "T_ENDDECLARE"}
+
+    for token_name, token_text in tokens:
+        token_bytes = token_text.encode("utf-8")
+        token_end = offset + len(token_bytes)
+        for target, line in targets.items():
+            if offset <= target < token_end:
+                contexts[line] = (brace_depth, pending_control)
+
+        if token_name in control_tokens and brace_depth == 0:
+            pending_control = True
+        elif token_name in alternate_end_tokens and brace_depth == 0:
+            pending_control = False
+        elif token_text == "(":
+            parenthesis_depth += 1
+        elif token_text == ")":
+            parenthesis_depth = max(0, parenthesis_depth - 1)
+        elif token_text == "{":
+            brace_depth += 1
+        elif token_text == "}":
+            brace_depth = max(0, brace_depth - 1)
+            if brace_depth == 0:
+                pending_control = False
+        elif token_text == ";" and brace_depth == 0 and parenthesis_depth == 0:
+            pending_control = False
+        offset = token_end
+
+    if set(contexts) != set(registration_lines):
+        missing = sorted(set(registration_lines) - set(contexts))
+        fail(f"PHP tokenizer could not locate lifecycle registrations: {missing}")
+    return contexts
+
+
 def validate_assembled_bootstrap(
     plugin_root: Path,
     runtime_php_paths: list[str],
@@ -385,6 +484,14 @@ def validate_assembled_bootstrap(
     lifecycle_setup = idempotency_guard.sub("", lifecycle_setup, count=1)
     if re.search(r"\b(?:return|throw|exit|die)\b", lifecycle_setup):
         fail("Plugin::register() can exit before lifecycle registrations are dispatched.")
+
+    registration_contexts = php_registration_contexts(register_method_body, integration_registrations)
+    for line, (brace_depth, pending_control) in registration_contexts.items():
+        if brace_depth != 0 or pending_control:
+            fail(
+                "Integration lifecycle registrations must be unconditional direct statements "
+                f"in Plugin::register(): {line}"
+            )
 
     registration_pattern = re.compile(
         r"register_component\s*\(\s*'([^']+)'\s*,\s*([A-Za-z_\\][A-Za-z0-9_\\]*)::class",

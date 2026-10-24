@@ -762,6 +762,45 @@ def run_negative_cases(
         expected_text="exit before",
     )
 
+    fixture = create_fixture(repo_root, commit, cases / "conditional-lifecycle")
+    patch_file = fixture / PATCH_PATH
+    patch_lines = patch_file.read_text(encoding="utf-8").splitlines(keepends=True)
+    first_registration = next(
+        (
+            index
+            for index, line in enumerate(patch_lines)
+            if line.startswith("+        $this->register_component('content_topic_taxonomy'")
+        ),
+        None,
+    )
+    last_registration = next(
+        (
+            index
+            for index, line in enumerate(patch_lines)
+            if line.startswith("+        $this->register_component('person_products_bricks'")
+        ),
+        None,
+    )
+    if first_registration is None or last_registration is None:
+        raise CheckFailure("Cannot prepare conditional-lifecycle fixture.")
+    hunk_index = max(index for index in range(first_registration) if patch_lines[index].startswith("@@ "))
+    hunk_match = re.match(r"(@@ -\d+,0 \+\d+,)(\d+)( @@.*\n?)$", patch_lines[hunk_index])
+    if hunk_match is None:
+        raise CheckFailure("Cannot update conditional-lifecycle patch hunk count.")
+    patch_lines[hunk_index] = f"{hunk_match.group(1)}{int(hunk_match.group(2)) + 2}{hunk_match.group(3)}"
+    patch_lines.insert(first_registration, "+        if (false) {\n")
+    patch_lines.insert(last_registration + 2, "+        }\n")
+    patch_file.write_text("".join(patch_lines), encoding="utf-8")
+    commit_fixture_changes(fixture, "fixture: make lifecycle registrations conditional")
+    expect_build_failure(
+        label="conditional lifecycle registrations",
+        builder=builder,
+        fixture=fixture,
+        ref="HEAD",
+        output=cases / "conditional-lifecycle-output",
+        expected_text="unconditional",
+    )
+
     fixture = create_fixture(repo_root, commit, cases / "unsafe-output")
     protected_source = fixture / ROOT_PLUGIN / "voelgoed-platform-core.php"
     original_sha = sha256(protected_source.read_bytes())

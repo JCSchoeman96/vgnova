@@ -37,7 +37,7 @@ After application, the builder:
 1. Enumerates the tracked runtime PHP files under the three overlay directories from the resolved Git tree.
 2. Parses the plugin entrypoint's include list and requires each enumerated overlay PHP path exactly once.
 3. Requires every entrypoint include path to name an existing assembled file and rejects duplicate paths.
-4. Rejects duplicate integration-owned imports and lifecycle registrations. Each registration must resolve to one class declared in an overlaid module file and occur inside `Plugin::register()` before the component dispatch loop. The setup region must not exit before that loop.
+4. Rejects duplicate integration-owned imports and lifecycle registrations. Each registration must resolve to one class declared in an overlaid module file and occur as an unconditional, direct statement inside `Plugin::register()` before the component dispatch loop. The setup region must not exit before that loop.
 5. Leaves lifecycle ownership to the tracked patch and existing subsystem integration tests. It does not infer lifecycle status from the total number of PHP files or hard-code historical module counts.
 6. Lints every assembled PHP file with the PHP 8.5 CLI. A different PHP major/minor version or any syntax error fails the build.
 
@@ -131,7 +131,7 @@ The manifest itself is outside the plugin tree and cannot recursively contribute
 
 It inspects the tar without extracting unsafe paths, requires exactly one top-level plugin directory and only directory/regular-file entries, and independently recomputes the manifest inventory, implied directory set, tree hash, and archive hash. It rejects unmanifested empty directories, invalid paths, and non-normalized gzip header fields. A changed archive file fails verification even if an attacker updates the manifest's `archive_sha256`, because the per-file digest and tree digest must still match.
 
-Negative fixtures use temporary Git repositories made from committed assembly inputs. They prove failure for a non-applying patch, an already-integrated base bootstrap, a missing overlay PHP file, a patch include to a missing file, duplicate integration bootstrap entries, lifecycle registrations that are unreachable or outside the registration method, an existing or concurrently appearing output destination, a deleted output sentinel, a malformed archive header, unmanifested empty directories, CR/LF paths, and a modified artifact. The verifier checks that fixture inputs remain unchanged and that all temporary directories are removed.
+Negative fixtures use temporary Git repositories made from committed assembly inputs. They prove failure for a non-applying patch, an already-integrated base bootstrap, a missing overlay PHP file, a patch include to a missing file, duplicate integration bootstrap entries, lifecycle registrations that are unreachable, conditional, or outside the registration method, an existing or concurrently appearing output destination, a deleted output sentinel, a malformed archive header, unmanifested empty directories, CR/LF paths, and a modified artifact. The verifier checks that fixture inputs remain unchanged and that all temporary directories are removed.
 
 ## Source gate and main publication
 
