@@ -717,8 +717,8 @@ def has_unclosed_alternate_control_scope(
     return bool(active)
 
 
-def php_classes(module_root: Path) -> set[str]:
-    classes: set[str] = set()
+def php_classes(module_root: Path) -> dict[str, Path]:
+    classes: dict[str, Path] = {}
     declaration_tokens = {"T_CLASS", "T_INTERFACE", "T_TRAIT", "T_ENUM"}
     for path in module_root.rglob("*.php"):
         contents = text_file(path, f"assembled module {path}")
@@ -772,7 +772,13 @@ def php_classes(module_root: Path) -> set[str]:
                                 f"Class declaration {qualified} must be an unconditional namespace-scope declaration "
                                 f"in assembled module {path}."
                             )
-                        classes.add(qualified.lstrip("\\"))
+                        qualified = qualified.lstrip("\\")
+                        if qualified in classes:
+                            fail(
+                                f"Duplicate PHP declaration {qualified} in assembled files "
+                                f"{classes[qualified]} and {path}."
+                            )
+                        classes[qualified] = path
             if token_text == "{":
                 brace_depth += 1
             elif token_text == "}":
