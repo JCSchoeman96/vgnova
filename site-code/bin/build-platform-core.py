@@ -267,11 +267,13 @@ def patch_owned_paths(patch_text: str) -> set[str]:
                 fail("integration.patch has an unsupported new-file header.")
             new_paths.append(match.group(1))
 
-    paths = set(diff_paths)
-    if paths != allowed or len(diff_paths) != len(allowed):
+    paths = set(diff_paths) | set(old_paths) | set(new_paths)
+    if paths != allowed:
         fail(f"integration.patch may change only {sorted(allowed)}; it names {sorted(paths)}.")
     if set(old_paths) != allowed or set(new_paths) != allowed or len(old_paths) != len(allowed) or len(new_paths) != len(allowed):
         fail("integration.patch file headers do not match its two allowlisted diff sections.")
+    if diff_paths:
+        fail("Extended Git diff sections are not supported in integration.patch.")
     if "GIT binary patch" in patch_text or "Binary files " in patch_text:
         fail("Binary patch sections are not supported in integration.patch.")
     return paths
