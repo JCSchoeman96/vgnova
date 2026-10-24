@@ -927,6 +927,34 @@ def run_negative_cases(
             expected_text="component collection cannot be accessed after lifecycle registration",
         )
 
+    fixture = create_fixture(repo_root, commit, cases / "component-collection-reference-alias")
+    plugin_class = fixture / ROOT_PLUGIN / "includes/Plugin.php"
+    plugin_text = plugin_class.read_text(encoding="utf-8")
+    first_registration = "        $cache_policy = new CachePolicy();"
+    dispatch = "        foreach ($this->components as $component) {"
+    if plugin_text.count(first_registration) != 1 or plugin_text.count(dispatch) != 1:
+        raise CheckFailure("Cannot prepare component collection reference-alias fixture.")
+    plugin_text = plugin_text.replace(
+        first_registration,
+        "        $registered_components =& $this->components;\n" + first_registration,
+        1,
+    )
+    plugin_text = plugin_text.replace(
+        dispatch,
+        "        $registered_components = [];\n\n" + dispatch,
+        1,
+    )
+    plugin_class.write_text(plugin_text, encoding="utf-8")
+    commit_fixture_changes(fixture, "fixture: alias and clear the component collection")
+    expect_build_failure(
+        label="component collection cannot be cleared through a reference alias",
+        builder=builder,
+        fixture=fixture,
+        ref="HEAD",
+        output=cases / "component-collection-reference-alias-output",
+        expected_text="component collection cannot be exposed by reference",
+    )
+
     fixture = create_fixture(repo_root, commit, cases / "component-registration-helper-returns")
     plugin_class = fixture / ROOT_PLUGIN / "includes/Plugin.php"
     plugin_text = plugin_class.read_text(encoding="utf-8")
