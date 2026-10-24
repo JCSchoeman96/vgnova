@@ -107,6 +107,7 @@ def verify_archive(archive_path: Path, manifest: dict[str, Any]) -> None:
     seen_names: set[str] = set()
     roots: set[str] = set()
     entry_order: list[str] = []
+    canonical_entries: list[tuple[str, bool, int, bytes | None]] = []
 
     try:
         with tarfile.open(archive_path, mode="r:gz") as archive:
@@ -131,6 +132,7 @@ def verify_archive(archive_path: Path, manifest: dict[str, Any]) -> None:
                     if member.mode != 0o755:
                         raise CheckFailure(f"Non-normalized directory mode: {member.name}")
                     directory_names.add(path.as_posix())
+                    canonical_entries.append((member.name, True, member.mode, None))
                     continue
 
                 if not member.isfile():
@@ -144,6 +146,7 @@ def verify_archive(archive_path: Path, manifest: dict[str, Any]) -> None:
                 if stream is None:
                     raise CheckFailure(f"Cannot read archive file: {member.name}")
                 contents = stream.read()
+                canonical_entries.append((member.name, False, member.mode, contents))
                 relative = PurePosixPath(*path.parts[1:]).as_posix()
                 actual_files.append(
                     {
@@ -156,6 +159,26 @@ def verify_archive(archive_path: Path, manifest: dict[str, Any]) -> None:
     except (OSError, tarfile.TarError) as error:
         raise CheckFailure(f"Cannot read canonical tar.gz archive: {error}") from error
 
+    canonical_tar = io.BytesIO()
+    with tarfile.open(fileobj=canonical_tar, mode="w", format=tarfile.PAX_FORMAT) as writer:
+        for name, is_directory, mode, contents in canonical_entries:
+            info = tarfile.TarInfo(name)
+            info.type = tarfile.DIRTYPE if is_directory else tarfile.REGTYPE
+            info.mode = mode
+            info.uid = 0
+            info.gid = 0
+            info.uname = ""
+            info.gname = ""
+            info.mtime = 0
+            info.size = len(contents) if contents is not None else 0
+            writer.addfile(info, io.BytesIO(contents) if contents is not None else None)
+    try:
+        raw_archive = gzip.decompress(archive_bytes)
+    except OSError as error:
+        raise CheckFailure(f"Cannot decompress canonical tar.gz archive: {error}") from error
+    if raw_archive != canonical_tar.getvalue():
+        raise CheckFailure("Tar metadata or PAX fields differ from canonical tar encoding.")
+
     if roots != {ROOT_PLUGIN}:
         raise CheckFailure(f"Archive must contain only {ROOT_PLUGIN}/ at its top level.")
     if ROOT_PLUGIN not in directory_names:
@@ -166,6 +189,13 @@ def verify_archive(archive_path: Path, manifest: dict[str, Any]) -> None:
     expected_files = manifest.get("files")
     if not isinstance(expected_files, list) or not all(isinstance(item, dict) for item in expected_files):
         raise CheckFailure("Manifest files must be an array of file records.")
+    for index, record in enumerate(expected_files):
+        if type(record.get("size")) is not int or record["size"] < 0:
+            raise CheckFailure(f"Manifest file record {index} size must be a non-negative integer.")
+        if not isinstance(record.get("mode"), str) or record["mode"] not in ("100644", "100755"):
+            raise CheckFailure(f"Manifest file record {index} mode is unsupported.")
+        if not isinstance(record.get("sha256"), str) or re.fullmatch(r"[0-9a-f]{64}", record["sha256"]) is None:
+            raise CheckFailure(f"Manifest file record {index} sha256 is invalid.")
     expected_directory_names = {ROOT_PLUGIN}
     for record in expected_files:
         relative_path = record.get("path")
@@ -189,7 +219,7 @@ def verify_archive(archive_path: Path, manifest: dict[str, Any]) -> None:
         raise CheckFailure("Archive entries are not in the documented deterministic order.")
     if actual_files != expected_files:
         raise CheckFailure("Archive file inventory, mode, size, or file hash differs from the manifest.")
-    if manifest.get("file_count") != len(actual_files):
+    if type(manifest.get("file_count")) is not int or manifest["file_count"] != len(actual_files):
         raise CheckFailure("Manifest file_count differs from the archive inventory.")
 
     canonical_lines = b"".join(
@@ -238,6 +268,8 @@ def validate_manifest(
         "builder_path": BUILDER_PATH,
     }
     for key, expected_value in expected.items():
+        if key == "schema_version" and type(manifest.get(key)) is not int:
+            raise CheckFailure("Manifest schema_version must be an integer.")
         if manifest.get(key) != expected_value:
             raise CheckFailure(f"Manifest field {key!r} differs from its contract value.")
     for field in ("integration_patch_sha256", "builder_sha256", "tree_sha256", "archive_sha256"):
@@ -250,11 +282,21 @@ def validate_manifest(
         result = command(["git", "show", f"{commit}:{source_path}"], cwd=repo_root)
         if sha256(result.stdout) != manifest[field]:
             raise CheckFailure(f"Manifest {field} does not hash the committed source blob {source_path}.")
+    if type(manifest["file_count"]) is not int or manifest["file_count"] < 0:
+        raise CheckFailure("Manifest file_count must be a non-negative integer.")
     if not isinstance(manifest["files"], list) or manifest["file_count"] != len(manifest["files"]):
         raise CheckFailure("Manifest file_count does not match its files array.")
-    paths = [record.get("path") for record in manifest["files"] if isinstance(record, dict)]
-    if len(paths) != len(manifest["files"]):
-        raise CheckFailure("Manifest files contains a non-object record.")
+    paths = []
+    for index, record in enumerate(manifest["files"]):
+        if not isinstance(record, dict):
+            raise CheckFailure("Manifest files contains a non-object record.")
+        if type(record.get("size")) is not int or record["size"] < 0:
+            raise CheckFailure(f"Manifest file record {index} size must be a non-negative integer.")
+        if not isinstance(record.get("mode"), str) or record["mode"] not in ("100644", "100755"):
+            raise CheckFailure(f"Manifest file record {index} mode is unsupported.")
+        if not isinstance(record.get("sha256"), str) or re.fullmatch(r"[0-9a-f]{64}", record["sha256"]) is None:
+            raise CheckFailure(f"Manifest file record {index} sha256 is invalid.")
+        paths.append(record.get("path"))
     for path in paths:
         if not isinstance(path, str):
             raise CheckFailure("Manifest file path must be a string.")
@@ -428,10 +470,12 @@ def rewrite_archive(
     *,
     extra_directory: str | None = None,
     rename_first_file: str | None = None,
+    pax_headers: dict[str, str] | None = None,
 ) -> str | None:
     directories: list[tarfile.TarInfo] = []
     files: list[tuple[tarfile.TarInfo, bytes]] = []
     renamed_to: str | None = None
+    pax_headers_added = False
     with tarfile.open(source_archive, mode="r:gz") as source:
         for member in source.getmembers():
             info = tarfile.TarInfo(member.name)
@@ -450,6 +494,9 @@ def rewrite_archive(
             if stream is None:
                 raise CheckFailure(f"Cannot read file while rewriting archive fixture: {member.name}")
             contents = stream.read()
+            if pax_headers is not None and not pax_headers_added:
+                info.pax_headers = dict(pax_headers)
+                pax_headers_added = True
             if rename_first_file is not None and renamed_to is None:
                 info.name = rename_first_file
                 renamed_to = rename_first_file
@@ -509,6 +556,30 @@ def expect_archive_rejected(
     print(f"PASS negative case: {label}")
 
 
+def expect_manifest_rejected(
+    *,
+    label: str,
+    manifest: dict[str, Any],
+    repo_root: Path,
+    commit: str,
+    requested_ref: str,
+    expected_text: str,
+) -> None:
+    try:
+        validate_manifest(
+            manifest,
+            repo_root=repo_root,
+            commit=commit,
+            requested_ref=requested_ref,
+        )
+    except CheckFailure as error:
+        if expected_text.lower() not in str(error).lower():
+            raise CheckFailure(f"{label} was rejected for the wrong reason: {error}") from error
+    else:
+        raise CheckFailure(f"Malformed manifest passed validation: {label}")
+    print(f"PASS negative case: {label}")
+
+
 def run_verifier_hardening_cases(
     *,
     archive_path: Path,
@@ -528,6 +599,21 @@ def run_verifier_hardening_cases(
         archive=gzip_tamper,
         manifest=gzip_manifest,
         expected_text="gzip header",
+    )
+
+    pax_archive = temporary_root / "pax-metadata-tamper.tar.gz"
+    rewrite_archive(
+        archive_path,
+        pax_archive,
+        pax_headers={"comment": "unexpected metadata"},
+    )
+    pax_manifest = json.loads(json.dumps(manifest))
+    pax_manifest["archive_sha256"] = sha256(pax_archive.read_bytes())
+    expect_archive_rejected(
+        label="unexpected PAX metadata is rejected",
+        archive=pax_archive,
+        manifest=pax_manifest,
+        expected_text="canonical tar encoding",
     )
 
     extra_directory_archive = temporary_root / "unmanifested-directory.tar.gz"
@@ -582,6 +668,46 @@ def run_verifier_hardening_cases(
     else:
         raise CheckFailure("Newline-bearing manifest path passed schema validation.")
     print("PASS negative case: newline-bearing manifest path is rejected")
+
+    boolean_schema_manifest = json.loads(json.dumps(manifest))
+    boolean_schema_manifest["schema_version"] = True
+    expect_manifest_rejected(
+        label="boolean schema_version is rejected",
+        manifest=boolean_schema_manifest,
+        repo_root=repo_root,
+        commit=commit,
+        requested_ref=manifest["source_ref_requested"],
+        expected_text="schema_version must be an integer",
+    )
+
+    boolean_count_manifest = json.loads(json.dumps(manifest))
+    boolean_count_manifest["files"] = boolean_count_manifest["files"][:1]
+    boolean_count_manifest["file_count"] = True
+    expect_manifest_rejected(
+        label="boolean file_count is rejected",
+        manifest=boolean_count_manifest,
+        repo_root=repo_root,
+        commit=commit,
+        requested_ref=manifest["source_ref_requested"],
+        expected_text="file_count must be a non-negative integer",
+    )
+
+    boolean_size_manifest = json.loads(json.dumps(manifest))
+    boolean_size_manifest["files"][0]["size"] = True
+    expect_manifest_rejected(
+        label="boolean manifest file size is rejected",
+        manifest=boolean_size_manifest,
+        repo_root=repo_root,
+        commit=commit,
+        requested_ref=manifest["source_ref_requested"],
+        expected_text="size must be a non-negative integer",
+    )
+    expect_archive_rejected(
+        label="boolean archive inventory file size is rejected",
+        archive=archive_path,
+        manifest=boolean_size_manifest,
+        expected_text="size must be a non-negative integer",
+    )
 
 
 def run_output_sentinel_guard_case(
