@@ -195,7 +195,7 @@ $tests = [
         editorial_dimensions_test_assert_same(1, (int) ($collection['save_terms'] ?? 0), 'Collection selections must save taxonomy relationships.');
         editorial_dimensions_test_assert_same(1, (int) ($collection['load_terms'] ?? 0), 'Collection selections must load taxonomy relationships.');
     },
-    'the shared source contains the editorial and Person ACF definitions' => static function (): void {
+    'the shared source contains the approved Event, editorial, Person, and Product Contribution ACF definitions' => static function (): void {
         $files = glob(dirname(__DIR__, 2) . '/acf-json/*.json') ?: [];
         $actual = array_map('basename', $files);
         sort($actual);
@@ -203,16 +203,19 @@ $tests = [
             'group_vg_event_participation_details.json',
             'group_vg_person_details.json',
             'group_vg_editorial_classification.json',
+            'group_vg_product_contribution_details.json',
             'post_type_event_participation.json',
+            'post_type_product_contribution.json',
             'taxonomy_editorial_collection.json',
             'taxonomy_event_role.json',
             'taxonomy_editorial_format.json',
             'taxonomy_person_type.json',
+            'taxonomy_product_role.json',
             'post_type_person.json',
         ];
         sort($expected);
 
-        editorial_dimensions_test_assert_same($expected, $actual, 'The shared ACF JSON directory must contain only the approved editorial and Person definitions.');
+        editorial_dimensions_test_assert_same($expected, $actual, 'The shared ACF JSON directory must contain exactly the approved source definitions.');
     },
     'seeds only the three approved format terms and assigns no posts' => static function (): void {
         editorial_dimensions_test_reset();
