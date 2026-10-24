@@ -377,8 +377,8 @@
     "preexisting_state_before_this_rerun": "The exact four Product Roles already existed before this rerun; both registered WP-CLI seed invocations confirmed all four as existing and created none."
   },
   "runtime_qa": {
-    "run_token": "[QA][AUTOMATED] Product Contribution 20261024T183119Z-fcbb13abe3",
-    "run_id": "20261024T183119Z-fcbb13abe3",
+    "run_token": "[QA][AUTOMATED] Product Contribution 20261024T184832Z-f63adc0295",
+    "run_id": "20261024T184832Z-f63adc0295",
     "result": "PASS",
     "mutation_started": true,
     "runtime_identity": {
@@ -655,20 +655,20 @@
         "result": "PASS",
         "evidence": {
           "contribution_ids": [
-            1592,
-            1593,
-            1594,
-            1591
+            1664,
+            1665,
+            1666,
+            1663
           ],
           "people_ids": [
-            1586,
-            1588,
-            1587
+            1658,
+            1660,
+            1659
           ],
           "resolver_ids": [
-            1586,
-            1588,
-            1587
+            1658,
+            1660,
+            1659
           ]
         }
       },
@@ -677,11 +677,11 @@
         "result": "PASS",
         "evidence": {
           "published_products": [
-            1585,
-            1595
+            1657,
+            1667
           ],
           "draft_person_products": [],
-          "excluded_draft_product": 1597
+          "excluded_draft_product": 1669
         }
       },
       {
@@ -703,7 +703,7 @@
         "evidence": {
           "rejected": true,
           "pair_ids": [
-            1592
+            1664
           ]
         }
       },
@@ -711,14 +711,14 @@
         "name": "contribution_title_is_derived_at_creation",
         "result": "PASS",
         "evidence": {
-          "title": "[QA][AUTOMATED] Product Contribution 20261024T183119Z-fcbb13abe3 Manual Product — [QA][AUTOMATED] Product Contribution 20261024T183119Z-fcbb13abe3 Person A"
+          "title": "[QA][AUTOMATED] Product Contribution 20261024T184832Z-f63adc0295 Manual Product — [QA][AUTOMATED] Product Contribution 20261024T184832Z-f63adc0295 Person A"
         }
       },
       {
         "name": "admin_endpoint_title_sync_updates_nonretired_contributions",
         "result": "PASS",
         "evidence": {
-          "title": "[QA][AUTOMATED] Product Contribution 20261024T183119Z-fcbb13abe3 Manual Product Renamed — [QA][AUTOMATED] Product Contribution 20261024T183119Z-fcbb13abe3 Person A Renamed"
+          "title": "[QA][AUTOMATED] Product Contribution 20261024T184832Z-f63adc0295 Manual Product Renamed — [QA][AUTOMATED] Product Contribution 20261024T184832Z-f63adc0295 Person A Renamed"
         }
       },
       {
@@ -726,7 +726,7 @@
         "result": "PASS",
         "evidence": {
           "event_people": [
-            1586
+            1658
           ],
           "nonmember_create_rejected": true,
           "nonmember_create_error": "The Person must have an active Event Participation in the Product's source Event before publication.",
@@ -740,14 +740,14 @@
         "result": "PASS",
         "evidence": {
           "actual_product_ids": [
-            1585,
-            1595,
-            1606
+            1657,
+            1667,
+            1678
           ],
           "expected_product_ids": [
-            1585,
-            1595,
-            1606
+            1657,
+            1667,
+            1678
           ]
         }
       },
@@ -755,12 +755,12 @@
         "name": "stale_event_annotation_is_stored_but_inactive",
         "result": "PASS",
         "evidence": {
-          "stored_contribution_id": 1608,
+          "stored_contribution_id": 1680,
           "active_contribution_ids": [],
           "event_people": [],
           "reverse_products": [
-            1585,
-            1595
+            1657,
+            1667
           ]
         }
       },
@@ -769,14 +769,14 @@
         "result": "PASS",
         "evidence": {
           "actual_product_ids": [
-            1585,
-            1595,
-            1606
+            1657,
+            1667,
+            1678
           ],
           "expected_product_ids": [
-            1585,
-            1595,
-            1606
+            1657,
+            1667,
+            1678
           ]
         }
       },
@@ -785,7 +785,7 @@
         "result": "PASS",
         "evidence": {
           "before_ids": [
-            1596
+            1668
           ]
         }
       },
@@ -794,13 +794,13 @@
         "result": "PASS",
         "evidence": {
           "manual_people": [
-            1586,
-            1588,
-            1587
+            1658,
+            1660,
+            1659
           ],
           "invalid_mode_people": [],
           "event_people_after_restore": [
-            1586
+            1658
           ]
         }
       },
@@ -814,9 +814,9 @@
             ],
             "post_status": "publish",
             "post__in": [
-              1585,
-              1595,
-              1606
+              1657,
+              1667,
+              1678
             ],
             "orderby": "post__in",
             "posts_per_page": -1,
@@ -834,9 +834,9 @@
             "order": "DESC"
           },
           "expected_product_ids": [
-            1585,
-            1595,
-            1606
+            1657,
+            1667,
+            1678
           ]
         }
       },
@@ -872,44 +872,41 @@
     ],
     "owned_created_ids": {
       "product_contribution": [
-        1591,
-        1592,
-        1593,
-        1594,
-        1596,
-        1598,
-        1600,
-        1608
+        1663,
+        1664,
+        1665,
+        1666,
+        1668,
+        1670,
+        1672,
+        1680
       ],
       "event_participation": [
-        1607
+        1679
       ],
       "product": [
-        1585,
-        1595,
-        1597,
-        1599,
-        1606
+        1657,
+        1667,
+        1669,
+        1671,
+        1678
       ],
       "person": [
-        1586,
-        1587,
-        1588,
-        1589,
-        1590,
-        1605
+        1658,
+        1659,
+        1660,
+        1661,
+        1662,
+        1677
       ],
       "tc_events": [
-        1603
+        1675
       ]
     },
+    "cleanup_attempted": true,
     "cleanup": {
       "attempted": true,
       "errors": [],
-      "tickera_side_effects_deleted": [
-        1604
-      ],
-      "unexplained_tickera_side_effects": [],
       "remaining_owned_records": [],
       "remaining_by_type": {
         "person": 0,
@@ -919,9 +916,799 @@
         "product_contribution": 0
       },
       "qa_token_residue": false,
-      "product_role_relationships": 0
+      "product_role_relationships": 0,
+      "tickera_side_effects_deleted": [
+        1676
+      ],
+      "unexplained_tickera_side_effects": [],
+      "woocommerce_lookup": [
+        {
+          "product_id": 1657,
+          "tables": {
+            "wc_product_meta_lookup": {
+              "table_exists": true,
+              "rows": 0
+            },
+            "wc_product_attributes_lookup": {
+              "table_exists": true,
+              "rows": 0
+            }
+          }
+        },
+        {
+          "product_id": 1667,
+          "tables": {
+            "wc_product_meta_lookup": {
+              "table_exists": true,
+              "rows": 0
+            },
+            "wc_product_attributes_lookup": {
+              "table_exists": true,
+              "rows": 0
+            }
+          }
+        },
+        {
+          "product_id": 1669,
+          "tables": {
+            "wc_product_meta_lookup": {
+              "table_exists": true,
+              "rows": 0
+            },
+            "wc_product_attributes_lookup": {
+              "table_exists": true,
+              "rows": 0
+            }
+          }
+        },
+        {
+          "product_id": 1671,
+          "tables": {
+            "wc_product_meta_lookup": {
+              "table_exists": true,
+              "rows": 0
+            },
+            "wc_product_attributes_lookup": {
+              "table_exists": true,
+              "rows": 0
+            }
+          }
+        },
+        {
+          "product_id": 1678,
+          "tables": {
+            "wc_product_meta_lookup": {
+              "table_exists": true,
+              "rows": 0
+            },
+            "wc_product_attributes_lookup": {
+              "table_exists": true,
+              "rows": 0
+            }
+          }
+        }
+      ]
     },
-    "prior_attempt": {
+    "owned_records_remaining": [],
+    "persistent_state_pre": {
+      "product_contribution_posts": 0,
+      "person_posts": 0,
+      "event_participation_posts": 0,
+      "product_role_terms": 4,
+      "product_role_term_slugs": [
+        "aanbieder",
+        "instrukteur",
+        "skepper",
+        "skrywer"
+      ],
+      "product_role_relationships": 0,
+      "target_acf_database_definitions": 3,
+      "target_acf_database_post_ids": {
+        "acf-post-type": 1476,
+        "acf-taxonomy": 1477,
+        "acf-field-group": 1478
+      },
+      "override_rows": {
+        "product_people_override": 0,
+        "_product_people_override": 0
+      },
+      "product_people_inventory": [
+        {
+          "id": 525,
+          "status": "publish",
+          "product_people_mode": null,
+          "product_people_override": [],
+          "_product_people_override": []
+        },
+        {
+          "id": 527,
+          "status": "publish",
+          "product_people_mode": null,
+          "product_people_override": [],
+          "_product_people_override": []
+        },
+        {
+          "id": 529,
+          "status": "publish",
+          "product_people_mode": null,
+          "product_people_override": [],
+          "_product_people_override": []
+        },
+        {
+          "id": 531,
+          "status": "publish",
+          "product_people_mode": null,
+          "product_people_override": [],
+          "_product_people_override": []
+        },
+        {
+          "id": 642,
+          "status": "trash",
+          "product_people_mode": null,
+          "product_people_override": [],
+          "_product_people_override": []
+        },
+        {
+          "id": 765,
+          "status": "trash",
+          "product_people_mode": null,
+          "product_people_override": [],
+          "_product_people_override": []
+        },
+        {
+          "id": 767,
+          "status": "publish",
+          "product_people_mode": null,
+          "product_people_override": [],
+          "_product_people_override": []
+        },
+        {
+          "id": 768,
+          "status": "trash",
+          "product_people_mode": null,
+          "product_people_override": [],
+          "_product_people_override": []
+        },
+        {
+          "id": 842,
+          "status": "publish",
+          "product_people_mode": null,
+          "product_people_override": [],
+          "_product_people_override": []
+        },
+        {
+          "id": 844,
+          "status": "publish",
+          "product_people_mode": null,
+          "product_people_override": [],
+          "_product_people_override": []
+        },
+        {
+          "id": 845,
+          "status": "publish",
+          "product_people_mode": null,
+          "product_people_override": [],
+          "_product_people_override": []
+        },
+        {
+          "id": 846,
+          "status": "publish",
+          "product_people_mode": null,
+          "product_people_override": [],
+          "_product_people_override": []
+        },
+        {
+          "id": 905,
+          "status": "draft",
+          "product_people_mode": null,
+          "product_people_override": [],
+          "_product_people_override": []
+        },
+        {
+          "id": 908,
+          "status": "draft",
+          "product_people_mode": null,
+          "product_people_override": [],
+          "_product_people_override": []
+        },
+        {
+          "id": 911,
+          "status": "draft",
+          "product_people_mode": null,
+          "product_people_override": [],
+          "_product_people_override": []
+        },
+        {
+          "id": 914,
+          "status": "draft",
+          "product_people_mode": null,
+          "product_people_override": [],
+          "_product_people_override": []
+        },
+        {
+          "id": 917,
+          "status": "draft",
+          "product_people_mode": null,
+          "product_people_override": [],
+          "_product_people_override": []
+        },
+        {
+          "id": 920,
+          "status": "draft",
+          "product_people_mode": null,
+          "product_people_override": [],
+          "_product_people_override": []
+        },
+        {
+          "id": 923,
+          "status": "draft",
+          "product_people_mode": null,
+          "product_people_override": [],
+          "_product_people_override": []
+        },
+        {
+          "id": 1186,
+          "status": "private",
+          "product_people_mode": null,
+          "product_people_override": [],
+          "_product_people_override": []
+        }
+      ]
+    },
+    "persistent_state_post": {
+      "product_contribution_posts": 0,
+      "person_posts": 0,
+      "event_participation_posts": 0,
+      "product_role_terms": 4,
+      "product_role_term_slugs": [
+        "aanbieder",
+        "instrukteur",
+        "skepper",
+        "skrywer"
+      ],
+      "product_role_relationships": 0,
+      "target_acf_database_definitions": 3,
+      "target_acf_database_post_ids": {
+        "acf-post-type": 1476,
+        "acf-taxonomy": 1477,
+        "acf-field-group": 1478
+      },
+      "override_rows": {
+        "product_people_override": 0,
+        "_product_people_override": 0
+      },
+      "product_people_inventory": [
+        {
+          "id": 525,
+          "status": "publish",
+          "product_people_mode": null,
+          "product_people_override": [],
+          "_product_people_override": []
+        },
+        {
+          "id": 527,
+          "status": "publish",
+          "product_people_mode": null,
+          "product_people_override": [],
+          "_product_people_override": []
+        },
+        {
+          "id": 529,
+          "status": "publish",
+          "product_people_mode": null,
+          "product_people_override": [],
+          "_product_people_override": []
+        },
+        {
+          "id": 531,
+          "status": "publish",
+          "product_people_mode": null,
+          "product_people_override": [],
+          "_product_people_override": []
+        },
+        {
+          "id": 642,
+          "status": "trash",
+          "product_people_mode": null,
+          "product_people_override": [],
+          "_product_people_override": []
+        },
+        {
+          "id": 765,
+          "status": "trash",
+          "product_people_mode": null,
+          "product_people_override": [],
+          "_product_people_override": []
+        },
+        {
+          "id": 767,
+          "status": "publish",
+          "product_people_mode": null,
+          "product_people_override": [],
+          "_product_people_override": []
+        },
+        {
+          "id": 768,
+          "status": "trash",
+          "product_people_mode": null,
+          "product_people_override": [],
+          "_product_people_override": []
+        },
+        {
+          "id": 842,
+          "status": "publish",
+          "product_people_mode": null,
+          "product_people_override": [],
+          "_product_people_override": []
+        },
+        {
+          "id": 844,
+          "status": "publish",
+          "product_people_mode": null,
+          "product_people_override": [],
+          "_product_people_override": []
+        },
+        {
+          "id": 845,
+          "status": "publish",
+          "product_people_mode": null,
+          "product_people_override": [],
+          "_product_people_override": []
+        },
+        {
+          "id": 846,
+          "status": "publish",
+          "product_people_mode": null,
+          "product_people_override": [],
+          "_product_people_override": []
+        },
+        {
+          "id": 905,
+          "status": "draft",
+          "product_people_mode": null,
+          "product_people_override": [],
+          "_product_people_override": []
+        },
+        {
+          "id": 908,
+          "status": "draft",
+          "product_people_mode": null,
+          "product_people_override": [],
+          "_product_people_override": []
+        },
+        {
+          "id": 911,
+          "status": "draft",
+          "product_people_mode": null,
+          "product_people_override": [],
+          "_product_people_override": []
+        },
+        {
+          "id": 914,
+          "status": "draft",
+          "product_people_mode": null,
+          "product_people_override": [],
+          "_product_people_override": []
+        },
+        {
+          "id": 917,
+          "status": "draft",
+          "product_people_mode": null,
+          "product_people_override": [],
+          "_product_people_override": []
+        },
+        {
+          "id": 920,
+          "status": "draft",
+          "product_people_mode": null,
+          "product_people_override": [],
+          "_product_people_override": []
+        },
+        {
+          "id": 923,
+          "status": "draft",
+          "product_people_mode": null,
+          "product_people_override": [],
+          "_product_people_override": []
+        },
+        {
+          "id": 1186,
+          "status": "private",
+          "product_people_mode": null,
+          "product_people_override": [],
+          "_product_people_override": []
+        }
+      ]
+    },
+    "protected_state_result": "PASS",
+    "protected_state_fingerprints": {
+      "before": {
+        "profiles_753_757": {
+          "post_count": 5,
+          "postmeta_count": 34,
+          "term_relationship_count": 10,
+          "posts_sha256": "6cb107bcb3a70ed61526caff114e5f7771d838905e1ebf4de2bf207e894ba420",
+          "postmeta_sha256": "3a5bfb948796c6ba11ad98c50d4de8d1eabcdd2db73d6fc94abfe15203f24e5c",
+          "term_relationships_sha256": "37ef040584ca77a139e611763910d7700ec9e9b05a50d63241f871817c489ae3"
+        },
+        "event_763": {
+          "post_count": 1,
+          "postmeta_count": 15,
+          "term_relationship_count": 0,
+          "posts_sha256": "be163f4a063ede077b98c9c1b24cc3b5cc519fdbf559e40a47ff270013e1ea6b",
+          "postmeta_sha256": "f7ca21d464725e1d20573954880fcc13084207274b1618eb011e420e2e8a9a99",
+          "term_relationships_sha256": "35786c7117b4e38d0f169239752ce71158266ae2f6e4aa230fbbb87bd699c0e3"
+        },
+        "products_765_767_768": {
+          "post_count": 3,
+          "postmeta_count": 20,
+          "term_relationship_count": 0,
+          "posts_sha256": "97a956b5881cd58aeef2c9765e4080692a968bc3b25e1266acfd53cc5740630a",
+          "postmeta_sha256": "7e95f2f96d0d4a2357a199acab176a01b91209240acb8fb16f1b4ab45c6e8934",
+          "term_relationships_sha256": "35786c7117b4e38d0f169239752ce71158266ae2f6e4aa230fbbb87bd699c0e3"
+        },
+        "templates_773_1127": {
+          "post_count": 2,
+          "postmeta_count": 11,
+          "term_relationship_count": 0,
+          "posts_sha256": "7f2c9eb0c0918d5ff4cbdae818840c7b0b8f2bb8e8bbe33ce421e6399911dc81",
+          "postmeta_sha256": "6b3cd25ddde6b06f1748900a65612ae530f2c10163834a6ea2844df52f110e03",
+          "term_relationships_sha256": "35786c7117b4e38d0f169239752ce71158266ae2f6e4aa230fbbb87bd699c0e3"
+        },
+        "bricks_component_6b463f": {
+          "sha256": "57370bbb83d3125758eba9a5194eb1a898b8914b546ee4d84b32f642e07aeaac"
+        },
+        "bricks_option_row_sha256": "55beb9ae2508c235362bc850d6f11954f0634d1bace3d8a59e3869c750b7d004",
+        "fluentsnippets": {
+          "9-acf-product-copy.php": {
+            "size": 1263,
+            "sha256": "58e8035502b30397b9659f952e4d49bbdbd7cdbd15070e37e5b07ebaa5ce2f70"
+          },
+          "10-vg-bricks-medewerker-queries.php": {
+            "size": 5998,
+            "sha256": "e1b7c014cd15a673d663426403a2024a21a1286075c355015f4e217d7e498fa2"
+          }
+        },
+        "event_participation_schema": {
+          "post_type_query_var_is_boolean_false": true,
+          "fields": [
+            {
+              "key": "field_vg_event_participation_event",
+              "name": "event_participation_event",
+              "label": "Event Participation: Event",
+              "type": "post_object",
+              "required": 1,
+              "parent": "group_vg_event_participation_details"
+            },
+            {
+              "key": "field_vg_event_participation_person",
+              "name": "event_participation_person",
+              "label": "Event Participation: Person",
+              "type": "post_object",
+              "required": 1,
+              "parent": "group_vg_event_participation_details"
+            },
+            {
+              "key": "field_vg_event_participation_roles",
+              "name": "event_participation_roles",
+              "label": "Event Participation: Roles",
+              "type": "taxonomy",
+              "required": 0,
+              "parent": "group_vg_event_participation_details"
+            },
+            {
+              "key": "field_vg_event_participation_display_order",
+              "name": "event_participation_display_order",
+              "label": "Event Participation: Display Order",
+              "type": "number",
+              "required": 0,
+              "parent": "group_vg_event_participation_details"
+            }
+          ]
+        },
+        "acf_database_definitions": {
+          "post_count": 162,
+          "postmeta_count": 142,
+          "posts_sha256": "a9ce3ad5dcde5dc854bd2cb3fc1099d8eb80370ce9b7ade26b462f1ec297f0f2",
+          "postmeta_sha256": "f8d976b98e9b01e5fca03f5f153c4b6cdf32bf68b8559c4409bd6a2657ce7564"
+        },
+        "route_configuration": {
+          "persisted_options": [
+            {
+              "option_name": "category_base",
+              "option_value_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+              "autoload": "on"
+            },
+            {
+              "option_name": "home",
+              "option_value_sha256": "4eb83e89eccc35d03f67a699e0fe4007b895b30713fcb8d6cab51eaa2ced01e6",
+              "autoload": "on"
+            },
+            {
+              "option_name": "page_for_posts",
+              "option_value_sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9",
+              "autoload": "on"
+            },
+            {
+              "option_name": "page_on_front",
+              "option_value_sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9",
+              "autoload": "on"
+            },
+            {
+              "option_name": "permalink_structure",
+              "option_value_sha256": "b16b03e742064065f89c5e5a8a38f723f820d75d61b9fafb98fcea8e9d764b90",
+              "autoload": "on"
+            },
+            {
+              "option_name": "rewrite_rules",
+              "option_value_sha256": "3a2e82a3413a91d2823a8e4fee9b33ee6b8dd68871fb65e056ccf074e1d3a342",
+              "autoload": "auto"
+            },
+            {
+              "option_name": "show_on_front",
+              "option_value_sha256": "a44f1b975171163546d46ba5ca80652f85fcad7f665cf55d00a202ff9d0f7dbe",
+              "autoload": "on"
+            },
+            {
+              "option_name": "siteurl",
+              "option_value_sha256": "4eb83e89eccc35d03f67a699e0fe4007b895b30713fcb8d6cab51eaa2ced01e6",
+              "autoload": "on"
+            },
+            {
+              "option_name": "tag_base",
+              "option_value_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+              "autoload": "on"
+            }
+          ],
+          "registered_post_type_count": 63,
+          "registered_taxonomy_count": 55,
+          "registered_routes_sha256": "901faac8f8bf1de928aec2ebc1a8d996dfe46df003f0f2a190c3a4bc21ce3d45"
+        },
+        "post_type_status_counts": {
+          "acf-field-group|acf-disabled": 1,
+          "acf-field-group|publish": 18,
+          "acf-field|publish": 114,
+          "acf-post-type|publish": 10,
+          "acf-taxonomy|publish": 15,
+          "acf-ui-options-page|publish": 4,
+          "attachment|inherit": 92,
+          "bricks_template|draft": 1,
+          "bricks_template|publish": 26,
+          "bricks_template|trash": 1,
+          "course|publish": 1,
+          "lesson|publish": 13,
+          "llms_form|publish": 3,
+          "medewerker|publish": 5,
+          "mto-course|draft": 1,
+          "mto-course|publish": 5,
+          "novamira_memory|publish": 1,
+          "novamira_skill|publish": 1,
+          "page|draft": 2,
+          "page|publish": 35,
+          "page|trash": 2,
+          "post|publish": 1,
+          "product_variation|publish": 14,
+          "product|draft": 7,
+          "product|private": 1,
+          "product|publish": 9,
+          "product|trash": 3,
+          "revision|inherit": 262,
+          "section|publish": 4,
+          "shop_coupon|publish": 1,
+          "shop_order_placehold|draft": 15,
+          "tc_api_keys|publish": 18,
+          "tc_events|publish": 17,
+          "tc_orders|order_paid": 4,
+          "tc_templates|publish": 1,
+          "tc_tickets_instances|publish": 17,
+          "tc_tickets_instances|trash": 1,
+          "tc_tickets|publish": 3,
+          "uitsending|publish": 5,
+          "vennoot|publish": 7,
+          "vg_perk|draft": 5,
+          "vg_perk|publish": 15,
+          "wp_block|publish": 6,
+          "wp_global_styles|publish": 1
+        }
+      },
+      "after": {
+        "profiles_753_757": {
+          "post_count": 5,
+          "postmeta_count": 34,
+          "term_relationship_count": 10,
+          "posts_sha256": "6cb107bcb3a70ed61526caff114e5f7771d838905e1ebf4de2bf207e894ba420",
+          "postmeta_sha256": "3a5bfb948796c6ba11ad98c50d4de8d1eabcdd2db73d6fc94abfe15203f24e5c",
+          "term_relationships_sha256": "37ef040584ca77a139e611763910d7700ec9e9b05a50d63241f871817c489ae3"
+        },
+        "event_763": {
+          "post_count": 1,
+          "postmeta_count": 15,
+          "term_relationship_count": 0,
+          "posts_sha256": "be163f4a063ede077b98c9c1b24cc3b5cc519fdbf559e40a47ff270013e1ea6b",
+          "postmeta_sha256": "f7ca21d464725e1d20573954880fcc13084207274b1618eb011e420e2e8a9a99",
+          "term_relationships_sha256": "35786c7117b4e38d0f169239752ce71158266ae2f6e4aa230fbbb87bd699c0e3"
+        },
+        "products_765_767_768": {
+          "post_count": 3,
+          "postmeta_count": 20,
+          "term_relationship_count": 0,
+          "posts_sha256": "97a956b5881cd58aeef2c9765e4080692a968bc3b25e1266acfd53cc5740630a",
+          "postmeta_sha256": "7e95f2f96d0d4a2357a199acab176a01b91209240acb8fb16f1b4ab45c6e8934",
+          "term_relationships_sha256": "35786c7117b4e38d0f169239752ce71158266ae2f6e4aa230fbbb87bd699c0e3"
+        },
+        "templates_773_1127": {
+          "post_count": 2,
+          "postmeta_count": 11,
+          "term_relationship_count": 0,
+          "posts_sha256": "7f2c9eb0c0918d5ff4cbdae818840c7b0b8f2bb8e8bbe33ce421e6399911dc81",
+          "postmeta_sha256": "6b3cd25ddde6b06f1748900a65612ae530f2c10163834a6ea2844df52f110e03",
+          "term_relationships_sha256": "35786c7117b4e38d0f169239752ce71158266ae2f6e4aa230fbbb87bd699c0e3"
+        },
+        "bricks_component_6b463f": {
+          "sha256": "57370bbb83d3125758eba9a5194eb1a898b8914b546ee4d84b32f642e07aeaac"
+        },
+        "bricks_option_row_sha256": "55beb9ae2508c235362bc850d6f11954f0634d1bace3d8a59e3869c750b7d004",
+        "fluentsnippets": {
+          "9-acf-product-copy.php": {
+            "size": 1263,
+            "sha256": "58e8035502b30397b9659f952e4d49bbdbd7cdbd15070e37e5b07ebaa5ce2f70"
+          },
+          "10-vg-bricks-medewerker-queries.php": {
+            "size": 5998,
+            "sha256": "e1b7c014cd15a673d663426403a2024a21a1286075c355015f4e217d7e498fa2"
+          }
+        },
+        "event_participation_schema": {
+          "post_type_query_var_is_boolean_false": true,
+          "fields": [
+            {
+              "key": "field_vg_event_participation_event",
+              "name": "event_participation_event",
+              "label": "Event Participation: Event",
+              "type": "post_object",
+              "required": 1,
+              "parent": "group_vg_event_participation_details"
+            },
+            {
+              "key": "field_vg_event_participation_person",
+              "name": "event_participation_person",
+              "label": "Event Participation: Person",
+              "type": "post_object",
+              "required": 1,
+              "parent": "group_vg_event_participation_details"
+            },
+            {
+              "key": "field_vg_event_participation_roles",
+              "name": "event_participation_roles",
+              "label": "Event Participation: Roles",
+              "type": "taxonomy",
+              "required": 0,
+              "parent": "group_vg_event_participation_details"
+            },
+            {
+              "key": "field_vg_event_participation_display_order",
+              "name": "event_participation_display_order",
+              "label": "Event Participation: Display Order",
+              "type": "number",
+              "required": 0,
+              "parent": "group_vg_event_participation_details"
+            }
+          ]
+        },
+        "acf_database_definitions": {
+          "post_count": 162,
+          "postmeta_count": 142,
+          "posts_sha256": "a9ce3ad5dcde5dc854bd2cb3fc1099d8eb80370ce9b7ade26b462f1ec297f0f2",
+          "postmeta_sha256": "f8d976b98e9b01e5fca03f5f153c4b6cdf32bf68b8559c4409bd6a2657ce7564"
+        },
+        "route_configuration": {
+          "persisted_options": [
+            {
+              "option_name": "category_base",
+              "option_value_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+              "autoload": "on"
+            },
+            {
+              "option_name": "home",
+              "option_value_sha256": "4eb83e89eccc35d03f67a699e0fe4007b895b30713fcb8d6cab51eaa2ced01e6",
+              "autoload": "on"
+            },
+            {
+              "option_name": "page_for_posts",
+              "option_value_sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9",
+              "autoload": "on"
+            },
+            {
+              "option_name": "page_on_front",
+              "option_value_sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9",
+              "autoload": "on"
+            },
+            {
+              "option_name": "permalink_structure",
+              "option_value_sha256": "b16b03e742064065f89c5e5a8a38f723f820d75d61b9fafb98fcea8e9d764b90",
+              "autoload": "on"
+            },
+            {
+              "option_name": "rewrite_rules",
+              "option_value_sha256": "3a2e82a3413a91d2823a8e4fee9b33ee6b8dd68871fb65e056ccf074e1d3a342",
+              "autoload": "auto"
+            },
+            {
+              "option_name": "show_on_front",
+              "option_value_sha256": "a44f1b975171163546d46ba5ca80652f85fcad7f665cf55d00a202ff9d0f7dbe",
+              "autoload": "on"
+            },
+            {
+              "option_name": "siteurl",
+              "option_value_sha256": "4eb83e89eccc35d03f67a699e0fe4007b895b30713fcb8d6cab51eaa2ced01e6",
+              "autoload": "on"
+            },
+            {
+              "option_name": "tag_base",
+              "option_value_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+              "autoload": "on"
+            }
+          ],
+          "registered_post_type_count": 63,
+          "registered_taxonomy_count": 55,
+          "registered_routes_sha256": "901faac8f8bf1de928aec2ebc1a8d996dfe46df003f0f2a190c3a4bc21ce3d45"
+        },
+        "post_type_status_counts": {
+          "acf-field-group|acf-disabled": 1,
+          "acf-field-group|publish": 18,
+          "acf-field|publish": 114,
+          "acf-post-type|publish": 10,
+          "acf-taxonomy|publish": 15,
+          "acf-ui-options-page|publish": 4,
+          "attachment|inherit": 92,
+          "bricks_template|draft": 1,
+          "bricks_template|publish": 26,
+          "bricks_template|trash": 1,
+          "course|publish": 1,
+          "lesson|publish": 13,
+          "llms_form|publish": 3,
+          "medewerker|publish": 5,
+          "mto-course|draft": 1,
+          "mto-course|publish": 5,
+          "novamira_memory|publish": 1,
+          "novamira_skill|publish": 1,
+          "page|draft": 2,
+          "page|publish": 35,
+          "page|trash": 2,
+          "post|publish": 1,
+          "product_variation|publish": 14,
+          "product|draft": 7,
+          "product|private": 1,
+          "product|publish": 9,
+          "product|trash": 3,
+          "revision|inherit": 262,
+          "section|publish": 4,
+          "shop_coupon|publish": 1,
+          "shop_order_placehold|draft": 15,
+          "tc_api_keys|publish": 18,
+          "tc_events|publish": 17,
+          "tc_orders|order_paid": 4,
+          "tc_templates|publish": 1,
+          "tc_tickets_instances|publish": 17,
+          "tc_tickets_instances|trash": 1,
+          "tc_tickets|publish": 3,
+          "uitsending|publish": 5,
+          "vennoot|publish": 7,
+          "vg_perk|draft": 5,
+          "vg_perk|publish": 15,
+          "wp_block|publish": 6,
+          "wp_global_styles|publish": 1
+        }
+      }
+    },
+    "failure": null,
+    "superseded_successful_run": {
+      "run_token": "[QA][AUTOMATED] Product Contribution 20261024T183119Z-fcbb13abe3",
+      "result": "PASS",
+      "assertion_count": 16,
+      "disposition": "Superseded after exact-head review identified cleanup ownership and protected-state proof gaps."
+    },
+    "prior_failed_attempt": {
       "run_token": "[QA][AUTOMATED] Product Contribution 20261024T183037Z-1f201aa537",
       "result": "FAIL",
       "failure": "Canonical ProductContributionService rejected an expected QA contribution: The Person must have an active Event Participation in the Product's source Event before publication.",
@@ -1518,6 +2305,64 @@
             }
           ]
         },
+        "acf_database_definitions": {
+          "post_count": 162,
+          "postmeta_count": 142,
+          "posts_sha256": "a9ce3ad5dcde5dc854bd2cb3fc1099d8eb80370ce9b7ade26b462f1ec297f0f2",
+          "postmeta_sha256": "f8d976b98e9b01e5fca03f5f153c4b6cdf32bf68b8559c4409bd6a2657ce7564"
+        },
+        "route_configuration": {
+          "persisted_options": [
+            {
+              "option_name": "category_base",
+              "option_value_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+              "autoload": "on"
+            },
+            {
+              "option_name": "home",
+              "option_value_sha256": "4eb83e89eccc35d03f67a699e0fe4007b895b30713fcb8d6cab51eaa2ced01e6",
+              "autoload": "on"
+            },
+            {
+              "option_name": "page_for_posts",
+              "option_value_sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9",
+              "autoload": "on"
+            },
+            {
+              "option_name": "page_on_front",
+              "option_value_sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9",
+              "autoload": "on"
+            },
+            {
+              "option_name": "permalink_structure",
+              "option_value_sha256": "b16b03e742064065f89c5e5a8a38f723f820d75d61b9fafb98fcea8e9d764b90",
+              "autoload": "on"
+            },
+            {
+              "option_name": "rewrite_rules",
+              "option_value_sha256": "3a2e82a3413a91d2823a8e4fee9b33ee6b8dd68871fb65e056ccf074e1d3a342",
+              "autoload": "auto"
+            },
+            {
+              "option_name": "show_on_front",
+              "option_value_sha256": "a44f1b975171163546d46ba5ca80652f85fcad7f665cf55d00a202ff9d0f7dbe",
+              "autoload": "on"
+            },
+            {
+              "option_name": "siteurl",
+              "option_value_sha256": "4eb83e89eccc35d03f67a699e0fe4007b895b30713fcb8d6cab51eaa2ced01e6",
+              "autoload": "on"
+            },
+            {
+              "option_name": "tag_base",
+              "option_value_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+              "autoload": "on"
+            }
+          ],
+          "registered_post_type_count": 63,
+          "registered_taxonomy_count": 55,
+          "registered_routes_sha256": "901faac8f8bf1de928aec2ebc1a8d996dfe46df003f0f2a190c3a4bc21ce3d45"
+        },
         "post_type_status_counts": {
           "acf-field-group|acf-disabled": 1,
           "acf-field-group|publish": 18,
@@ -1649,6 +2494,64 @@
             }
           ]
         },
+        "acf_database_definitions": {
+          "post_count": 162,
+          "postmeta_count": 142,
+          "posts_sha256": "a9ce3ad5dcde5dc854bd2cb3fc1099d8eb80370ce9b7ade26b462f1ec297f0f2",
+          "postmeta_sha256": "f8d976b98e9b01e5fca03f5f153c4b6cdf32bf68b8559c4409bd6a2657ce7564"
+        },
+        "route_configuration": {
+          "persisted_options": [
+            {
+              "option_name": "category_base",
+              "option_value_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+              "autoload": "on"
+            },
+            {
+              "option_name": "home",
+              "option_value_sha256": "4eb83e89eccc35d03f67a699e0fe4007b895b30713fcb8d6cab51eaa2ced01e6",
+              "autoload": "on"
+            },
+            {
+              "option_name": "page_for_posts",
+              "option_value_sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9",
+              "autoload": "on"
+            },
+            {
+              "option_name": "page_on_front",
+              "option_value_sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9",
+              "autoload": "on"
+            },
+            {
+              "option_name": "permalink_structure",
+              "option_value_sha256": "b16b03e742064065f89c5e5a8a38f723f820d75d61b9fafb98fcea8e9d764b90",
+              "autoload": "on"
+            },
+            {
+              "option_name": "rewrite_rules",
+              "option_value_sha256": "3a2e82a3413a91d2823a8e4fee9b33ee6b8dd68871fb65e056ccf074e1d3a342",
+              "autoload": "auto"
+            },
+            {
+              "option_name": "show_on_front",
+              "option_value_sha256": "a44f1b975171163546d46ba5ca80652f85fcad7f665cf55d00a202ff9d0f7dbe",
+              "autoload": "on"
+            },
+            {
+              "option_name": "siteurl",
+              "option_value_sha256": "4eb83e89eccc35d03f67a699e0fe4007b895b30713fcb8d6cab51eaa2ced01e6",
+              "autoload": "on"
+            },
+            {
+              "option_name": "tag_base",
+              "option_value_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+              "autoload": "on"
+            }
+          ],
+          "registered_post_type_count": 63,
+          "registered_taxonomy_count": 55,
+          "registered_routes_sha256": "901faac8f8bf1de928aec2ebc1a8d996dfe46df003f0f2a190c3a4bc21ce3d45"
+        },
         "post_type_status_counts": {
           "acf-field-group|acf-disabled": 1,
           "acf-field-group|publish": 18,
@@ -1696,7 +2599,11 @@
           "wp_global_styles|publish": 1
         }
       },
-      "during_qa_before_equals_after": true
+      "during_qa_before_equals_after": true,
+      "scope": {
+        "acf_database_definitions": "All database posts and metadata whose post_type matches acf-*, including field groups, fields, post types, taxonomies, and options pages.",
+        "route_configuration": "Persisted rewrite/permalink, site URL, front page, and posts page options, plus registered post type/taxonomy route contracts."
+      }
     }
   },
   "runtime_drift": {
@@ -1705,10 +2612,14 @@
     "expected_tree_sha256": "a2635dafeb1d82d481b6275526c3850263f549facac80293c810d2b0d93de760",
     "observed_final_tree_sha256": "a2635dafeb1d82d481b6275526c3850263f549facac80293c810d2b0d93de760",
     "file_count": 54,
+    "entrypoint_sha256": "3fc688ccf27ec11ee4bb9fe5e282630ded724d4a987e5489f9bc77142dca72bb",
+    "includes/Plugin.php_sha256": "054b373bc4512cadf7f4e9700347867dc90ca359527770b0ecf3a3a825512625",
+    "PersonProductsBricks.php_sha256": "a7460a1e21d4318a9d3997e52ad9e0d804a155798b1b7992e786b4cb976170e5",
     "missing": 0,
     "extra": 0,
     "mismatched": 0,
-    "historical_ongoing_automatic_writer": "UNKNOWN"
+    "historical_ongoing_automatic_writer": "UNKNOWN",
+    "final_hash_verified_after_latest_qa": true
   },
   "source_regression": {
     "result": "PASS",
@@ -1720,8 +2631,8 @@
         "event_participation": 69,
         "event_participation_bricks": 12,
         "event_role_seeder": 13,
-        "qa_setup_safety": 3,
-        "qa_cleanup_safety": 4
+        "qa_setup_safety": 5,
+        "qa_cleanup_safety": 7
       }
     },
     "after_live_qa": {
@@ -1732,26 +2643,26 @@
         "event_participation": 69,
         "event_participation_bricks": 12,
         "event_role_seeder": 13,
-        "qa_setup_safety": 3,
-        "qa_cleanup_safety": 4
+        "qa_setup_safety": 5,
+        "qa_cleanup_safety": 7
       }
     },
     "qa_safety_tests": {
-      "setup": "PASS 3/3",
-      "cleanup": "PASS 4/4"
+      "setup": "PASS 5/5",
+      "cleanup": "PASS 7/7"
     },
-    "php_lint": "PASS for every new/changed PHP file",
+    "php_lint": "PASS for all three new/changed PHP files.",
     "pe005_assembly_gate": {
       "result": "PASS",
-      "source_commit": "caaba61069eabe347a2a0e0949fce41106e76be0",
+      "source_commit": "b4349e20fd5c5ae7485d515215d34538a45f6798",
       "file_count_build_a": 54,
       "file_count_build_b": 54,
       "tree_sha256_build_a": "856a3e5978559bfb2572b4b1ff4b34df916743f9e72d6b18220ee64e98af5f56",
       "tree_sha256_build_b": "856a3e5978559bfb2572b4b1ff4b34df916743f9e72d6b18220ee64e98af5f56",
       "archive_sha256_build_a": "9d5fd288025703fe4f71ed1f3ee264cd3fc9c0b61cf74d137b40e941bc2e2243",
       "archive_sha256_build_b": "9d5fd288025703fe4f71ed1f3ee264cd3fc9c0b61cf74d137b40e941bc2e2243",
-      "manifest_sha256_build_a": "03017e16d6e2a234bd68ad4f02aff931bdda47e629f829dc3f13561850a2b7ed",
-      "manifest_sha256_build_b": "03017e16d6e2a234bd68ad4f02aff931bdda47e629f829dc3f13561850a2b7ed",
+      "manifest_sha256_build_a": "403d9f64b5577925a2dde568fdd01c45bd55e6e89727cf08344d236e09538acb",
+      "manifest_sha256_build_b": "403d9f64b5577925a2dde568fdd01c45bd55e6e89727cf08344d236e09538acb",
       "task8b_tree_hash_comparison": "Not compared directly; PE-005 includes Git modes and uses a different algorithm."
     }
   },
@@ -1773,6 +2684,17 @@
     "localhost_10049_access": false,
     "task_9": "NOT_STARTED"
   },
-  "review_status": "OPEN_UNMERGED",
-  "overall_verdict": "PASS"
+  "review_status": "OPEN_UNMERGED; FOLLOW_UP_EXACT_HEAD_REVIEW_PENDING",
+  "overall_verdict": "PASS",
+  "review_followup": {
+    "reviewed_head": "b4349e20fd5c5ae7485d515215d34538a45f6798",
+    "new_runtime_run": "[QA][AUTOMATED] Product Contribution 20261024T184832Z-f63adc0295",
+    "findings_addressed": [
+      "Unexpected successful role-validation and duplicate-pair creates are registered by exact ID and ownership marker before rejection assertions.",
+      "Protected-state snapshots fingerprint all database definitions stored under ACF post types and metadata, plus persisted route options and registered post type/taxonomy route contracts.",
+      "Product cleanup checks exact-ID rows in wc_product_meta_lookup and wc_product_attributes_lookup after hard deletion.",
+      "Cleanup safety tests load ProductContributionRepository, assert the expected endpoint mismatch error, and prove matching endpoints clean successfully."
+    ],
+    "follow_up_exact_head_review": "PENDING"
+  }
 }

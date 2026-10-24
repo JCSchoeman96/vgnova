@@ -233,6 +233,112 @@ function vg_product_contribution_qa_event_schema_signature(): array
     ];
 }
 
+function vg_product_contribution_qa_acf_database_fingerprint(): array
+{
+    global $wpdb;
+    $posts = $wpdb->get_results(
+        $wpdb->prepare(
+            "SELECT * FROM {$wpdb->posts} WHERE post_type LIKE %s ORDER BY ID ASC",
+            'acf-%'
+        ),
+        ARRAY_A
+    );
+    if ($wpdb->last_error !== '' || ! is_array($posts)) {
+        throw new RuntimeException('Could not read ACF database definition posts: ' . $wpdb->last_error);
+    }
+
+    $ids = array_values(array_filter(array_map(static fn (array $post): int => (int) ($post['ID'] ?? 0), $posts)));
+    $meta = [];
+    if ($ids !== []) {
+        $in = implode(',', $ids);
+        $meta = $wpdb->get_results(
+            "SELECT * FROM {$wpdb->postmeta} WHERE post_id IN ({$in}) ORDER BY post_id ASC, meta_key ASC, meta_id ASC",
+            ARRAY_A
+        );
+        if ($wpdb->last_error !== '' || ! is_array($meta)) {
+            throw new RuntimeException('Could not read ACF database definition metadata: ' . $wpdb->last_error);
+        }
+    }
+
+    return [
+        'post_count' => count($posts),
+        'postmeta_count' => count($meta),
+        'posts_sha256' => vg_product_contribution_qa_hash($posts),
+        'postmeta_sha256' => vg_product_contribution_qa_hash($meta),
+    ];
+}
+
+function vg_product_contribution_qa_route_configuration_fingerprint(): array
+{
+    global $wpdb;
+    $option_names = [
+        'rewrite_rules',
+        'permalink_structure',
+        'category_base',
+        'tag_base',
+        'home',
+        'siteurl',
+        'show_on_front',
+        'page_on_front',
+        'page_for_posts',
+    ];
+    $placeholders = implode(', ', array_fill(0, count($option_names), '%s'));
+    $option_rows = $wpdb->get_results(
+        $wpdb->prepare(
+            "SELECT option_name, option_value, autoload FROM {$wpdb->options} WHERE option_name IN ({$placeholders}) ORDER BY option_name ASC",
+            ...$option_names
+        ),
+        ARRAY_A
+    );
+    if ($wpdb->last_error !== '' || ! is_array($option_rows)) {
+        throw new RuntimeException('Could not read persisted route configuration: ' . $wpdb->last_error);
+    }
+    $options = array_map(static fn (array $row): array => [
+        'option_name' => (string) $row['option_name'],
+        'option_value_sha256' => hash('sha256', (string) $row['option_value']),
+        'autoload' => $row['autoload'],
+    ], $option_rows);
+
+    $routes = ['post_types' => [], 'taxonomies' => []];
+    foreach (get_post_types([], 'objects') as $name => $object) {
+        $routes['post_types'][$name] = [
+            'public' => (bool) $object->public,
+            'publicly_queryable' => (bool) $object->publicly_queryable,
+            'exclude_from_search' => (bool) $object->exclude_from_search,
+            'has_archive' => $object->has_archive,
+            'rewrite' => $object->rewrite,
+            'query_var' => $object->query_var,
+            'show_in_rest' => (bool) $object->show_in_rest,
+            'rest_base' => $object->rest_base,
+            'rest_namespace' => $object->rest_namespace,
+        ];
+    }
+    foreach (get_taxonomies([], 'objects') as $name => $object) {
+        $object_types = array_values((array) $object->object_type);
+        sort($object_types);
+        $routes['taxonomies'][$name] = [
+            'object_type' => $object_types,
+            'public' => (bool) $object->public,
+            'publicly_queryable' => (bool) $object->publicly_queryable,
+            'hierarchical' => (bool) $object->hierarchical,
+            'rewrite' => $object->rewrite,
+            'query_var' => $object->query_var,
+            'show_in_rest' => (bool) $object->show_in_rest,
+            'rest_base' => $object->rest_base,
+            'rest_namespace' => $object->rest_namespace,
+        ];
+    }
+    ksort($routes['post_types']);
+    ksort($routes['taxonomies']);
+
+    return [
+        'persisted_options' => $options,
+        'registered_post_type_count' => count($routes['post_types']),
+        'registered_taxonomy_count' => count($routes['taxonomies']),
+        'registered_routes_sha256' => vg_product_contribution_qa_hash($routes),
+    ];
+}
+
 function vg_product_contribution_qa_snippet_fingerprints(): array
 {
     $result = [];
@@ -275,6 +381,8 @@ function vg_product_contribution_qa_protected_snapshot(): array
         'bricks_option_row_sha256' => $option_row ? vg_product_contribution_qa_hash($option_row) : null,
         'fluentsnippets' => vg_product_contribution_qa_snippet_fingerprints(),
         'event_participation_schema' => vg_product_contribution_qa_event_schema_signature(),
+        'acf_database_definitions' => vg_product_contribution_qa_acf_database_fingerprint(),
+        'route_configuration' => vg_product_contribution_qa_route_configuration_fingerprint(),
         'post_type_status_counts' => vg_product_contribution_qa_post_type_counts(),
     ];
 }
@@ -611,6 +719,64 @@ function vg_product_contribution_qa_token_exists(string $token): bool
     return false;
 }
 
+function vg_product_contribution_qa_woocommerce_lookup_rows(int $product_id): array
+{
+    global $wpdb;
+    vg_product_contribution_qa_check($product_id > 0, 'WooCommerce lookup checks require a positive Product ID.');
+    $lookups = [
+        'wc_product_meta_lookup' => ['column' => 'product_id', 'required' => true],
+        'wc_product_attributes_lookup' => ['column' => 'product_or_parent_id', 'required' => false],
+    ];
+    $result = [];
+    foreach ($lookups as $suffix => $definition) {
+        $table = $wpdb->prefix . $suffix;
+        $found = $wpdb->get_var($wpdb->prepare('SHOW TABLES LIKE %s', $wpdb->esc_like($table)));
+        if ($wpdb->last_error !== '') {
+            throw new RuntimeException('Could not inspect WooCommerce lookup table ' . $table . ': ' . $wpdb->last_error);
+        }
+        $exists = is_string($found) && $found === $table;
+        vg_product_contribution_qa_check(
+            $exists || ! $definition['required'],
+            'Required WooCommerce Product lookup table is missing: ' . $table
+        );
+        if (! $exists) {
+            $result[$suffix] = ['table_exists' => false, 'rows' => null];
+            continue;
+        }
+        $rows = vg_product_contribution_qa_count(
+            $wpdb->prepare("SELECT COUNT(*) FROM {$table} WHERE {$definition['column']} = %d", $product_id),
+            'WooCommerce lookup rows for Product ' . $product_id . ' in ' . $table
+        );
+        $result[$suffix] = ['table_exists' => true, 'rows' => $rows];
+    }
+    return $result;
+}
+
+function vg_product_contribution_qa_track_service_contribution_result(
+    mixed $result,
+    int $product_id,
+    int $person_id,
+    string $token,
+    array &$owned
+): bool {
+    if (is_wp_error($result)) {
+        return false;
+    }
+    vg_product_contribution_qa_check(
+        (is_int($result) || (is_string($result) && ctype_digit($result))) && (int) $result > 0,
+        'Unexpected ProductContributionService result cannot be tracked by exact ID.'
+    );
+    $id = (int) $result;
+    vg_product_contribution_qa_track(
+        $owned,
+        $id,
+        ProductContributionRepository::POST_TYPE,
+        ['product_id' => $product_id, 'person_id' => $person_id]
+    );
+    vg_product_contribution_qa_mark_owned($id, ProductContributionRepository::POST_TYPE, $token);
+    return true;
+}
+
 /** @param array<string, array<int, array<string, mixed>>> $owned */
 function vg_product_contribution_qa_track(array &$owned, int $id, string $type, array $endpoints = []): void
 {
@@ -664,7 +830,12 @@ function vg_product_contribution_qa_assert_endpoints(array $record, string $toke
 }
 
 /** Delete only exact tracked IDs after proving type, endpoints, marker, and title token. */
-function vg_product_contribution_qa_delete_owned_record(array $record, string $token, ?callable $delete = null): void
+function vg_product_contribution_qa_delete_owned_record(
+    array $record,
+    string $token,
+    ?callable $delete = null,
+    ?array &$cleanup_evidence = null
+): void
 {
     $id = (int) ($record['id'] ?? 0);
     $type = (string) ($record['type'] ?? '');
@@ -682,6 +853,14 @@ function vg_product_contribution_qa_delete_owned_record(array $record, string $t
     );
     if ($type === 'product' && function_exists('wc_get_product')) {
         vg_product_contribution_qa_check(wc_get_product($id) === false, 'WooCommerce still resolves the deleted QA Product.');
+        $lookup_rows = vg_product_contribution_qa_woocommerce_lookup_rows($id);
+        $cleanup_evidence = ['product_id' => $id, 'tables' => $lookup_rows];
+        foreach ($lookup_rows as $table => $state) {
+            vg_product_contribution_qa_check(
+                ! $state['table_exists'] || $state['rows'] === 0,
+                'WooCommerce lookup residue remains for deleted Product ' . $id . ' in ' . $table . '.'
+            );
+        }
     }
 }
 
@@ -799,6 +978,12 @@ function vg_product_contribution_qa_create_product(string $token, string $label,
     vg_product_contribution_qa_check($id > 0 && get_post_type($id) === 'product', 'Could not create an owned WooCommerce Product.');
     vg_product_contribution_qa_track($owned, $id, 'product', $source_event_id > 0 ? ['source_event_id' => $source_event_id] : []);
     vg_product_contribution_qa_mark_owned($id, 'product', $token);
+    $lookup_rows = vg_product_contribution_qa_woocommerce_lookup_rows($id);
+    vg_product_contribution_qa_check(
+        ($lookup_rows['wc_product_meta_lookup']['table_exists'] ?? false)
+            && ($lookup_rows['wc_product_meta_lookup']['rows'] ?? 0) > 0,
+        'WooCommerce did not create a Product lookup row for owned Product ' . $id . '.'
+    );
     return $id;
 }
 
@@ -911,7 +1096,11 @@ function vg_product_contribution_qa_preflight(array &$context): void
     ];
     $context['assertions'] = [];
     $context['created_side_effects'] = [];
-    $context['cleanup'] = ['errors' => [], 'tickera' => ['deleted' => [], 'unexplained' => [], 'errors' => []]];
+    $context['cleanup'] = [
+        'errors' => [],
+        'woocommerce_lookup' => [],
+        'tickera' => ['deleted' => [], 'unexplained' => [], 'errors' => []],
+    ];
 }
 
 function vg_product_contribution_qa_cleanup(array &$context, string $token): void
@@ -939,8 +1128,15 @@ function vg_product_contribution_qa_cleanup(array &$context, string $token): voi
     $product_errors = [];
     foreach ($owned['product'] ?? [] as $id => $record) {
         try {
-            vg_product_contribution_qa_delete_owned_record($record, $token);
+            $lookup_evidence = null;
+            vg_product_contribution_qa_delete_owned_record($record, $token, null, $lookup_evidence);
+            if ($lookup_evidence !== null) {
+                $context['cleanup']['woocommerce_lookup'][] = $lookup_evidence;
+            }
         } catch (Throwable $error) {
+            if (isset($lookup_evidence)) {
+                $context['cleanup']['woocommerce_lookup'][] = $lookup_evidence;
+            }
             $product_errors[] = ['id' => (int) $id, 'type' => 'product', 'message' => $error->getMessage()];
         }
     }
@@ -1072,7 +1268,14 @@ function vg_product_contribution_qa_run(): array
                 'wrong_taxonomy' => [$wrong_taxonomy_term],
             ] as $case => $candidate_roles) {
                 $result = (new ProductContributionService())->create($manual_product, $empty_person, $candidate_roles, 90, 'publish');
-                $invalid_role_results[$case] = is_wp_error($result);
+                $created_unexpectedly = vg_product_contribution_qa_track_service_contribution_result(
+                    $result,
+                    $manual_product,
+                    $empty_person,
+                    $token,
+                    $context['owned']
+                );
+                $invalid_role_results[$case] = ! $created_unexpectedly;
             }
             $after_invalid = vg_product_contribution_qa_post_count(ProductContributionRepository::POST_TYPE);
             $assert('role_integrity_rejects_invalid_published_contributions_without_partial_rows',
@@ -1084,9 +1287,16 @@ function vg_product_contribution_qa_run(): array
 
             $before_duplicate = vg_product_contribution_qa_post_count(ProductContributionRepository::POST_TYPE);
             $duplicate = (new ProductContributionService())->create($manual_product, $person_a, [$roles['aanbieder']], 99, 'publish');
+            $duplicate_created_unexpectedly = vg_product_contribution_qa_track_service_contribution_result(
+                $duplicate,
+                $manual_product,
+                $person_a,
+                $token,
+                $context['owned']
+            );
             $after_duplicate = vg_product_contribution_qa_post_count(ProductContributionRepository::POST_TYPE);
             $assert('pair_uniqueness_rejects_second_nonretired_pair',
-                is_wp_error($duplicate)
+                ! $duplicate_created_unexpectedly
                     && $after_duplicate === $before_duplicate
                     && $repo->find_pair_ids($manual_product, $person_a) === [$manual_a],
                 ['rejected' => is_wp_error($duplicate), 'pair_ids' => $repo->find_pair_ids($manual_product, $person_a)]
