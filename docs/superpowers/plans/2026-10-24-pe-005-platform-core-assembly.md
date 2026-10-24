@@ -82,9 +82,9 @@
 
 **Files:** No additional file scope.
 
-- [ ] Run the final verification set from the exact committed feature head, including both dashboard and canonical source checks, the standalone verifier, AST validation, `bash -n`, ShellCheck, actionlint, and `git diff --check`.
-- [ ] Record source SHA, file count, tree hash, archive hash, and manifest hash for two final builds in the PE-005 handoff report.
-- [ ] Inspect the final generated archive for one top-level plugin directory, expected root and overlay files, `PersonProductsBricks.php`, PHP 8.5 header, unique bootstrap entries, all patch-owned lifecycle registrations, and no `site-code` tests or README files.
+- [x] Run the final verification set from the exact committed feature head, including both dashboard and canonical source checks, the standalone verifier, AST validation, `bash -n`, ShellCheck, actionlint, and `git diff --check`.
+- [x] Record source SHA, file count, tree hash, archive hash, and manifest hash for two final builds in the PE-005 handoff report.
+- [x] Inspect the final generated archive for one top-level plugin directory, expected root and overlay files, `PersonProductsBricks.php`, PHP 8.5 header, unique bootstrap entries, all patch-owned lifecycle registrations, and no `site-code` tests or README files.
 - [x] Confirm no Local WordPress/runtime, database, or Novamira access and no deployment occurred.
 
 ## Task 8: Independent review and PR handoff
