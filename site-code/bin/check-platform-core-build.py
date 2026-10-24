@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import gzip
 import hashlib
 import io
 import json
@@ -159,10 +160,9 @@ def verify_archive(archive_path: Path, manifest: dict[str, Any]) -> None:
         raise CheckFailure("Archive contains no regular plugin files.")
 
     actual_files.sort(key=lambda item: item["path"].encode("utf-8"))
-    expected_directories = [ROOT_PLUGIN + "/"] + [
-        name + "/"
-        for name in sorted(directory_names - {ROOT_PLUGIN}, key=lambda value: value.encode("utf-8"))
-    ]
+    expected_directories = [ROOT_PLUGIN] + sorted(
+        directory_names - {ROOT_PLUGIN}, key=lambda value: value.encode("utf-8")
+    )
     expected_order = expected_directories + [ROOT_PLUGIN + "/" + item["path"] for item in actual_files]
     if entry_order != expected_order:
         raise CheckFailure("Archive entries are not in the documented deterministic order.")
@@ -371,9 +371,14 @@ def tamper_archive(source_archive: Path, destination: Path) -> None:
 
     if not changed:
         raise CheckFailure("No regular file was available to tamper with.")
-    with tarfile.open(destination, mode="w:gz", compresslevel=6) as target:
+    raw_tar = io.BytesIO()
+    with tarfile.open(fileobj=raw_tar, mode="w", format=tarfile.PAX_FORMAT) as target:
         for info, contents in payloads:
             target.addfile(info, io.BytesIO(contents) if contents is not None else None)
+    compressed = io.BytesIO()
+    with gzip.GzipFile(fileobj=compressed, mode="wb", filename="", compresslevel=9, mtime=0) as target:
+        target.write(raw_tar.getvalue())
+    destination.write_bytes(compressed.getvalue())
 
 
 def run_negative_cases(
@@ -497,6 +502,7 @@ def run_negative_cases(
         ref="HEAD",
         output=fixture / ROOT_PLUGIN,
         expected_text="unsafe",
+        output_must_remain=True,
     )
     if sha256(protected_source.read_bytes()) != original_sha:
         raise CheckFailure("Unsafe-output case modified the source plugin tree.")
