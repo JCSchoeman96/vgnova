@@ -969,6 +969,23 @@ def run_negative_cases(
         expected_text="VGPC_PLUGIN_DIR",
     )
 
+    fixture = create_fixture(repo_root, commit, cases / "missing-plugin-class-require")
+    entrypoint = fixture / ROOT_PLUGIN / "voelgoed-platform-core.php"
+    entrypoint_text = entrypoint.read_text(encoding="utf-8")
+    plugin_require = "require_once VGPC_PLUGIN_DIR . 'includes/Plugin.php';\n"
+    if entrypoint_text.count(plugin_require) != 1:
+        raise CheckFailure("Cannot prepare missing includes/Plugin.php require fixture.")
+    entrypoint.write_text(entrypoint_text.replace(plugin_require, "", 1), encoding="utf-8")
+    commit_fixture_changes(fixture, "fixture: remove the Plugin.php bootstrap require")
+    expect_build_failure(
+        label="entrypoint must load includes/Plugin.php from the assembled root",
+        builder=builder,
+        fixture=fixture,
+        ref="HEAD",
+        output=cases / "missing-plugin-class-require-output",
+        expected_text="Plugin.php",
+    )
+
     fixture = create_fixture(repo_root, commit, cases / "registered-flag-starts-true")
     plugin_class = fixture / ROOT_PLUGIN / "includes/Plugin.php"
     plugin_text = plugin_class.read_text(encoding="utf-8")
