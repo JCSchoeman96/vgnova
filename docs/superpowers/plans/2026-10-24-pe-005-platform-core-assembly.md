@@ -33,7 +33,7 @@
 **Files:** Create `site-code/bin/check-platform-core-build.py`.
 
 - [x] Add temporary Git fixture helpers. Each fixture copies only committed assembly inputs and the builder, commits them with a local test identity, and is removed by `TemporaryDirectory`.
-- [x] Add cases for an invalid patch, already-integrated root include, absent overlay PHP file, patch include to an absent module, duplicate bootstrap include, non-empty output directory, artifact content tampering, an entrypoint return before module includes, and a component collection reset before dispatch.
+- [x] Add cases for an invalid patch, already-integrated root include, absent overlay PHP file, patch include to an absent module, duplicate bootstrap include, non-empty output directory, artifact content tampering, an entrypoint return before module includes, a component collection reset before dispatch, and unsets of the full collection and a registered component.
 - [x] Run the verifier with a red regression fixture before the review fixes. The binary-patch fixture succeeded against the old builder, proving the path-allowlist gap.
 
 ## Task 3: Implement commit-pinned assembly
@@ -44,10 +44,10 @@
 - [x] Read the root plugin, three overlay trees, integration patch, and builder blob from that commit. Require the executing builder bytes to match the commit's `builder_path` blob.
 - [x] Reject unsupported Git object modes, invalid/unsafe paths, empty overlays, source collisions, missing inputs, and a root bootstrap that already contains integration-owned module includes, imports, or registrations.
 - [x] Build a staging plugin from the root tree, overlay only the three owned module directories, validate patch headers against the bootstrap allowlist, reject binary/extended patch sections, then check and apply the tracked patch once.
-- [x] Parse the resulting entrypoint and `Plugin.php`. Require every dynamic overlay PHP path once, every include path to exist, module imports and lifecycle registrations to be unique, and each registered class to exist as an unconditional namespace-scope declaration. Reject pre-include returns, throws, and jumps, component collection resets after integration registration, conditional include scopes, and lifecycle `goto`. Do not hard-code historical module or lifecycle counts.
+- [x] Parse the resulting entrypoint and `Plugin.php`. Require every dynamic overlay PHP path once, every include path to exist, module imports and lifecycle registrations to be unique, and each registered class to exist as an unconditional namespace-scope declaration. Reject pre-include returns, throws, and jumps, component collection resets and unsets after integration registration, conditional include scopes, and lifecycle `goto`. Do not hard-code historical module or lifecycle counts.
 - [x] Require PHP major/minor 8.5 and run `php -l` on every staged PHP file.
 - [x] Write the sorted file inventory, canonical tree hash, normalized PAX tar.gz, and manifest to a temporary sibling directory. Refuse an existing output path and atomically rename the completed output directory into place.
-- [x] Run the negative-fixture harness. It covers each named failure, seven assembly-review findings, source immutability, and cleanup.
+- [x] Run the negative-fixture harness. It covers each named failure, eight assembly-review findings, source immutability, and cleanup.
 
 ## Task 4: Prove reproducibility and artifact integrity
 
@@ -90,7 +90,7 @@
 
 **Files:** Review only, then fix findings within this file scope.
 
-- [ ] Delegate final read-only reviews for source ownership/assembly, manifest/reproducibility, and CI integration against the final exact head. Earlier review rounds identified and drove fixes for seven assembly issues and one CI publication issue.
+- [ ] Delegate final read-only reviews for source ownership/assembly, manifest/reproducibility, and CI integration against the final exact head. Earlier review rounds identified and drove fixes for eight assembly issues and one CI publication issue.
 - [ ] Fix blocking or material findings and rerun affected checks plus the full source gate.
 - [ ] Push `chore/pe-005-platform-core-assembly` and open a focused PR titled `build: add deterministic Platform Core assembly`.
 - [ ] Link the PR to this thread immediately. Verify the PR head equals the pushed commit and the base equals the current `main` SHA.
