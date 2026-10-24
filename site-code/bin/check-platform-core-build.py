@@ -910,7 +910,7 @@ def run_negative_cases(
         fixture=fixture,
         ref="HEAD",
         output=cases / "alternate-conditional-include-output",
-        expected_text="unconditional",
+        expected_text="conditional or control scope",
     )
 
     fixture = create_fixture(repo_root, commit, cases / "goto-lifecycle")
