@@ -798,15 +798,18 @@ def rewrite_archive(
     directories.sort(key=lambda item: (item.name != ROOT_PLUGIN, item.name.encode("utf-8")))
     files.sort(key=lambda item: item[0].name.encode("utf-8"))
     raw_tar = io.BytesIO()
-    with tarfile.open(fileobj=raw_tar, mode="w", format=tarfile.PAX_FORMAT) as target:
+    with tarfile.open(
+        fileobj=raw_tar,
+        mode="w",
+        format=tarfile.PAX_FORMAT,
+        encoding="utf-8",
+        errors="strict",
+    ) as target:
         for info in directories:
             target.addfile(info)
         for info, contents in files:
             target.addfile(info, io.BytesIO(contents))
-    compressed = io.BytesIO()
-    with gzip.GzipFile(fileobj=compressed, mode="wb", filename="", compresslevel=9, mtime=0) as target:
-        target.write(raw_tar.getvalue())
-    destination.write_bytes(compressed.getvalue())
+    destination.write_bytes(canonical_gzip_stored_deflate(raw_tar.getvalue()))
     return renamed_to
 
 
@@ -897,7 +900,7 @@ def run_verifier_hardening_cases(
     with gzip.GzipFile(fileobj=alternate_gzip, mode="wb", filename="", compresslevel=1, mtime=0) as target:
         target.write(raw_tar)
     alternate_gzip_bytes = bytearray(alternate_gzip.getvalue())
-    alternate_gzip_bytes[:10] = b"\x1f\x8b\x08\x00\x00\x00\x00\x00\x02\xff"
+    alternate_gzip_bytes[:10] = GZIP_HEADER
     alternate_gzip_path = temporary_root / "alternate-gzip-compression.tar.gz"
     alternate_gzip_path.write_bytes(alternate_gzip_bytes)
     alternate_gzip_manifest = json.loads(json.dumps(manifest))
@@ -906,7 +909,7 @@ def run_verifier_hardening_cases(
         label="non-canonical gzip compression level is rejected",
         archive=alternate_gzip_path,
         manifest=alternate_gzip_manifest,
-        expected_text="gzip compression",
+        expected_text="canonical stored-block encoder",
     )
 
     pax_archive = temporary_root / "pax-metadata-tamper.tar.gz"
