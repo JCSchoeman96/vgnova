@@ -1,8 +1,9 @@
 # Voelgoed Platform Core source modules
 
 This directory is the current canonical, source-controlled Platform Core code
-in the `vgnova` repository. It tracks the `content_topic` and Event Participation
-modules installed into the existing Voelgoed Platform Core plugin at
+in the `vgnova` repository. It tracks the `content_topic`,
+Event Participation, Product People, and Product Contribution modules installed
+into the existing Voelgoed Platform Core plugin at
 `wp-content/plugins/voelgoed-platform-core`. The Local WordPress copy is not a
 Git checkout. `integration.patch` records the bootstrap changes made to load
 the source-controlled modules and register their lifecycle components.
@@ -110,21 +111,65 @@ setup failure boundary has a standalone regression check at
 Created-record ownership and failure-safe cleanup have focused regressions at
 `site-code/runtime-tests/tests/run-event-participation-qa-cleanup-tests.php`.
 
-## Product People foundation and Bricks adapters
+## Product People, Product Contribution, and Bricks adapters
 
-The Task 7A Product People foundation and Task 7B Bricks adapters live in `includes/Product/`:
+The Product People and Product Contribution source classes and their Bricks
+adapters live in `includes/Product/`.
 
-- `ProductPeopleFields` owns the PHP-local ACF fields `product_people_mode` (`event` or `manual`, blank allowed, no default) and `product_people_override` (ordered `person` relationship, shown only in manual mode). It does not own `produk_bron_event` or `produk_medewerkers`.
-- `ProductPeopleResolver` is the read-only canonical Product → Person authority. It resolves Event-derived People through `EventParticipationRepository` or manual People from `product_people_override`, keeps only published Persons, and returns `[]` when the mode is absent, empty, or invalid. It never reads `produk_medewerkers` and never writes.
-- `ProductPeopleBricks` adapts only the exact `vg-product-people-query` and `vg-product-people-section` markers. It delegates membership to `ProductPeopleResolver`, preserves its order in the Person query, and hides an empty frontend section while keeping it editable in builder contexts.
-- `ProductSourceEventBricks` adapts only the exact `vg-product-source-event-query` marker. It independently reads and validates `produk_bron_event`; it does not call `ProductPeopleResolver` or inspect Product People mode or WooCommerce's `_event_name`.
+Product People membership follows `product_people_mode`:
 
-The Product People and source-Event adapters are separate authorities: a Product may display its source Event while its Product People section is empty. Runtime Template 124 migration remains separate from source deployment. Apply the additive Product lines in `integration.patch` and deploy both adapter files before enabling the matching Bricks markers.
+- `manual`: published Product Contributions are the canonical Product ↔ Person
+  authority.
+- `event`: Event Participation through `produk_bron_event` remains the live
+  membership authority. Product Contribution may add an optional Product Role
+  annotation to a Person who currently belongs to that source Event. A
+  contribution alone never creates event-mode membership.
+- Blank or invalid mode resolves to an empty list.
+
+`ProductPeopleFields` owns only `product_people_mode`; it no longer defines
+`product_people_override`. `ProductPeopleResolver` preserves the
+`people_for_product(int $product_id): array` API and delegates canonical reads
+to Product Contribution or Event Participation according to the mode. It does
+not read `produk_medewerkers`, `event_medewerkers`, `medewerker`, or
+`_event_name`.
+
+Product Contribution classes have these responsibilities:
+
+- `ProductRoleVocabulary` defines the approved Product Role vocabulary.
+- `ProductContributionRepository` reads canonical Product ↔ Person membership
+  and rich associations in either direction.
+- `ProductContributionPairLock` serializes writes for a Product × Person pair
+  and edits to an existing contribution.
+- `ProductContributionService` validates and writes canonical contributions.
+- `ProductContributionAdmin` applies admin and ACF lifecycle validation and
+  maintains derived contribution titles.
+- `ProductRoleSeeder` exposes the controlled `wp vg-product-role-setup`
+  command after the ACF taxonomy is registered.
+- `PersonProductsBricks` adapts the Person-side Product query. It responds only
+  to `vg-person-products-query` and `vg-person-products-section` and delegates
+  Product IDs exclusively to
+  `ProductContributionRepository::products_for_person()`.
+
+`ProductPeopleBricks` adapts only the exact `vg-product-people-query` and
+`vg-product-people-section` markers. It delegates membership to
+`ProductPeopleResolver` and preserves its order in the Person query. It hides
+an empty frontend section while keeping it editable in builder contexts.
+`ProductSourceEventBricks` adapts only the exact
+`vg-product-source-event-query` marker. It independently reads and validates
+`produk_bron_event`; it does not call `ProductPeopleResolver` or inspect
+Product People mode or WooCommerce's `_event_name`.
+
+Historical `product_people_override` database meta is not automatically
+deleted. Canonical Product People resolution ignores it.
 
 Run the focused checks with:
 
 ```sh
+php site-code/voelgoed-platform-core/tests/run-product-contribution-tests.php
 php site-code/voelgoed-platform-core/tests/run-product-people-tests.php
 ```
 
-Runtime deployment remains a copied plugin deployment. No ACF Local JSON sync is used for Task 7A.
+`integration.patch` records the source bootstrap additions. Runtime deployment
+remains a separate controlled step. Task 8 owns the targeted Product
+Contribution ACF Local JSON sync and Product Role seeding command. This source
+wiring task does not run `wp vg-product-role-setup`.

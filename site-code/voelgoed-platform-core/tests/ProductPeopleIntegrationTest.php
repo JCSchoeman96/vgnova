@@ -3,92 +3,127 @@ declare(strict_types=1);
 
 final class ProductPeopleIntegrationTest
 {
-    public function test_bootstrap_loads_both_product_classes(): void
+    public function test_bootstrap_loads_product_classes_in_dependency_safe_order(): void
     {
         $added = $this->added_lines();
 
-        vgpc_test_true(
-            in_array("'includes/Product/ProductRoleVocabulary.php',", $added, true),
-            'integration.patch must load includes/Product/ProductRoleVocabulary.php in the bootstrap.'
+        $load_order = [
+            "'includes/Event/EventParticipationRepository.php',",
+            "'includes/Product/ProductRoleVocabulary.php',",
+            "'includes/Product/ProductPeopleFields.php',",
+            "'includes/Product/ProductContributionRepository.php',",
+            "'includes/Product/ProductContributionPairLock.php',",
+            "'includes/Product/ProductContributionService.php',",
+            "'includes/Product/ProductContributionAdmin.php',",
+            "'includes/Product/ProductRoleSeeder.php',",
+            "'includes/Product/ProductPeopleResolver.php',",
+            "'includes/Product/ProductPeopleBricks.php',",
+            "'includes/Product/ProductSourceEventBricks.php',",
+            "'includes/Product/PersonProductsBricks.php',",
+        ];
+
+        $missing_loads = array_values(array_filter(
+            $load_order,
+            static fn (string $line): bool => ! in_array($line, $added, true)
+        ));
+        vgpc_test_same(
+            [],
+            $missing_loads,
+            'integration.patch is missing required bootstrap loads: '
+                . implode(', ', array_map(static fn (string $line): string => trim($line, "',"), $missing_loads))
         );
-        vgpc_test_true(
-            in_array("'includes/Product/ProductPeopleFields.php',", $added, true),
-            'integration.patch must load includes/Product/ProductPeopleFields.php in the bootstrap.'
-        );
-        vgpc_test_true(
-            in_array("'includes/Product/ProductContributionRepository.php',", $added, true),
-            'integration.patch must load includes/Product/ProductContributionRepository.php in the bootstrap.'
-        );
-        vgpc_test_true(
-            in_array("'includes/Product/ProductPeopleResolver.php',", $added, true),
-            'integration.patch must load includes/Product/ProductPeopleResolver.php in the bootstrap.'
-        );
-        vgpc_test_true(
-            in_array("'includes/Product/ProductPeopleBricks.php',", $added, true),
-            'integration.patch must load includes/Product/ProductPeopleBricks.php in the bootstrap.'
-        );
-        vgpc_test_true(
-            in_array("'includes/Product/ProductSourceEventBricks.php',", $added, true),
-            'integration.patch must load includes/Product/ProductSourceEventBricks.php in the bootstrap.'
+
+        $positions = [];
+        foreach ($load_order as $line) {
+            $position = array_search($line, $added, true);
+            if ($position !== false) {
+                $positions[] = $position;
+            }
+        }
+        $sorted_positions = $positions;
+        sort($sorted_positions);
+        vgpc_test_same(
+            $sorted_positions,
+            $positions,
+            'Product bootstrap loads must follow the Event, vocabulary, repository, service, and adapter dependency order.'
         );
     }
 
-    public function test_plugin_imports_and_registers_product_bricks_components_without_registering_resolver(): void
+    public function test_plugin_imports_and_registers_product_lifecycle_components(): void
     {
         $added = $this->added_lines();
 
-        vgpc_test_true(
-            in_array('use Voelgoed\PlatformCore\Product\ProductPeopleFields;', $added, true),
-            'integration.patch must import ProductPeopleFields into includes/Plugin.php.'
+        $required_lines = [
+            'use Voelgoed\PlatformCore\Product\ProductPeopleFields;',
+            "\$this->register_component('product_people_fields', ProductPeopleFields::class);",
+            'use Voelgoed\PlatformCore\Product\ProductPeopleBricks;',
+            'use Voelgoed\PlatformCore\Product\ProductSourceEventBricks;',
+            "\$this->register_component('product_people_bricks', ProductPeopleBricks::class);",
+            "\$this->register_component('product_source_event_bricks', ProductSourceEventBricks::class);",
+            'use Voelgoed\PlatformCore\Product\ProductContributionAdmin;',
+            "\$this->register_component('product_contribution_admin', ProductContributionAdmin::class);",
+            'use Voelgoed\PlatformCore\Product\ProductRoleSeeder;',
+            "\$this->register_component('product_role_seeder', ProductRoleSeeder::class);",
+            'use Voelgoed\PlatformCore\Product\PersonProductsBricks;',
+            "\$this->register_component('person_products_bricks', PersonProductsBricks::class);",
+        ];
+        $missing_lines = array_values(array_filter(
+            $required_lines,
+            static fn (string $line): bool => ! in_array($line, $added, true)
+        ));
+        vgpc_test_same(
+            [],
+            $missing_lines,
+            'integration.patch is missing Product lifecycle imports or registrations: '
+                . implode(' | ', $missing_lines)
         );
-        vgpc_test_true(
-            in_array("\$this->register_component('product_people_fields', ProductPeopleFields::class);", $added, true),
-            'integration.patch must register the product_people_fields lifecycle component.'
-        );
-        vgpc_test_true(
-            in_array('use Voelgoed\PlatformCore\Product\ProductPeopleBricks;', $added, true),
-            'integration.patch must import ProductPeopleBricks into includes/Plugin.php.'
-        );
-        vgpc_test_true(
-            in_array('use Voelgoed\PlatformCore\Product\ProductSourceEventBricks;', $added, true),
-            'integration.patch must import ProductSourceEventBricks into includes/Plugin.php.'
-        );
-        vgpc_test_true(
-            in_array("\$this->register_component('product_people_bricks', ProductPeopleBricks::class);", $added, true),
-            'integration.patch must register the product_people_bricks lifecycle component.'
-        );
-        vgpc_test_true(
-            in_array("\$this->register_component('product_source_event_bricks', ProductSourceEventBricks::class);", $added, true),
-            'integration.patch must register the product_source_event_bricks lifecycle component.'
-        );
+
+        foreach ([
+            "\$this->register_component('product_contribution_admin', ProductContributionAdmin::class);",
+            "\$this->register_component('product_role_seeder', ProductRoleSeeder::class);",
+            "\$this->register_component('person_products_bricks', PersonProductsBricks::class);",
+        ] as $component_line) {
+            vgpc_test_same(
+                1,
+                count(array_filter($added, static fn (string $line): bool => $line === $component_line)),
+                'Each Product Contribution lifecycle component must be registered exactly once: ' . $component_line
+            );
+        }
     }
 
-    public function test_resolver_is_not_registered_as_a_lifecycle_component(): void
+    public function test_dependencies_are_not_registered_as_lifecycle_components(): void
     {
-        foreach ($this->added_lines() as $line) {
-            vgpc_test_true(
-                ! str_contains($line, 'ProductPeopleResolver::class'),
-                'ProductPeopleResolver must not be registered as a lifecycle component: ' . $line
+        $added = $this->added_lines();
+        $registration_lines = array_values(array_filter(
+            $added,
+            static fn (string $line): bool => str_contains($line, '$this->register_component(')
+        ));
+
+        foreach ([
+            'ProductPeopleResolver' => 'product_people_resolver',
+            'ProductRoleVocabulary' => 'product_role_vocabulary',
+            'ProductContributionRepository' => 'product_contribution_repository',
+            'ProductContributionPairLock' => 'product_contribution_pair_lock',
+            'ProductContributionService' => 'product_contribution_service',
+        ] as $class => $registration_key) {
+            $class_registrations = array_values(array_filter(
+                $registration_lines,
+                static fn (string $line): bool => str_contains($line, $class . '::class')
+            ));
+            $key_registrations = array_values(array_filter(
+                $registration_lines,
+                static fn (string $line): bool => str_contains($line, "\$this->register_component('$registration_key'")
+            ));
+
+            vgpc_test_same(
+                [],
+                $class_registrations,
+                $class . ' must not be passed to Plugin::register_component().'
             );
-            vgpc_test_true(
-                ! str_contains($line, "register_component('product_people_resolver'"),
-                'ProductPeopleResolver must not have a lifecycle registration key: ' . $line
-            );
-            vgpc_test_true(
-                ! str_contains($line, 'ProductRoleVocabulary::class'),
-                'ProductRoleVocabulary must not be registered as a lifecycle component: ' . $line
-            );
-            vgpc_test_true(
-                ! str_contains($line, 'ProductContributionRepository::class'),
-                'ProductContributionRepository must not be registered as a lifecycle component: ' . $line
-            );
-            vgpc_test_true(
-                ! str_contains($line, "register_component('product_role_vocabulary'"),
-                'ProductRoleVocabulary must not have a lifecycle registration key: ' . $line
-            );
-            vgpc_test_true(
-                ! str_contains($line, "register_component('product_contribution_repository'"),
-                'ProductContributionRepository must not have a lifecycle registration key: ' . $line
+            vgpc_test_same(
+                [],
+                $key_registrations,
+                $class . ' must not have a lifecycle registration key.'
             );
         }
     }
@@ -104,6 +139,41 @@ final class ProductPeopleIntegrationTest
         vgpc_test_same([], $removed, 'integration.patch must not remove any existing bootstrap line.');
 
         $added = $this->added_lines();
+        foreach ([
+            "'includes/Event/EventParticipationRepository.php',",
+            "'includes/Event/EventParticipationAdmin.php',",
+            "'includes/Event/EventRoleSeeder.php',",
+            "'includes/Event/EventParticipationBricks.php',",
+            "'includes/Product/ProductPeopleFields.php',",
+            "'includes/Product/ProductPeopleBricks.php',",
+            "'includes/Product/ProductSourceEventBricks.php',",
+        ] as $line) {
+            vgpc_test_true(
+                in_array($line, $added, true),
+                'integration.patch must preserve existing integration load line ' . trim($line, "',") . '.'
+            );
+        }
+
+        foreach ([
+            'use Voelgoed\PlatformCore\Event\EventParticipationAdmin;',
+            'use Voelgoed\PlatformCore\Event\EventRoleSeeder;',
+            'use Voelgoed\PlatformCore\Event\EventParticipationBricks;',
+            'use Voelgoed\PlatformCore\Product\ProductPeopleFields;',
+            'use Voelgoed\PlatformCore\Product\ProductPeopleBricks;',
+            'use Voelgoed\PlatformCore\Product\ProductSourceEventBricks;',
+            "\$this->register_component('event_participation_admin', EventParticipationAdmin::class);",
+            "\$this->register_component('event_role_seeder', EventRoleSeeder::class);",
+            "\$this->register_component('event_participation_bricks', EventParticipationBricks::class);",
+            "\$this->register_component('product_people_fields', ProductPeopleFields::class);",
+            "\$this->register_component('product_people_bricks', ProductPeopleBricks::class);",
+            "\$this->register_component('product_source_event_bricks', ProductSourceEventBricks::class);",
+        ] as $line) {
+            vgpc_test_true(
+                in_array($line, $added, true),
+                'integration.patch must preserve existing import or registration line ' . $line . '.'
+            );
+        }
+
         vgpc_test_true(
             in_array("'includes/Event/EventParticipationBricks.php',", $added, true),
             'The existing Event Participation bootstrap line must remain in the patch.'
