@@ -348,6 +348,54 @@ def validate_plugins_loaded_hook(entrypoint: str) -> None:
         fail("The entrypoint can exit before the plugins_loaded lifecycle callback.")
 
 
+def validate_plugin_directory(entrypoint: str) -> None:
+    tokens = significant_php_tokens(php_tokens(entrypoint, "assembled plugin directory constant"))
+    expected_statements = (
+        (
+            "VGPC_PLUGIN_DIR definition",
+            "const VGPC_PLUGIN_DIR = __DIR__ . '/';",
+            "The VGPC_PLUGIN_DIR constant must resolve to the assembled plugin root.",
+        ),
+        (
+            "Plugin.php require",
+            "require_once VGPC_PLUGIN_DIR . 'includes/Plugin.php';",
+            "The entrypoint must require the assembled includes/Plugin.php file.",
+        ),
+    )
+    statement_indexes: dict[str, int] = {}
+    for label, source, failure in expected_statements:
+        expected = [
+            (token_name, token_text)
+            for token_name, token_text, _, _ in significant_php_tokens(php_tokens(source, label))
+        ]
+        matches = [
+            index
+            for index in range(len(tokens))
+            if token_matches(tokens, index, expected)
+        ]
+        if len(matches) != 1:
+            fail(failure)
+        statement_index = matches[0]
+        direct, brace_depth = is_first_statement_token(tokens, statement_index)
+        if brace_depth != 0 or not direct:
+            fail(failure)
+        statement_indexes[label] = statement_index
+
+    include_assignments = [
+        index
+        for index in range(len(tokens) - 1)
+        if tokens[index][0:2] == ("T_VARIABLE", "$vgpc_include_paths")
+        and tokens[index + 1][1] == "="
+    ]
+    if (
+        len(include_assignments) != 1
+        or statement_indexes["VGPC_PLUGIN_DIR definition"]
+        >= statement_indexes["Plugin.php require"]
+        or statement_indexes["Plugin.php require"] >= include_assignments[0]
+    ):
+        fail("VGPC_PLUGIN_DIR and the Plugin.php require must precede module include assembly.")
+
+
 def apply_patch(staging_root: Path, patch_path: Path, patch_text: str) -> None:
     patch_owned_paths(patch_text)
     git_environment = os.environ.copy()
@@ -981,6 +1029,7 @@ def validate_assembled_bootstrap(
     entrypoint = text_file(entrypoint_path, "assembled plugin entrypoint")
     plugin_class = text_file(plugin_class_path, "assembled includes/Plugin.php")
 
+    validate_plugin_directory(entrypoint)
     include_paths = parse_include_paths(entrypoint)
     validate_plugins_loaded_hook(entrypoint)
     duplicates = sorted(path for path, count in Counter(include_paths).items() if count > 1)
