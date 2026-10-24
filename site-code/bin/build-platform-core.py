@@ -4,6 +4,8 @@
 from __future__ import annotations
 
 import argparse
+import ctypes
+import errno
 import gzip
 import hashlib
 import io
@@ -180,6 +182,35 @@ def safe_output_path(repo_root: Path, raw_output: str) -> Path:
     if target.exists() or target.is_symlink():
         fail(f"Output destination already exists; refusing to overwrite: {target}")
     return target
+
+
+def atomic_publish_no_replace(source: Path, destination: Path) -> None:
+    if not sys.platform.startswith("linux"):
+        fail("Atomic no-replace output publication requires Linux renameat2; refusing to use a replacing rename.")
+    try:
+        libc = ctypes.CDLL(None, use_errno=True)
+        renameat2 = libc.renameat2
+    except (AttributeError, OSError) as error:
+        fail(f"Linux renameat2 is unavailable for safe output publication: {error}")
+
+    renameat2.argtypes = [ctypes.c_int, ctypes.c_char_p, ctypes.c_int, ctypes.c_char_p, ctypes.c_uint]
+    renameat2.restype = ctypes.c_int
+    result = renameat2(
+        -100,  # AT_FDCWD
+        os.fsencode(source),
+        -100,  # AT_FDCWD
+        os.fsencode(destination),
+        1,  # RENAME_NOREPLACE
+    )
+    if result == 0:
+        return
+
+    error_number = ctypes.get_errno()
+    if error_number == errno.EEXIST:
+        fail(f"Output destination already exists or appeared during assembly; refusing to overwrite: {destination}")
+    if error_number in (errno.ENOSYS, errno.EINVAL):
+        fail("Linux renameat2 with RENAME_NOREPLACE is unavailable; refusing unsafe output publication.")
+    raise OSError(error_number, os.strerror(error_number), str(destination))
 
 
 def write_tree_file(destination: Path, contents: bytes, mode: str) -> None:
@@ -616,9 +647,9 @@ def main() -> int:
                 (output_temp / ARCHIVE_NAME).write_bytes(archive)
                 (output_temp / MANIFEST_NAME).write_bytes(serialize_manifest(manifest))
                 try:
-                    os.rename(output_temp, output)
-                except FileExistsError:
-                    fail(f"Output destination appeared during build; refusing to overwrite: {output}")
+                    atomic_publish_no_replace(output_temp, output)
+                except BuildFailure:
+                    raise
                 except OSError as error:
                     fail(f"Cannot atomically publish build output at {output}: {error}")
     except BuildFailure:
