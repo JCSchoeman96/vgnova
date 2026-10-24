@@ -873,6 +873,33 @@ def run_negative_cases(
         expected_text="component collection cannot be reset after lifecycle registration",
     )
 
+    for case_name, statement in (
+        (
+            "unset-registered-component-before-dispatch",
+            "unset($this->components['content_topic_taxonomy']);",
+        ),
+        ("unset-components-before-dispatch", "unset($this->components);"),
+    ):
+        fixture = create_fixture(repo_root, commit, cases / case_name)
+        plugin_class = fixture / ROOT_PLUGIN / "includes/Plugin.php"
+        plugin_text = plugin_class.read_text(encoding="utf-8")
+        dispatch = "        foreach ($this->components as $component) {"
+        if plugin_text.count(dispatch) != 1:
+            raise CheckFailure(f"Cannot prepare {case_name} fixture.")
+        plugin_class.write_text(
+            plugin_text.replace(dispatch, f"        {statement}\n\n{dispatch}", 1),
+            encoding="utf-8",
+        )
+        commit_fixture_changes(fixture, f"fixture: {case_name}")
+        expect_build_failure(
+            label=f"component collection unset is rejected ({case_name})",
+            builder=builder,
+            fixture=fixture,
+            ref="HEAD",
+            output=cases / f"{case_name}-output",
+            expected_text="component collection cannot be reset after lifecycle registration",
+        )
+
     fixture = create_fixture(repo_root, commit, cases / "binary-patch-path")
     overlay = fixture / "site-code/voelgoed-platform-core/includes/Product/ProductRoleVocabulary.php"
     patch_file = fixture / PATCH_PATH
