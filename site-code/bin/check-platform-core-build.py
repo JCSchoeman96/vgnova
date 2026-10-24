@@ -870,7 +870,7 @@ def run_negative_cases(
         fixture=fixture,
         ref="HEAD",
         output=cases / "reset-components-before-dispatch-output",
-        expected_text="component collection cannot be reset after lifecycle registration",
+        expected_text="component collection cannot be accessed after lifecycle registration",
     )
 
     for case_name, statement in (
@@ -897,7 +897,7 @@ def run_negative_cases(
             fixture=fixture,
             ref="HEAD",
             output=cases / f"{case_name}-output",
-            expected_text="component collection cannot be reset after lifecycle registration",
+            expected_text="component collection cannot be accessed after lifecycle registration",
         )
 
     for case_name, statement in (
