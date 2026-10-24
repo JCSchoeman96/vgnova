@@ -738,21 +738,11 @@ def insert_patch_additions(
 
 def tamper_archive(source_archive: Path, destination: Path) -> None:
     changed = False
+    entries: list[tuple[str, bool, int, bytes | None]] = []
     with tarfile.open(source_archive, mode="r:gz") as source:
-        members = source.getmembers()
-        payloads: list[tuple[tarfile.TarInfo, bytes | None]] = []
-        for member in members:
-            info = tarfile.TarInfo(member.name)
-            info.type = member.type
-            info.mode = member.mode
-            info.uid = 0
-            info.gid = 0
-            info.uname = ""
-            info.gname = ""
-            info.mtime = 0
+        for member in source.getmembers():
             if member.isdir():
-                info.size = 0
-                payloads.append((info, None))
+                entries.append((member.name, True, member.mode, None))
                 continue
             stream = source.extractfile(member)
             if stream is None:
@@ -761,22 +751,11 @@ def tamper_archive(source_archive: Path, destination: Path) -> None:
             if not changed:
                 contents += b"\nPE-005 deliberate tamper\n"
                 changed = True
-            info.size = len(contents)
-            payloads.append((info, contents))
+            entries.append((member.name, False, member.mode, contents))
 
     if not changed:
         raise CheckFailure("No regular file was available to tamper with.")
-    raw_tar = io.BytesIO()
-    with tarfile.open(
-        fileobj=raw_tar,
-        mode="w",
-        format=tarfile.PAX_FORMAT,
-        encoding="utf-8",
-        errors="strict",
-    ) as target:
-        for info, contents in payloads:
-            target.addfile(info, io.BytesIO(contents) if contents is not None else None)
-    destination.write_bytes(canonical_gzip_stored_deflate(raw_tar.getvalue()))
+    destination.write_bytes(canonical_gzip_stored_deflate(canonical_ustar_tar(entries)))
 
 
 def rewrite_archive(
@@ -832,6 +811,12 @@ def rewrite_archive(
 
     directories.sort(key=lambda item: (item.name != ROOT_PLUGIN, item.name.encode("utf-8")))
     files.sort(key=lambda item: item[0].name.encode("utf-8"))
+    if pax_headers is None:
+        entries = [(info.name, True, info.mode, None) for info in directories]
+        entries.extend((info.name, False, info.mode, contents) for info, contents in files)
+        destination.write_bytes(canonical_gzip_stored_deflate(canonical_ustar_tar(entries)))
+        return renamed_to
+
     raw_tar = io.BytesIO()
     with tarfile.open(
         fileobj=raw_tar,
