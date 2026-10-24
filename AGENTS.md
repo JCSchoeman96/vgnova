@@ -12,6 +12,18 @@ This project manages a WordPress Local Flywheel staging site through Novamira MC
 
 The Git repository is canonical for source-controlled architecture and code. The local WordPress installation is derived runtime state and may also contain database-managed content and configuration. Inspect the runtime before describing live state; do not treat runtime-only edits as source-controlled architecture.
 
+## PHP platform contract
+
+VG Nova is a controlled custom platform.
+
+- Supported minimum: PHP 8.5.
+- Development and runtime target: latest supported PHP 8.5.x patch where practical.
+- Required CI: PHP 8.5.
+
+Do not weaken production code, add compatibility branches, or preserve PHP
+8.0–8.4 support unless a separately approved concrete deployment requirement
+requires it.
+
 Use Novamira MCP as the primary WordPress runtime interface. Use WP-CLI or the local shell for read-only verification and as a fallback. Direct SQL writes are exceptional and require a documented reason and explicit task scope.
 
 Local runtime references:
