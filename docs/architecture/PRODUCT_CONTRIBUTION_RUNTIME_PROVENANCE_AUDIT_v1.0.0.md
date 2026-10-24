@@ -36,7 +36,7 @@ At audit start, `origin/main` was `0216d86a60c02cc767833bbb5cdec8b57c54d335`, th
 
 At audit start, PR #45, `ci: add VG Nova platform source gate`, was open against `main` at head `2787fb06c6994f754537a7c8999b871ebbb6aba9`. It merged during the audit at `2026-10-24T09:05:54Z` as `2669f0a08c81340625c469491311587fff1d7df2` (11:05:54 SAST). The merge changes only `.github/workflows/voelgoed-dashboard.yml`, `docs/superpowers/plans/2026-10-24-pe-002-platform-gate.md`, and `site-code/bin/check-source.sh`. The workflow and script add PHP 8.5 source checks and an aggregate CI gate; the PR states that runtime, schema, deployment, and WordPress state are unchanged. The commit does not change Platform Core source or the runtime assumptions in this audit. The execution baseline remains the SHA observed when the audit worktree was created; the branch is rebased onto the final `origin/main` before opening its PR.
 
-PR #46, `test: prove platform gate on docs-only PR`, opened after the #45 merge and remains open at head `3c94564857047388e8720e330bd313eedd20e88f`. It changes only `docs/superpowers/proofs/pe-003-docs-trigger.md` and describes itself as a temporary CI negative-control proof. It was not modified as part of this audit.
+PR #46 was closed unmerged at `2026-10-24T09:08:41Z` after completing its temporary PE-003 negative-control purpose. It did not enter `main` and was not modified by Task 8A.
 
 The Task 8 worktree from the earlier blocked attempt began at `be713383b03c730bfdf4a17a80cfcbeadc8e44fc`. This audit used a new worktree at the current `main`; it did not reuse the Task 8 branch.
 
