@@ -906,6 +906,7 @@ def run_negative_cases(
             "$this->components['content_topic_taxonomy'] = new \\stdClass();",
         ),
         ("splice-components-before-dispatch", "array_splice($this->components, 0);"),
+        ("dynamic-components-reset-before-dispatch", "$this->{'components'} = [];"),
     ):
         fixture = create_fixture(repo_root, commit, cases / case_name)
         plugin_class = fixture / ROOT_PLUGIN / "includes/Plugin.php"
@@ -926,6 +927,67 @@ def run_negative_cases(
             output=cases / f"{case_name}-output",
             expected_text="component collection cannot be accessed after lifecycle registration",
         )
+
+    fixture = create_fixture(repo_root, commit, cases / "duplicate-module-class-declaration")
+    duplicate_module = fixture / "site-code/voelgoed-platform-core/includes/Event/EventParticipationPairLock.php"
+    duplicate_module.write_text(
+        duplicate_module.read_text(encoding="utf-8")
+        + "\nnamespace Voelgoed\\PlatformCore\\Taxonomy;\nclass ContentTopicTaxonomy {}\n",
+        encoding="utf-8",
+    )
+    commit_fixture_changes(fixture, "fixture: duplicate canonical class declaration")
+    expect_build_failure(
+        label="duplicate PHP declarations across assembled module files",
+        builder=builder,
+        fixture=fixture,
+        ref="HEAD",
+        output=cases / "duplicate-module-class-declaration-output",
+        expected_text="Duplicate PHP declaration",
+    )
+
+    fixture = create_fixture(repo_root, commit, cases / "wrong-plugin-directory-constant")
+    entrypoint = fixture / ROOT_PLUGIN / "voelgoed-platform-core.php"
+    entrypoint_text = entrypoint.read_text(encoding="utf-8")
+    directory_constant = "const VGPC_PLUGIN_DIR = __DIR__ . '/';"
+    if entrypoint_text.count(directory_constant) != 1:
+        raise CheckFailure("Cannot prepare wrong VGPC_PLUGIN_DIR fixture.")
+    entrypoint.write_text(
+        entrypoint_text.replace(
+            directory_constant,
+            "const VGPC_PLUGIN_DIR = __DIR__ . '/absent/';",
+            1,
+        ),
+        encoding="utf-8",
+    )
+    commit_fixture_changes(fixture, "fixture: redirect Platform Core include root")
+    expect_build_failure(
+        label="entrypoint plugin directory constant must resolve to artifact root",
+        builder=builder,
+        fixture=fixture,
+        ref="HEAD",
+        output=cases / "wrong-plugin-directory-constant-output",
+        expected_text="VGPC_PLUGIN_DIR",
+    )
+
+    fixture = create_fixture(repo_root, commit, cases / "registered-flag-starts-true")
+    plugin_class = fixture / ROOT_PLUGIN / "includes/Plugin.php"
+    plugin_text = plugin_class.read_text(encoding="utf-8")
+    registration_flag = "private bool $registered = false;"
+    if plugin_text.count(registration_flag) != 1:
+        raise CheckFailure("Cannot prepare registered flag starts-true fixture.")
+    plugin_class.write_text(
+        plugin_text.replace(registration_flag, "private bool $registered = true;", 1),
+        encoding="utf-8",
+    )
+    commit_fixture_changes(fixture, "fixture: mark lifecycle registration complete initially")
+    expect_build_failure(
+        label="Plugin lifecycle idempotency flag must start false",
+        builder=builder,
+        fixture=fixture,
+        ref="HEAD",
+        output=cases / "registered-flag-starts-true-output",
+        expected_text="idempotency guard must start false",
+    )
 
     fixture = create_fixture(repo_root, commit, cases / "component-collection-reference-alias")
     plugin_class = fixture / ROOT_PLUGIN / "includes/Plugin.php"
