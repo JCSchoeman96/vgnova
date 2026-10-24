@@ -1,0 +1,1441 @@
+{
+  "task": "VG Nova Product Contribution Task 8B — Controlled Platform Core Runtime Normalization",
+  "task_id": "8B",
+  "execution_baseline": "e27a55c33b0393273c363b8fdcbfb65d3d1671ea",
+  "source_worktree": {
+    "branch": "ops/product-contribution-runtime-normalization",
+    "initially_clean": true,
+    "final_source_baseline": "e27a55c33b0393273c363b8fdcbfb65d3d1671ea",
+    "origin_main_unchanged_at_final_fetch": true
+  },
+  "runtime_root": "/home/jcschoeman96/Local Sites/voelgoed-novamira/app/public/",
+  "runtime_home": "http://localhost:10039/",
+  "site_url": "http://localhost:10039/",
+  "database": {
+    "name": "local",
+    "host": "localhost"
+  },
+  "php_version": "8.5.12",
+  "wordpress_version": "7.1.3",
+  "acf_pro_version": "6.8.1",
+  "woocommerce_version": "11.2.1",
+  "plugin": {
+    "path": "/home/jcschoeman96/Local Sites/voelgoed-novamira/app/public/wp-content/plugins/voelgoed-platform-core",
+    "version": "0.1.0",
+    "active": true,
+    "requires_php": "8.5"
+  },
+  "construction": {
+    "staged_directory": "/home/jcschoeman96/Local Sites/voelgoed-novamira/app/.task8b-platform-core-stage-20261024T095612Z",
+    "inputs": [
+      "tracked root voelgoed-platform-core/ at execution_baseline",
+      "site-code/voelgoed-platform-core/integration.patch applied exactly once",
+      "site-code/voelgoed-platform-core/includes/ overlaid into staged includes/"
+    ],
+    "source_only_documentation_copied": false,
+    "integration_patch_sha256": "7230916850225f7ffb1478cc180f8f42b32934505358ac437d771507ac3ba8a2",
+    "staged_php_lint": {
+      "files": 53,
+      "result": "PASS"
+    },
+    "required_classes_present": [
+      "ProductRoleVocabulary",
+      "ProductContributionRepository",
+      "ProductContributionPairLock",
+      "ProductContributionService",
+      "ProductContributionAdmin",
+      "ProductRoleSeeder",
+      "ProductPeopleFields",
+      "ProductPeopleResolver",
+      "ProductPeopleBricks",
+      "ProductSourceEventBricks",
+      "PersonProductsBricks",
+      "EventParticipationRepository"
+    ]
+  },
+  "old_runtime": {
+    "file_count": 81,
+    "tree_sha256": "fcc9839f165341c92745a426d246536d300e2a052647d4983ce8cb37b7f4560e",
+    "entrypoint_sha256": "7a1b25a840294b029aba48d24e076adfe551ea9dcefc6b983525e7a82e06736d",
+    "plugin_php_sha256": "c50ad78ac7fe32cafe6c3476b9d61e68214047d69c255637d957da013e09f2f8",
+    "person_products_bricks_present": false,
+    "symlinks": [],
+    "files": [
+      {
+        "path": "bin/check.sh",
+        "size": 2816,
+        "sha256": "fa75e33b86dc16a8b9ad180319703aaa70376623ac50d1751c2181fe8de8c32f"
+      },
+      {
+        "path": "includes/Bricks/DashboardDynamicData.php",
+        "size": 13294,
+        "sha256": "78b5e8889dfba308cbe359736c19e3e1da78718df1ff169dfc56c4512e6b3c8f"
+      },
+      {
+        "path": "includes/Bricks/DashboardQueryProvider.php",
+        "size": 14434,
+        "sha256": "19e488cf222605aeb78337910feac2a7d388173ae2723705946b01ebe8d817ba"
+      },
+      {
+        "path": "includes/Config/AfrikaansLabels.php",
+        "size": 2316,
+        "sha256": "85ff7693c406d420d8f83f44772a41e0d0c5651daa8de5d9b589351837a6fc36"
+      },
+      {
+        "path": "includes/Contracts/DashboardAction.php",
+        "size": 4177,
+        "sha256": "a1a6469f6aaf21a3324ccfd22870dad34ec6e9cb0e3f5203857be311fb0d2905"
+      },
+      {
+        "path": "includes/Contracts/DashboardCard.php",
+        "size": 4123,
+        "sha256": "bed4565c9883328129b4f2dcccb66655fbceae37a97c74af9ed8c227cef73cec"
+      },
+      {
+        "path": "includes/Contracts/DashboardServiceInterface.php",
+        "size": 302,
+        "sha256": "fec05df907a648931a90ec2a25d1c68061eec7a80a224afdb40805c56dc17702"
+      },
+      {
+        "path": "includes/Dashboard/AccessGuard.php",
+        "size": 8246,
+        "sha256": "77b55994203e269643ec4101e95ba06c42fc5aa286310813127312d43e1f64ab"
+      },
+      {
+        "path": "includes/Dashboard/DashboardContext.php",
+        "size": 3796,
+        "sha256": "572534a6a72aa7bb415f376d66fb0597a9d80e57369d609fef8fa0fd20ccae67"
+      },
+      {
+        "path": "includes/Dashboard/DashboardRegistry.php",
+        "size": 10866,
+        "sha256": "afe5a0e0d35cf02151493459742c86eae6ce435188603c0b330c4723df850e88"
+      },
+      {
+        "path": "includes/Dashboard/DashboardRoutes.php",
+        "size": 2275,
+        "sha256": "42bf035569292175272216a6d5f1d6d0bdf3fbd2bb8975e15835bc05c6fb8d87"
+      },
+      {
+        "path": "includes/Dashboard/Navigation.php",
+        "size": 6512,
+        "sha256": "a8f945933987854a30cf85a57816fc3760d1b78d15028bf95b7d249f73d97050"
+      },
+      {
+        "path": "includes/Event/EventParticipationAdmin.php",
+        "size": 10816,
+        "sha256": "bbdbea299e6712f84d574ea5d5a25c517f2917920d36858f6bf8bf92b5e3b9f9"
+      },
+      {
+        "path": "includes/Event/EventParticipationBricks.php",
+        "size": 4865,
+        "sha256": "1adee948ecb9a53f762e7f9de62bf721e1bc46c9f8d4e3f093f9fd26a9c87c63"
+      },
+      {
+        "path": "includes/Event/EventParticipationPairLock.php",
+        "size": 4298,
+        "sha256": "95107d2db6c3e713c6685cd0c13aa7fe4764f89b7ac37596843e436f74e9c49c"
+      },
+      {
+        "path": "includes/Event/EventParticipationRepository.php",
+        "size": 14214,
+        "sha256": "4de51c154b4863546570245cddc91124b2eabb8a6ee166bddfe98c5c4728baff"
+      },
+      {
+        "path": "includes/Event/EventParticipationService.php",
+        "size": 9725,
+        "sha256": "4075158d9a6ab4b4079f5722bb9a2736190eb779dfd2ae1282e9c9bf74362600"
+      },
+      {
+        "path": "includes/Event/EventRoleSeeder.php",
+        "size": 8704,
+        "sha256": "9b0396bf9b2e4b3515fb0b2bd5224e03e501fd964efe80e03cd3f1a76f98c4e6"
+      },
+      {
+        "path": "includes/Performance/CachePolicy.php",
+        "size": 7172,
+        "sha256": "48de79acd06ce3a9b28596ec5324c1ea7d5217c0b90d10b7f3260b8154826057"
+      },
+      {
+        "path": "includes/Plugin.php",
+        "size": 3715,
+        "sha256": "c50ad78ac7fe32cafe6c3476b9d61e68214047d69c255637d957da013e09f2f8"
+      },
+      {
+        "path": "includes/Product/ProductContributionAdmin.php",
+        "size": 27954,
+        "sha256": "435a270647db590a6f9ccfc2f57e8817dd9f55a03d44c115d847746ab6484074"
+      },
+      {
+        "path": "includes/Product/ProductContributionPairLock.php",
+        "size": 4547,
+        "sha256": "3da0944a49525f7b041c7738cd6cb789fb3a524d88e6bfb31fb2ba85b498a31f"
+      },
+      {
+        "path": "includes/Product/ProductContributionRepository.php",
+        "size": 25790,
+        "sha256": "db8d394d63a1265cfae9fef61bcfa8abe049da375199d647845f69391a5a0af6"
+      },
+      {
+        "path": "includes/Product/ProductContributionService.php",
+        "size": 17377,
+        "sha256": "6db9978174b2320bea3efa6ccade1e50db21cd0c6e16e4d279b3208a315d248e"
+      },
+      {
+        "path": "includes/Product/ProductPeopleBricks.php",
+        "size": 4499,
+        "sha256": "001967451c55ef4911427a53f0b72a3457ff925298450fc6a4517ff123d18ca7"
+      },
+      {
+        "path": "includes/Product/ProductPeopleFields.php",
+        "size": 2367,
+        "sha256": "373ce7592f6f79603fefc95b2c37978d94fef01d106bc8f6e28995c8146ba762"
+      },
+      {
+        "path": "includes/Product/ProductPeopleResolver.php",
+        "size": 1301,
+        "sha256": "27181a44aca8e6a701f367d11497596f74c16ca13b2eb592cf0caf8923c9ff23"
+      },
+      {
+        "path": "includes/Product/ProductRoleSeeder.php",
+        "size": 8588,
+        "sha256": "2b8979dad3eade53b6f5204e06a36621eadbda320ee18efc86b84d166221d4b8"
+      },
+      {
+        "path": "includes/Product/ProductRoleVocabulary.php",
+        "size": 1180,
+        "sha256": "fc27c8007876eb6ffea5ed2f1509bf349f88b6acd20e742cb2b507e5e07d3bd9"
+      },
+      {
+        "path": "includes/Product/ProductSourceEventBricks.php",
+        "size": 4205,
+        "sha256": "9781aac4f6594d0626539f0f7fc488b863b3fe0af4a9e8b34e3604fed1467697"
+      },
+      {
+        "path": "includes/Services/CommerceService.php",
+        "size": 13828,
+        "sha256": "c3fc99ef8f3b224e5921ff708080c680342504a2bbdab5c8572da5ea5703e9e9"
+      },
+      {
+        "path": "includes/Services/LearningService.php",
+        "size": 34709,
+        "sha256": "b7156f25406f15e8caf8a250961742a2f6514ce68762d609092b3d06d20f0338"
+      },
+      {
+        "path": "includes/Services/MemberAreaService.php",
+        "size": 9335,
+        "sha256": "9a5bf000eacb1d6eda74a24c1a0dcb86bfaf044dc128e69e0be7a21e7e0e495d"
+      },
+      {
+        "path": "includes/Services/MembershipService.php",
+        "size": 13154,
+        "sha256": "5355ecdfa921a4b7da306f6384649c7387d1c5fbd58be6425d209820c9a04fe6"
+      },
+      {
+        "path": "includes/Services/SubscriptionService.php",
+        "size": 16835,
+        "sha256": "70cfa98752f37c60045ef3ca2fc10ff50992e826d0e8a792116eb96c08098f4f"
+      },
+      {
+        "path": "includes/Services/TicketService.php",
+        "size": 35903,
+        "sha256": "ddde203376c45859763cfe6f2aaf500cc5bf228f5606c1aaef9707cfc9f19318"
+      },
+      {
+        "path": "includes/Taxonomy/ContentTopicMigration.php",
+        "size": 41413,
+        "sha256": "928521996320fbce4db8154e63a217c34a34bfd0bcf397337cc7ee29f271d856"
+      },
+      {
+        "path": "includes/Taxonomy/ContentTopicRoles.php",
+        "size": 26630,
+        "sha256": "9241fbaef68ac5318fda72e5daf2c71a5e147d9a3ff30ca97066480de45b6512"
+      },
+      {
+        "path": "includes/Taxonomy/ContentTopicTaxonomy.php",
+        "size": 15926,
+        "sha256": "5668c77070bebe2dcaa3984438f5297486ed2963803864abbbb7b92b724048c9"
+      },
+      {
+        "path": "tests/ContentTopicMigrationTest.php",
+        "size": 28165,
+        "sha256": "38131b2c37ca2b70e1666f718f17d93e6d587b6a5e3c24d0831bdb972cbb2e92"
+      },
+      {
+        "path": "tests/ContentTopicRolesTest.php",
+        "size": 36372,
+        "sha256": "aeb7c9d85fc146e84354ac8aaba9ebba69a435bf285f055bf4894b92a7e8e31a"
+      },
+      {
+        "path": "tests/ContentTopicTaxonomyTest.php",
+        "size": 16149,
+        "sha256": "e485ed1f655cc7f2df62bbeeedf8c12f2d1e75eb9f765df050ff7d92f53a1d54"
+      },
+      {
+        "path": "tests/EventParticipationAdminTest.php",
+        "size": 28993,
+        "sha256": "1a16afbb77ad7aceefd1aefa863c4a125e2a21c6a3b3780e7c9300ec1fc2cb3a"
+      },
+      {
+        "path": "tests/EventParticipationBricksTest.php",
+        "size": 10924,
+        "sha256": "10d6d78e5c5527709e1f3e1521f24d468f941ebabb988db1b2b49a1532868a24"
+      },
+      {
+        "path": "tests/EventParticipationRepositoryTest.php",
+        "size": 13387,
+        "sha256": "f1264a48e9cae824d33b116a985774c09587fabfa9e726c1e8bd0dd7f952e9d8"
+      },
+      {
+        "path": "tests/EventParticipationServiceTest.php",
+        "size": 20858,
+        "sha256": "61c6856dfc12e3f7bc8d7d851748125b2e72955c8488741c0553e2405360f49d"
+      },
+      {
+        "path": "tests/EventRoleSeederTest.php",
+        "size": 13320,
+        "sha256": "ec0c58e128871b1e019a99b41548dd1fe009416145efe799d7089cdd91cc4bba"
+      },
+      {
+        "path": "tests/ProductContributionAdminTest.php",
+        "size": 65375,
+        "sha256": "ff7a72b33ec3dfea56cb9321a64379e61bac71244c0464759867dfaeb908fa70"
+      },
+      {
+        "path": "tests/ProductContributionPairLockTest.php",
+        "size": 6827,
+        "sha256": "0aebd1f6969c3b3853c6721d80ec0f32d1e6df0b5361ab7c917aea35ce50f260"
+      },
+      {
+        "path": "tests/ProductContributionRepositoryTest.php",
+        "size": 33012,
+        "sha256": "256b1f9de389734e9417e2c7e1ff19bf16b64751950d908f2f60df0c5444f93c"
+      },
+      {
+        "path": "tests/ProductContributionSchemaTest.php",
+        "size": 12346,
+        "sha256": "9099383cacdddce28a4a39fdb5dec4759a02ed7d8400502a822ea8d527a46657"
+      },
+      {
+        "path": "tests/ProductContributionServiceTest.php",
+        "size": 34729,
+        "sha256": "18744f60ab30b4ffd4290579db3a4f85eca35cfd9e7b832ef0c6851b0cda32a6"
+      },
+      {
+        "path": "tests/ProductPeopleBricksTest.php",
+        "size": 16261,
+        "sha256": "48643d3988b5b5ca1a079c7855ec2171e998ddd524c2c6cdd65488942e6613dc"
+      },
+      {
+        "path": "tests/ProductPeopleFieldsTest.php",
+        "size": 6700,
+        "sha256": "0d6f0651277366e429006b45c7eb206a2d7a6c37ed5769e70219ff17fe84414c"
+      },
+      {
+        "path": "tests/ProductPeopleIntegrationTest.php",
+        "size": 10767,
+        "sha256": "adc34c63172e251aa090d49ef3d7798608b29931cd8a5a99ada3d3785b03aefa"
+      },
+      {
+        "path": "tests/ProductPeopleQaSideEffectsTest.php",
+        "size": 7304,
+        "sha256": "3fa5f6b1c0ea11f2f3dd5e9b10ebcbdc7a1572489b9370f476d3de02659ea0b4"
+      },
+      {
+        "path": "tests/ProductPeopleResolverTest.php",
+        "size": 23866,
+        "sha256": "26a9101bfe5756c50bd2f12401b8207956a86fcad2f41803f2b2947c27215129"
+      },
+      {
+        "path": "tests/ProductRoleSeederTest.php",
+        "size": 13941,
+        "sha256": "a904a81ef4b6dec9840302a4d0f32824d4db5069443ec658b61deb80519c7b1a"
+      },
+      {
+        "path": "tests/ProductRoleVocabularyTest.php",
+        "size": 3562,
+        "sha256": "f7c9f8b848ba67fc4db131dc3be646e9a26f8dcec1aa7470b006a23fdf041819"
+      },
+      {
+        "path": "tests/ProductSingle124QaRequestTest.php",
+        "size": 12184,
+        "sha256": "804d38d9d64055c4f63e2670e249972f992ad51fe33e65692af977803be88a9c"
+      },
+      {
+        "path": "tests/ProductSourceEventBricksTest.php",
+        "size": 10668,
+        "sha256": "450ba05d822bcffa1c85fad56c51ad925fd776b72fcc942be94151da0123f30e"
+      },
+      {
+        "path": "tests/bootstrap.php",
+        "size": 28277,
+        "sha256": "aa978dc66837f061ac6eecf3dfb26f0e49589f252574fb78a533ef38b4c11da0"
+      },
+      {
+        "path": "tests/contracts/DashboardCardTest.php",
+        "size": 6992,
+        "sha256": "e624d61733e763e4e8c69edac7b346f71fe4926dc0f4e6fa3fdf68cfd93d8b03"
+      },
+      {
+        "path": "tests/dashboard/AccessGuardTest.php",
+        "size": 4466,
+        "sha256": "69151d928c2c9deacc13881c50891283bd8371fab0d7dc228cc561580c470150"
+      },
+      {
+        "path": "tests/dashboard/DashboardRoutesTest.php",
+        "size": 3093,
+        "sha256": "44b32e7f36591313e41516817ed85f48d90f2d14eeef400dabe02cfa816dd0b1"
+      },
+      {
+        "path": "tests/dashboard/NavigationTest.php",
+        "size": 9037,
+        "sha256": "8edf44b916c8c8a217836b007dace0d8684b4c314f4a64d91cbae60beec934de"
+      },
+      {
+        "path": "tests/performance/CachePolicyTest.php",
+        "size": 24739,
+        "sha256": "b813031aa173cdc61b4429843eb7cedcb4b303f3a6b43510275c3990d4f8da7d"
+      },
+      {
+        "path": "tests/run-content-topic-tests.php",
+        "size": 782,
+        "sha256": "7ea3a937702ad5fdcdcb660297fe6419aac35a033bbd1b3141fb9178a01e30a3"
+      },
+      {
+        "path": "tests/run-dashboard-tests.php",
+        "size": 1706,
+        "sha256": "ebea06cb804228bc8bed7e6a6824a01ac4eb0215bc71d1a145e6eef0b7a386d4"
+      },
+      {
+        "path": "tests/run-event-participation-bricks-tests.php",
+        "size": 3031,
+        "sha256": "3cf0da685837e929ffba3bd5a921d6c57ec1658acc016f4f2931d9f7fd3334ea"
+      },
+      {
+        "path": "tests/run-event-participation-tests.php",
+        "size": 1936,
+        "sha256": "7b576655d9d151b96683bc8ffc77ff901cc8567db5f3c20099a7dbd709c84589"
+      },
+      {
+        "path": "tests/run-event-role-seeder-tests.php",
+        "size": 900,
+        "sha256": "7838058dd649cc1c73397e5aaf078d1db384ae7259d498f9a8d1e49026eab3cd"
+      },
+      {
+        "path": "tests/run-product-contribution-tests.php",
+        "size": 2330,
+        "sha256": "4f02ac55da9ecc61e401622250f0b02bcde1e091b065b8baa8fd4c5a5d8b7dd3"
+      },
+      {
+        "path": "tests/run-product-people-tests.php",
+        "size": 2598,
+        "sha256": "c4ccc7a7114be1e80a30d614c712a58036acfddf7c6cbc0e55d995039173bb46"
+      },
+      {
+        "path": "tests/services/CommerceServiceTest.php",
+        "size": 13823,
+        "sha256": "c1f982c6f6ac420aa7bf50dd3cd37d4907aba0ef921ec6356370a6b01c7aa4a8"
+      },
+      {
+        "path": "tests/services/LearningServiceTest.php",
+        "size": 17805,
+        "sha256": "78a37f8778517cf0971e0d1f8a3aae4b94ac44beaf9fbb45b7b0f7bf5cc0eabb"
+      },
+      {
+        "path": "tests/services/MemberAreaServiceTest.php",
+        "size": 8466,
+        "sha256": "a4abd9c23fb4a379245fb328173c8b374a958e81c7f18985e4aac9fbf49e168d"
+      },
+      {
+        "path": "tests/services/MembershipServiceTest.php",
+        "size": 11750,
+        "sha256": "7e94ee415395ef4b67bfafd796bd32d2b07b566e41f46b3627164d8943a4e7cb"
+      },
+      {
+        "path": "tests/services/SubscriptionServiceTest.php",
+        "size": 14730,
+        "sha256": "4721c3ebab6aa91bebf0dd034adab729e7cdcafc0e85d39bb2c4c9ade19407ad"
+      },
+      {
+        "path": "tests/services/TicketServiceTest.php",
+        "size": 22594,
+        "sha256": "7cf6e81c7680574cc4a8466497191cc27c24b715d8dc8246e2c4882f91793cf4"
+      },
+      {
+        "path": "voelgoed-platform-core.php",
+        "size": 3099,
+        "sha256": "7a1b25a840294b029aba48d24e076adfe551ea9dcefc6b983525e7a82e06736d"
+      }
+    ]
+  },
+  "target": {
+    "file_count": 54,
+    "tree_sha256": "a2635dafeb1d82d481b6275526c3850263f549facac80293c810d2b0d93de760",
+    "entrypoint_sha256": "3fc688ccf27ec11ee4bb9fe5e282630ded724d4a987e5489f9bc77142dca72bb",
+    "plugin_php_sha256": "054b373bc4512cadf7f4e9700347867dc90ca359527770b0ecf3a3a825512625",
+    "person_products_bricks_sha256": "a7460a1e21d4318a9d3997e52ad9e0d804a155798b1b7992e786b4cb976170e5",
+    "integration_patch_sha256": "7230916850225f7ffb1478cc180f8f42b32934505358ac437d771507ac3ba8a2",
+    "requires_php": "8.5",
+    "tree_fingerprint_algorithm": "SHA-256 over sorted entries: relative path + NUL + file SHA-256 + newline",
+    "symlinks": [],
+    "files": [
+      {
+        "path": "bin/check.sh",
+        "size": 2816,
+        "sha256": "fa75e33b86dc16a8b9ad180319703aaa70376623ac50d1751c2181fe8de8c32f"
+      },
+      {
+        "path": "includes/Bricks/DashboardDynamicData.php",
+        "size": 13294,
+        "sha256": "78b5e8889dfba308cbe359736c19e3e1da78718df1ff169dfc56c4512e6b3c8f"
+      },
+      {
+        "path": "includes/Bricks/DashboardQueryProvider.php",
+        "size": 14434,
+        "sha256": "19e488cf222605aeb78337910feac2a7d388173ae2723705946b01ebe8d817ba"
+      },
+      {
+        "path": "includes/Config/AfrikaansLabels.php",
+        "size": 2316,
+        "sha256": "85ff7693c406d420d8f83f44772a41e0d0c5651daa8de5d9b589351837a6fc36"
+      },
+      {
+        "path": "includes/Contracts/DashboardAction.php",
+        "size": 4177,
+        "sha256": "a1a6469f6aaf21a3324ccfd22870dad34ec6e9cb0e3f5203857be311fb0d2905"
+      },
+      {
+        "path": "includes/Contracts/DashboardCard.php",
+        "size": 4123,
+        "sha256": "bed4565c9883328129b4f2dcccb66655fbceae37a97c74af9ed8c227cef73cec"
+      },
+      {
+        "path": "includes/Contracts/DashboardServiceInterface.php",
+        "size": 302,
+        "sha256": "fec05df907a648931a90ec2a25d1c68061eec7a80a224afdb40805c56dc17702"
+      },
+      {
+        "path": "includes/Dashboard/AccessGuard.php",
+        "size": 8246,
+        "sha256": "77b55994203e269643ec4101e95ba06c42fc5aa286310813127312d43e1f64ab"
+      },
+      {
+        "path": "includes/Dashboard/DashboardContext.php",
+        "size": 3796,
+        "sha256": "572534a6a72aa7bb415f376d66fb0597a9d80e57369d609fef8fa0fd20ccae67"
+      },
+      {
+        "path": "includes/Dashboard/DashboardRegistry.php",
+        "size": 10866,
+        "sha256": "afe5a0e0d35cf02151493459742c86eae6ce435188603c0b330c4723df850e88"
+      },
+      {
+        "path": "includes/Dashboard/DashboardRoutes.php",
+        "size": 2275,
+        "sha256": "42bf035569292175272216a6d5f1d6d0bdf3fbd2bb8975e15835bc05c6fb8d87"
+      },
+      {
+        "path": "includes/Dashboard/Navigation.php",
+        "size": 6512,
+        "sha256": "a8f945933987854a30cf85a57816fc3760d1b78d15028bf95b7d249f73d97050"
+      },
+      {
+        "path": "includes/Event/EventParticipationAdmin.php",
+        "size": 10816,
+        "sha256": "bbdbea299e6712f84d574ea5d5a25c517f2917920d36858f6bf8bf92b5e3b9f9"
+      },
+      {
+        "path": "includes/Event/EventParticipationBricks.php",
+        "size": 4865,
+        "sha256": "1adee948ecb9a53f762e7f9de62bf721e1bc46c9f8d4e3f093f9fd26a9c87c63"
+      },
+      {
+        "path": "includes/Event/EventParticipationPairLock.php",
+        "size": 4298,
+        "sha256": "95107d2db6c3e713c6685cd0c13aa7fe4764f89b7ac37596843e436f74e9c49c"
+      },
+      {
+        "path": "includes/Event/EventParticipationRepository.php",
+        "size": 14214,
+        "sha256": "4de51c154b4863546570245cddc91124b2eabb8a6ee166bddfe98c5c4728baff"
+      },
+      {
+        "path": "includes/Event/EventParticipationService.php",
+        "size": 9725,
+        "sha256": "4075158d9a6ab4b4079f5722bb9a2736190eb779dfd2ae1282e9c9bf74362600"
+      },
+      {
+        "path": "includes/Event/EventRoleSeeder.php",
+        "size": 8704,
+        "sha256": "9b0396bf9b2e4b3515fb0b2bd5224e03e501fd964efe80e03cd3f1a76f98c4e6"
+      },
+      {
+        "path": "includes/Performance/CachePolicy.php",
+        "size": 7172,
+        "sha256": "48de79acd06ce3a9b28596ec5324c1ea7d5217c0b90d10b7f3260b8154826057"
+      },
+      {
+        "path": "includes/Plugin.php",
+        "size": 4156,
+        "sha256": "054b373bc4512cadf7f4e9700347867dc90ca359527770b0ecf3a3a825512625"
+      },
+      {
+        "path": "includes/Product/PersonProductsBricks.php",
+        "size": 5708,
+        "sha256": "a7460a1e21d4318a9d3997e52ad9e0d804a155798b1b7992e786b4cb976170e5"
+      },
+      {
+        "path": "includes/Product/ProductContributionAdmin.php",
+        "size": 27954,
+        "sha256": "435a270647db590a6f9ccfc2f57e8817dd9f55a03d44c115d847746ab6484074"
+      },
+      {
+        "path": "includes/Product/ProductContributionPairLock.php",
+        "size": 4547,
+        "sha256": "3da0944a49525f7b041c7738cd6cb789fb3a524d88e6bfb31fb2ba85b498a31f"
+      },
+      {
+        "path": "includes/Product/ProductContributionRepository.php",
+        "size": 25790,
+        "sha256": "db8d394d63a1265cfae9fef61bcfa8abe049da375199d647845f69391a5a0af6"
+      },
+      {
+        "path": "includes/Product/ProductContributionService.php",
+        "size": 17377,
+        "sha256": "6db9978174b2320bea3efa6ccade1e50db21cd0c6e16e4d279b3208a315d248e"
+      },
+      {
+        "path": "includes/Product/ProductPeopleBricks.php",
+        "size": 4499,
+        "sha256": "001967451c55ef4911427a53f0b72a3457ff925298450fc6a4517ff123d18ca7"
+      },
+      {
+        "path": "includes/Product/ProductPeopleFields.php",
+        "size": 2367,
+        "sha256": "373ce7592f6f79603fefc95b2c37978d94fef01d106bc8f6e28995c8146ba762"
+      },
+      {
+        "path": "includes/Product/ProductPeopleResolver.php",
+        "size": 1301,
+        "sha256": "27181a44aca8e6a701f367d11497596f74c16ca13b2eb592cf0caf8923c9ff23"
+      },
+      {
+        "path": "includes/Product/ProductRoleSeeder.php",
+        "size": 8588,
+        "sha256": "2b8979dad3eade53b6f5204e06a36621eadbda320ee18efc86b84d166221d4b8"
+      },
+      {
+        "path": "includes/Product/ProductRoleVocabulary.php",
+        "size": 1180,
+        "sha256": "fc27c8007876eb6ffea5ed2f1509bf349f88b6acd20e742cb2b507e5e07d3bd9"
+      },
+      {
+        "path": "includes/Product/ProductSourceEventBricks.php",
+        "size": 4205,
+        "sha256": "9781aac4f6594d0626539f0f7fc488b863b3fe0af4a9e8b34e3604fed1467697"
+      },
+      {
+        "path": "includes/Services/CommerceService.php",
+        "size": 13828,
+        "sha256": "c3fc99ef8f3b224e5921ff708080c680342504a2bbdab5c8572da5ea5703e9e9"
+      },
+      {
+        "path": "includes/Services/LearningService.php",
+        "size": 34709,
+        "sha256": "b7156f25406f15e8caf8a250961742a2f6514ce68762d609092b3d06d20f0338"
+      },
+      {
+        "path": "includes/Services/MemberAreaService.php",
+        "size": 9335,
+        "sha256": "9a5bf000eacb1d6eda74a24c1a0dcb86bfaf044dc128e69e0be7a21e7e0e495d"
+      },
+      {
+        "path": "includes/Services/MembershipService.php",
+        "size": 13154,
+        "sha256": "5355ecdfa921a4b7da306f6384649c7387d1c5fbd58be6425d209820c9a04fe6"
+      },
+      {
+        "path": "includes/Services/SubscriptionService.php",
+        "size": 16835,
+        "sha256": "70cfa98752f37c60045ef3ca2fc10ff50992e826d0e8a792116eb96c08098f4f"
+      },
+      {
+        "path": "includes/Services/TicketService.php",
+        "size": 35903,
+        "sha256": "ddde203376c45859763cfe6f2aaf500cc5bf228f5606c1aaef9707cfc9f19318"
+      },
+      {
+        "path": "includes/Taxonomy/ContentTopicMigration.php",
+        "size": 41413,
+        "sha256": "928521996320fbce4db8154e63a217c34a34bfd0bcf397337cc7ee29f271d856"
+      },
+      {
+        "path": "includes/Taxonomy/ContentTopicRoles.php",
+        "size": 26630,
+        "sha256": "9241fbaef68ac5318fda72e5daf2c71a5e147d9a3ff30ca97066480de45b6512"
+      },
+      {
+        "path": "includes/Taxonomy/ContentTopicTaxonomy.php",
+        "size": 15926,
+        "sha256": "5668c77070bebe2dcaa3984438f5297486ed2963803864abbbb7b92b724048c9"
+      },
+      {
+        "path": "tests/bootstrap.php",
+        "size": 7832,
+        "sha256": "05d60994d10bcd70443f4f8ce17203fcd2d2f1cf947b5344f9c3ce606f1f7acf"
+      },
+      {
+        "path": "tests/contracts/DashboardCardTest.php",
+        "size": 6992,
+        "sha256": "e624d61733e763e4e8c69edac7b346f71fe4926dc0f4e6fa3fdf68cfd93d8b03"
+      },
+      {
+        "path": "tests/dashboard/AccessGuardTest.php",
+        "size": 4466,
+        "sha256": "69151d928c2c9deacc13881c50891283bd8371fab0d7dc228cc561580c470150"
+      },
+      {
+        "path": "tests/dashboard/DashboardRoutesTest.php",
+        "size": 3093,
+        "sha256": "44b32e7f36591313e41516817ed85f48d90f2d14eeef400dabe02cfa816dd0b1"
+      },
+      {
+        "path": "tests/dashboard/NavigationTest.php",
+        "size": 9037,
+        "sha256": "8edf44b916c8c8a217836b007dace0d8684b4c314f4a64d91cbae60beec934de"
+      },
+      {
+        "path": "tests/performance/CachePolicyTest.php",
+        "size": 24739,
+        "sha256": "b813031aa173cdc61b4429843eb7cedcb4b303f3a6b43510275c3990d4f8da7d"
+      },
+      {
+        "path": "tests/run-dashboard-tests.php",
+        "size": 1706,
+        "sha256": "ebea06cb804228bc8bed7e6a6824a01ac4eb0215bc71d1a145e6eef0b7a386d4"
+      },
+      {
+        "path": "tests/services/CommerceServiceTest.php",
+        "size": 13823,
+        "sha256": "c1f982c6f6ac420aa7bf50dd3cd37d4907aba0ef921ec6356370a6b01c7aa4a8"
+      },
+      {
+        "path": "tests/services/LearningServiceTest.php",
+        "size": 17805,
+        "sha256": "78a37f8778517cf0971e0d1f8a3aae4b94ac44beaf9fbb45b7b0f7bf5cc0eabb"
+      },
+      {
+        "path": "tests/services/MemberAreaServiceTest.php",
+        "size": 8466,
+        "sha256": "a4abd9c23fb4a379245fb328173c8b374a958e81c7f18985e4aac9fbf49e168d"
+      },
+      {
+        "path": "tests/services/MembershipServiceTest.php",
+        "size": 11750,
+        "sha256": "7e94ee415395ef4b67bfafd796bd32d2b07b566e41f46b3627164d8943a4e7cb"
+      },
+      {
+        "path": "tests/services/SubscriptionServiceTest.php",
+        "size": 14730,
+        "sha256": "4721c3ebab6aa91bebf0dd034adab729e7cdcafc0e85d39bb2c4c9ade19407ad"
+      },
+      {
+        "path": "tests/services/TicketServiceTest.php",
+        "size": 22594,
+        "sha256": "7cf6e81c7680574cc4a8466497191cc27c24b715d8dc8246e2c4882f91793cf4"
+      },
+      {
+        "path": "voelgoed-platform-core.php",
+        "size": 2708,
+        "sha256": "3fc688ccf27ec11ee4bb9fe5e282630ded724d4a987e5489f9bc77142dca72bb"
+      }
+    ]
+  },
+  "runtime_delta": {
+    "counts": {
+      "ADD": 1,
+      "REPLACE": 3,
+      "REMOVE": 28,
+      "UNCHANGED": 50
+    },
+    "unknown_production_differences": 0,
+    "changes": [
+      {
+        "classification": "REPLACE",
+        "path": "includes/Plugin.php",
+        "reason": "Stale generated bootstrap replaced with current integration.patch and production module registration contract.",
+        "old": {
+          "path": "includes/Plugin.php",
+          "size": 3715,
+          "sha256": "c50ad78ac7fe32cafe6c3476b9d61e68214047d69c255637d957da013e09f2f8"
+        },
+        "target": {
+          "path": "includes/Plugin.php",
+          "size": 4156,
+          "sha256": "054b373bc4512cadf7f4e9700347867dc90ca359527770b0ecf3a3a825512625"
+        }
+      },
+      {
+        "classification": "ADD",
+        "path": "includes/Product/PersonProductsBricks.php",
+        "reason": "Current canonical production module absent from old runtime.",
+        "old": null,
+        "target": {
+          "path": "includes/Product/PersonProductsBricks.php",
+          "size": 5708,
+          "sha256": "a7460a1e21d4318a9d3997e52ad9e0d804a155798b1b7992e786b4cb976170e5"
+        }
+      },
+      {
+        "classification": "REMOVE",
+        "path": "tests/ContentTopicMigrationTest.php",
+        "reason": "Source-only test residue under site-code/voelgoed-platform-core/tests/; not part of canonical production target.",
+        "old": {
+          "path": "tests/ContentTopicMigrationTest.php",
+          "size": 28165,
+          "sha256": "38131b2c37ca2b70e1666f718f17d93e6d587b6a5e3c24d0831bdb972cbb2e92"
+        },
+        "target": null
+      },
+      {
+        "classification": "REMOVE",
+        "path": "tests/ContentTopicRolesTest.php",
+        "reason": "Source-only test residue under site-code/voelgoed-platform-core/tests/; not part of canonical production target.",
+        "old": {
+          "path": "tests/ContentTopicRolesTest.php",
+          "size": 36372,
+          "sha256": "aeb7c9d85fc146e84354ac8aaba9ebba69a435bf285f055bf4894b92a7e8e31a"
+        },
+        "target": null
+      },
+      {
+        "classification": "REMOVE",
+        "path": "tests/ContentTopicTaxonomyTest.php",
+        "reason": "Source-only test residue under site-code/voelgoed-platform-core/tests/; not part of canonical production target.",
+        "old": {
+          "path": "tests/ContentTopicTaxonomyTest.php",
+          "size": 16149,
+          "sha256": "e485ed1f655cc7f2df62bbeeedf8c12f2d1e75eb9f765df050ff7d92f53a1d54"
+        },
+        "target": null
+      },
+      {
+        "classification": "REMOVE",
+        "path": "tests/EventParticipationAdminTest.php",
+        "reason": "Source-only test residue under site-code/voelgoed-platform-core/tests/; not part of canonical production target.",
+        "old": {
+          "path": "tests/EventParticipationAdminTest.php",
+          "size": 28993,
+          "sha256": "1a16afbb77ad7aceefd1aefa863c4a125e2a21c6a3b3780e7c9300ec1fc2cb3a"
+        },
+        "target": null
+      },
+      {
+        "classification": "REMOVE",
+        "path": "tests/EventParticipationBricksTest.php",
+        "reason": "Source-only test residue under site-code/voelgoed-platform-core/tests/; not part of canonical production target.",
+        "old": {
+          "path": "tests/EventParticipationBricksTest.php",
+          "size": 10924,
+          "sha256": "10d6d78e5c5527709e1f3e1521f24d468f941ebabb988db1b2b49a1532868a24"
+        },
+        "target": null
+      },
+      {
+        "classification": "REMOVE",
+        "path": "tests/EventParticipationRepositoryTest.php",
+        "reason": "Source-only test residue under site-code/voelgoed-platform-core/tests/; not part of canonical production target.",
+        "old": {
+          "path": "tests/EventParticipationRepositoryTest.php",
+          "size": 13387,
+          "sha256": "f1264a48e9cae824d33b116a985774c09587fabfa9e726c1e8bd0dd7f952e9d8"
+        },
+        "target": null
+      },
+      {
+        "classification": "REMOVE",
+        "path": "tests/EventParticipationServiceTest.php",
+        "reason": "Source-only test residue under site-code/voelgoed-platform-core/tests/; not part of canonical production target.",
+        "old": {
+          "path": "tests/EventParticipationServiceTest.php",
+          "size": 20858,
+          "sha256": "61c6856dfc12e3f7bc8d7d851748125b2e72955c8488741c0553e2405360f49d"
+        },
+        "target": null
+      },
+      {
+        "classification": "REMOVE",
+        "path": "tests/EventRoleSeederTest.php",
+        "reason": "Source-only test residue under site-code/voelgoed-platform-core/tests/; not part of canonical production target.",
+        "old": {
+          "path": "tests/EventRoleSeederTest.php",
+          "size": 13320,
+          "sha256": "ec0c58e128871b1e019a99b41548dd1fe009416145efe799d7089cdd91cc4bba"
+        },
+        "target": null
+      },
+      {
+        "classification": "REMOVE",
+        "path": "tests/ProductContributionAdminTest.php",
+        "reason": "Source-only test residue under site-code/voelgoed-platform-core/tests/; not part of canonical production target.",
+        "old": {
+          "path": "tests/ProductContributionAdminTest.php",
+          "size": 65375,
+          "sha256": "ff7a72b33ec3dfea56cb9321a64379e61bac71244c0464759867dfaeb908fa70"
+        },
+        "target": null
+      },
+      {
+        "classification": "REMOVE",
+        "path": "tests/ProductContributionPairLockTest.php",
+        "reason": "Source-only test residue under site-code/voelgoed-platform-core/tests/; not part of canonical production target.",
+        "old": {
+          "path": "tests/ProductContributionPairLockTest.php",
+          "size": 6827,
+          "sha256": "0aebd1f6969c3b3853c6721d80ec0f32d1e6df0b5361ab7c917aea35ce50f260"
+        },
+        "target": null
+      },
+      {
+        "classification": "REMOVE",
+        "path": "tests/ProductContributionRepositoryTest.php",
+        "reason": "Source-only test residue under site-code/voelgoed-platform-core/tests/; not part of canonical production target.",
+        "old": {
+          "path": "tests/ProductContributionRepositoryTest.php",
+          "size": 33012,
+          "sha256": "256b1f9de389734e9417e2c7e1ff19bf16b64751950d908f2f60df0c5444f93c"
+        },
+        "target": null
+      },
+      {
+        "classification": "REMOVE",
+        "path": "tests/ProductContributionSchemaTest.php",
+        "reason": "Source-only test residue under site-code/voelgoed-platform-core/tests/; not part of canonical production target.",
+        "old": {
+          "path": "tests/ProductContributionSchemaTest.php",
+          "size": 12346,
+          "sha256": "9099383cacdddce28a4a39fdb5dec4759a02ed7d8400502a822ea8d527a46657"
+        },
+        "target": null
+      },
+      {
+        "classification": "REMOVE",
+        "path": "tests/ProductContributionServiceTest.php",
+        "reason": "Source-only test residue under site-code/voelgoed-platform-core/tests/; not part of canonical production target.",
+        "old": {
+          "path": "tests/ProductContributionServiceTest.php",
+          "size": 34729,
+          "sha256": "18744f60ab30b4ffd4290579db3a4f85eca35cfd9e7b832ef0c6851b0cda32a6"
+        },
+        "target": null
+      },
+      {
+        "classification": "REMOVE",
+        "path": "tests/ProductPeopleBricksTest.php",
+        "reason": "Source-only test residue under site-code/voelgoed-platform-core/tests/; not part of canonical production target.",
+        "old": {
+          "path": "tests/ProductPeopleBricksTest.php",
+          "size": 16261,
+          "sha256": "48643d3988b5b5ca1a079c7855ec2171e998ddd524c2c6cdd65488942e6613dc"
+        },
+        "target": null
+      },
+      {
+        "classification": "REMOVE",
+        "path": "tests/ProductPeopleFieldsTest.php",
+        "reason": "Source-only test residue under site-code/voelgoed-platform-core/tests/; not part of canonical production target.",
+        "old": {
+          "path": "tests/ProductPeopleFieldsTest.php",
+          "size": 6700,
+          "sha256": "0d6f0651277366e429006b45c7eb206a2d7a6c37ed5769e70219ff17fe84414c"
+        },
+        "target": null
+      },
+      {
+        "classification": "REMOVE",
+        "path": "tests/ProductPeopleIntegrationTest.php",
+        "reason": "Source-only test residue under site-code/voelgoed-platform-core/tests/; not part of canonical production target.",
+        "old": {
+          "path": "tests/ProductPeopleIntegrationTest.php",
+          "size": 10767,
+          "sha256": "adc34c63172e251aa090d49ef3d7798608b29931cd8a5a99ada3d3785b03aefa"
+        },
+        "target": null
+      },
+      {
+        "classification": "REMOVE",
+        "path": "tests/ProductPeopleQaSideEffectsTest.php",
+        "reason": "Source-only test residue under site-code/voelgoed-platform-core/tests/; not part of canonical production target.",
+        "old": {
+          "path": "tests/ProductPeopleQaSideEffectsTest.php",
+          "size": 7304,
+          "sha256": "3fa5f6b1c0ea11f2f3dd5e9b10ebcbdc7a1572489b9370f476d3de02659ea0b4"
+        },
+        "target": null
+      },
+      {
+        "classification": "REMOVE",
+        "path": "tests/ProductPeopleResolverTest.php",
+        "reason": "Source-only test residue under site-code/voelgoed-platform-core/tests/; not part of canonical production target.",
+        "old": {
+          "path": "tests/ProductPeopleResolverTest.php",
+          "size": 23866,
+          "sha256": "26a9101bfe5756c50bd2f12401b8207956a86fcad2f41803f2b2947c27215129"
+        },
+        "target": null
+      },
+      {
+        "classification": "REMOVE",
+        "path": "tests/ProductRoleSeederTest.php",
+        "reason": "Source-only test residue under site-code/voelgoed-platform-core/tests/; not part of canonical production target.",
+        "old": {
+          "path": "tests/ProductRoleSeederTest.php",
+          "size": 13941,
+          "sha256": "a904a81ef4b6dec9840302a4d0f32824d4db5069443ec658b61deb80519c7b1a"
+        },
+        "target": null
+      },
+      {
+        "classification": "REMOVE",
+        "path": "tests/ProductRoleVocabularyTest.php",
+        "reason": "Source-only test residue under site-code/voelgoed-platform-core/tests/; not part of canonical production target.",
+        "old": {
+          "path": "tests/ProductRoleVocabularyTest.php",
+          "size": 3562,
+          "sha256": "f7c9f8b848ba67fc4db131dc3be646e9a26f8dcec1aa7470b006a23fdf041819"
+        },
+        "target": null
+      },
+      {
+        "classification": "REMOVE",
+        "path": "tests/ProductSingle124QaRequestTest.php",
+        "reason": "Source-only test residue under site-code/voelgoed-platform-core/tests/; not part of canonical production target.",
+        "old": {
+          "path": "tests/ProductSingle124QaRequestTest.php",
+          "size": 12184,
+          "sha256": "804d38d9d64055c4f63e2670e249972f992ad51fe33e65692af977803be88a9c"
+        },
+        "target": null
+      },
+      {
+        "classification": "REMOVE",
+        "path": "tests/ProductSourceEventBricksTest.php",
+        "reason": "Source-only test residue under site-code/voelgoed-platform-core/tests/; not part of canonical production target.",
+        "old": {
+          "path": "tests/ProductSourceEventBricksTest.php",
+          "size": 10668,
+          "sha256": "450ba05d822bcffa1c85fad56c51ad925fd776b72fcc942be94151da0123f30e"
+        },
+        "target": null
+      },
+      {
+        "classification": "REPLACE",
+        "path": "tests/bootstrap.php",
+        "reason": "Stale runtime test bootstrap replaced with the canonical tracked-root test bootstrap.",
+        "old": {
+          "path": "tests/bootstrap.php",
+          "size": 28277,
+          "sha256": "aa978dc66837f061ac6eecf3dfb26f0e49589f252574fb78a533ef38b4c11da0"
+        },
+        "target": {
+          "path": "tests/bootstrap.php",
+          "size": 7832,
+          "sha256": "05d60994d10bcd70443f4f8ce17203fcd2d2f1cf947b5344f9c3ce606f1f7acf"
+        }
+      },
+      {
+        "classification": "REMOVE",
+        "path": "tests/run-content-topic-tests.php",
+        "reason": "Source-only test residue under site-code/voelgoed-platform-core/tests/; not part of canonical production target.",
+        "old": {
+          "path": "tests/run-content-topic-tests.php",
+          "size": 782,
+          "sha256": "7ea3a937702ad5fdcdcb660297fe6419aac35a033bbd1b3141fb9178a01e30a3"
+        },
+        "target": null
+      },
+      {
+        "classification": "REMOVE",
+        "path": "tests/run-event-participation-bricks-tests.php",
+        "reason": "Source-only test residue under site-code/voelgoed-platform-core/tests/; not part of canonical production target.",
+        "old": {
+          "path": "tests/run-event-participation-bricks-tests.php",
+          "size": 3031,
+          "sha256": "3cf0da685837e929ffba3bd5a921d6c57ec1658acc016f4f2931d9f7fd3334ea"
+        },
+        "target": null
+      },
+      {
+        "classification": "REMOVE",
+        "path": "tests/run-event-participation-tests.php",
+        "reason": "Source-only test residue under site-code/voelgoed-platform-core/tests/; not part of canonical production target.",
+        "old": {
+          "path": "tests/run-event-participation-tests.php",
+          "size": 1936,
+          "sha256": "7b576655d9d151b96683bc8ffc77ff901cc8567db5f3c20099a7dbd709c84589"
+        },
+        "target": null
+      },
+      {
+        "classification": "REMOVE",
+        "path": "tests/run-event-role-seeder-tests.php",
+        "reason": "Source-only test residue under site-code/voelgoed-platform-core/tests/; not part of canonical production target.",
+        "old": {
+          "path": "tests/run-event-role-seeder-tests.php",
+          "size": 900,
+          "sha256": "7838058dd649cc1c73397e5aaf078d1db384ae7259d498f9a8d1e49026eab3cd"
+        },
+        "target": null
+      },
+      {
+        "classification": "REMOVE",
+        "path": "tests/run-product-contribution-tests.php",
+        "reason": "Source-only test residue under site-code/voelgoed-platform-core/tests/; not part of canonical production target.",
+        "old": {
+          "path": "tests/run-product-contribution-tests.php",
+          "size": 2330,
+          "sha256": "4f02ac55da9ecc61e401622250f0b02bcde1e091b065b8baa8fd4c5a5d8b7dd3"
+        },
+        "target": null
+      },
+      {
+        "classification": "REMOVE",
+        "path": "tests/run-product-people-tests.php",
+        "reason": "Source-only test residue under site-code/voelgoed-platform-core/tests/; not part of canonical production target.",
+        "old": {
+          "path": "tests/run-product-people-tests.php",
+          "size": 2598,
+          "sha256": "c4ccc7a7114be1e80a30d614c712a58036acfddf7c6cbc0e55d995039173bb46"
+        },
+        "target": null
+      },
+      {
+        "classification": "REPLACE",
+        "path": "voelgoed-platform-core.php",
+        "reason": "Duplicate-patched bootstrap replaced by tracked base plus one integration.patch application; Requires PHP normalized to 8.5.",
+        "old": {
+          "path": "voelgoed-platform-core.php",
+          "size": 3099,
+          "sha256": "7a1b25a840294b029aba48d24e076adfe551ea9dcefc6b983525e7a82e06736d"
+        },
+        "target": {
+          "path": "voelgoed-platform-core.php",
+          "size": 2708,
+          "sha256": "3fc688ccf27ec11ee4bb9fe5e282630ded724d4a987e5489f9bc77142dca72bb"
+        }
+      }
+    ]
+  },
+  "deployment": {
+    "backup_path": "/home/jcschoeman96/Local Sites/voelgoed-novamira/app/.task8b-platform-core-backup-20261024T095612Z",
+    "backup_file_count": 81,
+    "backup_tree_sha256": "fcc9839f165341c92745a426d246536d300e2a052647d4983ce8cb37b7f4560e",
+    "backup_verified": true,
+    "backup_root_mode": "0755",
+    "backup_owner_uid": 1000,
+    "backup_group_gid": 1000,
+    "backup_symlinks": [],
+    "method": "guarded same-filesystem directory rename; old directory moved to backup and verified staged tree moved into active plugin path",
+    "success": true,
+    "failure_restore_handler_prepared": true,
+    "rollback_copy_retained": true
+  },
+  "parity": {
+    "missing": [],
+    "extra": [],
+    "mismatched": [],
+    "exact": true,
+    "immediate_check_exact": true,
+    "final_check_exact": true,
+    "final_runtime_file_count": 54,
+    "final_runtime_tree_sha256": "a2635dafeb1d82d481b6275526c3850263f549facac80293c810d2b0d93de760"
+  },
+  "wordpress_bootstrap": {
+    "result": "PASS",
+    "captured_errors": [],
+    "captured_output": "",
+    "plugin_active": true,
+    "requires_php": "8.5",
+    "php_version": "8.5.12",
+    "runtime_classes": {
+      "ProductContributionRepository": {
+        "loaded": true,
+        "file": "/home/jcschoeman96/Local Sites/voelgoed-novamira/app/public/wp-content/plugins/voelgoed-platform-core/includes/Product/ProductContributionRepository.php",
+        "from_active_plugin": true
+      },
+      "ProductContributionPairLock": {
+        "loaded": true,
+        "file": "/home/jcschoeman96/Local Sites/voelgoed-novamira/app/public/wp-content/plugins/voelgoed-platform-core/includes/Product/ProductContributionPairLock.php",
+        "from_active_plugin": true
+      },
+      "ProductContributionService": {
+        "loaded": true,
+        "file": "/home/jcschoeman96/Local Sites/voelgoed-novamira/app/public/wp-content/plugins/voelgoed-platform-core/includes/Product/ProductContributionService.php",
+        "from_active_plugin": true
+      },
+      "ProductContributionAdmin": {
+        "loaded": true,
+        "file": "/home/jcschoeman96/Local Sites/voelgoed-novamira/app/public/wp-content/plugins/voelgoed-platform-core/includes/Product/ProductContributionAdmin.php",
+        "from_active_plugin": true
+      },
+      "ProductRoleSeeder": {
+        "loaded": true,
+        "file": "/home/jcschoeman96/Local Sites/voelgoed-novamira/app/public/wp-content/plugins/voelgoed-platform-core/includes/Product/ProductRoleSeeder.php",
+        "from_active_plugin": true
+      },
+      "ProductPeopleResolver": {
+        "loaded": true,
+        "file": "/home/jcschoeman96/Local Sites/voelgoed-novamira/app/public/wp-content/plugins/voelgoed-platform-core/includes/Product/ProductPeopleResolver.php",
+        "from_active_plugin": true
+      },
+      "PersonProductsBricks": {
+        "loaded": true,
+        "file": "/home/jcschoeman96/Local Sites/voelgoed-novamira/app/public/wp-content/plugins/voelgoed-platform-core/includes/Product/PersonProductsBricks.php",
+        "from_active_plugin": true
+      },
+      "EventParticipationRepository": {
+        "loaded": true,
+        "file": "/home/jcschoeman96/Local Sites/voelgoed-novamira/app/public/wp-content/plugins/voelgoed-platform-core/includes/Event/EventParticipationRepository.php",
+        "from_active_plugin": true
+      },
+      "ProductRoleVocabulary": {
+        "loaded": true,
+        "file": "/home/jcschoeman96/Local Sites/voelgoed-novamira/app/public/wp-content/plugins/voelgoed-platform-core/includes/Product/ProductRoleVocabulary.php",
+        "from_active_plugin": true
+      },
+      "ProductPeopleBricks": {
+        "loaded": true,
+        "file": "/home/jcschoeman96/Local Sites/voelgoed-novamira/app/public/wp-content/plugins/voelgoed-platform-core/includes/Product/ProductPeopleBricks.php",
+        "from_active_plugin": true
+      },
+      "ProductSourceEventBricks": {
+        "loaded": true,
+        "file": "/home/jcschoeman96/Local Sites/voelgoed-novamira/app/public/wp-content/plugins/voelgoed-platform-core/includes/Product/ProductSourceEventBricks.php",
+        "from_active_plugin": true
+      }
+    },
+    "wp_cli_registration": {
+      "result": "NOT_VERIFIED",
+      "source_registration": "ProductRoleSeeder conditionally registers vg-product-role-setup with WP_CLI::add_command",
+      "novamira_runner_failure": "env: php: No such file or directory",
+      "local_wp_cli_failure": "Database connection failed before WordPress plugin bootstrap; registry check could not complete",
+      "seeder_command_executed": false
+    }
+  },
+  "persistent_state": {
+    "product_contributions": 0,
+    "persons": 0,
+    "event_participations": 0,
+    "product_role_terms": 0,
+    "product_role_relationships": 0,
+    "product_people_override_rows": 0,
+    "_product_people_override_rows": 0,
+    "target_acf_db_records": 0,
+    "acf_sync_executed": false,
+    "product_role_seeder_executed": false,
+    "posts_or_terms_created": false,
+    "direct_sql_writes": false
+  },
+  "protected_state": {
+    "result": "PASS",
+    "pre_deployment": {
+      "profiles_753_757": {
+        "post_count": 5,
+        "postmeta_count": 34,
+        "term_relationship_count": 10,
+        "posts_sha256": "6cb107bcb3a70ed61526caff114e5f7771d838905e1ebf4de2bf207e894ba420",
+        "postmeta_sha256": "3a5bfb948796c6ba11ad98c50d4de8d1eabcdd2db73d6fc94abfe15203f24e5c",
+        "term_relationships_sha256": "37ef040584ca77a139e611763910d7700ec9e9b05a50d63241f871817c489ae3",
+        "query_errors": []
+      },
+      "event_763": {
+        "post_count": 1,
+        "postmeta_count": 15,
+        "term_relationship_count": 0,
+        "posts_sha256": "be163f4a063ede077b98c9c1b24cc3b5cc519fdbf559e40a47ff270013e1ea6b",
+        "postmeta_sha256": "f7ca21d464725e1d20573954880fcc13084207274b1618eb011e420e2e8a9a99",
+        "term_relationships_sha256": "35786c7117b4e38d0f169239752ce71158266ae2f6e4aa230fbbb87bd699c0e3",
+        "query_errors": []
+      },
+      "products_765_767_768": {
+        "post_count": 3,
+        "postmeta_count": 20,
+        "term_relationship_count": 0,
+        "posts_sha256": "97a956b5881cd58aeef2c9765e4080692a968bc3b25e1266acfd53cc5740630a",
+        "postmeta_sha256": "7e95f2f96d0d4a2357a199acab176a01b91209240acb8fb16f1b4ab45c6e8934",
+        "term_relationships_sha256": "35786c7117b4e38d0f169239752ce71158266ae2f6e4aa230fbbb87bd699c0e3",
+        "query_errors": []
+      },
+      "templates_773_1127": {
+        "post_count": 2,
+        "postmeta_count": 11,
+        "term_relationship_count": 0,
+        "posts_sha256": "7f2c9eb0c0918d5ff4cbdae818840c7b0b8f2bb8e8bbe33ce421e6399911dc81",
+        "postmeta_sha256": "6b3cd25ddde6b06f1748900a65612ae530f2c10163834a6ea2844df52f110e03",
+        "term_relationships_sha256": "35786c7117b4e38d0f169239752ce71158266ae2f6e4aa230fbbb87bd699c0e3",
+        "query_errors": []
+      }
+    },
+    "post_deployment": {
+      "profiles_753_757": {
+        "post_count": 5,
+        "postmeta_count": 34,
+        "term_relationship_count": 10,
+        "posts_sha256": "6cb107bcb3a70ed61526caff114e5f7771d838905e1ebf4de2bf207e894ba420",
+        "postmeta_sha256": "3a5bfb948796c6ba11ad98c50d4de8d1eabcdd2db73d6fc94abfe15203f24e5c",
+        "term_relationships_sha256": "37ef040584ca77a139e611763910d7700ec9e9b05a50d63241f871817c489ae3"
+      },
+      "event_763": {
+        "post_count": 1,
+        "postmeta_count": 15,
+        "term_relationship_count": 0,
+        "posts_sha256": "be163f4a063ede077b98c9c1b24cc3b5cc519fdbf559e40a47ff270013e1ea6b",
+        "postmeta_sha256": "f7ca21d464725e1d20573954880fcc13084207274b1618eb011e420e2e8a9a99",
+        "term_relationships_sha256": "35786c7117b4e38d0f169239752ce71158266ae2f6e4aa230fbbb87bd699c0e3"
+      },
+      "products_765_767_768": {
+        "post_count": 3,
+        "postmeta_count": 20,
+        "term_relationship_count": 0,
+        "posts_sha256": "97a956b5881cd58aeef2c9765e4080692a968bc3b25e1266acfd53cc5740630a",
+        "postmeta_sha256": "7e95f2f96d0d4a2357a199acab176a01b91209240acb8fb16f1b4ab45c6e8934",
+        "term_relationships_sha256": "35786c7117b4e38d0f169239752ce71158266ae2f6e4aa230fbbb87bd699c0e3"
+      },
+      "templates_773_1127": {
+        "post_count": 2,
+        "postmeta_count": 11,
+        "term_relationship_count": 0,
+        "posts_sha256": "7f2c9eb0c0918d5ff4cbdae818840c7b0b8f2bb8e8bbe33ce421e6399911dc81",
+        "postmeta_sha256": "6b3cd25ddde6b06f1748900a65612ae530f2c10163834a6ea2844df52f110e03",
+        "term_relationships_sha256": "35786c7117b4e38d0f169239752ce71158266ae2f6e4aa230fbbb87bd699c0e3"
+      }
+    },
+    "protected_group_comparison": {
+      "profiles_753_757": true,
+      "event_763": true,
+      "products_765_767_768": true,
+      "templates_773_1127": true
+    },
+    "bricks_component": {
+      "option_id": 13809,
+      "option_row_sha256": "55beb9ae2508c235362bc850d6f11954f0634d1bace3d8a59e3869c750b7d004",
+      "component_pre_sha256": "57370bbb83d3125758eba9a5194eb1a898b8914b546ee4d84b32f642e07aeaac",
+      "component_post_sha256": "57370bbb83d3125758eba9a5194eb1a898b8914b546ee4d84b32f642e07aeaac",
+      "unchanged": true
+    },
+    "fluent_snippets": {
+      "9": {
+        "exists": true,
+        "size": 1263,
+        "sha256": "58e8035502b30397b9659f952e4d49bbdbd7cdbd15070e37e5b07ebaa5ce2f70"
+      },
+      "10": {
+        "exists": true,
+        "size": 5998,
+        "sha256": "e1b7c014cd15a673d663426403a2024a21a1286075c355015f4e217d7e498fa2"
+      }
+    },
+    "event_participation_schema": {
+      "group_id": 1263,
+      "key": "group_vg_event_participation_details",
+      "field_count": 4,
+      "postdeployment_field_signature": [
+        {
+          "key": "field_vg_event_participation_event",
+          "name": "event_participation_event",
+          "label": "Event Participation: Event",
+          "type": "post_object",
+          "required": 1,
+          "parent": "group_vg_event_participation_details"
+        },
+        {
+          "key": "field_vg_event_participation_person",
+          "name": "event_participation_person",
+          "label": "Event Participation: Person",
+          "type": "post_object",
+          "required": 1,
+          "parent": "group_vg_event_participation_details"
+        },
+        {
+          "key": "field_vg_event_participation_roles",
+          "name": "event_participation_roles",
+          "label": "Event Participation: Roles",
+          "type": "taxonomy",
+          "required": 0,
+          "parent": "group_vg_event_participation_details"
+        },
+        {
+          "key": "field_vg_event_participation_display_order",
+          "name": "event_participation_display_order",
+          "label": "Event Participation: Display Order",
+          "type": "number",
+          "required": 0,
+          "parent": "group_vg_event_participation_details"
+        }
+      ],
+      "matches_canonical_source_json": true
+    },
+    "override_meta_pre": {
+      "row_count": 0,
+      "sha256": "35786c7117b4e38d0f169239752ce71158266ae2f6e4aa230fbbb87bd699c0e3",
+      "query_error": null
+    },
+    "override_meta_post": {
+      "row_count": 0,
+      "sha256": "35786c7117b4e38d0f169239752ce71158266ae2f6e4aa230fbbb87bd699c0e3"
+    },
+    "target_acf_database_definitions_pre": 0,
+    "target_acf_database_definitions_post": 0
+  },
+  "runtime_drift": {
+    "result": "NO",
+    "final_runtime_tree_sha256": "a2635dafeb1d82d481b6275526c3850263f549facac80293c810d2b0d93de760",
+    "matches_target": true,
+    "historical_ongoing_automatic_writer": "UNKNOWN"
+  },
+  "source_regression": {
+    "result": "PASS",
+    "before_deployment": {
+      "source_gate": "PASS, exit 0",
+      "product_contribution": "142 passed",
+      "product_people": "101 passed",
+      "event_participation": "68 passed",
+      "event_participation_bricks": "12 passed",
+      "event_role_seeder": "13 passed"
+    },
+    "after_deployment": {
+      "source_gate": "PASS, exit 0",
+      "product_contribution": "142 passed, exit 0",
+      "product_people": "101 passed, exit 0",
+      "event_participation": "68 passed, exit 0",
+      "event_participation_bricks": "12 passed, exit 0",
+      "event_role_seeder": "13 passed, exit 0",
+      "git_diff_check": "PASS"
+    },
+    "source_gate_additional_suites": {
+      "content_topic": "67 passed",
+      "person_foundation": "10 passed",
+      "event_participation_schema": "3 passed",
+      "editorial_dimension_seeder": "11 passed",
+      "task_6c_qa_ownership": "12/12 passed",
+      "qa_cleanup": "3/3 passed",
+      "qa_setup": "1/1 passed"
+    }
+  },
+  "forbidden_operations": {
+    "acf_sync": false,
+    "product_role_seed": false,
+    "product_contribution_fixtures": false,
+    "person_creation": false,
+    "event_participation_creation": false,
+    "product_people_mode_change": false,
+    "legacy_relationship_migration": false,
+    "bricks_template_or_component_edit": false,
+    "fluentsnippet_edit": false,
+    "rewrite_flush": false,
+    "cache_purge": false,
+    "task_8_runtime_qa": false,
+    "task_9": false
+  },
+  "overall_verdict": "PASS"
+}
