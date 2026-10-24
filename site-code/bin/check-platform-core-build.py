@@ -968,6 +968,26 @@ def run_negative_cases(
         expected_text="plugins_loaded lifecycle callback",
     )
 
+    fixture = create_fixture(repo_root, commit, cases / "entrypoint-return-before-lifecycle-hook")
+    entrypoint = fixture / ROOT_PLUGIN / "voelgoed-platform-core.php"
+    entrypoint_text = entrypoint.read_text(encoding="utf-8")
+    lifecycle_hook_marker = "add_action('plugins_loaded', static function (): void {"
+    if entrypoint_text.count(lifecycle_hook_marker) != 1:
+        raise CheckFailure("Cannot prepare entrypoint return-before-lifecycle-hook fixture.")
+    entrypoint.write_text(
+        entrypoint_text.replace(lifecycle_hook_marker, "return;\n\n" + lifecycle_hook_marker, 1),
+        encoding="utf-8",
+    )
+    commit_fixture_changes(fixture, "fixture: return before lifecycle callback")
+    expect_build_failure(
+        label="entrypoint cannot return before the plugins_loaded callback",
+        builder=builder,
+        fixture=fixture,
+        ref="HEAD",
+        output=cases / "entrypoint-return-before-lifecycle-hook-output",
+        expected_text="can exit before the plugins_loaded lifecycle callback",
+    )
+
     fixture = create_fixture(repo_root, commit, cases / "binary-patch-path")
     overlay = fixture / "site-code/voelgoed-platform-core/includes/Product/ProductRoleVocabulary.php"
     patch_file = fixture / PATCH_PATH
