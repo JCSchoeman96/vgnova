@@ -337,6 +337,27 @@ def parse_include_paths(
     assignment_index = assignments[0]
     if any(token_name in PHP_EXECUTION_CONTROL_TOKENS for token_name, _, _, _ in tokens[:assignment_index]):
         fail("The vgpc_include_paths array assignment must not be inside a conditional or control scope.")
+    if any(
+        token_name in {"T_RETURN", "T_THROW", "T_GOTO"}
+        for token_name, _, _, _ in tokens[:assignment_index]
+    ):
+        fail("The entrypoint can exit before include consumption.")
+    exit_guard_positions = [
+        index
+        for index in range(assignment_index)
+        if token_matches(tokens, index, entrypoint_exit_guard_sequence())
+    ]
+    exit_positions = [
+        index
+        for index, (token_name, _, _, _) in enumerate(tokens[:assignment_index])
+        if token_name == "T_EXIT"
+    ]
+    if (
+        len(exit_guard_positions) != 1
+        or len(exit_positions) != 1
+        or exit_positions[0] != exit_guard_positions[0] + 5
+    ):
+        fail("The entrypoint can exit before include consumption.")
     direct_assignment, assignment_depth = is_first_statement_token(tokens, assignment_index)
     if assignment_depth != 0 or not direct_assignment:
         fail("The vgpc_include_paths array must be an unconditional top-level assignment.")
@@ -496,6 +517,18 @@ PHP_CONTROL_TOKENS = {
     "T_DECLARE",
 }
 PHP_EXECUTION_CONTROL_TOKENS = PHP_CONTROL_TOKENS - {"T_DECLARE"}
+
+
+def entrypoint_exit_guard_sequence() -> list[tuple[str | None, str]]:
+    return [
+        ("T_STRING", "defined"),
+        (None, "("),
+        ("T_CONSTANT_ENCAPSED_STRING", "'ABSPATH'"),
+        (None, ")"),
+        ("T_BOOLEAN_OR", "||"),
+        ("T_EXIT", "exit"),
+        (None, ";"),
+    ]
 
 
 def significant_php_tokens(
@@ -893,6 +926,51 @@ def validate_assembled_bootstrap(
         fail("Lifecycle registrations and the component dispatch loop must execute unconditionally.")
     if any(token_name in {"T_RETURN", "T_THROW", "T_EXIT"} for token_name, _, _, _ in before_loop):
         fail("Plugin::register() can exit before lifecycle registrations are dispatched.")
+
+    integration_registration_indexes = []
+    for line in integration_registrations:
+        source_position = plugin_class.encode("utf-8").find(line.encode("utf-8"))
+        token_index = next(
+            (
+                index
+                for index, (token_name, token_text, token_start, _) in enumerate(method_tokens)
+                if token_name == "T_VARIABLE" and token_text == "$this" and token_start == source_position
+            ),
+            None,
+        )
+        if token_index is None:
+            fail(f"Integration lifecycle registration must be executable PHP code: {line}")
+        integration_registration_indexes.append(token_index)
+    if not integration_registration_indexes:
+        fail("The integration patch defines no lifecycle registrations.")
+
+    first_integration_registration = min(integration_registration_indexes)
+    component_reset = [
+        ("T_VARIABLE", "$this"),
+        ("T_OBJECT_OPERATOR", "->"),
+        ("T_STRING", "components"),
+        (None, "="),
+        (None, "["),
+        (None, "]"),
+        (None, ";"),
+    ]
+    if any(
+        token_matches(method_tokens, index, component_reset)
+        for index in range(first_integration_registration, loop_index)
+    ):
+        fail("The component collection cannot be reset after lifecycle registration.")
+    expected_registration_tokens = [
+        (token_name, token_text)
+        for line in integration_registrations
+        for token_name, token_text, _, _ in significant_php_tokens(php_tokens(line, "patch registration statement"))
+    ]
+    actual_registration_tokens = [
+        (token_name, token_text)
+        for token_name, token_text, _, _ in method_tokens[first_integration_registration:loop_index]
+    ]
+    if actual_registration_tokens != expected_registration_tokens:
+        fail("Only patch-owned lifecycle registrations may execute between registration and dispatch.")
+
     loop_first_statement, loop_brace_depth = is_first_statement_token(method_tokens, loop_index)
     if loop_brace_depth != 0 or not loop_first_statement:
         fail("The component dispatch loop must execute unconditionally as a direct statement.")
