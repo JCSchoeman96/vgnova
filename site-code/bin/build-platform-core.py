@@ -1123,12 +1123,41 @@ def validate_assembled_bootstrap(
         ("T_OBJECT_OPERATOR", "->"),
         ("T_STRING", "components"),
     ]
-    collection_access = any(
-        token_matches(method_tokens, index, component_reset)
-        for index in range(first_integration_registration, loop_index)
-    )
-    if collection_access:
-        fail("The component collection cannot be accessed after lifecycle registration before dispatch.")
+    integration_component_keys = set()
+    for line in integration_registrations:
+        key_match = re.match(r"\$this->register_component\('([a-z0-9_]+)'\s*,", line)
+        if key_match is None:
+            fail(f"Integration lifecycle registration has an invalid component key: {line}")
+        integration_component_keys.add(key_match.group(1))
+
+    for index, (token_name, token_text, _, _) in enumerate(method_tokens):
+        if "AMPERSAND" in str(token_name) or token_text == "&":
+            if any(
+                token_matches(method_tokens, candidate, component_reset)
+                for candidate in range(index + 1, min(index + 6, len(method_tokens)))
+            ):
+                fail("The component collection cannot be exposed by reference.")
+
+    def is_safe_root_component_assignment(index: int) -> bool:
+        opening = index + len(component_reset)
+        if opening + 5 >= len(method_tokens) or method_tokens[opening][1] != "[":
+            return False
+        key_token = method_tokens[opening + 1]
+        if key_token[0] != "T_CONSTANT_ENCAPSED_STRING" or len(key_token[1]) < 2:
+            return False
+        key = key_token[1][1:-1]
+        return (
+            re.fullmatch(r"[a-z0-9_]+", key) is not None
+            and key not in integration_component_keys
+            and method_tokens[opening + 2][1] == "]"
+            and method_tokens[opening + 3][1] == "="
+            and method_tokens[opening + 4][0] == "T_VARIABLE"
+            and method_tokens[opening + 5][1] == ";"
+        )
+
+    for index in range(first_integration_registration, loop_index):
+        if token_matches(method_tokens, index, component_reset) and not is_safe_root_component_assignment(index):
+            fail("The component collection cannot be accessed after lifecycle registration before dispatch.")
 
     loop_first_statement, loop_brace_depth = is_first_statement_token(method_tokens, loop_index)
     if loop_brace_depth != 0 or not loop_first_statement:
