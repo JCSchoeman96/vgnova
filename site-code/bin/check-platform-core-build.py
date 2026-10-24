@@ -45,9 +45,14 @@ def command(
     input_bytes: bytes | None = None,
     check: bool = True,
 ) -> subprocess.CompletedProcess[bytes]:
+    environment = None
+    if args and args[0] == "git":
+        environment = os.environ.copy()
+        environment["GIT_NO_REPLACE_OBJECTS"] = "1"
     result = subprocess.run(
         args,
         cwd=cwd,
+        env=environment,
         input=input_bytes,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
@@ -827,6 +832,130 @@ def run_negative_cases(
 ) -> None:
     cases = temporary_root / "negative-cases"
     cases.mkdir()
+
+    fixture = create_fixture(repo_root, commit, cases / "binary-patch-path")
+    overlay = fixture / "site-code/voelgoed-platform-core/includes/Product/ProductRoleVocabulary.php"
+    patch_file = fixture / PATCH_PATH
+    attributes = fixture / ".gitattributes"
+    attributes.write_text(
+        "site-code/voelgoed-platform-core/includes/Product/ProductRoleVocabulary.php -diff\n",
+        encoding="utf-8",
+    )
+    original_overlay = overlay.read_bytes()
+    command(["git", "add", ".gitattributes"], cwd=fixture)
+    command(["git", "-c", "user.name=PE-005 verifier", "-c", "user.email=pe005-verifier@example.invalid", "commit", "--quiet", "-m", "fixture: mark overlay binary for patch generation"], cwd=fixture)
+    overlay.write_text("<?php\n// binary patch payload\n", encoding="utf-8")
+    binary_diff = command(
+        [
+            "git",
+            "diff",
+            "--binary",
+            "--relative=site-code/voelgoed-platform-core",
+            "--",
+            "site-code/voelgoed-platform-core/includes/Product/ProductRoleVocabulary.php",
+        ],
+        cwd=fixture,
+    ).stdout.decode("utf-8", "strict")
+    if "GIT binary patch" not in binary_diff:
+        raise CheckFailure("Cannot prepare binary patch path fixture.")
+    overlay.write_bytes(original_overlay)
+    patch_file.write_text(patch_file.read_text(encoding="utf-8") + "\n" + binary_diff, encoding="utf-8")
+    commit_fixture_changes(fixture, "fixture: append binary patch for canonical module")
+    expect_build_failure(
+        label="binary integration patch cannot modify canonical overlays",
+        builder=builder,
+        fixture=fixture,
+        ref="HEAD",
+        output=cases / "binary-patch-path-output",
+        expected_text="may change only",
+    )
+
+    fixture = create_fixture(repo_root, commit, cases / "replace-object")
+    overlay_path = "site-code/voelgoed-platform-core/includes/Product/ProductRoleVocabulary.php"
+    original_blob = command(["git", "rev-parse", f"HEAD:{overlay_path}"], cwd=fixture).stdout.decode().strip()
+    replacement_blob = command(
+        ["git", "hash-object", "-w", "--stdin"],
+        cwd=fixture,
+        input_bytes=b"<?php\n// replacement object bytes\n",
+    ).stdout.decode().strip()
+    command(["git", "replace", original_blob, replacement_blob], cwd=fixture)
+    expected_overlay_hash = sha256(command(["git", "show", f"HEAD:{overlay_path}"], cwd=fixture).stdout)
+    output = cases / "replace-object-output"
+    result = run_builder(builder, fixture, "HEAD", output)
+    if result.returncode != 0:
+        raise CheckFailure("Replacement-object fixture build failed unexpectedly: " + (result.stdout + result.stderr).decode("utf-8", "replace"))
+    built_manifest = json.loads((output / MANIFEST_NAME).read_text(encoding="utf-8"))
+    overlay_record = next(
+        (item for item in built_manifest["files"] if item["path"] == "voelgoed-platform-core/includes/Product/ProductRoleVocabulary.php"),
+        None,
+    )
+    if overlay_record is None or overlay_record["sha256"] != expected_overlay_hash:
+        raise CheckFailure("Git replacement object changed artifact bytes for the resolved source commit.")
+    print("PASS negative case: Git replacement objects cannot change exact-commit inputs")
+
+    fixture = create_fixture(repo_root, commit, cases / "alternate-conditional-include")
+    entrypoint = fixture / ROOT_PLUGIN / "voelgoed-platform-core.php"
+    entrypoint_text = entrypoint.read_text(encoding="utf-8")
+    assignment_marker = "$vgpc_include_paths = ["
+    unset_marker = "\nunset($vgpc_include_file, $vgpc_include_path, $vgpc_include_paths);"
+    if entrypoint_text.count(assignment_marker) != 1 or entrypoint_text.count(unset_marker) != 1:
+        raise CheckFailure("Cannot prepare alternate conditional include fixture.")
+    entrypoint_text = entrypoint_text.replace(assignment_marker, "if (false): ;\n" + assignment_marker, 1)
+    entrypoint_text = entrypoint_text.replace(unset_marker, "\nendif;" + unset_marker, 1)
+    entrypoint.write_text(entrypoint_text, encoding="utf-8")
+    commit_fixture_changes(fixture, "fixture: conditionally disable module includes")
+    expect_build_failure(
+        label="alternate conditional include assignment and loop",
+        builder=builder,
+        fixture=fixture,
+        ref="HEAD",
+        output=cases / "alternate-conditional-include-output",
+        expected_text="unconditional",
+    )
+
+    fixture = create_fixture(repo_root, commit, cases / "goto-lifecycle")
+    insert_patch_additions(
+        fixture,
+        marker="register_component('content_topic_taxonomy'",
+        lines=["+        goto skip_lifecycle;"],
+        before=True,
+        message="fixture: jump over lifecycle registrations",
+    )
+    plugin_class = fixture / ROOT_PLUGIN / "includes/Plugin.php"
+    plugin_text = plugin_class.read_text(encoding="utf-8")
+    registered_marker = "        $this->registered = true;"
+    if plugin_text.count(registered_marker) != 1:
+        raise CheckFailure("Cannot prepare goto lifecycle target fixture.")
+    plugin_class.write_text(plugin_text.replace(registered_marker, "        skip_lifecycle: ;\n\n" + registered_marker, 1), encoding="utf-8")
+    commit_fixture_changes(fixture, "fixture: add lifecycle skip label")
+    expect_build_failure(
+        label="goto cannot bypass lifecycle registrations",
+        builder=builder,
+        fixture=fixture,
+        ref="HEAD",
+        output=cases / "goto-lifecycle-output",
+        expected_text="goto",
+    )
+
+    fixture = create_fixture(repo_root, commit, cases / "conditional-lifecycle-class")
+    taxonomy = fixture / "site-code/voelgoed-platform-core/includes/Taxonomy/ContentTopicTaxonomy.php"
+    taxonomy_text = taxonomy.read_text(encoding="utf-8")
+    class_marker = "final class ContentTopicTaxonomy"
+    if taxonomy_text.count(class_marker) != 1:
+        raise CheckFailure("Cannot prepare conditional lifecycle class fixture.")
+    taxonomy.write_text(
+        taxonomy_text.replace(class_marker, "if (false) {\nfinal class ContentTopicTaxonomy", 1) + "\n}\n",
+        encoding="utf-8",
+    )
+    commit_fixture_changes(fixture, "fixture: make lifecycle class conditional")
+    expect_build_failure(
+        label="lifecycle class declarations must be unconditional",
+        builder=builder,
+        fixture=fixture,
+        ref="HEAD",
+        output=cases / "conditional-lifecycle-class-output",
+        expected_text="unconditional",
+    )
 
     fixture = create_fixture(repo_root, commit, cases / "patch-fails")
     patch_file = fixture / PATCH_PATH

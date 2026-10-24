@@ -54,9 +54,12 @@ def fail(message: str) -> NoReturn:
 
 
 def git_bytes(args: list[str], repo_root: Path, *, check: bool = True) -> bytes:
+    git_environment = os.environ.copy()
+    git_environment["GIT_NO_REPLACE_OBJECTS"] = "1"
     result = subprocess.run(
         ["git", *args],
         cwd=repo_root,
+        env=git_environment,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         check=False,
@@ -243,15 +246,34 @@ def clean_bootstrap_guard(
 
 
 def patch_owned_paths(patch_text: str) -> set[str]:
-    paths: set[str] = set()
-    for match in re.finditer(r"^(?:---|\+\+\+) [ab]/([^\t\r\n]+)", patch_text, re.M):
-        path = match.group(1)
-        if path == "/dev/null":
-            continue
-        paths.add(path)
     allowed = {"voelgoed-platform-core.php", "includes/Plugin.php"}
-    if paths != allowed:
+    diff_paths: list[str] = []
+    old_paths: list[str] = []
+    new_paths: list[str] = []
+    for line in patch_text.splitlines():
+        if line.startswith("diff --git "):
+            match = re.fullmatch(r"diff --git a/(\S+) b/(\S+)", line)
+            if match is None or match.group(1) != match.group(2):
+                fail("integration.patch has an unsupported or ambiguous diff section header.")
+            diff_paths.append(match.group(1))
+        elif line.startswith("--- "):
+            match = re.fullmatch(r"--- a/(\S+)", line)
+            if match is None:
+                fail("integration.patch has an unsupported old-file header.")
+            old_paths.append(match.group(1))
+        elif line.startswith("+++ "):
+            match = re.fullmatch(r"\+\+\+ b/(\S+)", line)
+            if match is None:
+                fail("integration.patch has an unsupported new-file header.")
+            new_paths.append(match.group(1))
+
+    paths = set(diff_paths)
+    if paths != allowed or len(diff_paths) != len(allowed):
         fail(f"integration.patch may change only {sorted(allowed)}; it names {sorted(paths)}.")
+    if set(old_paths) != allowed or set(new_paths) != allowed or len(old_paths) != len(allowed) or len(new_paths) != len(allowed):
+        fail("integration.patch file headers do not match its two allowlisted diff sections.")
+    if "GIT binary patch" in patch_text or "Binary files " in patch_text:
+        fail("Binary patch sections are not supported in integration.patch.")
     return paths
 
 
@@ -274,9 +296,12 @@ def patch_integration_markers(patch_text: str) -> tuple[list[str], list[str]]:
 
 def apply_patch(staging_root: Path, patch_path: Path, patch_text: str) -> None:
     patch_owned_paths(patch_text)
+    git_environment = os.environ.copy()
+    git_environment["GIT_NO_REPLACE_OBJECTS"] = "1"
     check = subprocess.run(
         ["git", "apply", "--unidiff-zero", "--check", f"--directory={ROOT_PATH}", str(patch_path)],
         cwd=staging_root,
+        env=git_environment,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         check=False,
@@ -286,6 +311,7 @@ def apply_patch(staging_root: Path, patch_path: Path, patch_text: str) -> None:
     applied = subprocess.run(
         ["git", "apply", "--unidiff-zero", f"--directory={ROOT_PATH}", str(patch_path)],
         cwd=staging_root,
+        env=git_environment,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         check=False,
@@ -307,6 +333,8 @@ def parse_include_paths(
     if len(assignments) != 1:
         fail("Assembled entrypoint must contain exactly one executable vgpc_include_paths assignment.")
     assignment_index = assignments[0]
+    if any(token_name in PHP_EXECUTION_CONTROL_TOKENS for token_name, _, _, _ in tokens[:assignment_index]):
+        fail("The vgpc_include_paths array assignment must not be inside a conditional or control scope.")
     direct_assignment, assignment_depth = is_first_statement_token(tokens, assignment_index)
     if assignment_depth != 0 or not direct_assignment:
         fail("The vgpc_include_paths array must be an unconditional top-level assignment.")
@@ -354,6 +382,8 @@ def parse_include_paths(
     loop_index = loops[0]
     if loop_index != assignment_end + 1:
         fail("The include array must be consumed immediately after its assignment with no intervening statement.")
+    if any(token_name in PHP_EXECUTION_CONTROL_TOKENS for token_name, _, _, _ in tokens[assignment_end + 1:loop_index]):
+        fail("The include foreach loop must not be inside a conditional or control scope.")
     loop_direct, loop_depth = is_first_statement_token(tokens, loop_index)
     if loop_depth != 0 or not loop_direct:
         fail("The include foreach loop must execute as an unconditional top-level statement.")
@@ -463,12 +493,85 @@ PHP_CONTROL_TOKENS = {
     "T_FN",
     "T_DECLARE",
 }
+PHP_EXECUTION_CONTROL_TOKENS = PHP_CONTROL_TOKENS - {"T_DECLARE"}
 
 
 def significant_php_tokens(
     tokens: list[tuple[str | None, str, int, int]],
 ) -> list[tuple[str | None, str, int, int]]:
     return [token for token in tokens if token[0] not in PHP_NON_CODE_TOKENS]
+
+
+def is_first_statement_at_scope(
+    tokens: list[tuple[str | None, str, int, int]],
+    target_index: int,
+    scope_depth: int,
+) -> bool:
+    brace_depth = 0
+    paren_depth = 0
+    bracket_depth = 0
+    last_boundary = -1
+    for index, (_, token_text, _, _) in enumerate(tokens[:target_index]):
+        if token_text == "{":
+            brace_depth += 1
+            if brace_depth == scope_depth and paren_depth == 0 and bracket_depth == 0:
+                last_boundary = index
+        elif token_text == "}":
+            brace_depth = max(0, brace_depth - 1)
+            if brace_depth == scope_depth and paren_depth == 0 and bracket_depth == 0:
+                last_boundary = index
+        elif token_text == "(":
+            paren_depth += 1
+        elif token_text == ")":
+            paren_depth = max(0, paren_depth - 1)
+        elif token_text == "[":
+            bracket_depth += 1
+        elif token_text == "]":
+            bracket_depth = max(0, bracket_depth - 1)
+        elif token_text == ";" and brace_depth == scope_depth and paren_depth == 0 and bracket_depth == 0:
+            last_boundary = index
+    return brace_depth == scope_depth and last_boundary == target_index - 1
+
+
+def has_unclosed_alternate_control_scope(
+    tokens: list[tuple[str | None, str, int, int]],
+    target_index: int,
+) -> bool:
+    alternate_controls = {
+        "T_IF": "T_ENDIF",
+        "T_FOR": "T_ENDFOR",
+        "T_FOREACH": "T_ENDFOREACH",
+        "T_WHILE": "T_ENDWHILE",
+        "T_SWITCH": "T_ENDSWITCH",
+        "T_DECLARE": "T_ENDDECLARE",
+    }
+    closing_controls = set(alternate_controls.values())
+    active: list[str] = []
+    index = 0
+    while index < target_index:
+        token_name = tokens[index][0]
+        if token_name in alternate_controls:
+            open_paren = next(
+                (position for position in range(index + 1, target_index) if tokens[position][1] == "("),
+                None,
+            )
+            if open_paren is not None:
+                paren_depth = 1
+                close_paren = open_paren + 1
+                while close_paren < target_index and paren_depth:
+                    if tokens[close_paren][1] == "(":
+                        paren_depth += 1
+                    elif tokens[close_paren][1] == ")":
+                        paren_depth -= 1
+                    close_paren += 1
+                if paren_depth == 0 and close_paren < target_index and tokens[close_paren][1] == ":":
+                    active.append(alternate_controls[token_name])
+                    index = close_paren
+        elif token_name in closing_controls:
+            if active and active[-1] == token_name:
+                active.pop()
+        index += 1
+    return bool(active)
 
 
 def php_classes(module_root: Path) -> set[str]:
@@ -509,6 +612,23 @@ def php_classes(module_root: Path) -> set[str]:
                     if next_index < len(tokens) and tokens[next_index][0] == "T_STRING":
                         short_name = tokens[next_index][1]
                         qualified = f"{namespace}\\{short_name}" if namespace else short_name
+                        namespace_depth = namespace_scopes[-1][0] if namespace_scopes else 0
+                        declaration_start = index
+                        while declaration_start > 0 and tokens[declaration_start - 1][0] in {
+                            "T_ABSTRACT",
+                            "T_FINAL",
+                            "T_READONLY",
+                        }:
+                            declaration_start -= 1
+                        if (
+                            brace_depth != namespace_depth
+                            or not is_first_statement_at_scope(tokens, declaration_start, namespace_depth)
+                            or has_unclosed_alternate_control_scope(tokens, declaration_start)
+                        ):
+                            fail(
+                                f"Class declaration {qualified} must be an unconditional namespace-scope declaration "
+                                f"in assembled module {path}."
+                            )
                         classes.add(qualified.lstrip("\\"))
             if token_text == "{":
                 brace_depth += 1
@@ -764,6 +884,8 @@ def validate_assembled_bootstrap(
     if len(loop_candidates) != 1:
         fail("Plugin::register() has no component lifecycle dispatch loop.")
     loop_index = loop_candidates[0]
+    if any(token_name == "T_GOTO" for token_name, _, _, _ in method_tokens):
+        fail("Plugin::register() cannot contain goto because it can bypass lifecycle registration or dispatch.")
     before_loop = method_tokens[len(guard):loop_index]
     if any(token_name in PHP_CONTROL_TOKENS for token_name, _, _, _ in before_loop):
         fail("Lifecycle registrations and the component dispatch loop must execute unconditionally.")
