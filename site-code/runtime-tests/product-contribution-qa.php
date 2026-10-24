@@ -37,6 +37,36 @@ function vg_product_contribution_qa_check(bool $condition, string $message): voi
     }
 }
 
+function vg_product_contribution_qa_flush_person_endpoint_cache(int $contribution_id): void
+{
+    if (function_exists('acf_flush_value_cache')) {
+        acf_flush_value_cache($contribution_id, ProductContributionRepository::PERSON_FIELD);
+    }
+    clean_post_cache($contribution_id);
+}
+
+function vg_product_contribution_qa_with_temporary_contribution_person_endpoint(
+    int $contribution_id,
+    int $temporary_person_id,
+    int $original_person_id,
+    callable $assertion
+): mixed {
+    try {
+        vg_product_contribution_qa_check(
+            update_field(ProductContributionRepository::PERSON_FIELD, $temporary_person_id, $contribution_id) !== false,
+            'Could not install an owned malformed endpoint for the read-filter assertion.'
+        );
+        vg_product_contribution_qa_flush_person_endpoint_cache($contribution_id);
+        return $assertion();
+    } finally {
+        vg_product_contribution_qa_check(
+            update_field(ProductContributionRepository::PERSON_FIELD, $original_person_id, $contribution_id) !== false,
+            'Could not restore the owned contribution endpoint after malformed-endpoint filtering.'
+        );
+        vg_product_contribution_qa_flush_person_endpoint_cache($contribution_id);
+    }
+}
+
 function vg_product_contribution_qa_query_var_is_disabled(mixed $query_var): bool
 {
     return $query_var === false;
@@ -1392,18 +1422,19 @@ function vg_product_contribution_qa_run(): array
 
             $before_malformed = $repo->contributions_for_product($second_product);
             $second_contribution = $second_a;
-            vg_product_contribution_qa_check(update_field(ProductContributionRepository::PERSON_FIELD, $event_id, $second_contribution) !== false, 'Could not install an owned malformed endpoint for the read-filter assertion.');
-            if (function_exists('acf_flush_value_cache')) {
-                acf_flush_value_cache($second_contribution, ProductContributionRepository::PERSON_FIELD);
-            }
-            clean_post_cache($second_contribution);
-            $malformed_filtered = $repo->contributions_for_product($second_product) === [];
-            vg_product_contribution_qa_assertion($context['assertions'], 'public_filtering_excludes_malformed_contribution_endpoint', $malformed_filtered, ['before_ids' => $before_malformed]);
-            vg_product_contribution_qa_check(update_field(ProductContributionRepository::PERSON_FIELD, $person_a, $second_contribution) !== false, 'Could not restore the owned contribution endpoint after malformed-endpoint filtering.');
-            if (function_exists('acf_flush_value_cache')) {
-                acf_flush_value_cache($second_contribution, ProductContributionRepository::PERSON_FIELD);
-            }
-            clean_post_cache($second_contribution);
+            vg_product_contribution_qa_with_temporary_contribution_person_endpoint(
+                $second_contribution,
+                $event_id,
+                $person_a,
+                static function () use ($repo, $second_product, $before_malformed, $assert): void {
+                    $malformed_filtered = $repo->contributions_for_product($second_product) === [];
+                    $assert(
+                        'public_filtering_excludes_malformed_contribution_endpoint',
+                        $malformed_filtered,
+                        ['before_ids' => $before_malformed]
+                    );
+                }
+            );
 
             $assert('public_filtering_excludes_unpublished_people_invalid_modes_and_stale_annotations',
                 ! in_array($person_draft, $repo->people_for_product($manual_product), true)

@@ -80,6 +80,16 @@ function get_field(string $field, int $post_id, bool $format_value = true): mixe
     return $GLOBALS['vg_pc_qa_test_fields'][$post_id][$field] ?? null;
 }
 
+function update_field(string $field, mixed $value, int $post_id): bool
+{
+    $GLOBALS['vg_pc_qa_test_fields'][$post_id][$field] = $value;
+    return true;
+}
+
+function clean_post_cache(int $post_id): void
+{
+}
+
 function wp_delete_post(int $post_id, bool $force_delete = false): WP_Post|false
 {
     $post = $GLOBALS['vg_pc_qa_test_posts'][$post_id] ?? false;
@@ -149,7 +159,7 @@ require_once dirname(__DIR__) . '/product-contribution-qa.php';
 require_once dirname(__DIR__, 2) . '/voelgoed-platform-core/includes/Product/ProductContributionRepository.php';
 
 $passed = 0;
-$total = 7;
+$total = 8;
 $run_case = static function (string $name, callable $test) use (&$passed): void {
     try {
         $test();
@@ -287,6 +297,52 @@ $run_case('finally cleanup runs after a runtime assertion throws', static functi
         || vg_product_contribution_qa_relationship_count(805) !== 0
     ) {
         throw new RuntimeException('The finally boundary did not remove and verify the exact owned record after the assertion failed.');
+    }
+});
+
+$run_case('temporary endpoint is restored before cleanup after its assertion throws', static function (): void {
+    vg_pc_qa_test_reset();
+    $token = '[QA][AUTOMATED] Product Contribution cleanup-endpoint-finally';
+    vg_pc_qa_test_seed(809, 'product_contribution', $token . ' contribution', $token, [
+        \Voelgoed\PlatformCore\Product\ProductContributionRepository::PRODUCT_FIELD => 52,
+        \Voelgoed\PlatformCore\Product\ProductContributionRepository::PERSON_FIELD => 63,
+    ]);
+    $record = [
+        'id' => 809,
+        'type' => 'product_contribution',
+        'endpoints' => ['product_id' => 52, 'person_id' => 63],
+    ];
+    $assertions = [];
+    $expected_error = 'Runtime assertion failed: malformed endpoint is excluded';
+    $result = vg_product_contribution_qa_guarded_run(
+        static function (): void {},
+        static function () use (&$assertions, $expected_error): void {
+            vg_product_contribution_qa_with_temporary_contribution_person_endpoint(
+                809,
+                64,
+                63,
+                static function () use (&$assertions): void {
+                    if ((int) get_field(\Voelgoed\PlatformCore\Product\ProductContributionRepository::PERSON_FIELD, 809) !== 64) {
+                        throw new RuntimeException('The malformed endpoint was not installed for the assertion.');
+                    }
+                    vg_product_contribution_qa_assertion($assertions, 'malformed endpoint is excluded', false);
+                }
+            );
+        },
+        static function () use ($record, $token): void {
+            vg_product_contribution_qa_delete_owned_record($record, $token);
+        }
+    );
+    if (
+        $result['mutation_started'] !== true
+        || $result['cleanup_attempted'] !== true
+        || $result['error'] !== $expected_error
+        || $result['cleanup_errors'] !== []
+        || get_post(809) !== null
+        || vg_product_contribution_qa_post_meta_count(809) !== 0
+        || vg_product_contribution_qa_relationship_count(809) !== 0
+    ) {
+        throw new RuntimeException('A failed malformed-endpoint assertion did not restore the endpoint before exact-owned cleanup.');
     }
 });
 
