@@ -1031,7 +1031,14 @@ def validate_registration_flag(source: str) -> None:
         fail("Plugin lifecycle idempotency guard must start false.")
 
     class_index = class_declarations[0]
-    declaration_is_direct, namespace_depth = is_first_statement_token(tokens, class_index)
+    declaration_start = class_index
+    while declaration_start > 0 and tokens[declaration_start - 1][0] in {
+        "T_ABSTRACT",
+        "T_FINAL",
+        "T_READONLY",
+    }:
+        declaration_start -= 1
+    declaration_is_direct, namespace_depth = is_first_statement_token(tokens, declaration_start)
     if namespace_depth != 0 or not declaration_is_direct:
         fail("Plugin lifecycle idempotency guard must start false.")
     class_open = next(
