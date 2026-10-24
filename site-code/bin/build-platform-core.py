@@ -323,6 +323,38 @@ def validate_assembled_bootstrap(
         if sum(existing.strip() == line for existing in import_lines) != 1:
             fail(f"Integration lifecycle import must appear exactly once: {line}")
 
+    register_method_match = re.search(
+        r"\bpublic\s+function\s+register\s*\(\s*\)\s*:\s*void\s*\{",
+        plugin_class,
+    )
+    if register_method_match is None:
+        fail("Assembled includes/Plugin.php has no recognizable Plugin::register() method.")
+    register_method_tail = plugin_class[register_method_match.end():]
+    next_method_match = re.search(
+        r"^\s*(?:public|protected|private)\s+function\s+[A-Za-z_][A-Za-z0-9_]*\s*\(",
+        register_method_tail,
+        re.M,
+    )
+    if next_method_match is None:
+        fail("Cannot identify the end of Plugin::register() for lifecycle validation.")
+    register_method_body = register_method_tail[:next_method_match.start()]
+    lifecycle_loop = re.search(
+        r"^\s*foreach\s*\(\s*\$this->components\s+as\s+\$component\s*\)\s*\{",
+        register_method_body,
+        re.M,
+    )
+    if lifecycle_loop is None:
+        fail("Plugin::register() has no component lifecycle dispatch loop.")
+
+    lifecycle_setup = register_method_body[:lifecycle_loop.start()]
+    idempotency_guard = re.compile(
+        r"if\s*\(\s*\$this->registered\s*\)\s*\{\s*return\s*;\s*\}",
+        re.S,
+    )
+    lifecycle_setup = idempotency_guard.sub("", lifecycle_setup, count=1)
+    if re.search(r"\b(?:return|throw|exit|die)\b", lifecycle_setup):
+        fail("Plugin::register() can exit before lifecycle registrations are dispatched.")
+
     registration_pattern = re.compile(
         r"register_component\s*\(\s*'([^']+)'\s*,\s*([A-Za-z_\\][A-Za-z0-9_\\]*)::class",
         re.S,
@@ -335,6 +367,12 @@ def validate_assembled_bootstrap(
     for line in integration_registrations:
         if sum(existing.strip() == line for existing in plugin_class.splitlines()) != 1:
             fail(f"Integration lifecycle registration must appear exactly once: {line}")
+        position = register_method_body.find(line)
+        if position < 0 or position >= lifecycle_loop.start():
+            fail(
+                "Integration lifecycle registration must execute in Plugin::register() "
+                f"before component dispatch: {line}"
+            )
 
     imported_classes: dict[str, str] = {}
     for raw_import in import_lines:
