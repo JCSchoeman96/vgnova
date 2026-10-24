@@ -1,18 +1,30 @@
 # Voelgoed Platform Core source modules
 
-This directory is the current canonical, source-controlled Platform Core code
-in the `vgnova` repository. It tracks the `content_topic`,
-Event Participation, Product People, and Product Contribution modules installed
-into the existing Voelgoed Platform Core plugin at
-`wp-content/plugins/voelgoed-platform-core`. The Local WordPress copy is not a
-Git checkout. `integration.patch` records the bootstrap changes made to load
-the source-controlled modules and register their lifecycle components.
+This directory contains the canonical Platform Core domain modules in the
+`vgnova` repository. The tracked root plugin at `voelgoed-platform-core/` is
+the assembly base; this module owns the `content_topic`, Event Participation,
+Product People, and Product Contribution overlays. The tracked
+`integration.patch` is an assembly input that adds their bootstrap includes
+and lifecycle registrations to a disposable build tree.
 
-Any Platform Core code change must first exist in this source-controlled
-module. The active local WordPress plugin directory is a runtime deployment
-copy and must not contain unique architecture changes that are absent from the
-repository. Do not create a competing `content_topic` definition in ACF,
-FluentSnippets, or theme code.
+Build the plugin from an exact committed revision with:
+
+```sh
+python3 site-code/bin/build-platform-core.py --ref <commit> --output dist
+```
+
+The build writes `voelgoed-platform-core.tar.gz` and its provenance manifest.
+Do not manually copy modules or apply `integration.patch` in the WordPress
+plugin directory. A controlled runtime deployment consumes a verified
+assembled artifact and remains a separate task. The active local WordPress
+plugin directory is derived runtime state, not a build input.
+
+Domain module changes must first exist in this source-controlled module;
+bootstrap and dashboard changes belong in the tracked root plugin tree. The
+builder assembles both source trees from one commit. The active local WordPress
+plugin directory is a runtime deployment copy and must not contain unique
+architecture changes that are absent from the repository. Do not create a
+competing `content_topic` definition in ACF, FluentSnippets, or theme code.
 
 Run the focused checks with:
 
@@ -97,11 +109,11 @@ Seed the approved role terms through WP-CLI after the ACF taxonomy is registered
 wp vg-event-role-setup
 ```
 
-Runtime deployment is separate from changes to this source directory. Apply
-`integration.patch` to the runtime plugin bootstrap and deploy all six Event
-classes before expecting the admin hooks, seeder command, or Bricks consumer to be available.
-Sync only the three Task 6A ACF JSON keys using the documented targeted procedure;
-do not run a global ACF JSON sync.
+Runtime deployment is separate from changes to this source directory. The
+assembled artifact contains the tracked Event modules and their bootstrap
+wiring. Do not manually apply `integration.patch` or copy module files into
+the runtime plugin directory. Deployment and any targeted ACF JSON sync remain
+separate controlled work.
 
 The guarded staging check is `site-code/runtime-tests/event-participation-qa.php`.
 Run it inside the loaded WordPress runtime with `wp eval-file`; it creates and
@@ -169,7 +181,7 @@ php site-code/voelgoed-platform-core/tests/run-product-contribution-tests.php
 php site-code/voelgoed-platform-core/tests/run-product-people-tests.php
 ```
 
-`integration.patch` records the source bootstrap additions. Runtime deployment
-remains a separate controlled step. Task 8 owns the targeted Product
-Contribution ACF Local JSON sync and Product Role seeding command. This source
-wiring task does not run `wp vg-product-role-setup`.
+`integration.patch` supplies the bootstrap additions during deterministic
+assembly. Runtime deployment remains a separate controlled step. Task 8 owns
+the targeted Product Contribution ACF Local JSON sync and Product Role seeding
+command. This source wiring task does not run `wp vg-product-role-setup`.

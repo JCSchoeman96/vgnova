@@ -47,6 +47,9 @@ wp-config.php
 # Local git worktrees
 /.worktrees/
 
+# Reproducible Platform Core build output
+/dist/
+
 # All themes
 #
 # Note: If you wish to whitelist themes,

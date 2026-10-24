@@ -73,6 +73,21 @@ jobs:
       - name: Run canonical source checks
         run: ./site-code/bin/check-source.sh
 
+      - name: Build canonical Platform Core artifact
+        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+        run: python3 site-code/bin/build-platform-core.py --ref "${GITHUB_SHA}" --output dist
+
+      - name: Upload canonical Platform Core artifact
+        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: voelgoed-platform-core-${{ github.sha }}
+          path: |
+            dist/voelgoed-platform-core.tar.gz
+            dist/voelgoed-platform-core.manifest.json
+          if-no-files-found: error
+          compression-level: 0
+
   platform_gate:
     name: VG Nova Platform Gate
     needs: [dashboard, source]

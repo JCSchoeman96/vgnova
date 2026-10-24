@@ -63,3 +63,4 @@ for file in "${shell_files[@]}"; do
 done
 
 git apply --check --directory=voelgoed-platform-core site-code/voelgoed-platform-core/integration.patch
+python3 site-code/bin/check-platform-core-build.py --ref HEAD
