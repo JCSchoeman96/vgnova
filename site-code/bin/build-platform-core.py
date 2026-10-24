@@ -7,7 +7,6 @@ import argparse
 import ctypes
 import errno
 import hashlib
-import io
 import json
 import os
 import platform
@@ -16,7 +15,6 @@ import shutil
 import subprocess
 import struct
 import sys
-import tarfile
 import tempfile
 from collections import Counter
 from dataclasses import dataclass
@@ -39,15 +37,15 @@ MANIFEST_NAME = "voelgoed-platform-core.manifest.json"
 SUPPORTED_FILE_MODES = {"100644": 0o644, "100755": 0o755}
 CANONICAL_PYTHON_IMPLEMENTATION = "CPython"
 CANONICAL_PYTHON_VERSION = "3.14.4"
-CANONICAL_TARFILE_MODULE_SHA256 = "c0db1a21e56ccf002147bffd10d97f452ad842820963ef793117f92a0cdaaad4"
-CANONICAL_ARCHIVE_ENCODER = "vgpc-gzip-stored-v1"
+CANONICAL_TAR_ENCODER = "vgpc-ustar-utf8-v1"
+CANONICAL_GZIP_ENCODER = "vgpc-gzip-stored-v1"
+TAR_BLOCK_SIZE = 512
 CANONICAL_BUILD_TOOLCHAIN = {
     "python_implementation": CANONICAL_PYTHON_IMPLEMENTATION,
     "python_version": CANONICAL_PYTHON_VERSION,
-    "tarfile_module_sha256": CANONICAL_TARFILE_MODULE_SHA256,
-    "tar_serialization": "CPython-3.14.4-tarfile-pax-utf8-v1",
-    "archive_format": "tar-pax+gzip",
-    "archive_encoder_version": CANONICAL_ARCHIVE_ENCODER,
+    "tar_serialization": CANONICAL_TAR_ENCODER,
+    "archive_format": "tar-ustar+gzip",
+    "archive_encoder_version": CANONICAL_GZIP_ENCODER,
     "zlib_encoding": "not-used",
 }
 GZIP_HEADER = b"\x1f\x8b\x08\x00\x00\x00\x00\x00\x00\xff"
@@ -86,23 +84,17 @@ def ensure_canonical_toolchain(
     *,
     implementation: str | None = None,
     version: str | None = None,
-    tarfile_module_sha256: str | None = None,
 ) -> None:
     actual_implementation = implementation or platform.python_implementation()
     actual_version = version or platform.python_version()
-    actual_tarfile_sha256 = tarfile_module_sha256 or hashlib.sha256(
-        Path(tarfile.__file__).read_bytes()
-    ).hexdigest()
     if (
         actual_implementation != CANONICAL_PYTHON_IMPLEMENTATION
         or actual_version != CANONICAL_PYTHON_VERSION
-        or actual_tarfile_sha256 != CANONICAL_TARFILE_MODULE_SHA256
     ):
         fail(
             "Unsupported canonical archive toolchain: expected "
-            f"{CANONICAL_PYTHON_IMPLEMENTATION} {CANONICAL_PYTHON_VERSION} with tarfile module "
-            f"SHA-256 {CANONICAL_TARFILE_MODULE_SHA256}; received {actual_implementation} "
-            f"{actual_version} with tarfile module SHA-256 {actual_tarfile_sha256}."
+            f"{CANONICAL_PYTHON_IMPLEMENTATION} {CANONICAL_PYTHON_VERSION}; received "
+            f"{actual_implementation} {actual_version}."
         )
 
 
@@ -1534,6 +1526,17 @@ def assembled_files(plugin_root: Path, modes: dict[str, str]) -> list[tuple[str,
 def archive_bytes(files: list[tuple[str, str, bytes]]) -> bytes:
     directories = {ROOT_PATH}
     for relative_path, _, _ in files:
+        if (
+            not relative_path
+            or relative_path.startswith("/")
+            or "\\" in relative_path
+            or "\0" in relative_path
+            or "\r" in relative_path
+            or "\n" in relative_path
+            or PurePosixPath(relative_path).as_posix() != relative_path
+            or ".." in PurePosixPath(relative_path).parts
+        ):
+            fail(f"Unsafe path cannot be encoded in canonical USTAR: {relative_path!r}")
         parent = PurePosixPath(f"{ROOT_PATH}/{relative_path}").parent
         while parent.as_posix() != ".":
             directories.add(parent.as_posix())
@@ -1541,38 +1544,64 @@ def archive_bytes(files: list[tuple[str, str, bytes]]) -> bytes:
     ordered_directories = [ROOT_PATH] + sorted(
         directories - {ROOT_PATH}, key=lambda value: value.encode("utf-8")
     )
-    raw_tar = io.BytesIO()
-    with tarfile.open(
-        fileobj=raw_tar,
-        mode="w",
-        format=tarfile.PAX_FORMAT,
-        encoding="utf-8",
-        errors="strict",
-    ) as archive:
-        for directory in ordered_directories:
-            info = tarfile.TarInfo(directory + "/")
-            info.type = tarfile.DIRTYPE
-            info.mode = 0o755
-            info.uid = 0
-            info.gid = 0
-            info.uname = ""
-            info.gname = ""
-            info.mtime = 0
-            info.size = 0
-            archive.addfile(info)
-        for relative_path, mode, contents in files:
-            info = tarfile.TarInfo(f"{ROOT_PATH}/{relative_path}")
-            info.type = tarfile.REGTYPE
-            info.mode = SUPPORTED_FILE_MODES[mode]
-            info.uid = 0
-            info.gid = 0
-            info.uname = ""
-            info.gname = ""
-            info.mtime = 0
-            info.size = len(contents)
-            archive.addfile(info, io.BytesIO(contents))
+    raw_tar = bytearray()
+    for directory in ordered_directories:
+        raw_tar.extend(canonical_ustar_header(directory, 0o755, 0, b"5"))
+    for relative_path, mode, contents in files:
+        raw_tar.extend(
+            canonical_ustar_header(
+                f"{ROOT_PATH}/{relative_path}",
+                SUPPORTED_FILE_MODES[mode],
+                len(contents),
+                b"0",
+            )
+        )
+        raw_tar.extend(contents)
+        raw_tar.extend(b"\0" * ((-len(contents)) % TAR_BLOCK_SIZE))
+    raw_tar.extend(b"\0" * (2 * TAR_BLOCK_SIZE))
+    return gzip_stored_deflate(bytes(raw_tar))
 
-    return gzip_stored_deflate(raw_tar.getvalue())
+
+def canonical_ustar_path_fields(path: str) -> tuple[bytes, bytes]:
+    encoded_path = path.encode("utf-8", "strict")
+    if not encoded_path or b"\0" in encoded_path:
+        fail(f"Path cannot be encoded in canonical USTAR: {path!r}")
+    if len(encoded_path) <= 100:
+        return encoded_path, b""
+    for separator in range(len(encoded_path) - 1, 0, -1):
+        if encoded_path[separator] != ord("/"):
+            continue
+        prefix = encoded_path[:separator]
+        name = encoded_path[separator + 1 :]
+        if len(prefix) <= 155 and 0 < len(name) <= 100:
+            return name, prefix
+    fail(f"Path cannot be represented by canonical USTAR name/prefix fields: {path!r}")
+
+
+def canonical_ustar_header(path: str, mode: int, size: int, kind: bytes) -> bytes:
+    name, prefix = canonical_ustar_path_fields(path)
+    header = bytearray(TAR_BLOCK_SIZE)
+    header[: len(name)] = name
+    for offset, width, value, field_name in (
+        (100, 8, mode, "mode"),
+        (108, 8, 0, "uid"),
+        (116, 8, 0, "gid"),
+        (124, 12, size, "size"),
+        (136, 12, 0, "mtime"),
+    ):
+        if value < 0 or value >= 8 ** (width - 1):
+            fail(f"{field_name} cannot be represented in canonical USTAR: {value}")
+        header[offset : offset + width] = f"{value:0{width - 1}o}\0".encode("ascii")
+    header[148:156] = b"        "
+    header[156:157] = kind
+    header[257:263] = b"ustar\0"
+    header[263:265] = b"00"
+    header[345 : 345 + len(prefix)] = prefix
+    checksum = sum(header)
+    if checksum >= 8 ** 6:
+        fail(f"Header checksum cannot be represented in canonical USTAR: {path!r}")
+    header[148:156] = f"{checksum:06o}\0 ".encode("ascii")
+    return bytes(header)
 
 
 def build_manifest(
@@ -1597,7 +1626,7 @@ def build_manifest(
         f"{record['mode']} {record['sha256']} {record['path']}\n" for record in records
     ).encode("utf-8")
     return {
-        "schema_version": 2,
+        "schema_version": 3,
         "artifact_name": ARCHIVE_NAME,
         "source_commit": commit,
         "source_ref_requested": requested_ref,
@@ -1729,8 +1758,8 @@ def main() -> int:
     print(f"archive_sha256={manifest['archive_sha256']}")
     print(f"python_implementation={CANONICAL_PYTHON_IMPLEMENTATION}")
     print(f"python_version={CANONICAL_PYTHON_VERSION}")
-    print(f"tarfile_module_sha256={CANONICAL_TARFILE_MODULE_SHA256}")
-    print(f"archive_encoder_version={CANONICAL_ARCHIVE_ENCODER}")
+    print(f"tar_serialization={CANONICAL_TAR_ENCODER}")
+    print(f"archive_encoder_version={CANONICAL_GZIP_ENCODER}")
     print("zlib_encoding=not-used")
     print(f"output={output}")
     return 0

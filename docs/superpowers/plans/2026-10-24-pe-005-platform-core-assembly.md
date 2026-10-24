@@ -19,7 +19,8 @@
 - `.gitignore`: ignores `/dist/` only.
 - `site-code/voelgoed-platform-core/README.md`: replaces manual patch-and-copy deployment instructions with the artifact workflow while preserving domain history.
 - `docs/architecture/PLATFORM_CORE_ASSEMBLY_CONTRACT_v1.0.0.md`: original PE-005 assembly contract, superseded by v1.1.0 after PE-005A.
-- `docs/architecture/PLATFORM_CORE_ASSEMBLY_CONTRACT_v1.1.0.md`: canonical assembly and pinned archive provenance contract.
+- `docs/architecture/PLATFORM_CORE_ASSEMBLY_CONTRACT_v1.1.0.md`: previous CPython/tarfile archive contract, superseded by v1.2.0 after CI exposed a host serializer mismatch.
+- `docs/architecture/PLATFORM_CORE_ASSEMBLY_CONTRACT_v1.2.0.md`: repository-owned deterministic USTAR and gzip archive contract.
 - `docs/superpowers/plans/2026-10-24-pe-005-platform-core-assembly.md`: this implementation sequence.
 
 ## Task 1: Lock the contract and acceptance checks
@@ -48,7 +49,7 @@
 - [x] Build a staging plugin from the root tree, overlay only the three owned module directories, validate patch headers against the bootstrap allowlist, reject binary/extended patch sections, then check and apply the tracked patch once.
 - [x] Parse the resulting entrypoint and `Plugin.php`. Require the exact plugin-root constant and `Plugin.php` require, every dynamic overlay PHP path once, every include path to exist, module imports and lifecycle registrations to be unique, and each registered class to exist as an unconditional namespace-scope declaration. Reject duplicate declarations across assembled files and require the lifecycle guard to start false. Validate the `register_component()` helper, protect integration-owned registry keys, and require the post-include `plugins_loaded` callback. Reject direct or dynamic component resets, unsets, mutation calls, reference aliases, conditional include scopes, early returns, and lifecycle `goto`. Do not hard-code historical module or lifecycle counts.
 - [x] Require PHP major/minor 8.5 and run `php -l` on every staged PHP file.
-- [x] Write the sorted file inventory, canonical tree hash, normalized PAX tar.gz, and manifest to a temporary sibling directory. Refuse an existing output path and atomically rename the completed output directory into place.
+- [x] Write the sorted file inventory, canonical tree hash, normalized USTAR tar.gz, and manifest to a temporary sibling directory. Refuse an existing output path and atomically rename the completed output directory into place.
 - [x] Run the negative-fixture harness. It covers the eleven delegated assembly-review findings, the reference-alias and callback-exit regressions, and four additional final-review findings about dynamic registry access, cross-file duplicate declarations, the plugin-root constant, and the initial lifecycle flag. It also verifies source immutability and temporary-state cleanup.
 
 ## Task 4: Prove reproducibility and artifact integrity
@@ -109,10 +110,23 @@ build without verifying those exact files.
   `c0db1a21e56ccf002147bffd10d97f452ad842820963ef793117f92a0cdaaad4`, and
   zlib 1.3.1 build/runtime on Linux x86_64. The previous GitHub source job was
   Ubuntu 24.04 image `20261012.334.1`; it did not log Python or zlib versions.
-- [x] Define the canonical build toolchain as CPython 3.14.4 plus the exact
-  `tarfile.py` hash and the `vgpc-gzip-stored-v1` encoder. The encoder writes
-  stored DEFLATE blocks and calculates CRC-32 in Python, independent of zlib.
-- [x] Bump the manifest to schema 2 and record stable toolchain identity.
+- [x] Record the failed PE-005A run. GitHub Actions run `40095889970`, job
+  `120877955697`, ran CPython 3.14.4 on Ubuntu 24.04 image `20261012.334.1`,
+  but its host `tarfile.py` SHA-256 was
+  `ec88f2affb5b23464dc9df50e98cb12d1516fca2ce6a78d83c57c9ce2ad93f5c` rather
+  than the local `c0db...aad4`. The builder correctly failed closed; the
+  aggregate gate failed because `Canonical source checks` failed.
+- [x] Replace host tar serialization with repository-owned
+  `vgpc-ustar-utf8-v1`. It emits deterministic USTAR headers, splits paths
+  through the standard name/prefix fields, and rejects paths that cannot be
+  represented. The host `tarfile` implementation no longer contributes to
+  archive bytes. Keep the `vgpc-gzip-stored-v1` encoder and pure-Python CRC-32.
+- [x] Bump the manifest to schema 3. It records the USTAR serializer version,
+  tar-ustar+gzip format, gzip encoder, and CPython contract; no host module hash
+  is treated as an output-affecting toolchain input.
+- [x] Add a failing encoder probe that replaces host `tarfile` output with a
+  sentinel and requires the repository-owned writer to produce fixed golden
+  USTAR bytes.
 - [x] Add `--verify-output` to verify exact existing files against manifest,
   archive metadata, Git builder/patch hashes, and independently assembled
   source inventory.

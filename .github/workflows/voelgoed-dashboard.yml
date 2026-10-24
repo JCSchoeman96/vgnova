@@ -78,7 +78,7 @@ jobs:
 
           print(f"python_implementation={platform.python_implementation()}")
           print(f"python_version={platform.python_version()}")
-          print(f"tarfile_module_sha256={hashlib.sha256(Path(tarfile.__file__).read_bytes()).hexdigest()}")
+          print(f"host_tarfile_module_sha256_diagnostic={hashlib.sha256(Path(tarfile.__file__).read_bytes()).hexdigest()}")
           print(f"zlib_build_version={zlib.ZLIB_VERSION}")
           print(f"zlib_runtime_version={zlib.ZLIB_RUNTIME_VERSION}")
           print(f"platform={platform.platform()}")
@@ -143,7 +143,7 @@ jobs:
 
           print(f"python_implementation={platform.python_implementation()}")
           print(f"python_version={platform.python_version()}")
-          print(f"tarfile_module_sha256={hashlib.sha256(Path(tarfile.__file__).read_bytes()).hexdigest()}")
+          print(f"host_tarfile_module_sha256_diagnostic={hashlib.sha256(Path(tarfile.__file__).read_bytes()).hexdigest()}")
           print(f"zlib_build_version={zlib.ZLIB_VERSION}")
           print(f"zlib_runtime_version={zlib.ZLIB_RUNTIME_VERSION}")
           print(f"platform={platform.platform()}")

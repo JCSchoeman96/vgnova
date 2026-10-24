@@ -38,14 +38,14 @@ MANIFEST_NAME = "voelgoed-platform-core.manifest.json"
 EXPECTED_BUILD_TOOLCHAIN = {
     "python_implementation": "CPython",
     "python_version": "3.14.4",
-    "tarfile_module_sha256": "c0db1a21e56ccf002147bffd10d97f452ad842820963ef793117f92a0cdaaad4",
-    "tar_serialization": "CPython-3.14.4-tarfile-pax-utf8-v1",
-    "archive_format": "tar-pax+gzip",
+    "tar_serialization": "vgpc-ustar-utf8-v1",
+    "archive_format": "tar-ustar+gzip",
     "archive_encoder_version": "vgpc-gzip-stored-v1",
     "zlib_encoding": "not-used",
 }
 GZIP_HEADER = b"\x1f\x8b\x08\x00\x00\x00\x00\x00\x00\xff"
 DEFLATE_STORED_BLOCK_SIZE = 65_535
+TAR_BLOCK_SIZE = 512
 
 
 def build_crc32_table() -> tuple[int, ...]:
@@ -112,13 +112,10 @@ def sha256(data: bytes) -> str:
 def ensure_canonical_toolchain() -> None:
     actual = (platform.python_implementation(), platform.python_version())
     expected = (EXPECTED_BUILD_TOOLCHAIN["python_implementation"], EXPECTED_BUILD_TOOLCHAIN["python_version"])
-    actual_tarfile_sha256 = sha256(Path(tarfile.__file__).read_bytes())
-    if actual != expected or actual_tarfile_sha256 != EXPECTED_BUILD_TOOLCHAIN["tarfile_module_sha256"]:
+    if actual != expected:
         raise CheckFailure(
             "Unsupported canonical archive toolchain: expected "
-            f"{expected[0]} {expected[1]} with tarfile module SHA-256 "
-            f"{EXPECTED_BUILD_TOOLCHAIN['tarfile_module_sha256']}; received {actual[0]} "
-            f"{actual[1]} with tarfile module SHA-256 {actual_tarfile_sha256}."
+            f"{expected[0]} {expected[1]}; received {actual[0]} {actual[1]}."
         )
 
 
@@ -147,6 +144,62 @@ def canonical_gzip_stored_deflate(data: bytes) -> bytes:
         deflate.extend(chunk)
     trailer = struct.pack("<II", crc32_ieee(data), len(data) & 0xFFFFFFFF)
     return GZIP_HEADER + bytes(deflate) + trailer
+
+
+def canonical_ustar_path_fields(path: str) -> tuple[bytes, bytes]:
+    encoded_path = path.encode("utf-8", "strict")
+    if not encoded_path or b"\0" in encoded_path:
+        raise CheckFailure(f"Path cannot be encoded in canonical USTAR: {path!r}")
+    if len(encoded_path) <= 100:
+        return encoded_path, b""
+    for separator in range(len(encoded_path) - 1, 0, -1):
+        if encoded_path[separator] != ord("/"):
+            continue
+        prefix = encoded_path[:separator]
+        name = encoded_path[separator + 1 :]
+        if len(prefix) <= 155 and 0 < len(name) <= 100:
+            return name, prefix
+    raise CheckFailure(f"Path cannot be represented by canonical USTAR name/prefix fields: {path!r}")
+
+
+def canonical_ustar_header(path: str, mode: int, size: int, kind: bytes) -> bytes:
+    name, prefix = canonical_ustar_path_fields(path)
+    header = bytearray(TAR_BLOCK_SIZE)
+    header[: len(name)] = name
+    for offset, width, value, field_name in (
+        (100, 8, mode, "mode"),
+        (108, 8, 0, "uid"),
+        (116, 8, 0, "gid"),
+        (124, 12, size, "size"),
+        (136, 12, 0, "mtime"),
+    ):
+        if value < 0 or value >= 8 ** (width - 1):
+            raise CheckFailure(f"{field_name} cannot be represented in canonical USTAR: {value}")
+        header[offset : offset + width] = f"{value:0{width - 1}o}\0".encode("ascii")
+    header[148:156] = b"        "
+    header[156:157] = kind
+    header[257:263] = b"ustar\0"
+    header[263:265] = b"00"
+    header[345 : 345 + len(prefix)] = prefix
+    checksum = sum(header)
+    if checksum >= 8 ** 6:
+        raise CheckFailure(f"Header checksum cannot be represented in canonical USTAR: {path!r}")
+    header[148:156] = f"{checksum:06o}\0 ".encode("ascii")
+    return bytes(header)
+
+
+def canonical_ustar_tar(entries: list[tuple[str, bool, int, bytes | None]]) -> bytes:
+    raw_tar = bytearray()
+    for path, is_directory, mode, contents in entries:
+        payload = b"" if contents is None else contents
+        raw_tar.extend(
+            canonical_ustar_header(path, mode, len(payload), b"5" if is_directory else b"0")
+        )
+        if not is_directory:
+            raw_tar.extend(payload)
+            raw_tar.extend(b"\0" * ((-len(payload)) % TAR_BLOCK_SIZE))
+    raw_tar.extend(b"\0" * (2 * TAR_BLOCK_SIZE))
+    return bytes(raw_tar)
 
 
 def safe_member_name(name: str) -> PurePosixPath:
@@ -231,25 +284,7 @@ def verify_archive(archive_path: Path, manifest: dict[str, Any]) -> list[dict[st
     except (OSError, tarfile.TarError) as error:
         raise CheckFailure(f"Cannot read canonical tar.gz archive: {error}") from error
 
-    canonical_tar = io.BytesIO()
-    with tarfile.open(
-        fileobj=canonical_tar,
-        mode="w",
-        format=tarfile.PAX_FORMAT,
-        encoding="utf-8",
-        errors="strict",
-    ) as writer:
-        for name, is_directory, mode, contents in canonical_entries:
-            info = tarfile.TarInfo(name)
-            info.type = tarfile.DIRTYPE if is_directory else tarfile.REGTYPE
-            info.mode = mode
-            info.uid = 0
-            info.gid = 0
-            info.uname = ""
-            info.gname = ""
-            info.mtime = 0
-            info.size = len(contents) if contents is not None else 0
-            writer.addfile(info, io.BytesIO(contents) if contents is not None else None)
+    canonical_tar = canonical_ustar_tar(canonical_entries)
     try:
         decompressor = zlib.decompressobj(wbits=31)
         raw_archive = decompressor.decompress(archive_bytes) + decompressor.flush()
@@ -257,9 +292,9 @@ def verify_archive(archive_path: Path, manifest: dict[str, Any]) -> list[dict[st
         raise CheckFailure(f"Cannot decompress canonical tar.gz archive: {error}") from error
     if not decompressor.eof or decompressor.unused_data or decompressor.unconsumed_tail:
         raise CheckFailure("Archive is not a single canonical gzip stream with no trailing data.")
-    if raw_archive != canonical_tar.getvalue():
-        raise CheckFailure("Tar metadata or PAX fields differ from canonical tar encoding.")
-    if archive_bytes != canonical_gzip_stored_deflate(canonical_tar.getvalue()):
+    if raw_archive != canonical_tar:
+        raise CheckFailure("Tar metadata or extended fields differ from canonical USTAR encoding.")
+    if archive_bytes != canonical_gzip_stored_deflate(canonical_tar):
         raise CheckFailure("Gzip DEFLATE bytes differ from the canonical stored-block encoder.")
 
     if roots != {ROOT_PLUGIN}:
@@ -343,9 +378,9 @@ def validate_manifest(
     if manifest_fields != required:
         missing = sorted(required - manifest_fields)
         unexpected = sorted(manifest_fields - required)
-        raise CheckFailure(f"Manifest fields differ from schema 2; missing={missing}, unexpected={unexpected}")
+        raise CheckFailure(f"Manifest fields differ from schema 3; missing={missing}, unexpected={unexpected}")
     expected = {
-        "schema_version": 2,
+        "schema_version": 3,
         "artifact_name": ARCHIVE_NAME,
         "source_commit": commit,
         "source_ref_requested": requested_ref,
@@ -924,7 +959,7 @@ def run_verifier_hardening_cases(
         label="unexpected PAX metadata is rejected",
         archive=pax_archive,
         manifest=pax_manifest,
-        expected_text="canonical tar encoding",
+        expected_text="canonical ustar encoding",
     )
 
     extra_directory_archive = temporary_root / "unmanifested-directory.tar.gz"
@@ -2040,18 +2075,110 @@ def run_unsupported_toolchain_case(builder: Path) -> None:
             raise CheckFailure(f"Unsupported toolchain failed for the wrong reason: {error}") from error
     else:
         raise CheckFailure("Builder accepted an unsupported canonical Python version.")
-    try:
-        guard(
-            implementation="CPython",
-            version="3.14.4",
-            tarfile_module_sha256="0" * 64,
-        )
-    except module.BuildFailure as error:
-        if "unsupported canonical archive toolchain" not in str(error).lower():
-            raise CheckFailure(f"Unsupported tarfile implementation failed for the wrong reason: {error}") from error
-    else:
-        raise CheckFailure("Builder accepted an unsupported tarfile implementation hash.")
     print("PASS negative case: unsupported canonical archive toolchain is rejected")
+
+
+def run_repository_owned_tar_encoder_case(builder: Path) -> None:
+    specification = importlib.util.spec_from_file_location("vgpc_builder_tar_encoder_test", builder)
+    if specification is None or specification.loader is None:
+        raise CheckFailure("Cannot load builder module for canonical TAR encoder test.")
+    module = importlib.util.module_from_spec(specification)
+    previous = sys.dont_write_bytecode
+    sys.dont_write_bytecode = True
+    sys.modules[specification.name] = module
+    try:
+        specification.loader.exec_module(module)
+    finally:
+        sys.modules.pop(specification.name, None)
+        sys.dont_write_bytecode = previous
+
+    class ForbiddenTarfile:
+        PAX_FORMAT = tarfile.PAX_FORMAT
+        TarInfo = tarfile.TarInfo
+        DIRTYPE = tarfile.DIRTYPE
+        REGTYPE = tarfile.REGTYPE
+
+        @staticmethod
+        def open(*_args: Any, **_kwargs: Any) -> None:
+            raise CheckFailure("Builder delegated canonical TAR output to host tarfile.")
+
+    module.tarfile = ForbiddenTarfile
+    try:
+        archive = module.archive_bytes([("probe.txt", "100644", b"abc")])
+    except CheckFailure:
+        raise
+    except Exception as error:
+        raise CheckFailure(f"Canonical TAR encoder failed its host-independence probe: {error}") from error
+
+    def expected_header(name: str, mode: int, size: int, kind: bytes) -> bytes:
+        header = bytearray(512)
+        encoded_name = name.encode("utf-8")
+        if len(encoded_name) > 100:
+            raise CheckFailure("Golden USTAR fixture name unexpectedly exceeds its field.")
+        header[: len(encoded_name)] = encoded_name
+        for offset, width, value in ((100, 8, mode), (108, 8, 0), (116, 8, 0), (124, 12, size), (136, 12, 0)):
+            header[offset : offset + width] = f"{value:0{width - 1}o}\0".encode("ascii")
+        header[148:156] = b"        "
+        header[156:157] = kind
+        header[257:263] = b"ustar\0"
+        header[263:265] = b"00"
+        checksum = sum(header)
+        header[148:156] = f"{checksum:06o}\0 ".encode("ascii")
+        return bytes(header)
+
+    expected_tar = (
+        expected_header("voelgoed-platform-core", 0o755, 0, b"5")
+        + expected_header("voelgoed-platform-core/probe.txt", 0o644, 3, b"0")
+        + b"abc"
+        + b"\0" * (512 - 3)
+        + b"\0" * 1024
+    )
+    try:
+        actual_tar = zlib.decompress(archive, wbits=31)
+    except zlib.error as error:
+        raise CheckFailure(f"Canonical TAR encoder emitted invalid gzip bytes: {error}") from error
+    if actual_tar != expected_tar:
+        raise CheckFailure("Repository-owned USTAR encoder differs from the fixed golden fixture.")
+    print("PASS encoder case: canonical TAR bytes are repository-owned USTAR, independent of host tarfile")
+
+    sample_record = {
+        "path": "probe.txt",
+        "mode": "100644",
+        "size": 3,
+        "sha256": sha256(b"abc"),
+    }
+    sample_manifest = {
+        "archive_sha256": sha256(archive),
+        "file_count": 1,
+        "files": [sample_record],
+        "tree_sha256": sha256(f"100644 {sample_record['sha256']} probe.txt\n".encode("utf-8")),
+    }
+    with tempfile.TemporaryDirectory(prefix="vgpc-ustar-roundtrip-") as temporary_name:
+        sample_archive = Path(temporary_name) / ARCHIVE_NAME
+        sample_archive.write_bytes(archive)
+        if verify_archive(sample_archive, sample_manifest) != [sample_record]:
+            raise CheckFailure("Independent verifier changed the canonical USTAR sample inventory.")
+    print("PASS encoder case: independent verifier accepts the fixed canonical USTAR sample")
+
+    split_path = f"{'a' * 80}/{'b' * 40}.php"
+    split_archive = module.archive_bytes([(split_path, "100644", b"split")])
+    try:
+        with tarfile.open(fileobj=io.BytesIO(split_archive), mode="r:gz") as parsed:
+            member = parsed.getmember(f"{ROOT_PLUGIN}/{split_path}")
+            if not member.isfile() or member.size != len(b"split"):
+                raise CheckFailure("USTAR name/prefix split produced an invalid file member.")
+    except (OSError, tarfile.TarError, KeyError) as error:
+        raise CheckFailure(f"USTAR name/prefix split could not be parsed: {error}") from error
+    print("PASS encoder case: canonical USTAR name/prefix splitting preserves long paths")
+
+    try:
+        module.archive_bytes([("x" * 101, "100644", b"unrepresentable")])
+    except module.BuildFailure as error:
+        if "cannot be represented by canonical ustar" not in str(error).lower():
+            raise CheckFailure(f"Unrepresentable USTAR path failed for the wrong reason: {error}") from error
+    else:
+        raise CheckFailure("Builder accepted a path that cannot fit canonical USTAR fields.")
+    print("PASS encoder case: canonical USTAR rejects a path that exceeds its name/prefix fields")
 
 
 def run_exact_output_verification_cases(
@@ -2249,7 +2376,8 @@ def main() -> int:
 
     print(f"python_implementation={platform.python_implementation()}")
     print(f"python_version={platform.python_version()}")
-    print(f"tarfile_module_sha256={sha256(Path(tarfile.__file__).read_bytes())}")
+    print(f"host_tarfile_module_sha256_diagnostic={sha256(Path(tarfile.__file__).read_bytes())}")
+    print(f"tar_serialization={EXPECTED_BUILD_TOOLCHAIN['tar_serialization']}")
     print(f"archive_encoder_version={EXPECTED_BUILD_TOOLCHAIN['archive_encoder_version']}")
     print("zlib_encoding=not-used")
     print(f"zlib_build_version={zlib.ZLIB_VERSION}")
@@ -2262,6 +2390,7 @@ def main() -> int:
 
     with tempfile.TemporaryDirectory(prefix="vgpc-repro-") as temporary_name:
         temporary_root = Path(temporary_name)
+        run_repository_owned_tar_encoder_case(builder)
         run_unsupported_toolchain_case(builder)
         build_a = temporary_root / "build-a"
         build_b = temporary_root / "build-b"
