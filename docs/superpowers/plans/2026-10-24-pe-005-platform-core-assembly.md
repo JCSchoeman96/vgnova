@@ -81,16 +81,16 @@
 
 **Files:** No additional file scope.
 
-- [ ] Run the final verification set from the exact committed feature head, including both dashboard and canonical source checks, the standalone verifier, AST validation, `bash -n`, ShellCheck, actionlint, and `git diff --check`.
-- [ ] Record source SHA, file count, tree hash, archive hash, and manifest hash for two final builds.
-- [ ] Inspect the final generated archive for one top-level plugin directory, expected root and overlay files, `PersonProductsBricks.php`, PHP 8.5 header, unique bootstrap entries, all patch-owned lifecycle registrations, and no `site-code` tests or README files.
-- [ ] Confirm no Local WordPress/runtime, database, or Novamira access and no deployment occurred.
+- [x] Run the final verification set from the exact committed feature head, including both dashboard and canonical source checks, the standalone verifier, AST validation, `bash -n`, ShellCheck, actionlint, and `git diff --check`.
+- [x] Record source SHA, file count, tree hash, archive hash, and manifest hash for two final builds in the PE-005 handoff report.
+- [x] Inspect the final generated archive for one top-level plugin directory, expected root and overlay files, `PersonProductsBricks.php`, PHP 8.5 header, unique bootstrap entries, all patch-owned lifecycle registrations, and no `site-code` tests or README files.
+- [x] Confirm no Local WordPress/runtime, database, or Novamira access and no deployment occurred.
 
 ## Task 8: Independent review and PR handoff
 
 **Files:** Review only, then fix findings within this file scope.
 
-- [ ] Delegate final read-only reviews for source ownership/assembly, manifest/reproducibility, and CI integration against the final exact head. Earlier review rounds identified and drove fixes for five assembly issues and one CI publication issue.
+- [ ] Delegate final read-only reviews for source ownership/assembly, manifest/reproducibility, and CI integration against the final exact head. Earlier review rounds identified and drove fixes for seven assembly issues and one CI publication issue.
 - [ ] Fix blocking or material findings and rerun affected checks plus the full source gate.
 - [ ] Push `chore/pe-005-platform-core-assembly` and open a focused PR titled `build: add deterministic Platform Core assembly`.
 - [ ] Link the PR to this thread immediately. Verify the PR head equals the pushed commit and the base equals the current `main` SHA.
