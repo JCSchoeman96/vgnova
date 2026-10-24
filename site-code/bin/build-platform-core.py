@@ -968,13 +968,24 @@ def validate_assembled_bootstrap(
         ):
             collection_reset = True
             break
-        if index >= 2 and token_matches(
-            method_tokens,
-            index - 2,
-            [("T_STRING", "unset"), (None, "(")],
-        ):
-            collection_reset = True
-            break
+    if not collection_reset:
+        for index in range(first_integration_registration, loop_index):
+            if not token_matches(method_tokens, index, [("T_UNSET", "unset"), (None, "(")]):
+                continue
+            nested_parentheses = 0
+            for argument_index in range(index + 2, loop_index):
+                if token_matches(method_tokens, argument_index, component_reset):
+                    collection_reset = True
+                    break
+                token_text = method_tokens[argument_index][1]
+                if token_text == "(":
+                    nested_parentheses += 1
+                elif token_text == ")":
+                    if nested_parentheses == 0:
+                        break
+                    nested_parentheses -= 1
+            if collection_reset:
+                break
     if collection_reset:
         fail("The component collection cannot be reset after lifecycle registration.")
 
