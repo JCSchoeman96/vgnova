@@ -296,6 +296,53 @@ def patch_integration_markers(patch_text: str) -> tuple[list[str], list[str]]:
     return imports, registrations
 
 
+def validate_plugins_loaded_hook(entrypoint: str) -> None:
+    tokens = significant_php_tokens(php_tokens(entrypoint, "assembled plugin lifecycle hook"))
+    expected = plugins_loaded_lifecycle_sequence()
+    hook_indexes = [
+        index
+        for index in range(len(tokens))
+        if token_matches(tokens, index, expected)
+    ]
+    if len(hook_indexes) != 1:
+        fail("Assembled entrypoint must register exactly one plugins_loaded lifecycle callback.")
+
+    hook_index = hook_indexes[0]
+    direct, brace_depth = is_first_statement_token(tokens, hook_index)
+    if brace_depth != 0 or not direct:
+        fail("The plugins_loaded lifecycle callback must be an unconditional top-level statement.")
+
+    include_loop_header = [
+        ("T_FOREACH", "foreach"),
+        (None, "("),
+        ("T_VARIABLE", "$vgpc_include_paths"),
+        ("T_AS", "as"),
+        ("T_VARIABLE", "$vgpc_include_path"),
+        (None, ")"),
+        (None, "{"),
+    ]
+    include_loops = [
+        index
+        for index in range(len(tokens))
+        if token_matches(tokens, index, include_loop_header)
+    ]
+    if len(include_loops) != 1:
+        fail("Cannot verify the plugins_loaded callback follows the canonical module include loop.")
+    include_open = include_loops[0] + len(include_loop_header) - 1
+    depth = 1
+    include_close = None
+    for index in range(include_open + 1, len(tokens)):
+        if tokens[index][1] == "{":
+            depth += 1
+        elif tokens[index][1] == "}":
+            depth -= 1
+            if depth == 0:
+                include_close = index
+                break
+    if include_close is None or hook_index <= include_close:
+        fail("The plugins_loaded lifecycle callback must follow the canonical module include loop.")
+
+
 def apply_patch(staging_root: Path, patch_path: Path, patch_text: str) -> None:
     patch_owned_paths(patch_text)
     git_environment = os.environ.copy()
@@ -528,6 +575,62 @@ def entrypoint_exit_guard_sequence() -> list[tuple[str | None, str]]:
         ("T_BOOLEAN_OR", "||"),
         ("T_EXIT", "exit"),
         (None, ";"),
+    ]
+
+
+def plugins_loaded_lifecycle_sequence() -> list[tuple[str | None, str]]:
+    return [
+        ("T_STRING", "add_action"),
+        (None, "("),
+        ("T_CONSTANT_ENCAPSED_STRING", "'plugins_loaded'"),
+        (None, ","),
+        ("T_STATIC", "static"),
+        ("T_FUNCTION", "function"),
+        (None, "("),
+        (None, ")"),
+        (None, ":"),
+        ("T_STRING", "void"),
+        (None, "{"),
+        (None, "("),
+        ("T_NEW", "new"),
+        ("T_STRING", "Plugin"),
+        (None, "("),
+        (None, ")"),
+        (None, ")"),
+        ("T_OBJECT_OPERATOR", "->"),
+        ("T_STRING", "register"),
+        (None, "("),
+        (None, ")"),
+        (None, ";"),
+        (None, "}"),
+        (None, ","),
+        ("T_LNUMBER", "20"),
+        (None, ")"),
+        (None, ";"),
+    ]
+
+
+def register_component_method_header() -> list[tuple[str | None, str]]:
+    return [
+        ("T_PRIVATE", "private"),
+        ("T_FUNCTION", "function"),
+        ("T_STRING", "register_component"),
+        (None, "("),
+        ("T_STRING", "string"),
+        ("T_VARIABLE", "$key"),
+        (None, ","),
+        ("T_STRING", "string"),
+        ("T_VARIABLE", "$class"),
+        (None, ","),
+        ("T_ARRAY", "array"),
+        ("T_VARIABLE", "$constructor_args"),
+        (None, "="),
+        (None, "["),
+        (None, "]"),
+        (None, ")"),
+        (None, ":"),
+        ("T_STRING", "void"),
+        (None, "{"),
     ]
 
 
@@ -770,6 +873,7 @@ def php_method_body_tokens(
     class_name: str,
     method_name: str,
     purpose: str,
+    method_header: list[tuple[str | None, str]] | None = None,
 ) -> list[tuple[str | None, str, int, int]]:
     tokens = significant_php_tokens(php_tokens(source, purpose))
     class_declarations = []
@@ -815,16 +919,17 @@ def php_method_body_tokens(
     if class_close is None:
         fail(f"The {class_name} class body is unterminated in {purpose}.")
 
-    method_header = [
-        ("T_PUBLIC", "public"),
-        ("T_FUNCTION", "function"),
-        ("T_STRING", method_name),
-        (None, "("),
-        (None, ")"),
-        (None, ":"),
-        ("T_STRING", "void"),
-        (None, "{"),
-    ]
+    if method_header is None:
+        method_header = [
+            ("T_PUBLIC", "public"),
+            ("T_FUNCTION", "function"),
+            ("T_STRING", method_name),
+            (None, "("),
+            (None, ")"),
+            (None, ":"),
+            ("T_STRING", "void"),
+            (None, "{"),
+        ]
     methods = []
     member_depth = 0
     for index in range(class_open + 1, class_close):
@@ -866,6 +971,7 @@ def validate_assembled_bootstrap(
     plugin_class = text_file(plugin_class_path, "assembled includes/Plugin.php")
 
     include_paths = parse_include_paths(entrypoint)
+    validate_plugins_loaded_hook(entrypoint)
     duplicates = sorted(path for path, count in Counter(include_paths).items() if count > 1)
     if duplicates:
         fail(f"Duplicate bootstrap include paths: {duplicates}")
@@ -907,6 +1013,62 @@ def validate_assembled_bootstrap(
         "register",
         "Plugin::register() structure",
     )
+    register_component_tokens = php_method_body_tokens(
+        plugin_class,
+        "Plugin",
+        "register_component",
+        "Plugin::register_component() structure",
+        method_header=register_component_method_header(),
+    )
+    expected_register_component = [
+        ("T_IF", "if"),
+        (None, "("),
+        (None, "!"),
+        ("T_STRING", "class_exists"),
+        (None, "("),
+        ("T_VARIABLE", "$class"),
+        (None, ")"),
+        (None, ")"),
+        (None, "{"),
+        ("T_RETURN", "return"),
+        (None, ";"),
+        (None, "}"),
+        ("T_VARIABLE", "$component"),
+        (None, "="),
+        ("T_NEW", "new"),
+        ("T_VARIABLE", "$class"),
+        (None, "("),
+        ("T_ELLIPSIS", "..."),
+        ("T_VARIABLE", "$constructor_args"),
+        (None, ")"),
+        (None, ";"),
+        ("T_IF", "if"),
+        (None, "("),
+        ("T_STRING", "is_object"),
+        (None, "("),
+        ("T_VARIABLE", "$component"),
+        (None, ")"),
+        (None, ")"),
+        (None, "{"),
+        ("T_VARIABLE", "$this"),
+        ("T_OBJECT_OPERATOR", "->"),
+        ("T_STRING", "components"),
+        (None, "["),
+        ("T_VARIABLE", "$key"),
+        (None, "]"),
+        (None, "="),
+        ("T_VARIABLE", "$component"),
+        (None, ";"),
+        (None, "}"),
+    ]
+    if [
+        (token_name, token_text)
+        for token_name, token_text, _, _ in register_component_tokens
+    ] != expected_register_component:
+        fail(
+            "Plugin::register_component() implementation must preserve its class-existence guard, "
+            "component construction, and insertion behavior."
+        )
     guard = method_guard_sequence()
     if not token_matches(method_tokens, 0, guard):
         fail("Plugin::register() is missing its expected idempotency guard.")
@@ -956,38 +1118,12 @@ def validate_assembled_bootstrap(
         ("T_OBJECT_OPERATOR", "->"),
         ("T_STRING", "components"),
     ]
-    assignment_operators = {"=", "+=", "-=", "*=", "/=", ".=", "%=", "&=", "|=", "^=", "<<=", ">>=", "??=", "&"}
-    collection_reset = False
-    for index in range(first_integration_registration, loop_index):
-        if not token_matches(method_tokens, index, component_reset):
-            continue
-        next_index = index + len(component_reset)
-        if next_index < loop_index and (
-            method_tokens[next_index][1] in assignment_operators
-            or method_tokens[next_index][0] in {"T_INC", "T_DEC"}
-        ):
-            collection_reset = True
-            break
-    if not collection_reset:
-        for index in range(first_integration_registration, loop_index):
-            if not token_matches(method_tokens, index, [("T_UNSET", "unset"), (None, "(")]):
-                continue
-            nested_parentheses = 0
-            for argument_index in range(index + 2, loop_index):
-                if token_matches(method_tokens, argument_index, component_reset):
-                    collection_reset = True
-                    break
-                token_text = method_tokens[argument_index][1]
-                if token_text == "(":
-                    nested_parentheses += 1
-                elif token_text == ")":
-                    if nested_parentheses == 0:
-                        break
-                    nested_parentheses -= 1
-            if collection_reset:
-                break
-    if collection_reset:
-        fail("The component collection cannot be reset after lifecycle registration.")
+    collection_access = any(
+        token_matches(method_tokens, index, component_reset)
+        for index in range(first_integration_registration, loop_index)
+    )
+    if collection_access:
+        fail("The component collection cannot be accessed after lifecycle registration before dispatch.")
 
     loop_first_statement, loop_brace_depth = is_first_statement_token(method_tokens, loop_index)
     if loop_brace_depth != 0 or not loop_first_statement:
