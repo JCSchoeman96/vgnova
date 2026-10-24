@@ -408,6 +408,25 @@ def validate_manifest(
         raise CheckFailure("Manifest files are not sorted by UTF-8 path bytes.")
 
 
+def git_regular_file_modes(repo_root: Path, commit: str, pathspecs: tuple[str, ...]) -> dict[str, str]:
+    listing = command(
+        ["git", "ls-tree", "-r", "-z", "--full-tree", commit, "--", *pathspecs],
+        cwd=repo_root,
+    )
+    modes: dict[str, str] = {}
+    for record in listing.stdout.split(b"\0"):
+        if not record:
+            continue
+        metadata, raw_path = record.split(b"\t", 1)
+        mode_bytes, object_type, _object_id = metadata.split(b" ", 2)
+        path = raw_path.decode("utf-8", "strict")
+        mode = mode_bytes.decode("ascii", "strict")
+        if object_type != b"blob" or mode not in ("100644", "100755"):
+            raise CheckFailure(f"Expected assembly input has an unsupported Git entry: {mode} {path}")
+        modes[path] = mode
+    return modes
+
+
 def expected_assembled_inventory_from_git(
     repo_root: Path,
     commit: str,
@@ -415,6 +434,18 @@ def expected_assembled_inventory_from_git(
 ) -> list[dict[str, Any]]:
     fixture = create_fixture(repo_root, commit, destination)
     plugin_root = fixture / ROOT_PLUGIN
+    source_modes = git_regular_file_modes(fixture, "HEAD", (ROOT_PLUGIN, *OVERLAY_PATHS))
+    runtime_modes = {
+        source_path[len(ROOT_PLUGIN) + 1 :]: mode
+        for source_path, mode in source_modes.items()
+        if source_path.startswith(ROOT_PLUGIN + "/")
+    }
+    overlay_root = "site-code/voelgoed-platform-core/includes/"
+    for source_path, mode in source_modes.items():
+        if any(source_path.startswith(overlay + "/") for overlay in OVERLAY_PATHS):
+            runtime_path = "includes/" + source_path[len(overlay_root) :]
+            runtime_modes[runtime_path] = mode
+
     for overlay_path in OVERLAY_PATHS:
         source_root = fixture / overlay_path
         if not source_root.is_dir() or source_root.is_symlink():
@@ -428,16 +459,17 @@ def expected_assembled_inventory_from_git(
         for source in overlay_sources:
             if source.is_symlink() or not stat.S_ISREG(source.lstat().st_mode):
                 raise CheckFailure(f"Canonical overlay contains a non-regular file: {source}")
-            mode = stat.S_IMODE(source.lstat().st_mode)
-            if mode not in (0o644, 0o755):
-                raise CheckFailure(f"Canonical overlay PHP module has an unsupported mode: {source}")
+            source_path = source.relative_to(fixture).as_posix()
+            git_mode = source_modes.get(source_path)
+            if git_mode not in ("100644", "100755"):
+                raise CheckFailure(f"Canonical overlay file has no supported Git mode: {source_path}")
             relative_path = source.relative_to(source_root)
-            destination_path = plugin_root / "includes" / relative_path
+            destination_path = plugin_root / "includes" / source_root.name / relative_path
             if destination_path.exists() or destination_path.is_symlink():
                 raise CheckFailure(f"Canonical overlay collides with a root plugin file: {relative_path}")
             destination_path.parent.mkdir(parents=True, exist_ok=True)
             destination_path.write_bytes(source.read_bytes())
-            destination_path.chmod(mode)
+            destination_path.chmod(0o755 if git_mode == "100755" else 0o644)
 
     patch_path = fixture / PATCH_PATH
     command(
@@ -451,15 +483,15 @@ def expected_assembled_inventory_from_git(
             continue
         if path.is_symlink() or not stat.S_ISREG(path.lstat().st_mode):
             raise CheckFailure(f"Expected assembled plugin contains a non-regular file: {path}")
-        mode = stat.S_IMODE(path.lstat().st_mode)
-        if mode not in (0o644, 0o755):
-            raise CheckFailure(f"Expected assembled plugin contains an unsupported mode: {path}")
         relative_path = path.relative_to(plugin_root).as_posix()
+        git_mode = runtime_modes.get(relative_path)
+        if git_mode not in ("100644", "100755"):
+            raise CheckFailure(f"Expected assembled file has no supported Git mode: {relative_path}")
         contents = path.read_bytes()
         expected.append(
             {
                 "path": relative_path,
-                "mode": "100755" if mode == 0o755 else "100644",
+                "mode": git_mode,
                 "size": len(contents),
                 "sha256": sha256(contents),
             }
