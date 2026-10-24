@@ -27,13 +27,14 @@
 
 - [x] Record the base, three overlays, patch input, output layout, failure rules, tree hash, manifest fields, runtime boundary, and main-only publication contract.
 - [x] Confirm the existing repository has 20 tracked overlay PHP files, 12 patch-owned lifecycle imports and registrations, a clean root bootstrap, and a patch that applies to the tracked root tree.
+- [x] Reverify the base. `origin/main` moved from the expected PE-004 SHA `e27a55c33b0393273c363b8fdcbfb65d3d1671ea` to `ea4dc65121db74f4b8dabfb1aa95d9afc17b1ed7` through merge #49, which added only Product Contribution runtime-normalization records. The exact new main run succeeded and the ruleset remains active.
 
 ## Task 2: Write the verifier's negative-fixture checks first
 
 **Files:** Create `site-code/bin/check-platform-core-build.py`.
 
 - [x] Add temporary Git fixture helpers. Each fixture copies only committed assembly inputs and the builder, commits them with a local test identity, and is removed by `TemporaryDirectory`.
-- [x] Add cases for an invalid patch, already-integrated root include, absent overlay PHP file, patch include to an absent module, duplicate bootstrap include, non-empty output directory, artifact content tampering, an entrypoint return before module includes, a component collection reset before dispatch, and unsets of the full collection and a registered component.
+- [x] Add cases for invalid and binary patches, an already-integrated root include, an absent overlay PHP file, a patch include to an absent module, duplicate bootstrap includes, non-empty output, artifact tampering, early entrypoint returns, whole/keyed component unsets, keyed overwrite, `array_splice`, reference aliasing, a helper early return, a missing lifecycle hook, and a return before that hook.
 - [x] Run the verifier with a red regression fixture before the review fixes. The binary-patch fixture succeeded against the old builder, proving the path-allowlist gap.
 
 ## Task 3: Implement commit-pinned assembly
@@ -44,10 +45,10 @@
 - [x] Read the root plugin, three overlay trees, integration patch, and builder blob from that commit. Require the executing builder bytes to match the commit's `builder_path` blob.
 - [x] Reject unsupported Git object modes, invalid/unsafe paths, empty overlays, source collisions, missing inputs, and a root bootstrap that already contains integration-owned module includes, imports, or registrations.
 - [x] Build a staging plugin from the root tree, overlay only the three owned module directories, validate patch headers against the bootstrap allowlist, reject binary/extended patch sections, then check and apply the tracked patch once.
-- [x] Parse the resulting entrypoint and `Plugin.php`. Require every dynamic overlay PHP path once, every include path to exist, module imports and lifecycle registrations to be unique, and each registered class to exist as an unconditional namespace-scope declaration. Reject pre-include returns, throws, and jumps, component collection resets and unsets after integration registration, conditional include scopes, and lifecycle `goto`. Do not hard-code historical module or lifecycle counts.
+- [x] Parse the resulting entrypoint and `Plugin.php`. Require every dynamic overlay PHP path once, every include path to exist, module imports and lifecycle registrations to be unique, and each registered class to exist as an unconditional namespace-scope declaration. Validate the `register_component()` helper, protect integration-owned registry keys, and require the post-include `plugins_loaded` callback. Reject component resets, unsets, mutation calls, reference aliases, conditional include scopes, early returns, and lifecycle `goto`. Do not hard-code historical module or lifecycle counts.
 - [x] Require PHP major/minor 8.5 and run `php -l` on every staged PHP file.
 - [x] Write the sorted file inventory, canonical tree hash, normalized PAX tar.gz, and manifest to a temporary sibling directory. Refuse an existing output path and atomically rename the completed output directory into place.
-- [x] Run the negative-fixture harness. It covers each named failure, eight assembly-review findings, source immutability, and cleanup.
+- [x] Run the negative-fixture harness. It covers eleven delegated assembly-review findings plus the reference-alias and callback-exit regressions, source immutability, and cleanup.
 
 ## Task 4: Prove reproducibility and artifact integrity
 
@@ -81,16 +82,16 @@
 
 **Files:** No additional file scope.
 
-- [x] Run the final verification set from the exact committed feature head, including both dashboard and canonical source checks, the standalone verifier, AST validation, `bash -n`, ShellCheck, actionlint, and `git diff --check`.
-- [x] Record source SHA, file count, tree hash, archive hash, and manifest hash for two final builds in the PE-005 handoff report.
-- [x] Inspect the final generated archive for one top-level plugin directory, expected root and overlay files, `PersonProductsBricks.php`, PHP 8.5 header, unique bootstrap entries, all patch-owned lifecycle registrations, and no `site-code` tests or README files.
+- [ ] Run the final verification set from the exact committed feature head, including both dashboard and canonical source checks, the standalone verifier, AST validation, `bash -n`, ShellCheck, actionlint, and `git diff --check`.
+- [ ] Record source SHA, file count, tree hash, archive hash, and manifest hash for two final builds in the PE-005 handoff report.
+- [ ] Inspect the final generated archive for one top-level plugin directory, expected root and overlay files, `PersonProductsBricks.php`, PHP 8.5 header, unique bootstrap entries, all patch-owned lifecycle registrations, and no `site-code` tests or README files.
 - [x] Confirm no Local WordPress/runtime, database, or Novamira access and no deployment occurred.
 
 ## Task 8: Independent review and PR handoff
 
 **Files:** Review only, then fix findings within this file scope.
 
-- [ ] Delegate final read-only reviews for source ownership/assembly, manifest/reproducibility, and CI integration against the final exact head. Earlier review rounds identified and drove fixes for eight assembly issues and one CI publication issue.
+- [ ] Delegate final read-only reviews for source ownership/assembly, manifest/reproducibility, and CI integration against the final exact head. Prior delegated reviews identified eleven assembly issues and one CI publication issue. The final round must inspect the registry-mutation and lifecycle-hook safeguards added after those findings.
 - [ ] Fix blocking or material findings and rerun affected checks plus the full source gate.
 - [ ] Push `chore/pe-005-platform-core-assembly` and open a focused PR titled `build: add deterministic Platform Core assembly`.
 - [ ] Link the PR to this thread immediately. Verify the PR head equals the pushed commit and the base equals the current `main` SHA.
