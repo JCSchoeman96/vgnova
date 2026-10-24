@@ -1,0 +1,138 @@
+# PE-005 Platform Core assembly implementation plan
+
+> **For agentic workers:** Implement the approved PE-005 brief task by task. Keep generated artifacts out of Git and do not access WordPress runtime state.
+
+**Goal:** Build a reproducible Platform Core plugin artifact from one exact Git commit and publish it only from successful `main` source checks.
+
+**Architecture:** `voelgoed-platform-core/` is the tracked assembly base. The three tracked `site-code/voelgoed-platform-core/includes/{Taxonomy,Event,Product}` trees are the only overlays. The tracked `integration.patch` is applied once to a disposable staging copy. The builder reads Git blobs for the resolved commit, validates the assembled bootstrap, lints the assembled PHP on PHP 8.5, writes a normalized tarball and manifest to a new output directory, and never reads WordPress runtime state.
+
+**Tech Stack:** Python 3 standard library, Git object commands, PHP 8.5 CLI, Bash, GitHub Actions, ShellCheck, actionlint.
+
+---
+
+## Files and ownership
+
+- `site-code/bin/build-platform-core.py`: Git-object reader, clean-base gate, patch application, overlay/bootstrap checks, PHP lint, deterministic archive and manifest writer.
+- `site-code/bin/check-platform-core-build.py`: two-build reproducibility check, archive/manifest re-verification, isolated negative fixtures, and cleanup proof.
+- `site-code/bin/check-source.sh`: invokes the new verifier and keeps the existing patch applicability check and source suites.
+- `.github/workflows/voelgoed-dashboard.yml`: rebuilds and uploads the two canonical files only after `VG Nova Platform Gate` succeeds on a push to `main`; preserves all three governed check names.
+- `.gitignore`: ignores `/dist/` only.
+- `site-code/voelgoed-platform-core/README.md`: replaces manual patch-and-copy deployment instructions with the artifact workflow while preserving domain history.
+- `docs/architecture/PLATFORM_CORE_ASSEMBLY_CONTRACT_v1.0.0.md`: original PE-005 assembly contract, superseded by v1.1.0 after PE-005A.
+- `docs/architecture/PLATFORM_CORE_ASSEMBLY_CONTRACT_v1.1.0.md`: previous CPython/tarfile archive contract, superseded by v1.2.0 after CI exposed a host serializer mismatch.
+- `docs/architecture/PLATFORM_CORE_ASSEMBLY_CONTRACT_v1.2.0.md`: repository-owned deterministic USTAR and gzip archive contract.
+- `docs/superpowers/plans/2026-10-24-pe-005-platform-core-assembly.md`: this implementation sequence.
+
+## Task 1: Lock the contract and acceptance checks
+
+**Files:** Create the contract and this plan.
+
+- [x] Record the base, three overlays, patch input, output layout, failure rules, tree hash, manifest fields, runtime boundary, and main-only publication contract.
+- [x] Confirm the existing repository has 20 tracked overlay PHP files, 12 patch-owned lifecycle imports and registrations, a clean root bootstrap, and a patch that applies to the tracked root tree.
+- [x] Reverify the base. `origin/main` moved from the expected PE-004 SHA `e27a55c33b0393273c363b8fdcbfb65d3d1671ea` to `ea4dc65121db74f4b8dabfb1aa95d9afc17b1ed7` through merge #49, which added only Product Contribution runtime-normalization records. The exact new main run succeeded and the ruleset remains active.
+
+## Task 2: Write the verifier's negative-fixture checks first
+
+**Files:** Create `site-code/bin/check-platform-core-build.py`.
+
+- [x] Add temporary Git fixture helpers. Each fixture copies only committed assembly inputs and the builder, commits them with a local test identity, and is removed by `TemporaryDirectory`.
+- [x] Add cases for invalid and binary patches, an already-integrated root include, an absent overlay PHP file, a patch include to an absent module, duplicate bootstrap includes, non-empty output, artifact tampering, early entrypoint returns, whole/keyed component unsets, keyed overwrite, `array_splice`, reference aliasing, a helper early return, a missing lifecycle hook, a return before that hook, dynamic property access to the component registry, duplicate PHP declarations across modules, a redirected `VGPC_PLUGIN_DIR`, a missing `Plugin.php` require, and an initially true lifecycle guard.
+- [x] Run the verifier with a red regression fixture before the review fixes. The binary-patch fixture succeeded against the old builder, proving the path-allowlist gap.
+
+## Task 3: Implement commit-pinned assembly
+
+**Files:** Create `site-code/bin/build-platform-core.py`.
+
+- [x] Resolve `--ref` with `git rev-parse --verify --end-of-options <ref>^{commit}` and use the resulting full SHA for every `git ls-tree` and `git cat-file` read. Git replacement-object lookup is disabled.
+- [x] Read the root plugin, three overlay trees, integration patch, and builder blob from that commit. Require the executing builder bytes to match the commit's `builder_path` blob.
+- [x] Reject unsupported Git object modes, invalid/unsafe paths, empty overlays, source collisions, missing inputs, and a root bootstrap that already contains integration-owned module includes, imports, or registrations.
+- [x] Build a staging plugin from the root tree, overlay only the three owned module directories, validate patch headers against the bootstrap allowlist, reject binary/extended patch sections, then check and apply the tracked patch once.
+- [x] Parse the resulting entrypoint and `Plugin.php`. Require the exact plugin-root constant and `Plugin.php` require, every dynamic overlay PHP path once, every include path to exist, module imports and lifecycle registrations to be unique, and each registered class to exist as an unconditional namespace-scope declaration. Reject duplicate declarations across assembled files and require the lifecycle guard to start false. Validate the `register_component()` helper, protect integration-owned registry keys, and require the post-include `plugins_loaded` callback. Reject direct or dynamic component resets, unsets, mutation calls, reference aliases, conditional include scopes, early returns, and lifecycle `goto`. Do not hard-code historical module or lifecycle counts.
+- [x] Require PHP major/minor 8.5 and run `php -l` on every staged PHP file.
+- [x] Write the sorted file inventory, canonical tree hash, normalized USTAR tar.gz, and manifest to a temporary sibling directory. Refuse an existing output path and atomically rename the completed output directory into place.
+- [x] Run the negative-fixture harness. It covers the eleven delegated assembly-review findings, the reference-alias and callback-exit regressions, and four additional final-review findings about dynamic registry access, cross-file duplicate declarations, the plugin-root constant, and the initial lifecycle flag. It also verifies source immutability and temporary-state cleanup.
+
+## Task 4: Prove reproducibility and artifact integrity
+
+**Files:** Complete `site-code/bin/check-platform-core-build.py`.
+
+- [x] Resolve the requested ref once and build it twice into separate temporary output directories using the same full commit SHA and requested ref string.
+- [x] Compare source SHA, file count, path/mode/hash inventory, tree hash, archive hash, and parsed manifest content. Require the archive bytes to match.
+- [x] Open the archive without extracting untrusted paths. Require one `voelgoed-platform-core/` root, only directories and regular files, normalized names/modes, and exact equality with manifest inventory.
+- [x] Independently recalculate every file SHA and the canonical tree hash from archive bytes. Recompute the archive SHA. Reject a tampered file even when the manifest's archive hash is updated to the tampered archive hash.
+- [x] Print both build records and each negative-case result. Verify the temporary root no longer exists after the test run.
+
+## Task 5: Put assembly in source CI and publish only from `main`
+
+**Files:** Modify `site-code/bin/check-source.sh` and `.github/workflows/voelgoed-dashboard.yml`.
+
+- [x] Add `python3 site-code/bin/check-platform-core-build.py --ref HEAD` to the canonical source script without removing the existing test suites, static checks, or the `git apply --unidiff-zero --check` applicability check.
+- [x] Add a step in the existing `source` job after source checks. Run the builder with `${GITHUB_SHA}` only when the event is a push and `github.ref` is `refs/heads/main`.
+- [x] Add a separate publisher job that waits for `VG Nova Platform Gate` success, checks out `${{ github.sha }}`, rebuilds the exact commit, then uploads the tar.gz and manifest with artifact name `voelgoed-platform-core-${{ github.sha }}` and `if-no-files-found: error`.
+- [x] Keep `Dashboard checks`, `Canonical source checks`, `VG Nova Platform Gate`, and the gate dependency list unchanged. PR heads run the verifier but do not upload artifacts. The source-job build also runs on main so artifact-creation failures fail `Canonical source checks`.
+
+## Task 6: Update local artifact guidance
+
+**Files:** Modify `.gitignore` and `site-code/voelgoed-platform-core/README.md`.
+
+- [x] Ignore `/dist/`.
+- [x] Document `build-platform-core.py --ref <commit> --output <new-directory>` as the canonical assembly path.
+- [x] Describe `integration.patch` as a tracked assembly input. Remove manual runtime patch/copy instructions as the normal deployment path.
+- [x] State that deployment consumes a verified artifact and remains a separate approved task. Do not rewrite unrelated migration, taxonomy, or subsystem history.
+
+## Task 7: Run the complete PE-005 verification set
+
+**Files:** No additional file scope.
+
+- [x] Run the final verification set from the exact committed feature head, including both dashboard and canonical source checks, the standalone verifier, AST validation, `bash -n`, ShellCheck, actionlint, and `git diff --check`.
+- [x] Record source SHA, file count, tree hash, archive hash, and manifest hash for two final builds in the PE-005 handoff report.
+- [x] Inspect the final generated archive for one top-level plugin directory, expected root and overlay files, `PersonProductsBricks.php`, PHP 8.5 header, unique bootstrap entries, all patch-owned lifecycle registrations, and no `site-code` tests or README files.
+- [x] Confirm no Local WordPress/runtime, database, or Novamira access and no deployment occurred.
+
+## Task 8: Independent review and PR handoff
+
+**Files:** Review only, then fix findings within this file scope.
+
+- [ ] Delegate final read-only reviews for source ownership/assembly, manifest/reproducibility, and CI integration against the final exact head. Prior reviews identified fifteen assembly issues and one CI publication issue across rounds. The latest assembly review found four additional gaps, all now covered by failing fixtures and builder checks; the final round must review these fixes on the exact PR head.
+- [ ] Fix blocking or material findings and rerun affected checks plus the full source gate.
+- [ ] Push `chore/pe-005-platform-core-assembly` and open a focused PR titled `build: add deterministic Platform Core assembly`.
+- [ ] Link the PR to this thread immediately. Verify the PR head equals the pushed commit and the base equals the current `main` SHA.
+- [ ] Confirm `Dashboard checks`, `Canonical source checks`, and `VG Nova Platform Gate` succeed on the exact PR head, and inspect logs for the reproducibility verifier.
+- [x] Keep source-bound verification independent of external Git attributes by reading exact tree/blob objects, and lock patch application against Git whitespace configuration. The verifier rejects a self-consistent archive missing `EventParticipationPairLock.php` even when external `export-ignore` is set; builds remain byte-identical under `apply.whitespace=fix` and `core.whitespace=indent-with-non-tab`.
+- [ ] Stop with the PR open and unmerged.
+
+## PE-005A: close canonical archive verification gaps
+
+The final PE-005 review blocked merge on two gaps: archive output depended on
+an unpinned Python/zlib environment, and the main publisher uploaded a fresh
+build without verifying those exact files.
+
+- [x] Record the old baseline. Local was CPython 3.14.4, `tarfile.py` SHA-256
+  `c0db1a21e56ccf002147bffd10d97f452ad842820963ef793117f92a0cdaaad4`, and
+  zlib 1.3.1 build/runtime on Linux x86_64. The previous GitHub source job was
+  Ubuntu 24.04 image `20261012.334.1`; it did not log Python or zlib versions.
+- [x] Record the failed PE-005A run. GitHub Actions run `40095889970`, job
+  `120877955697`, ran CPython 3.14.4 on Ubuntu 24.04 image `20261012.334.1`,
+  but its host `tarfile.py` SHA-256 was
+  `ec88f2affb5b23464dc9df50e98cb12d1516fca2ce6a78d83c57c9ce2ad93f5c` rather
+  than the local `c0db...aad4`. The builder correctly failed closed; the
+  aggregate gate failed because `Canonical source checks` failed.
+- [x] Replace host tar serialization with repository-owned
+  `vgpc-ustar-utf8-v1`. It emits deterministic USTAR headers, splits paths
+  through the standard name/prefix fields, and rejects paths that cannot be
+  represented. The host `tarfile` implementation no longer contributes to
+  archive bytes. Keep the `vgpc-gzip-stored-v1` encoder and pure-Python CRC-32.
+- [x] Bump the manifest to schema 3. It records the USTAR serializer version,
+  tar-ustar+gzip format, gzip encoder, and CPython contract; no host module hash
+  is treated as an output-affecting toolchain input.
+- [x] Add a failing encoder probe that replaces host `tarfile` output with a
+  sentinel and requires the repository-owned writer to produce fixed golden
+  USTAR bytes.
+- [x] Add `--verify-output` to verify exact existing files against manifest,
+  archive metadata, Git builder/patch hashes, and independently assembled
+  source inventory.
+- [x] Pin CPython 3.14.4 in source and publication jobs. Verify the publisher's
+  `dist/` after build and upload those same files without rewriting them.
+- [ ] Re-run local verification, inspect cross-environment results on the new
+  PR head, obtain independent assembly, manifest, and CI reviews, and stop
+  without merging PR #50.

@@ -61,6 +61,29 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 0
 
+      - name: Set up canonical Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.14.4'
+          check-latest: false
+
+      - name: Record canonical archive toolchain
+        run: |
+          python3 - <<'PY'
+          import hashlib
+          import platform
+          import tarfile
+          import zlib
+          from pathlib import Path
+
+          print(f"python_implementation={platform.python_implementation()}")
+          print(f"python_version={platform.python_version()}")
+          print(f"host_tarfile_module_sha256_diagnostic={hashlib.sha256(Path(tarfile.__file__).read_bytes()).hexdigest()}")
+          print(f"zlib_build_version={zlib.ZLIB_VERSION}")
+          print(f"zlib_runtime_version={zlib.ZLIB_RUNTIME_VERSION}")
+          print(f"platform={platform.platform()}")
+          PY
+
       - name: Set up PHP
         uses: shivammathur/setup-php@v2
         with:
@@ -72,6 +95,10 @@ jobs:
 
       - name: Run canonical source checks
         run: ./site-code/bin/check-source.sh
+
+      - name: Build canonical Platform Core artifact
+        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+        run: python3 site-code/bin/build-platform-core.py --ref "${GITHUB_SHA}" --output dist
 
   platform_gate:
     name: VG Nova Platform Gate
@@ -86,3 +113,60 @@ jobs:
         run: |
           printf 'dashboard=%s\nsource=%s\n' "$DASHBOARD_RESULT" "$SOURCE_RESULT"
           [[ "$DASHBOARD_RESULT" == success && "$SOURCE_RESULT" == success ]]
+
+  publish_platform_core:
+    name: Publish Platform Core artifact
+    needs: [platform_gate]
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.platform_gate.result == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the exact revision
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+
+      - name: Set up canonical Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.14.4'
+          check-latest: false
+
+      - name: Record canonical archive toolchain
+        run: |
+          python3 - <<'PY'
+          import hashlib
+          import platform
+          import tarfile
+          import zlib
+          from pathlib import Path
+
+          print(f"python_implementation={platform.python_implementation()}")
+          print(f"python_version={platform.python_version()}")
+          print(f"host_tarfile_module_sha256_diagnostic={hashlib.sha256(Path(tarfile.__file__).read_bytes()).hexdigest()}")
+          print(f"zlib_build_version={zlib.ZLIB_VERSION}")
+          print(f"zlib_runtime_version={zlib.ZLIB_RUNTIME_VERSION}")
+          print(f"platform={platform.platform()}")
+          PY
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.5'
+          tools: none
+
+      - name: Build canonical Platform Core artifact
+        run: python3 site-code/bin/build-platform-core.py --ref "${GITHUB_SHA}" --output dist
+
+      - name: Verify exact upload directory
+        run: python3 site-code/bin/check-platform-core-build.py --ref "${GITHUB_SHA}" --verify-output dist
+
+      - name: Upload canonical Platform Core artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: voelgoed-platform-core-${{ github.sha }}
+          path: |
+            dist/voelgoed-platform-core.tar.gz
+            dist/voelgoed-platform-core.manifest.json
+          if-no-files-found: error
+          compression-level: 0
