@@ -927,9 +927,15 @@ def validate_assembled_bootstrap(
     if any(token_name in {"T_RETURN", "T_THROW", "T_EXIT"} for token_name, _, _, _ in before_loop):
         fail("Plugin::register() can exit before lifecycle registrations are dispatched.")
 
+    def patch_registration_call(line: str) -> str:
+        match = re.search(r"\$this->register_component\s*\(", line)
+        if match is None:
+            fail(f"Integration lifecycle registration has no register_component() call: {line}")
+        return line[match.start():]
+
     integration_registration_indexes = []
     for line in integration_registrations:
-        source_position = plugin_class.encode("utf-8").find(line.encode("utf-8"))
+        source_position = plugin_class.encode("utf-8").find(patch_registration_call(line).encode("utf-8"))
         token_index = next(
             (
                 index
@@ -1013,7 +1019,7 @@ def validate_assembled_bootstrap(
             line,
         ) is None:
             fail(f"Integration lifecycle registrations must be unconditional direct statements: {line}")
-        target = plugin_class.encode("utf-8").find(line.encode("utf-8"))
+        target = plugin_class.encode("utf-8").find(patch_registration_call(line).encode("utf-8"))
         token_index = next(
             (
                 index
