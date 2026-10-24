@@ -73,12 +73,12 @@
         "feeds": false,
         "pages": true
     },
-    "query_var": false,
+    "query_var": "none",
     "query_var_name": "",
     "can_export": true,
     "delete_with_user": false,
     "register_meta_box_cb": "",
     "enter_title_here": "Product Contribution title",
     "show_in_graphql": false,
-    "modified": 1792747055
+    "modified": 1792865666
 }
