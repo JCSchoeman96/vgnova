@@ -341,6 +341,11 @@ def validate_plugins_loaded_hook(entrypoint: str) -> None:
                 break
     if include_close is None or hook_index <= include_close:
         fail("The plugins_loaded lifecycle callback must follow the canonical module include loop.")
+    if any(
+        token_name in {"T_RETURN", "T_THROW", "T_EXIT", "T_GOTO"}
+        for token_name, _, _, _ in tokens[include_close + 1:hook_index]
+    ):
+        fail("The entrypoint can exit before the plugins_loaded lifecycle callback.")
 
 
 def apply_patch(staging_root: Path, patch_path: Path, patch_text: str) -> None:
