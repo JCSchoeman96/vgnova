@@ -29,10 +29,11 @@
 - Modify: `docs/superpowers/plans/2026-10-24-pe-006a-runtime-artifact-reconciliation.md`
 
 - [x] Fetch `origin/main` and the existing PR #51 branch.
-- [x] Confirm `origin/main` is `c6b01f86ddee1a994cd8d41aa8df963bec883576` and PR #51's historical Task 8C commit is `a9f5991a494b28929688be2e4c3a32c6cc3e3d03`.
-- [x] Merge the exact current `main` SHA into PR #51 without rebasing the historical commit.
+- [x] At the initial fetch, confirm `origin/main` is `c6b01f86ddee1a994cd8d41aa8df963bec883576` and PR #51's historical Task 8C commit is `a9f5991a494b28929688be2e4c3a32c6cc3e3d03`.
+- [x] Merge that exact initial `main` SHA into PR #51 without rebasing the historical commit.
 - [x] Download artifact `12569672524` from workflow `40117786590`; verify metadata `head_sha`, transport digest, manifest digest, archive digest, and exact output with CPython 3.14.4.
-- [x] Copy the verified published manifest into the source fixture and check that its SHA-256 remains `d95f77936381226d364faa0ae23fb4b3cb762cae766d5b0e88ce3e51e0c12e0f`.
+- [x] Inspect intervening main commits `9119494` and `515ebbe`, verify publications for `e1552bf` and `caaba61`, and merge exact current `main` `caaba61069eabe347a2a0e0949fce41106e76be0` into PR #51. Tree and archive digests stayed unchanged; the published manifest source commit and digest changed.
+- [x] Pin the latest downloaded published manifest in the source fixture; its SHA-256 is `dbb611fdc82c81dc1d76ca56119320e3e02a9f36e5e943096d83b3c6336cde96`.
 
 ## Task 2: Prove the current Local runtime identity and artifact parity
 
@@ -100,13 +101,14 @@
 - Rename the existing Task 8C manifest to: `docs/architecture/PRODUCT_CONTRIBUTION_RUNTIME_MANIFEST_v1.0.0.json`
 - Modify: references to the unversioned manifest found by `rg`
 
-- [x] After the source guard exists, load the QA file in library-only mode through the exact authorized WP-CLI bootstrap and call only its read-only preflight function.
-- [x] Verify the three target ACF database definitions, four Product Role terms, zero role relationships, zero persistent Product Contributions, Persons and Event Participations, zero legacy Product People override rows, readable protected fingerprints, and approved 20-Product baseline.
+- [x] Load the QA file in library-only mode through the exact authorized WP-CLI bootstrap and call only its read-only preflight function. It passed against the original c6 source, then correctly failed closed after current main changed the ACF source.
+- [x] Re-read the current state read-only: three ACF database definitions exist, but the Product Contribution CPT differs from current JSON (`query_var=false`, old `modified` value versus `none` and the new `modified` value); four exact roles, zero relationships/posts/overrides, readable protected fingerprints, and the approved 20-Product baseline remain present.
 - [x] Do not sync ACF, seed terms, call the mutating QA runner, or write to the database.
 - [x] Rename the manifest without duplicating it; preserve `execution_baseline` and all Task 8C historical fields.
 - [x] Add the historical Task 8C commit, PE-006A review baseline, canonical artifact identity, exact runtime parity, deployment decision, read-only preflight, and historical lookup-residue results as separate PE-006A provenance.
 - [x] Label the historical Task 8B digest algorithm as `relative-path + NUL + file SHA-256 + newline`; label PE-005's canonical tree hash algorithm separately.
 - [x] Validate JSON and search for stale unversioned-manifest references.
+- [x] Record the latest ACF source mismatch as a PE-006A blocker; no ACF sync or runtime mutation was performed.
 
 ## Task 8: Verify, update PR #51, and prepare for independent review
 

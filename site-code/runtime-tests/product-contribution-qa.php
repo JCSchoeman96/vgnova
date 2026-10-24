@@ -27,7 +27,7 @@ const VG_PRODUCT_CONTRIBUTION_QA_OWNER_LABEL = '[QA][AUTOMATED] Product Contribu
 const VG_PRODUCT_CONTRIBUTION_QA_SOURCE_PATH = '/home/jcschoeman96/projects/current/vgnova/site-code/acf-json';
 const VG_PRODUCT_CONTRIBUTION_QA_EXPECTED_FILE_COUNT = 54;
 const VG_PRODUCT_CONTRIBUTION_QA_EXPECTED_TREE_SHA256 = '856a3e5978559bfb2572b4b1ff4b34df916743f9e72d6b18220ee64e98af5f56';
-const VG_PRODUCT_CONTRIBUTION_QA_EXPECTED_MANIFEST_SHA256 = 'd95f77936381226d364faa0ae23fb4b3cb762cae766d5b0e88ce3e51e0c12e0f';
+const VG_PRODUCT_CONTRIBUTION_QA_EXPECTED_MANIFEST_SHA256 = 'dbb611fdc82c81dc1d76ca56119320e3e02a9f36e5e943096d83b3c6336cde96';
 
 require_once __DIR__ . '/product-people-qa-side-effects.php';
 require_once __DIR__ . '/platform-core-runtime-integrity.php';
