@@ -1,0 +1,2064 @@
+{
+  "task": "VG Nova Product Contribution Task 8C — Targeted ACF Synchronization, Product Role Seed and Guarded Runtime QA",
+  "task_id": "8C",
+  "execution_baseline": "ea4dc65121db74f4b8dabfb1aa95d9afc17b1ed7",
+  "branch": "test/product-contribution-runtime-qa-v2",
+  "runtime_identity": {
+    "wordpress_path": "/home/jcschoeman96/Local Sites/voelgoed-novamira/app/public/",
+    "home": "http://localhost:10039",
+    "site": "http://localhost:10039",
+    "effective_port": 10039,
+    "database": "local",
+    "database_host": "localhost",
+    "php": "8.5.4",
+    "wordpress": "7.1.3",
+    "acf_pro": "6.8.1",
+    "woocommerce": "11.2.1",
+    "platform_core_version": "0.1.0",
+    "platform_core_path": "/home/jcschoeman96/Local Sites/voelgoed-novamira/app/public/wp-content/plugins/voelgoed-platform-core/",
+    "child_theme_acf_json_path": "/home/jcschoeman96/projects/current/vgnova/site-code/acf-json"
+  },
+  "platform_core": {
+    "runtime_path": "/home/jcschoeman96/Local Sites/voelgoed-novamira/app/public/wp-content/plugins/voelgoed-platform-core/",
+    "expected_tree_sha256": "a2635dafeb1d82d481b6275526c3850263f549facac80293c810d2b0d93de760",
+    "observed_prewrite_tree_sha256": "a2635dafeb1d82d481b6275526c3850263f549facac80293c810d2b0d93de760",
+    "observed_final_tree_sha256": "a2635dafeb1d82d481b6275526c3850263f549facac80293c810d2b0d93de760",
+    "file_count": 54,
+    "entrypoint_sha256": "3fc688ccf27ec11ee4bb9fe5e282630ded724d4a987e5489f9bc77142dca72bb",
+    "includes/Plugin.php_sha256": "054b373bc4512cadf7f4e9700347867dc90ca359527770b0ecf3a3a825512625",
+    "PersonProductsBricks.php_sha256": "a7460a1e21d4318a9d3997e52ad9e0d804a155798b1b7992e786b4cb976170e5",
+    "prewrite_parity": {
+      "exact": true,
+      "missing": 0,
+      "extra": 0,
+      "mismatched": 0
+    },
+    "final_parity": {
+      "exact": true,
+      "missing": 0,
+      "extra": 0,
+      "mismatched": 0
+    },
+    "rollback_directory_retained": "/home/jcschoeman96/Local Sites/voelgoed-novamira/app/.task8b-platform-core-backup-20261024T095612Z",
+    "deployed_or_patched_during_task_8c": false,
+    "tree_hash_algorithm": "SHA-256 over sorted entries: relative path + NUL + file SHA-256 + newline."
+  },
+  "wp_cli": {
+    "php_executable": "/usr/bin/php8.5",
+    "php_version": "8.5.4",
+    "wp_executable": "/usr/local/bin/wp",
+    "wordpress_path": "/home/jcschoeman96/Local Sites/voelgoed-novamira/app/public/",
+    "home": "http://localhost:10039",
+    "site": "http://localhost:10039",
+    "database": "local",
+    "database_host": "localhost",
+    "socket_override": "/home/jcschoeman96/.config/Local/run/nAZNpFs99/mysql/mysqld.sock",
+    "site_bootstrap": "PASS",
+    "vgnova_not_danoptics": true,
+    "product_role_command_registered_before_mutation": true,
+    "registration_proof": "wp help vg-product-role-setup succeeded before ACF sync and role seeding."
+  },
+  "acf": {
+    "source_path": "/home/jcschoeman96/projects/current/vgnova/site-code/acf-json",
+    "stable_canonical_path": true,
+    "source_file_hashes": {
+      "post_type_product_contribution.json": "e98b4ad7ebf1831975fa7777bcccf2baf9966e21665293533b1dbef6d88ff747",
+      "taxonomy_product_role.json": "d371c6a1ac769b7491b810d04080991ba638258781bce320e0f4f7b842cb144e",
+      "group_vg_product_contribution_details.json": "3ed2d1a00e3c224adcb7f51e33fa82ed7d5694c5f33a9503da446faaa00f1c03"
+    },
+    "pre_status": {
+      "post_type_product_contribution": "Create pending",
+      "taxonomy_product_role": "Create pending",
+      "group_vg_product_contribution_details": "Create pending",
+      "unrelated_pending": [
+        {
+          "key": "group_vgmp_perk_details",
+          "title": "Member Perk Details",
+          "action": "Create"
+        },
+        {
+          "key": "group_vgmp_options",
+          "title": "Voelgoed Perk Settings",
+          "action": "Create"
+        }
+      ]
+    },
+    "dry_run_results": {
+      "post_type_product_contribution": {
+        "result": "PASS",
+        "matching_items": 1,
+        "action": "Create",
+        "isolated_key": true
+      },
+      "taxonomy_product_role": {
+        "result": "PASS",
+        "matching_items": 1,
+        "action": "Create",
+        "isolated_key": true
+      },
+      "group_vg_product_contribution_details": {
+        "result": "PASS",
+        "matching_items": 1,
+        "action": "Create",
+        "isolated_key": true
+      }
+    },
+    "sync_results": {
+      "post_type_product_contribution": {
+        "result": "PASS",
+        "action": "Created"
+      },
+      "taxonomy_product_role": {
+        "result": "PASS",
+        "action": "Created"
+      },
+      "group_vg_product_contribution_details": {
+        "result": "PASS",
+        "action": "Created"
+      }
+    },
+    "synced_keys": [
+      "post_type_product_contribution",
+      "taxonomy_product_role",
+      "group_vg_product_contribution_details"
+    ],
+    "final_status": {
+      "post_type_product_contribution": "In sync",
+      "taxonomy_product_role": "In sync",
+      "group_vg_product_contribution_details": "In sync",
+      "status_command_summary": {
+        "field-group": {
+          "pending": 2,
+          "total": 23
+        },
+        "post-type": {
+          "pending": 0,
+          "total": 10
+        },
+        "taxonomy": {
+          "pending": 0,
+          "total": 15
+        },
+        "options-page": {
+          "pending": 0,
+          "total": 4
+        }
+      },
+      "unrelated_pending": [
+        {
+          "key": "group_vgmp_perk_details",
+          "title": "Member Perk Details",
+          "action": "Create"
+        },
+        {
+          "key": "group_vgmp_options",
+          "title": "Voelgoed Perk Settings",
+          "action": "Create"
+        }
+      ]
+    },
+    "unrelated_pending_untouched": true,
+    "runtime_parity": {
+      "verified": true,
+      "canonical_source_path": "/home/jcschoeman96/projects/current/vgnova/site-code/acf-json",
+      "source_file_hashes": {
+        "post_type_product_contribution.json": "e98b4ad7ebf1831975fa7777bcccf2baf9966e21665293533b1dbef6d88ff747",
+        "taxonomy_product_role.json": "d371c6a1ac769b7491b810d04080991ba638258781bce320e0f4f7b842cb144e",
+        "group_vg_product_contribution_details.json": "3ed2d1a00e3c224adcb7f51e33fa82ed7d5694c5f33a9503da446faaa00f1c03"
+      },
+      "parity_normalization": {
+        "generated_acf_defaults": {
+          "post_type_product_contribution": [
+            "allow_ai_access=false",
+            "ai_description=\"\""
+          ],
+          "taxonomy_product_role": [
+            "meta_box_cb=\"\"",
+            "meta_box_sanitize_cb=\"\"",
+            "allow_ai_access=false",
+            "ai_description=\"\""
+          ]
+        },
+        "database_ids": "Verified as positive and excluded from JSON equality comparison.",
+        "field_parent_and_order": "Parent IDs and menu_order values verified against the persisted group and source position, then excluded from JSON equality comparison.",
+        "number_step": "Source and database values must be numerically equal; the persisted value is normalized to the source scalar type.",
+        "empty_placeholder": "An ACF-added empty placeholder is accepted only when absent from source JSON.",
+        "key_order": "Associative keys are sorted for comparison; list order is preserved."
+      },
+      "database_backed_ids": {
+        "post_type_product_contribution": 1476,
+        "taxonomy_product_role": 1477,
+        "group_vg_product_contribution_details": 1478
+      },
+      "runtime_contracts": {
+        "post_type_product_contribution": {
+          "public": false,
+          "publicly_queryable": false,
+          "exclude_from_search": true,
+          "show_ui": true,
+          "show_in_rest": true,
+          "has_archive": false,
+          "rewrite": false,
+          "query_var": "product_contribution",
+          "supports": [
+            "title"
+          ]
+        },
+        "taxonomy_product_role": {
+          "public": false,
+          "publicly_queryable": false,
+          "hierarchical": false,
+          "show_ui": true,
+          "show_in_rest": true,
+          "rewrite": false,
+          "query_var": false,
+          "object_type": [
+            "product_contribution"
+          ]
+        },
+        "field_signature": [
+          {
+            "key": "field_vg_product_contribution_product",
+            "name": "product_contribution_product",
+            "label": "Product Contribution: Product",
+            "type": "post_object",
+            "required": 0,
+            "parent": "group_vg_product_contribution_details",
+            "post_type": [
+              "product"
+            ],
+            "taxonomy": ""
+          },
+          {
+            "key": "field_vg_product_contribution_person",
+            "name": "product_contribution_person",
+            "label": "Product Contribution: Person",
+            "type": "post_object",
+            "required": 0,
+            "parent": "group_vg_product_contribution_details",
+            "post_type": [
+              "person"
+            ],
+            "taxonomy": ""
+          },
+          {
+            "key": "field_vg_product_contribution_roles",
+            "name": "product_contribution_roles",
+            "label": "Product Contribution: Roles",
+            "type": "taxonomy",
+            "required": 0,
+            "parent": "group_vg_product_contribution_details",
+            "post_type": null,
+            "taxonomy": "product_role"
+          },
+          {
+            "key": "field_vg_product_contribution_display_order",
+            "name": "product_contribution_display_order",
+            "label": "Product Contribution: Display Order",
+            "type": "number",
+            "required": 0,
+            "parent": "group_vg_product_contribution_details",
+            "post_type": null,
+            "taxonomy": null
+          }
+        ]
+      }
+    }
+  },
+  "product_roles": {
+    "first_seed": {
+      "result": "PASS",
+      "created": [
+        "aanbieder",
+        "skrywer",
+        "instrukteur",
+        "skepper"
+      ],
+      "existing": []
+    },
+    "second_seed": {
+      "result": "PASS",
+      "created": [],
+      "existing": [
+        "aanbieder",
+        "skrywer",
+        "instrukteur",
+        "skepper"
+      ]
+    },
+    "exact_terms": [
+      {
+        "name": "Aanbieder",
+        "slug": "aanbieder"
+      },
+      {
+        "name": "Skrywer",
+        "slug": "skrywer"
+      },
+      {
+        "name": "Instrukteur",
+        "slug": "instrukteur"
+      },
+      {
+        "name": "Skepper",
+        "slug": "skepper"
+      }
+    ],
+    "exact_count": 4,
+    "relationship_count": 0,
+    "duplicate_slugs": 0,
+    "unexpected_terms": 0
+  },
+  "runtime_qa": {
+    "run_token": "[QA][AUTOMATED] Product Contribution 20261024T171437Z-655c28661e",
+    "result": "PASS",
+    "mutation_started": true,
+    "assertions": [
+      {
+        "name": "product_role_vocabulary_exact",
+        "result": "PASS",
+        "evidence": [
+          {
+            "id": 415,
+            "name": "Aanbieder",
+            "slug": "aanbieder",
+            "parent": 0,
+            "count": 0
+          },
+          {
+            "id": 417,
+            "name": "Instrukteur",
+            "slug": "instrukteur",
+            "parent": 0,
+            "count": 0
+          },
+          {
+            "id": 418,
+            "name": "Skepper",
+            "slug": "skepper",
+            "parent": 0,
+            "count": 0
+          },
+          {
+            "id": 416,
+            "name": "Skrywer",
+            "slug": "skrywer",
+            "parent": 0,
+            "count": 0
+          }
+        ]
+      },
+      {
+        "name": "acf_schema_source_parity",
+        "result": "PASS",
+        "evidence": {
+          "verified": true,
+          "canonical_source_path": "/home/jcschoeman96/projects/current/vgnova/site-code/acf-json",
+          "source_file_hashes": {
+            "post_type_product_contribution.json": "e98b4ad7ebf1831975fa7777bcccf2baf9966e21665293533b1dbef6d88ff747",
+            "taxonomy_product_role.json": "d371c6a1ac769b7491b810d04080991ba638258781bce320e0f4f7b842cb144e",
+            "group_vg_product_contribution_details.json": "3ed2d1a00e3c224adcb7f51e33fa82ed7d5694c5f33a9503da446faaa00f1c03"
+          },
+          "parity_normalization": {
+            "generated_acf_defaults": {
+              "post_type_product_contribution": [
+                "allow_ai_access=false",
+                "ai_description=\"\""
+              ],
+              "taxonomy_product_role": [
+                "meta_box_cb=\"\"",
+                "meta_box_sanitize_cb=\"\"",
+                "allow_ai_access=false",
+                "ai_description=\"\""
+              ]
+            },
+            "database_ids": "Verified as positive and excluded from JSON equality comparison.",
+            "field_parent_and_order": "Parent IDs and menu_order values verified against the persisted group and source position, then excluded from JSON equality comparison.",
+            "number_step": "Source and database values must be numerically equal; the persisted value is normalized to the source scalar type.",
+            "empty_placeholder": "An ACF-added empty placeholder is accepted only when absent from source JSON.",
+            "key_order": "Associative keys are sorted for comparison; list order is preserved."
+          },
+          "database_backed_ids": {
+            "post_type_product_contribution": 1476,
+            "taxonomy_product_role": 1477,
+            "group_vg_product_contribution_details": 1478
+          },
+          "runtime_contracts": {
+            "post_type_product_contribution": {
+              "public": false,
+              "publicly_queryable": false,
+              "exclude_from_search": true,
+              "show_ui": true,
+              "show_in_rest": true,
+              "has_archive": false,
+              "rewrite": false,
+              "query_var": "product_contribution",
+              "supports": [
+                "title"
+              ]
+            },
+            "taxonomy_product_role": {
+              "public": false,
+              "publicly_queryable": false,
+              "hierarchical": false,
+              "show_ui": true,
+              "show_in_rest": true,
+              "rewrite": false,
+              "query_var": false,
+              "object_type": [
+                "product_contribution"
+              ]
+            },
+            "field_signature": [
+              {
+                "key": "field_vg_product_contribution_product",
+                "name": "product_contribution_product",
+                "label": "Product Contribution: Product",
+                "type": "post_object",
+                "required": 0,
+                "parent": "group_vg_product_contribution_details",
+                "post_type": [
+                  "product"
+                ],
+                "taxonomy": ""
+              },
+              {
+                "key": "field_vg_product_contribution_person",
+                "name": "product_contribution_person",
+                "label": "Product Contribution: Person",
+                "type": "post_object",
+                "required": 0,
+                "parent": "group_vg_product_contribution_details",
+                "post_type": [
+                  "person"
+                ],
+                "taxonomy": ""
+              },
+              {
+                "key": "field_vg_product_contribution_roles",
+                "name": "product_contribution_roles",
+                "label": "Product Contribution: Roles",
+                "type": "taxonomy",
+                "required": 0,
+                "parent": "group_vg_product_contribution_details",
+                "post_type": null,
+                "taxonomy": "product_role"
+              },
+              {
+                "key": "field_vg_product_contribution_display_order",
+                "name": "product_contribution_display_order",
+                "label": "Product Contribution: Display Order",
+                "type": "number",
+                "required": 0,
+                "parent": "group_vg_product_contribution_details",
+                "post_type": null,
+                "taxonomy": null
+              }
+            ]
+          }
+        }
+      },
+      {
+        "name": "manual_product_people_authority_and_order",
+        "result": "PASS",
+        "evidence": {
+          "contribution_ids": [
+            1542,
+            1543,
+            1544,
+            1541
+          ],
+          "people_ids": [
+            1536,
+            1538,
+            1537
+          ],
+          "resolver_ids": [
+            1536,
+            1538,
+            1537
+          ]
+        }
+      },
+      {
+        "name": "reverse_person_products_are_sorted_and_published_only",
+        "result": "PASS",
+        "evidence": {
+          "published_products": [
+            1535,
+            1545
+          ],
+          "draft_person_products": [],
+          "excluded_draft_product": 1547
+        }
+      },
+      {
+        "name": "role_integrity_rejects_invalid_published_contributions_without_partial_rows",
+        "result": "PASS",
+        "evidence": {
+          "rejected": {
+            "zero_roles": true,
+            "malformed_role_id": true,
+            "wrong_taxonomy": true
+          },
+          "contribution_count_before": 7,
+          "contribution_count_after": 7
+        }
+      },
+      {
+        "name": "pair_uniqueness_rejects_second_nonretired_pair",
+        "result": "PASS",
+        "evidence": {
+          "rejected": true,
+          "pair_ids": [
+            1542
+          ]
+        }
+      },
+      {
+        "name": "contribution_title_is_derived_at_creation",
+        "result": "PASS",
+        "evidence": {
+          "title": "[QA][AUTOMATED] Product Contribution 20261024T171437Z-655c28661e Manual Product — [QA][AUTOMATED] Product Contribution 20261024T171437Z-655c28661e Person A"
+        }
+      },
+      {
+        "name": "admin_endpoint_title_sync_updates_nonretired_contributions",
+        "result": "PASS",
+        "evidence": {
+          "title": "[QA][AUTOMATED] Product Contribution 20261024T171437Z-655c28661e Manual Product Renamed — [QA][AUTOMATED] Product Contribution 20261024T171437Z-655c28661e Person A Renamed"
+        }
+      },
+      {
+        "name": "event_membership_authority_comes_only_from_event_participation",
+        "result": "PASS",
+        "evidence": {
+          "event_people": [
+            1555
+          ],
+          "draft_nonmember_annotation_id": 1560
+        }
+      },
+      {
+        "name": "stale_event_annotation_is_stored_but_inactive",
+        "result": "PASS",
+        "evidence": {
+          "stored_contribution_id": 1559,
+          "active_contribution_ids": [],
+          "event_people": []
+        }
+      },
+      {
+        "name": "public_filtering_excludes_malformed_contribution_endpoint",
+        "result": "PASS",
+        "evidence": {
+          "before_ids": [
+            1546
+          ]
+        }
+      },
+      {
+        "name": "public_filtering_excludes_unpublished_people_invalid_modes_and_stale_annotations",
+        "result": "PASS",
+        "evidence": {
+          "manual_people": [
+            1536,
+            1538,
+            1537
+          ],
+          "invalid_mode_people": [],
+          "event_people_after_restore": [
+            1555
+          ]
+        }
+      },
+      {
+        "name": "person_products_bricks_adapter_resolves_canonical_repository_ids",
+        "result": "PASS",
+        "evidence": {
+          "query": {
+            "post_type": [
+              "product"
+            ],
+            "post_status": "publish",
+            "post__in": [
+              1535,
+              1545
+            ],
+            "orderby": "post__in",
+            "posts_per_page": -1,
+            "meta_query": [],
+            "tax_query": [
+              {
+                "taxonomy": "product_visibility",
+                "field": "term_taxonomy_id",
+                "terms": [
+                  25
+                ],
+                "operator": "NOT IN"
+              }
+            ],
+            "order": "DESC"
+          },
+          "expected_product_ids": [
+            1535,
+            1545
+          ]
+        }
+      },
+      {
+        "name": "person_products_bricks_empty_result_uses_post_in_zero",
+        "result": "PASS",
+        "evidence": {
+          "query": {
+            "post_type": [
+              "product"
+            ],
+            "post_status": "publish",
+            "post__in": [
+              0
+            ],
+            "orderby": "post__in",
+            "posts_per_page": -1,
+            "meta_query": [],
+            "tax_query": [
+              {
+                "taxonomy": "product_visibility",
+                "field": "term_taxonomy_id",
+                "terms": [
+                  25
+                ],
+                "operator": "NOT IN"
+              }
+            ],
+            "order": "DESC"
+          }
+        }
+      }
+    ],
+    "owned_created_ids": {
+      "product_contribution": [
+        1541,
+        1542,
+        1543,
+        1544,
+        1546,
+        1548,
+        1550,
+        1559,
+        1560
+      ],
+      "event_participation": [
+        1558
+      ],
+      "product": [
+        1535,
+        1545,
+        1547,
+        1549,
+        1557
+      ],
+      "person": [
+        1536,
+        1537,
+        1538,
+        1539,
+        1540,
+        1555,
+        1556
+      ],
+      "tc_events": [
+        1553
+      ]
+    },
+    "cleanup_attempted": true,
+    "cleanup": {
+      "errors": [],
+      "tickera": {
+        "deleted": [
+          1554
+        ],
+        "unexplained": [],
+        "errors": []
+      }
+    },
+    "remaining_owned_records": [],
+    "cleanup_errors": [],
+    "protected_state_result": "PASS",
+    "persistent_state_pre_live_qa": {
+      "product_contribution_posts": 0,
+      "person_posts": 0,
+      "event_participation_posts": 0,
+      "product_role_terms": 4,
+      "product_role_term_slugs": [
+        "aanbieder",
+        "instrukteur",
+        "skepper",
+        "skrywer"
+      ],
+      "product_role_relationships": 0,
+      "target_acf_database_definitions": 3,
+      "target_acf_database_post_ids": {
+        "acf-post-type": 1476,
+        "acf-taxonomy": 1477,
+        "acf-field-group": 1478
+      },
+      "override_rows": {
+        "product_people_override": 0,
+        "_product_people_override": 0
+      }
+    },
+    "persistent_state_post_live_qa": {
+      "product_contribution_posts": 0,
+      "person_posts": 0,
+      "event_participation_posts": 0,
+      "product_role_terms": 4,
+      "product_role_term_slugs": [
+        "aanbieder",
+        "instrukteur",
+        "skepper",
+        "skrywer"
+      ],
+      "product_role_relationships": 0,
+      "target_acf_database_definitions": 3,
+      "target_acf_database_post_ids": {
+        "acf-post-type": 1476,
+        "acf-taxonomy": 1477,
+        "acf-field-group": 1478
+      },
+      "override_rows": {
+        "product_people_override": 0,
+        "_product_people_override": 0
+      }
+    }
+  },
+  "persistent_state": {
+    "pre_before_sync": {
+      "product_contribution_posts": 0,
+      "person_posts": 0,
+      "event_participation_posts": 0,
+      "product_role_terms": 0,
+      "product_role_relationships": 0,
+      "target_product_contribution_acf_database_definitions": 0,
+      "product_people_override_rows": 0,
+      "_product_people_override_rows": 0,
+      "product_count": 20,
+      "product_ids": [
+        525,
+        527,
+        529,
+        531,
+        642,
+        765,
+        767,
+        768,
+        842,
+        844,
+        845,
+        846,
+        905,
+        908,
+        911,
+        914,
+        917,
+        920,
+        923,
+        1186
+      ]
+    },
+    "post_after_cleanup": {
+      "product_contribution_posts": 0,
+      "person_posts": 0,
+      "event_participation_posts": 0,
+      "product_role_terms": 4,
+      "product_role_term_slugs": [
+        "aanbieder",
+        "instrukteur",
+        "skepper",
+        "skrywer"
+      ],
+      "product_role_relationships": 0,
+      "target_acf_database_definitions": 3,
+      "target_acf_database_post_ids": {
+        "acf-post-type": 1476,
+        "acf-taxonomy": 1477,
+        "acf-field-group": 1478
+      },
+      "override_rows": {
+        "product_people_override": 0,
+        "_product_people_override": 0
+      }
+    },
+    "post_cleanup_product_count": 20,
+    "post_cleanup_product_inventory_unchanged": true
+  },
+  "protected_state": {
+    "result": "PASS",
+    "comparison": {
+      "equal": true,
+      "before": {
+        "profiles_753_757": {
+          "post_count": 5,
+          "postmeta_count": 34,
+          "term_relationship_count": 10,
+          "posts_sha256": "6cb107bcb3a70ed61526caff114e5f7771d838905e1ebf4de2bf207e894ba420",
+          "postmeta_sha256": "3a5bfb948796c6ba11ad98c50d4de8d1eabcdd2db73d6fc94abfe15203f24e5c",
+          "term_relationships_sha256": "37ef040584ca77a139e611763910d7700ec9e9b05a50d63241f871817c489ae3"
+        },
+        "event_763": {
+          "post_count": 1,
+          "postmeta_count": 15,
+          "term_relationship_count": 0,
+          "posts_sha256": "be163f4a063ede077b98c9c1b24cc3b5cc519fdbf559e40a47ff270013e1ea6b",
+          "postmeta_sha256": "f7ca21d464725e1d20573954880fcc13084207274b1618eb011e420e2e8a9a99",
+          "term_relationships_sha256": "35786c7117b4e38d0f169239752ce71158266ae2f6e4aa230fbbb87bd699c0e3"
+        },
+        "products_765_767_768": {
+          "post_count": 3,
+          "postmeta_count": 20,
+          "term_relationship_count": 0,
+          "posts_sha256": "97a956b5881cd58aeef2c9765e4080692a968bc3b25e1266acfd53cc5740630a",
+          "postmeta_sha256": "7e95f2f96d0d4a2357a199acab176a01b91209240acb8fb16f1b4ab45c6e8934",
+          "term_relationships_sha256": "35786c7117b4e38d0f169239752ce71158266ae2f6e4aa230fbbb87bd699c0e3"
+        },
+        "templates_773_1127": {
+          "post_count": 2,
+          "postmeta_count": 11,
+          "term_relationship_count": 0,
+          "posts_sha256": "7f2c9eb0c0918d5ff4cbdae818840c7b0b8f2bb8e8bbe33ce421e6399911dc81",
+          "postmeta_sha256": "6b3cd25ddde6b06f1748900a65612ae530f2c10163834a6ea2844df52f110e03",
+          "term_relationships_sha256": "35786c7117b4e38d0f169239752ce71158266ae2f6e4aa230fbbb87bd699c0e3"
+        },
+        "bricks_component_6b463f": {
+          "sha256": "57370bbb83d3125758eba9a5194eb1a898b8914b546ee4d84b32f642e07aeaac"
+        },
+        "bricks_option_row_sha256": "55beb9ae2508c235362bc850d6f11954f0634d1bace3d8a59e3869c750b7d004",
+        "fluentsnippets": {
+          "9-acf-product-copy.php": {
+            "size": 1263,
+            "sha256": "58e8035502b30397b9659f952e4d49bbdbd7cdbd15070e37e5b07ebaa5ce2f70"
+          },
+          "10-vg-bricks-medewerker-queries.php": {
+            "size": 5998,
+            "sha256": "e1b7c014cd15a673d663426403a2024a21a1286075c355015f4e217d7e498fa2"
+          }
+        },
+        "event_participation_schema": [
+          {
+            "key": "field_vg_event_participation_event",
+            "name": "event_participation_event",
+            "label": "Event Participation: Event",
+            "type": "post_object",
+            "required": 1,
+            "parent": "group_vg_event_participation_details"
+          },
+          {
+            "key": "field_vg_event_participation_person",
+            "name": "event_participation_person",
+            "label": "Event Participation: Person",
+            "type": "post_object",
+            "required": 1,
+            "parent": "group_vg_event_participation_details"
+          },
+          {
+            "key": "field_vg_event_participation_roles",
+            "name": "event_participation_roles",
+            "label": "Event Participation: Roles",
+            "type": "taxonomy",
+            "required": 0,
+            "parent": "group_vg_event_participation_details"
+          },
+          {
+            "key": "field_vg_event_participation_display_order",
+            "name": "event_participation_display_order",
+            "label": "Event Participation: Display Order",
+            "type": "number",
+            "required": 0,
+            "parent": "group_vg_event_participation_details"
+          }
+        ],
+        "post_type_status_counts": {
+          "acf-field-group|acf-disabled": 1,
+          "acf-field-group|publish": 18,
+          "acf-field|publish": 114,
+          "acf-post-type|publish": 10,
+          "acf-taxonomy|publish": 15,
+          "acf-ui-options-page|publish": 4,
+          "attachment|inherit": 92,
+          "bricks_template|draft": 1,
+          "bricks_template|publish": 26,
+          "bricks_template|trash": 1,
+          "course|publish": 1,
+          "lesson|publish": 13,
+          "llms_form|publish": 3,
+          "medewerker|publish": 5,
+          "mto-course|draft": 1,
+          "mto-course|publish": 5,
+          "novamira_memory|publish": 1,
+          "novamira_skill|publish": 1,
+          "page|draft": 2,
+          "page|publish": 35,
+          "page|trash": 2,
+          "post|publish": 1,
+          "product_variation|publish": 14,
+          "product|draft": 7,
+          "product|private": 1,
+          "product|publish": 9,
+          "product|trash": 3,
+          "revision|inherit": 262,
+          "section|publish": 4,
+          "shop_coupon|publish": 1,
+          "shop_order_placehold|draft": 15,
+          "tc_api_keys|publish": 18,
+          "tc_events|publish": 17,
+          "tc_orders|order_paid": 4,
+          "tc_templates|publish": 1,
+          "tc_tickets_instances|publish": 17,
+          "tc_tickets_instances|trash": 1,
+          "tc_tickets|publish": 3,
+          "uitsending|publish": 5,
+          "vennoot|publish": 7,
+          "vg_perk|draft": 5,
+          "vg_perk|publish": 15,
+          "wp_block|publish": 6,
+          "wp_global_styles|publish": 1
+        }
+      },
+      "after": {
+        "profiles_753_757": {
+          "post_count": 5,
+          "postmeta_count": 34,
+          "term_relationship_count": 10,
+          "posts_sha256": "6cb107bcb3a70ed61526caff114e5f7771d838905e1ebf4de2bf207e894ba420",
+          "postmeta_sha256": "3a5bfb948796c6ba11ad98c50d4de8d1eabcdd2db73d6fc94abfe15203f24e5c",
+          "term_relationships_sha256": "37ef040584ca77a139e611763910d7700ec9e9b05a50d63241f871817c489ae3"
+        },
+        "event_763": {
+          "post_count": 1,
+          "postmeta_count": 15,
+          "term_relationship_count": 0,
+          "posts_sha256": "be163f4a063ede077b98c9c1b24cc3b5cc519fdbf559e40a47ff270013e1ea6b",
+          "postmeta_sha256": "f7ca21d464725e1d20573954880fcc13084207274b1618eb011e420e2e8a9a99",
+          "term_relationships_sha256": "35786c7117b4e38d0f169239752ce71158266ae2f6e4aa230fbbb87bd699c0e3"
+        },
+        "products_765_767_768": {
+          "post_count": 3,
+          "postmeta_count": 20,
+          "term_relationship_count": 0,
+          "posts_sha256": "97a956b5881cd58aeef2c9765e4080692a968bc3b25e1266acfd53cc5740630a",
+          "postmeta_sha256": "7e95f2f96d0d4a2357a199acab176a01b91209240acb8fb16f1b4ab45c6e8934",
+          "term_relationships_sha256": "35786c7117b4e38d0f169239752ce71158266ae2f6e4aa230fbbb87bd699c0e3"
+        },
+        "templates_773_1127": {
+          "post_count": 2,
+          "postmeta_count": 11,
+          "term_relationship_count": 0,
+          "posts_sha256": "7f2c9eb0c0918d5ff4cbdae818840c7b0b8f2bb8e8bbe33ce421e6399911dc81",
+          "postmeta_sha256": "6b3cd25ddde6b06f1748900a65612ae530f2c10163834a6ea2844df52f110e03",
+          "term_relationships_sha256": "35786c7117b4e38d0f169239752ce71158266ae2f6e4aa230fbbb87bd699c0e3"
+        },
+        "bricks_component_6b463f": {
+          "sha256": "57370bbb83d3125758eba9a5194eb1a898b8914b546ee4d84b32f642e07aeaac"
+        },
+        "bricks_option_row_sha256": "55beb9ae2508c235362bc850d6f11954f0634d1bace3d8a59e3869c750b7d004",
+        "fluentsnippets": {
+          "9-acf-product-copy.php": {
+            "size": 1263,
+            "sha256": "58e8035502b30397b9659f952e4d49bbdbd7cdbd15070e37e5b07ebaa5ce2f70"
+          },
+          "10-vg-bricks-medewerker-queries.php": {
+            "size": 5998,
+            "sha256": "e1b7c014cd15a673d663426403a2024a21a1286075c355015f4e217d7e498fa2"
+          }
+        },
+        "event_participation_schema": [
+          {
+            "key": "field_vg_event_participation_event",
+            "name": "event_participation_event",
+            "label": "Event Participation: Event",
+            "type": "post_object",
+            "required": 1,
+            "parent": "group_vg_event_participation_details"
+          },
+          {
+            "key": "field_vg_event_participation_person",
+            "name": "event_participation_person",
+            "label": "Event Participation: Person",
+            "type": "post_object",
+            "required": 1,
+            "parent": "group_vg_event_participation_details"
+          },
+          {
+            "key": "field_vg_event_participation_roles",
+            "name": "event_participation_roles",
+            "label": "Event Participation: Roles",
+            "type": "taxonomy",
+            "required": 0,
+            "parent": "group_vg_event_participation_details"
+          },
+          {
+            "key": "field_vg_event_participation_display_order",
+            "name": "event_participation_display_order",
+            "label": "Event Participation: Display Order",
+            "type": "number",
+            "required": 0,
+            "parent": "group_vg_event_participation_details"
+          }
+        ],
+        "post_type_status_counts": {
+          "acf-field-group|acf-disabled": 1,
+          "acf-field-group|publish": 18,
+          "acf-field|publish": 114,
+          "acf-post-type|publish": 10,
+          "acf-taxonomy|publish": 15,
+          "acf-ui-options-page|publish": 4,
+          "attachment|inherit": 92,
+          "bricks_template|draft": 1,
+          "bricks_template|publish": 26,
+          "bricks_template|trash": 1,
+          "course|publish": 1,
+          "lesson|publish": 13,
+          "llms_form|publish": 3,
+          "medewerker|publish": 5,
+          "mto-course|draft": 1,
+          "mto-course|publish": 5,
+          "novamira_memory|publish": 1,
+          "novamira_skill|publish": 1,
+          "page|draft": 2,
+          "page|publish": 35,
+          "page|trash": 2,
+          "post|publish": 1,
+          "product_variation|publish": 14,
+          "product|draft": 7,
+          "product|private": 1,
+          "product|publish": 9,
+          "product|trash": 3,
+          "revision|inherit": 262,
+          "section|publish": 4,
+          "shop_coupon|publish": 1,
+          "shop_order_placehold|draft": 15,
+          "tc_api_keys|publish": 18,
+          "tc_events|publish": 17,
+          "tc_orders|order_paid": 4,
+          "tc_templates|publish": 1,
+          "tc_tickets_instances|publish": 17,
+          "tc_tickets_instances|trash": 1,
+          "tc_tickets|publish": 3,
+          "uitsending|publish": 5,
+          "vennoot|publish": 7,
+          "vg_perk|draft": 5,
+          "vg_perk|publish": 15,
+          "wp_block|publish": 6,
+          "wp_global_styles|publish": 1
+        }
+      }
+    }
+  },
+  "runtime_drift": {
+    "result": "NO",
+    "unexplained_runtime_drift_during_task_8c": false,
+    "expected_file_count": 54,
+    "observed_final_file_count": 54,
+    "expected_tree_sha256": "a2635dafeb1d82d481b6275526c3850263f549facac80293c810d2b0d93de760",
+    "observed_prewrite_tree_sha256": "a2635dafeb1d82d481b6275526c3850263f549facac80293c810d2b0d93de760",
+    "observed_final_tree_sha256": "a2635dafeb1d82d481b6275526c3850263f549facac80293c810d2b0d93de760",
+    "prewrite_missing_extra_mismatched": {
+      "missing": 0,
+      "extra": 0,
+      "mismatched": 0
+    },
+    "final_missing_extra_mismatched": {
+      "missing": 0,
+      "extra": 0,
+      "mismatched": 0
+    },
+    "historical_ongoing_automatic_writer": "UNKNOWN",
+    "hash_algorithm": "SHA-256 over sorted entries: relative path + NUL + file SHA-256 + newline."
+  },
+  "source_regression": {
+    "pre_mutation_gate": "PASS",
+    "post_runtime_qa": "PASS",
+    "check_source_sh": "PASS",
+    "exact_test_counts": {
+      "product_contribution": 142,
+      "product_people": 101,
+      "event_participation": 68,
+      "event_participation_bricks": 12,
+      "event_role_seeder": 13,
+      "qa_setup_safety": 2,
+      "qa_cleanup_safety": 4
+    },
+    "php_lint_new_php_files": "PASS",
+    "git_diff_check": "PASS"
+  },
+  "forbidden_operations": {
+    "direct_sql_writes": false,
+    "global_acf_sync": false,
+    "unrelated_acf_sync": false,
+    "bricks_template_mutation": false,
+    "fluentsnippet_mutation": false,
+    "platform_core_deployment_or_patch": false,
+    "legacy_migration": false,
+    "task_9": false
+  },
+  "overall_verdict": "PASS",
+  "artifact_validation": {
+    "json_parser": "PASS",
+    "php_lint_new_php_files": "PASS",
+    "git_diff_check": "PASS"
+  },
+  "pe006a_reconciliation": {
+    "recorded_at_utc": "2026-10-24T18:17:28Z",
+    "historical_execution": {
+      "task8c_evidence_commit": "a9f5991a494b28929688be2e4c3a32c6cc3e3d03",
+      "execution_baseline": "ea4dc65121db74f4b8dabfb1aa95d9afc17b1ed7",
+      "occurred_before_pe005_publication": true,
+      "statement": "Task 8C live QA and its recorded cleanup occurred before PE-005 merged. This reconciliation does not relabel that execution. PE-006A separately proves that the active Platform Core files still match the subsequently published PE-005 artifact."
+    },
+    "review_baseline": {
+      "pe006a_review_baseline": "c6b01f86ddee1a994cd8d41aa8df963bec883576",
+      "branch_integration_method": "Merged exact origin/main into the existing PR #51 branch; historical Task 8C commit retained.",
+      "main_merge_commit": "89f8304fc80ea77bf710d981b4c94396df068c6c"
+    },
+    "canonical_artifact": {
+      "workflow_run": 40117786590,
+      "artifact_id": 12569672524,
+      "artifact_name": "voelgoed-platform-core-c6b01f86ddee1a994cd8d41aa8df963bec883576",
+      "artifact_head_sha": "c6b01f86ddee1a994cd8d41aa8df963bec883576",
+      "source_commit": "c6b01f86ddee1a994cd8d41aa8df963bec883576",
+      "schema_version": 3,
+      "file_count": 54,
+      "tree_sha256": "856a3e5978559bfb2572b4b1ff4b34df916743f9e72d6b18220ee64e98af5f56",
+      "archive_sha256": "9d5fd288025703fe4f71ed1f3ee264cd3fc9c0b61cf74d137b40e941bc2e2243",
+      "published_manifest_sha256": "d95f77936381226d364faa0ae23fb4b3cb762cae766d5b0e88ce3e51e0c12e0f",
+      "outer_github_artifact_zip_sha256": "4c338f11077940ce8cd1649aad0306d2548b514332100f43aa3a33b9aa57a600",
+      "outer_zip_digest_scope": "GitHub transport ZIP only; not the canonical Platform Core archive digest.",
+      "verification": {
+        "downloaded_actual_published_artifact": true,
+        "exact_output_verifier": "PASS",
+        "command": "python3.14 site-code/bin/check-platform-core-build.py --ref c6b01f86ddee1a994cd8d41aa8df963bec883576 --verify-output <downloaded-artifact-directory>",
+        "python_implementation": "CPython",
+        "python_version": "3.14.4"
+      }
+    },
+    "runtime_identity": {
+      "wordpress_root": "/home/jcschoeman96/Local Sites/voelgoed-novamira/app/public/",
+      "home": "http://localhost:10039",
+      "site": "http://localhost:10039",
+      "effective_port": 10039,
+      "database": "local",
+      "database_host": "localhost",
+      "database_server_host": "localhost",
+      "database_server_port": 10038,
+      "database_server_uuid": "028fe7c9-3720-11f1-8cb0-a8a159280deb",
+      "database_server_version": "8.0.35",
+      "wp_cli": {
+        "executable": "/usr/local/bin/wp",
+        "php_executable": "/usr/bin/php8.5",
+        "php_version": "8.5.4",
+        "version": "2.12.0",
+        "socket_override": "/home/jcschoeman96/.config/Local/run/nAZNpFs99/mysql/mysqld.sock",
+        "bootstrap_method": "PHP mysqli.default_socket override for the proven VGNova Local MySQL socket."
+      },
+      "web_fpm_php": {
+        "version": "8.5.12",
+        "binary": "/home/jcschoeman96/.config/Local/lightning-services/php-8.5.12+0/bin/linux/sbin/php-fpm",
+        "determination": "Read from the active FPM process executable after loading its bundled shared libraries."
+      },
+      "wordpress": "7.1.3",
+      "acf_pro": "6.8.1",
+      "woocommerce": "11.2.1",
+      "platform_core": {
+        "active": true,
+        "version": "0.1.0",
+        "path": "/home/jcschoeman96/Local Sites/voelgoed-novamira/app/public/wp-content/plugins/voelgoed-platform-core/"
+      }
+    },
+    "runtime_artifact_parity": {
+      "exact": true,
+      "file_count": 54,
+      "missing": 0,
+      "extra": 0,
+      "mismatched": 0,
+      "mode_mismatched": 0,
+      "symlinks": 0,
+      "unsupported_filesystem_objects": 0,
+      "unreadable": 0,
+      "directory_errors": 0,
+      "runtime_tree_sha256": "856a3e5978559bfb2572b4b1ff4b34df916743f9e72d6b18220ee64e98af5f56",
+      "tree_algorithm": "PE-005 canonical representation: sorted bytewise by UTF-8 relative path, each line '<git-mode> <sha256> <relative-path>\\n'.",
+      "per_file_comparison": {
+        "checked": 54,
+        "passed": 54,
+        "dimensions": [
+          "relative_path",
+          "size",
+          "sha256",
+          "git_mode"
+        ],
+        "files": [
+          {
+            "path": "bin/check.sh",
+            "expected_size": 2816,
+            "runtime_size": 2816,
+            "expected_sha256": "fa75e33b86dc16a8b9ad180319703aaa70376623ac50d1751c2181fe8de8c32f",
+            "runtime_sha256": "fa75e33b86dc16a8b9ad180319703aaa70376623ac50d1751c2181fe8de8c32f",
+            "expected_mode": "100755",
+            "runtime_mode": "100755",
+            "result": "PASS"
+          },
+          {
+            "path": "includes/Bricks/DashboardDynamicData.php",
+            "expected_size": 13294,
+            "runtime_size": 13294,
+            "expected_sha256": "78b5e8889dfba308cbe359736c19e3e1da78718df1ff169dfc56c4512e6b3c8f",
+            "runtime_sha256": "78b5e8889dfba308cbe359736c19e3e1da78718df1ff169dfc56c4512e6b3c8f",
+            "expected_mode": "100644",
+            "runtime_mode": "100644",
+            "result": "PASS"
+          },
+          {
+            "path": "includes/Bricks/DashboardQueryProvider.php",
+            "expected_size": 14434,
+            "runtime_size": 14434,
+            "expected_sha256": "19e488cf222605aeb78337910feac2a7d388173ae2723705946b01ebe8d817ba",
+            "runtime_sha256": "19e488cf222605aeb78337910feac2a7d388173ae2723705946b01ebe8d817ba",
+            "expected_mode": "100644",
+            "runtime_mode": "100644",
+            "result": "PASS"
+          },
+          {
+            "path": "includes/Config/AfrikaansLabels.php",
+            "expected_size": 2316,
+            "runtime_size": 2316,
+            "expected_sha256": "85ff7693c406d420d8f83f44772a41e0d0c5651daa8de5d9b589351837a6fc36",
+            "runtime_sha256": "85ff7693c406d420d8f83f44772a41e0d0c5651daa8de5d9b589351837a6fc36",
+            "expected_mode": "100644",
+            "runtime_mode": "100644",
+            "result": "PASS"
+          },
+          {
+            "path": "includes/Contracts/DashboardAction.php",
+            "expected_size": 4177,
+            "runtime_size": 4177,
+            "expected_sha256": "a1a6469f6aaf21a3324ccfd22870dad34ec6e9cb0e3f5203857be311fb0d2905",
+            "runtime_sha256": "a1a6469f6aaf21a3324ccfd22870dad34ec6e9cb0e3f5203857be311fb0d2905",
+            "expected_mode": "100644",
+            "runtime_mode": "100644",
+            "result": "PASS"
+          },
+          {
+            "path": "includes/Contracts/DashboardCard.php",
+            "expected_size": 4123,
+            "runtime_size": 4123,
+            "expected_sha256": "bed4565c9883328129b4f2dcccb66655fbceae37a97c74af9ed8c227cef73cec",
+            "runtime_sha256": "bed4565c9883328129b4f2dcccb66655fbceae37a97c74af9ed8c227cef73cec",
+            "expected_mode": "100644",
+            "runtime_mode": "100644",
+            "result": "PASS"
+          },
+          {
+            "path": "includes/Contracts/DashboardServiceInterface.php",
+            "expected_size": 302,
+            "runtime_size": 302,
+            "expected_sha256": "fec05df907a648931a90ec2a25d1c68061eec7a80a224afdb40805c56dc17702",
+            "runtime_sha256": "fec05df907a648931a90ec2a25d1c68061eec7a80a224afdb40805c56dc17702",
+            "expected_mode": "100644",
+            "runtime_mode": "100644",
+            "result": "PASS"
+          },
+          {
+            "path": "includes/Dashboard/AccessGuard.php",
+            "expected_size": 8246,
+            "runtime_size": 8246,
+            "expected_sha256": "77b55994203e269643ec4101e95ba06c42fc5aa286310813127312d43e1f64ab",
+            "runtime_sha256": "77b55994203e269643ec4101e95ba06c42fc5aa286310813127312d43e1f64ab",
+            "expected_mode": "100644",
+            "runtime_mode": "100644",
+            "result": "PASS"
+          },
+          {
+            "path": "includes/Dashboard/DashboardContext.php",
+            "expected_size": 3796,
+            "runtime_size": 3796,
+            "expected_sha256": "572534a6a72aa7bb415f376d66fb0597a9d80e57369d609fef8fa0fd20ccae67",
+            "runtime_sha256": "572534a6a72aa7bb415f376d66fb0597a9d80e57369d609fef8fa0fd20ccae67",
+            "expected_mode": "100644",
+            "runtime_mode": "100644",
+            "result": "PASS"
+          },
+          {
+            "path": "includes/Dashboard/DashboardRegistry.php",
+            "expected_size": 10866,
+            "runtime_size": 10866,
+            "expected_sha256": "afe5a0e0d35cf02151493459742c86eae6ce435188603c0b330c4723df850e88",
+            "runtime_sha256": "afe5a0e0d35cf02151493459742c86eae6ce435188603c0b330c4723df850e88",
+            "expected_mode": "100644",
+            "runtime_mode": "100644",
+            "result": "PASS"
+          },
+          {
+            "path": "includes/Dashboard/DashboardRoutes.php",
+            "expected_size": 2275,
+            "runtime_size": 2275,
+            "expected_sha256": "42bf035569292175272216a6d5f1d6d0bdf3fbd2bb8975e15835bc05c6fb8d87",
+            "runtime_sha256": "42bf035569292175272216a6d5f1d6d0bdf3fbd2bb8975e15835bc05c6fb8d87",
+            "expected_mode": "100644",
+            "runtime_mode": "100644",
+            "result": "PASS"
+          },
+          {
+            "path": "includes/Dashboard/Navigation.php",
+            "expected_size": 6512,
+            "runtime_size": 6512,
+            "expected_sha256": "a8f945933987854a30cf85a57816fc3760d1b78d15028bf95b7d249f73d97050",
+            "runtime_sha256": "a8f945933987854a30cf85a57816fc3760d1b78d15028bf95b7d249f73d97050",
+            "expected_mode": "100644",
+            "runtime_mode": "100644",
+            "result": "PASS"
+          },
+          {
+            "path": "includes/Event/EventParticipationAdmin.php",
+            "expected_size": 10816,
+            "runtime_size": 10816,
+            "expected_sha256": "bbdbea299e6712f84d574ea5d5a25c517f2917920d36858f6bf8bf92b5e3b9f9",
+            "runtime_sha256": "bbdbea299e6712f84d574ea5d5a25c517f2917920d36858f6bf8bf92b5e3b9f9",
+            "expected_mode": "100644",
+            "runtime_mode": "100644",
+            "result": "PASS"
+          },
+          {
+            "path": "includes/Event/EventParticipationBricks.php",
+            "expected_size": 4865,
+            "runtime_size": 4865,
+            "expected_sha256": "1adee948ecb9a53f762e7f9de62bf721e1bc46c9f8d4e3f093f9fd26a9c87c63",
+            "runtime_sha256": "1adee948ecb9a53f762e7f9de62bf721e1bc46c9f8d4e3f093f9fd26a9c87c63",
+            "expected_mode": "100644",
+            "runtime_mode": "100644",
+            "result": "PASS"
+          },
+          {
+            "path": "includes/Event/EventParticipationPairLock.php",
+            "expected_size": 4298,
+            "runtime_size": 4298,
+            "expected_sha256": "95107d2db6c3e713c6685cd0c13aa7fe4764f89b7ac37596843e436f74e9c49c",
+            "runtime_sha256": "95107d2db6c3e713c6685cd0c13aa7fe4764f89b7ac37596843e436f74e9c49c",
+            "expected_mode": "100644",
+            "runtime_mode": "100644",
+            "result": "PASS"
+          },
+          {
+            "path": "includes/Event/EventParticipationRepository.php",
+            "expected_size": 14214,
+            "runtime_size": 14214,
+            "expected_sha256": "4de51c154b4863546570245cddc91124b2eabb8a6ee166bddfe98c5c4728baff",
+            "runtime_sha256": "4de51c154b4863546570245cddc91124b2eabb8a6ee166bddfe98c5c4728baff",
+            "expected_mode": "100644",
+            "runtime_mode": "100644",
+            "result": "PASS"
+          },
+          {
+            "path": "includes/Event/EventParticipationService.php",
+            "expected_size": 9725,
+            "runtime_size": 9725,
+            "expected_sha256": "4075158d9a6ab4b4079f5722bb9a2736190eb779dfd2ae1282e9c9bf74362600",
+            "runtime_sha256": "4075158d9a6ab4b4079f5722bb9a2736190eb779dfd2ae1282e9c9bf74362600",
+            "expected_mode": "100644",
+            "runtime_mode": "100644",
+            "result": "PASS"
+          },
+          {
+            "path": "includes/Event/EventRoleSeeder.php",
+            "expected_size": 8704,
+            "runtime_size": 8704,
+            "expected_sha256": "9b0396bf9b2e4b3515fb0b2bd5224e03e501fd964efe80e03cd3f1a76f98c4e6",
+            "runtime_sha256": "9b0396bf9b2e4b3515fb0b2bd5224e03e501fd964efe80e03cd3f1a76f98c4e6",
+            "expected_mode": "100644",
+            "runtime_mode": "100644",
+            "result": "PASS"
+          },
+          {
+            "path": "includes/Performance/CachePolicy.php",
+            "expected_size": 7172,
+            "runtime_size": 7172,
+            "expected_sha256": "48de79acd06ce3a9b28596ec5324c1ea7d5217c0b90d10b7f3260b8154826057",
+            "runtime_sha256": "48de79acd06ce3a9b28596ec5324c1ea7d5217c0b90d10b7f3260b8154826057",
+            "expected_mode": "100644",
+            "runtime_mode": "100644",
+            "result": "PASS"
+          },
+          {
+            "path": "includes/Plugin.php",
+            "expected_size": 4156,
+            "runtime_size": 4156,
+            "expected_sha256": "054b373bc4512cadf7f4e9700347867dc90ca359527770b0ecf3a3a825512625",
+            "runtime_sha256": "054b373bc4512cadf7f4e9700347867dc90ca359527770b0ecf3a3a825512625",
+            "expected_mode": "100644",
+            "runtime_mode": "100644",
+            "result": "PASS"
+          },
+          {
+            "path": "includes/Product/PersonProductsBricks.php",
+            "expected_size": 5708,
+            "runtime_size": 5708,
+            "expected_sha256": "a7460a1e21d4318a9d3997e52ad9e0d804a155798b1b7992e786b4cb976170e5",
+            "runtime_sha256": "a7460a1e21d4318a9d3997e52ad9e0d804a155798b1b7992e786b4cb976170e5",
+            "expected_mode": "100644",
+            "runtime_mode": "100644",
+            "result": "PASS"
+          },
+          {
+            "path": "includes/Product/ProductContributionAdmin.php",
+            "expected_size": 27954,
+            "runtime_size": 27954,
+            "expected_sha256": "435a270647db590a6f9ccfc2f57e8817dd9f55a03d44c115d847746ab6484074",
+            "runtime_sha256": "435a270647db590a6f9ccfc2f57e8817dd9f55a03d44c115d847746ab6484074",
+            "expected_mode": "100644",
+            "runtime_mode": "100644",
+            "result": "PASS"
+          },
+          {
+            "path": "includes/Product/ProductContributionPairLock.php",
+            "expected_size": 4547,
+            "runtime_size": 4547,
+            "expected_sha256": "3da0944a49525f7b041c7738cd6cb789fb3a524d88e6bfb31fb2ba85b498a31f",
+            "runtime_sha256": "3da0944a49525f7b041c7738cd6cb789fb3a524d88e6bfb31fb2ba85b498a31f",
+            "expected_mode": "100644",
+            "runtime_mode": "100644",
+            "result": "PASS"
+          },
+          {
+            "path": "includes/Product/ProductContributionRepository.php",
+            "expected_size": 25790,
+            "runtime_size": 25790,
+            "expected_sha256": "db8d394d63a1265cfae9fef61bcfa8abe049da375199d647845f69391a5a0af6",
+            "runtime_sha256": "db8d394d63a1265cfae9fef61bcfa8abe049da375199d647845f69391a5a0af6",
+            "expected_mode": "100644",
+            "runtime_mode": "100644",
+            "result": "PASS"
+          },
+          {
+            "path": "includes/Product/ProductContributionService.php",
+            "expected_size": 17377,
+            "runtime_size": 17377,
+            "expected_sha256": "6db9978174b2320bea3efa6ccade1e50db21cd0c6e16e4d279b3208a315d248e",
+            "runtime_sha256": "6db9978174b2320bea3efa6ccade1e50db21cd0c6e16e4d279b3208a315d248e",
+            "expected_mode": "100644",
+            "runtime_mode": "100644",
+            "result": "PASS"
+          },
+          {
+            "path": "includes/Product/ProductPeopleBricks.php",
+            "expected_size": 4499,
+            "runtime_size": 4499,
+            "expected_sha256": "001967451c55ef4911427a53f0b72a3457ff925298450fc6a4517ff123d18ca7",
+            "runtime_sha256": "001967451c55ef4911427a53f0b72a3457ff925298450fc6a4517ff123d18ca7",
+            "expected_mode": "100644",
+            "runtime_mode": "100644",
+            "result": "PASS"
+          },
+          {
+            "path": "includes/Product/ProductPeopleFields.php",
+            "expected_size": 2367,
+            "runtime_size": 2367,
+            "expected_sha256": "373ce7592f6f79603fefc95b2c37978d94fef01d106bc8f6e28995c8146ba762",
+            "runtime_sha256": "373ce7592f6f79603fefc95b2c37978d94fef01d106bc8f6e28995c8146ba762",
+            "expected_mode": "100644",
+            "runtime_mode": "100644",
+            "result": "PASS"
+          },
+          {
+            "path": "includes/Product/ProductPeopleResolver.php",
+            "expected_size": 1301,
+            "runtime_size": 1301,
+            "expected_sha256": "27181a44aca8e6a701f367d11497596f74c16ca13b2eb592cf0caf8923c9ff23",
+            "runtime_sha256": "27181a44aca8e6a701f367d11497596f74c16ca13b2eb592cf0caf8923c9ff23",
+            "expected_mode": "100644",
+            "runtime_mode": "100644",
+            "result": "PASS"
+          },
+          {
+            "path": "includes/Product/ProductRoleSeeder.php",
+            "expected_size": 8588,
+            "runtime_size": 8588,
+            "expected_sha256": "2b8979dad3eade53b6f5204e06a36621eadbda320ee18efc86b84d166221d4b8",
+            "runtime_sha256": "2b8979dad3eade53b6f5204e06a36621eadbda320ee18efc86b84d166221d4b8",
+            "expected_mode": "100644",
+            "runtime_mode": "100644",
+            "result": "PASS"
+          },
+          {
+            "path": "includes/Product/ProductRoleVocabulary.php",
+            "expected_size": 1180,
+            "runtime_size": 1180,
+            "expected_sha256": "fc27c8007876eb6ffea5ed2f1509bf349f88b6acd20e742cb2b507e5e07d3bd9",
+            "runtime_sha256": "fc27c8007876eb6ffea5ed2f1509bf349f88b6acd20e742cb2b507e5e07d3bd9",
+            "expected_mode": "100644",
+            "runtime_mode": "100644",
+            "result": "PASS"
+          },
+          {
+            "path": "includes/Product/ProductSourceEventBricks.php",
+            "expected_size": 4205,
+            "runtime_size": 4205,
+            "expected_sha256": "9781aac4f6594d0626539f0f7fc488b863b3fe0af4a9e8b34e3604fed1467697",
+            "runtime_sha256": "9781aac4f6594d0626539f0f7fc488b863b3fe0af4a9e8b34e3604fed1467697",
+            "expected_mode": "100644",
+            "runtime_mode": "100644",
+            "result": "PASS"
+          },
+          {
+            "path": "includes/Services/CommerceService.php",
+            "expected_size": 13828,
+            "runtime_size": 13828,
+            "expected_sha256": "c3fc99ef8f3b224e5921ff708080c680342504a2bbdab5c8572da5ea5703e9e9",
+            "runtime_sha256": "c3fc99ef8f3b224e5921ff708080c680342504a2bbdab5c8572da5ea5703e9e9",
+            "expected_mode": "100644",
+            "runtime_mode": "100644",
+            "result": "PASS"
+          },
+          {
+            "path": "includes/Services/LearningService.php",
+            "expected_size": 34709,
+            "runtime_size": 34709,
+            "expected_sha256": "b7156f25406f15e8caf8a250961742a2f6514ce68762d609092b3d06d20f0338",
+            "runtime_sha256": "b7156f25406f15e8caf8a250961742a2f6514ce68762d609092b3d06d20f0338",
+            "expected_mode": "100644",
+            "runtime_mode": "100644",
+            "result": "PASS"
+          },
+          {
+            "path": "includes/Services/MemberAreaService.php",
+            "expected_size": 9335,
+            "runtime_size": 9335,
+            "expected_sha256": "9a5bf000eacb1d6eda74a24c1a0dcb86bfaf044dc128e69e0be7a21e7e0e495d",
+            "runtime_sha256": "9a5bf000eacb1d6eda74a24c1a0dcb86bfaf044dc128e69e0be7a21e7e0e495d",
+            "expected_mode": "100644",
+            "runtime_mode": "100644",
+            "result": "PASS"
+          },
+          {
+            "path": "includes/Services/MembershipService.php",
+            "expected_size": 13154,
+            "runtime_size": 13154,
+            "expected_sha256": "5355ecdfa921a4b7da306f6384649c7387d1c5fbd58be6425d209820c9a04fe6",
+            "runtime_sha256": "5355ecdfa921a4b7da306f6384649c7387d1c5fbd58be6425d209820c9a04fe6",
+            "expected_mode": "100644",
+            "runtime_mode": "100644",
+            "result": "PASS"
+          },
+          {
+            "path": "includes/Services/SubscriptionService.php",
+            "expected_size": 16835,
+            "runtime_size": 16835,
+            "expected_sha256": "70cfa98752f37c60045ef3ca2fc10ff50992e826d0e8a792116eb96c08098f4f",
+            "runtime_sha256": "70cfa98752f37c60045ef3ca2fc10ff50992e826d0e8a792116eb96c08098f4f",
+            "expected_mode": "100644",
+            "runtime_mode": "100644",
+            "result": "PASS"
+          },
+          {
+            "path": "includes/Services/TicketService.php",
+            "expected_size": 35903,
+            "runtime_size": 35903,
+            "expected_sha256": "ddde203376c45859763cfe6f2aaf500cc5bf228f5606c1aaef9707cfc9f19318",
+            "runtime_sha256": "ddde203376c45859763cfe6f2aaf500cc5bf228f5606c1aaef9707cfc9f19318",
+            "expected_mode": "100644",
+            "runtime_mode": "100644",
+            "result": "PASS"
+          },
+          {
+            "path": "includes/Taxonomy/ContentTopicMigration.php",
+            "expected_size": 41413,
+            "runtime_size": 41413,
+            "expected_sha256": "928521996320fbce4db8154e63a217c34a34bfd0bcf397337cc7ee29f271d856",
+            "runtime_sha256": "928521996320fbce4db8154e63a217c34a34bfd0bcf397337cc7ee29f271d856",
+            "expected_mode": "100644",
+            "runtime_mode": "100644",
+            "result": "PASS"
+          },
+          {
+            "path": "includes/Taxonomy/ContentTopicRoles.php",
+            "expected_size": 26630,
+            "runtime_size": 26630,
+            "expected_sha256": "9241fbaef68ac5318fda72e5daf2c71a5e147d9a3ff30ca97066480de45b6512",
+            "runtime_sha256": "9241fbaef68ac5318fda72e5daf2c71a5e147d9a3ff30ca97066480de45b6512",
+            "expected_mode": "100644",
+            "runtime_mode": "100644",
+            "result": "PASS"
+          },
+          {
+            "path": "includes/Taxonomy/ContentTopicTaxonomy.php",
+            "expected_size": 15926,
+            "runtime_size": 15926,
+            "expected_sha256": "5668c77070bebe2dcaa3984438f5297486ed2963803864abbbb7b92b724048c9",
+            "runtime_sha256": "5668c77070bebe2dcaa3984438f5297486ed2963803864abbbb7b92b724048c9",
+            "expected_mode": "100644",
+            "runtime_mode": "100644",
+            "result": "PASS"
+          },
+          {
+            "path": "tests/bootstrap.php",
+            "expected_size": 7832,
+            "runtime_size": 7832,
+            "expected_sha256": "05d60994d10bcd70443f4f8ce17203fcd2d2f1cf947b5344f9c3ce606f1f7acf",
+            "runtime_sha256": "05d60994d10bcd70443f4f8ce17203fcd2d2f1cf947b5344f9c3ce606f1f7acf",
+            "expected_mode": "100644",
+            "runtime_mode": "100644",
+            "result": "PASS"
+          },
+          {
+            "path": "tests/contracts/DashboardCardTest.php",
+            "expected_size": 6992,
+            "runtime_size": 6992,
+            "expected_sha256": "e624d61733e763e4e8c69edac7b346f71fe4926dc0f4e6fa3fdf68cfd93d8b03",
+            "runtime_sha256": "e624d61733e763e4e8c69edac7b346f71fe4926dc0f4e6fa3fdf68cfd93d8b03",
+            "expected_mode": "100644",
+            "runtime_mode": "100644",
+            "result": "PASS"
+          },
+          {
+            "path": "tests/dashboard/AccessGuardTest.php",
+            "expected_size": 4466,
+            "runtime_size": 4466,
+            "expected_sha256": "69151d928c2c9deacc13881c50891283bd8371fab0d7dc228cc561580c470150",
+            "runtime_sha256": "69151d928c2c9deacc13881c50891283bd8371fab0d7dc228cc561580c470150",
+            "expected_mode": "100644",
+            "runtime_mode": "100644",
+            "result": "PASS"
+          },
+          {
+            "path": "tests/dashboard/DashboardRoutesTest.php",
+            "expected_size": 3093,
+            "runtime_size": 3093,
+            "expected_sha256": "44b32e7f36591313e41516817ed85f48d90f2d14eeef400dabe02cfa816dd0b1",
+            "runtime_sha256": "44b32e7f36591313e41516817ed85f48d90f2d14eeef400dabe02cfa816dd0b1",
+            "expected_mode": "100644",
+            "runtime_mode": "100644",
+            "result": "PASS"
+          },
+          {
+            "path": "tests/dashboard/NavigationTest.php",
+            "expected_size": 9037,
+            "runtime_size": 9037,
+            "expected_sha256": "8edf44b916c8c8a217836b007dace0d8684b4c314f4a64d91cbae60beec934de",
+            "runtime_sha256": "8edf44b916c8c8a217836b007dace0d8684b4c314f4a64d91cbae60beec934de",
+            "expected_mode": "100644",
+            "runtime_mode": "100644",
+            "result": "PASS"
+          },
+          {
+            "path": "tests/performance/CachePolicyTest.php",
+            "expected_size": 24739,
+            "runtime_size": 24739,
+            "expected_sha256": "b813031aa173cdc61b4429843eb7cedcb4b303f3a6b43510275c3990d4f8da7d",
+            "runtime_sha256": "b813031aa173cdc61b4429843eb7cedcb4b303f3a6b43510275c3990d4f8da7d",
+            "expected_mode": "100644",
+            "runtime_mode": "100644",
+            "result": "PASS"
+          },
+          {
+            "path": "tests/run-dashboard-tests.php",
+            "expected_size": 1706,
+            "runtime_size": 1706,
+            "expected_sha256": "ebea06cb804228bc8bed7e6a6824a01ac4eb0215bc71d1a145e6eef0b7a386d4",
+            "runtime_sha256": "ebea06cb804228bc8bed7e6a6824a01ac4eb0215bc71d1a145e6eef0b7a386d4",
+            "expected_mode": "100644",
+            "runtime_mode": "100644",
+            "result": "PASS"
+          },
+          {
+            "path": "tests/services/CommerceServiceTest.php",
+            "expected_size": 13823,
+            "runtime_size": 13823,
+            "expected_sha256": "c1f982c6f6ac420aa7bf50dd3cd37d4907aba0ef921ec6356370a6b01c7aa4a8",
+            "runtime_sha256": "c1f982c6f6ac420aa7bf50dd3cd37d4907aba0ef921ec6356370a6b01c7aa4a8",
+            "expected_mode": "100644",
+            "runtime_mode": "100644",
+            "result": "PASS"
+          },
+          {
+            "path": "tests/services/LearningServiceTest.php",
+            "expected_size": 17805,
+            "runtime_size": 17805,
+            "expected_sha256": "78a37f8778517cf0971e0d1f8a3aae4b94ac44beaf9fbb45b7b0f7bf5cc0eabb",
+            "runtime_sha256": "78a37f8778517cf0971e0d1f8a3aae4b94ac44beaf9fbb45b7b0f7bf5cc0eabb",
+            "expected_mode": "100644",
+            "runtime_mode": "100644",
+            "result": "PASS"
+          },
+          {
+            "path": "tests/services/MemberAreaServiceTest.php",
+            "expected_size": 8466,
+            "runtime_size": 8466,
+            "expected_sha256": "a4abd9c23fb4a379245fb328173c8b374a958e81c7f18985e4aac9fbf49e168d",
+            "runtime_sha256": "a4abd9c23fb4a379245fb328173c8b374a958e81c7f18985e4aac9fbf49e168d",
+            "expected_mode": "100644",
+            "runtime_mode": "100644",
+            "result": "PASS"
+          },
+          {
+            "path": "tests/services/MembershipServiceTest.php",
+            "expected_size": 11750,
+            "runtime_size": 11750,
+            "expected_sha256": "7e94ee415395ef4b67bfafd796bd32d2b07b566e41f46b3627164d8943a4e7cb",
+            "runtime_sha256": "7e94ee415395ef4b67bfafd796bd32d2b07b566e41f46b3627164d8943a4e7cb",
+            "expected_mode": "100644",
+            "runtime_mode": "100644",
+            "result": "PASS"
+          },
+          {
+            "path": "tests/services/SubscriptionServiceTest.php",
+            "expected_size": 14730,
+            "runtime_size": 14730,
+            "expected_sha256": "4721c3ebab6aa91bebf0dd034adab729e7cdcafc0e85d39bb2c4c9ade19407ad",
+            "runtime_sha256": "4721c3ebab6aa91bebf0dd034adab729e7cdcafc0e85d39bb2c4c9ade19407ad",
+            "expected_mode": "100644",
+            "runtime_mode": "100644",
+            "result": "PASS"
+          },
+          {
+            "path": "tests/services/TicketServiceTest.php",
+            "expected_size": 22594,
+            "runtime_size": 22594,
+            "expected_sha256": "7cf6e81c7680574cc4a8466497191cc27c24b715d8dc8246e2c4882f91793cf4",
+            "runtime_sha256": "7cf6e81c7680574cc4a8466497191cc27c24b715d8dc8246e2c4882f91793cf4",
+            "expected_mode": "100644",
+            "runtime_mode": "100644",
+            "result": "PASS"
+          },
+          {
+            "path": "voelgoed-platform-core.php",
+            "expected_size": 2708,
+            "runtime_size": 2708,
+            "expected_sha256": "3fc688ccf27ec11ee4bb9fe5e282630ded724d4a987e5489f9bc77142dca72bb",
+            "runtime_sha256": "3fc688ccf27ec11ee4bb9fe5e282630ded724d4a987e5489f9bc77142dca72bb",
+            "expected_mode": "100644",
+            "runtime_mode": "100644",
+            "result": "PASS"
+          }
+        ]
+      }
+    },
+    "deployment_decision": "SKIPPED_ALREADY_EXACT",
+    "qa_harness_integrity_guard": {
+      "expected_file_count": 54,
+      "expected_tree_sha256": "856a3e5978559bfb2572b4b1ff4b34df916743f9e72d6b18220ee64e98af5f56",
+      "expected_manifest_sha256": "d95f77936381226d364faa0ae23fb4b3cb762cae766d5b0e88ce3e51e0c12e0f",
+      "manifest_fixture": "site-code/runtime-tests/fixtures/voelgoed-platform-core-pe005.manifest.json",
+      "runs_after_runtime_identity_and_before_mutation_started": true,
+      "rejects_missing_extra_content_or_mode_mismatches": true,
+      "rejects_symlinks_non_regular_objects_unreadable_files_and_read_hash_failures": true,
+      "source_safe_fixture_tests": 12
+    },
+    "source_gate_safety_tests": {
+      "check_source_sh_executes": [
+        {
+          "runner": "site-code/runtime-tests/tests/run-product-contribution-qa-setup-tests.php",
+          "tests_passed": 2
+        },
+        {
+          "runner": "site-code/runtime-tests/tests/run-product-contribution-qa-cleanup-tests.php",
+          "tests_passed": 9
+        },
+        {
+          "runner": "site-code/runtime-tests/tests/run-product-contribution-qa-platform-core-integrity-tests.php",
+          "tests_passed": 12
+        }
+      ],
+      "live_mutating_qa_harness_executed_in_ci": false,
+      "cleanup_final_residue_audit": {
+        "checks_owned_product_lookup_rows_after_post_absence": true,
+        "lookup_query_errors_fail_closed": true,
+        "sql_writes_added": false
+      }
+    },
+    "historical_woocommerce_lookup_residue_check": {
+      "table": "wp_wc_product_meta_lookup",
+      "read_only": true,
+      "rows_by_product_id": {
+        "1535": 0,
+        "1545": 0,
+        "1547": 0,
+        "1549": 0,
+        "1557": 0
+      },
+      "total_rows": 0,
+      "expected_total_rows": 0
+    },
+    "read_only_preflight": {
+      "result": "PASS",
+      "executed_library_only": true,
+      "mutating_qa_run_invoked": false,
+      "mutation_started": false,
+      "cleanup_attempted": false,
+      "identity": {
+        "wordpress_path": "/home/jcschoeman96/Local Sites/voelgoed-novamira/app/public/",
+        "home": "http://localhost:10039",
+        "site": "http://localhost:10039",
+        "effective_port": 10039,
+        "database": "local",
+        "database_host": "localhost",
+        "php": "8.5.4",
+        "wordpress": "7.1.3",
+        "acf_pro": "6.8.1",
+        "woocommerce": "11.2.1",
+        "platform_core_version": "0.1.0",
+        "platform_core_path": "/home/jcschoeman96/Local Sites/voelgoed-novamira/app/public/wp-content/plugins/voelgoed-platform-core/",
+        "child_theme_acf_json_path": "/home/jcschoeman96/projects/current/vgnova/site-code/acf-json"
+      },
+      "platform_core_integrity": {
+        "exact": true,
+        "file_count": 54,
+        "missing": [],
+        "extra": [],
+        "mismatched": [],
+        "mode_mismatched": [],
+        "symlinks": [],
+        "unsupported": [],
+        "unreadable": [],
+        "runtime_tree_sha256": "856a3e5978559bfb2572b4b1ff4b34df916743f9e72d6b18220ee64e98af5f56",
+        "expected_manifest_sha256": "d95f77936381226d364faa0ae23fb4b3cb762cae766d5b0e88ce3e51e0c12e0f",
+        "observed_manifest_sha256": "d95f77936381226d364faa0ae23fb4b3cb762cae766d5b0e88ce3e51e0c12e0f"
+      },
+      "acf_definitions": {
+        "verified": true,
+        "count": 3,
+        "source_file_hashes": {
+          "post_type_product_contribution.json": "e98b4ad7ebf1831975fa7777bcccf2baf9966e21665293533b1dbef6d88ff747",
+          "taxonomy_product_role.json": "d371c6a1ac769b7491b810d04080991ba638258781bce320e0f4f7b842cb144e",
+          "group_vg_product_contribution_details.json": "3ed2d1a00e3c224adcb7f51e33fa82ed7d5694c5f33a9503da446faaa00f1c03"
+        },
+        "database_ids": {
+          "post_type_product_contribution": 1476,
+          "taxonomy_product_role": 1477,
+          "group_vg_product_contribution_details": 1478
+        }
+      },
+      "product_roles": [
+        {
+          "id": 415,
+          "name": "Aanbieder",
+          "slug": "aanbieder",
+          "parent": 0,
+          "count": 0
+        },
+        {
+          "id": 417,
+          "name": "Instrukteur",
+          "slug": "instrukteur",
+          "parent": 0,
+          "count": 0
+        },
+        {
+          "id": 418,
+          "name": "Skepper",
+          "slug": "skepper",
+          "parent": 0,
+          "count": 0
+        },
+        {
+          "id": 416,
+          "name": "Skrywer",
+          "slug": "skrywer",
+          "parent": 0,
+          "count": 0
+        }
+      ],
+      "role_relationship_count": 0,
+      "persistent_counts": {
+        "product_contribution_posts": 0,
+        "person_posts": 0,
+        "event_participation_posts": 0,
+        "product_role_terms": 4,
+        "product_role_term_slugs": [
+          "aanbieder",
+          "instrukteur",
+          "skepper",
+          "skrywer"
+        ],
+        "product_role_relationships": 0,
+        "target_acf_database_definitions": 3,
+        "target_acf_database_post_ids": {
+          "acf-post-type": 1476,
+          "acf-taxonomy": 1477,
+          "acf-field-group": 1478
+        },
+        "override_rows": {
+          "product_people_override": 0,
+          "_product_people_override": 0
+        }
+      },
+      "protected_fingerprints": {
+        "readable": true,
+        "equal_to_historical_task8c_after_snapshot": true,
+        "snapshot": {
+          "profiles_753_757": {
+            "post_count": 5,
+            "postmeta_count": 34,
+            "term_relationship_count": 10,
+            "posts_sha256": "6cb107bcb3a70ed61526caff114e5f7771d838905e1ebf4de2bf207e894ba420",
+            "postmeta_sha256": "3a5bfb948796c6ba11ad98c50d4de8d1eabcdd2db73d6fc94abfe15203f24e5c",
+            "term_relationships_sha256": "37ef040584ca77a139e611763910d7700ec9e9b05a50d63241f871817c489ae3"
+          },
+          "event_763": {
+            "post_count": 1,
+            "postmeta_count": 15,
+            "term_relationship_count": 0,
+            "posts_sha256": "be163f4a063ede077b98c9c1b24cc3b5cc519fdbf559e40a47ff270013e1ea6b",
+            "postmeta_sha256": "f7ca21d464725e1d20573954880fcc13084207274b1618eb011e420e2e8a9a99",
+            "term_relationships_sha256": "35786c7117b4e38d0f169239752ce71158266ae2f6e4aa230fbbb87bd699c0e3"
+          },
+          "products_765_767_768": {
+            "post_count": 3,
+            "postmeta_count": 20,
+            "term_relationship_count": 0,
+            "posts_sha256": "97a956b5881cd58aeef2c9765e4080692a968bc3b25e1266acfd53cc5740630a",
+            "postmeta_sha256": "7e95f2f96d0d4a2357a199acab176a01b91209240acb8fb16f1b4ab45c6e8934",
+            "term_relationships_sha256": "35786c7117b4e38d0f169239752ce71158266ae2f6e4aa230fbbb87bd699c0e3"
+          },
+          "templates_773_1127": {
+            "post_count": 2,
+            "postmeta_count": 11,
+            "term_relationship_count": 0,
+            "posts_sha256": "7f2c9eb0c0918d5ff4cbdae818840c7b0b8f2bb8e8bbe33ce421e6399911dc81",
+            "postmeta_sha256": "6b3cd25ddde6b06f1748900a65612ae530f2c10163834a6ea2844df52f110e03",
+            "term_relationships_sha256": "35786c7117b4e38d0f169239752ce71158266ae2f6e4aa230fbbb87bd699c0e3"
+          },
+          "bricks_component_6b463f": {
+            "sha256": "57370bbb83d3125758eba9a5194eb1a898b8914b546ee4d84b32f642e07aeaac"
+          },
+          "bricks_option_row_sha256": "55beb9ae2508c235362bc850d6f11954f0634d1bace3d8a59e3869c750b7d004",
+          "fluentsnippets": {
+            "9-acf-product-copy.php": {
+              "size": 1263,
+              "sha256": "58e8035502b30397b9659f952e4d49bbdbd7cdbd15070e37e5b07ebaa5ce2f70"
+            },
+            "10-vg-bricks-medewerker-queries.php": {
+              "size": 5998,
+              "sha256": "e1b7c014cd15a673d663426403a2024a21a1286075c355015f4e217d7e498fa2"
+            }
+          },
+          "event_participation_schema": [
+            {
+              "key": "field_vg_event_participation_event",
+              "name": "event_participation_event",
+              "label": "Event Participation: Event",
+              "type": "post_object",
+              "required": 1,
+              "parent": "group_vg_event_participation_details"
+            },
+            {
+              "key": "field_vg_event_participation_person",
+              "name": "event_participation_person",
+              "label": "Event Participation: Person",
+              "type": "post_object",
+              "required": 1,
+              "parent": "group_vg_event_participation_details"
+            },
+            {
+              "key": "field_vg_event_participation_roles",
+              "name": "event_participation_roles",
+              "label": "Event Participation: Roles",
+              "type": "taxonomy",
+              "required": 0,
+              "parent": "group_vg_event_participation_details"
+            },
+            {
+              "key": "field_vg_event_participation_display_order",
+              "name": "event_participation_display_order",
+              "label": "Event Participation: Display Order",
+              "type": "number",
+              "required": 0,
+              "parent": "group_vg_event_participation_details"
+            }
+          ],
+          "post_type_status_counts": {
+            "acf-field-group|acf-disabled": 1,
+            "acf-field-group|publish": 18,
+            "acf-field|publish": 114,
+            "acf-post-type|publish": 10,
+            "acf-taxonomy|publish": 15,
+            "acf-ui-options-page|publish": 4,
+            "attachment|inherit": 92,
+            "bricks_template|draft": 1,
+            "bricks_template|publish": 26,
+            "bricks_template|trash": 1,
+            "course|publish": 1,
+            "lesson|publish": 13,
+            "llms_form|publish": 3,
+            "medewerker|publish": 5,
+            "mto-course|draft": 1,
+            "mto-course|publish": 5,
+            "novamira_memory|publish": 1,
+            "novamira_skill|publish": 1,
+            "page|draft": 2,
+            "page|publish": 35,
+            "page|trash": 2,
+            "post|publish": 1,
+            "product_variation|publish": 14,
+            "product|draft": 7,
+            "product|private": 1,
+            "product|publish": 9,
+            "product|trash": 3,
+            "revision|inherit": 262,
+            "section|publish": 4,
+            "shop_coupon|publish": 1,
+            "shop_order_placehold|draft": 15,
+            "tc_api_keys|publish": 18,
+            "tc_events|publish": 17,
+            "tc_orders|order_paid": 4,
+            "tc_templates|publish": 1,
+            "tc_tickets_instances|publish": 17,
+            "tc_tickets_instances|trash": 1,
+            "tc_tickets|publish": 3,
+            "uitsending|publish": 5,
+            "vennoot|publish": 7,
+            "vg_perk|draft": 5,
+            "vg_perk|publish": 15,
+            "wp_block|publish": 6,
+            "wp_global_styles|publish": 1
+          }
+        }
+      },
+      "approved_20_product_baseline_ids": [
+        525,
+        527,
+        529,
+        531,
+        642,
+        765,
+        767,
+        768,
+        842,
+        844,
+        845,
+        846,
+        905,
+        908,
+        911,
+        914,
+        917,
+        920,
+        923,
+        1186
+      ]
+    },
+    "historical_tree_hash_distinction": {
+      "task8b_sha256": "a2635dafeb1d82d481b6275526c3850263f549facac80293c810d2b0d93de760",
+      "task8b_algorithm": "SHA-256 over sorted entries: relative path + NUL + file SHA-256 + newline.",
+      "pe005_sha256": "856a3e5978559bfb2572b4b1ff4b34df916743f9e72d6b18220ee64e98af5f56",
+      "pe005_algorithm": "PE-005 canonical tree representation: sorted bytewise by UTF-8 relative path, each line '<git-mode> <sha256> <relative-path>\\n'.",
+      "same_content_can_have_different_hashes": true
+    },
+    "runtime_mutations": {
+      "acf_writes": 0,
+      "taxonomy_writes": 0,
+      "post_writes": 0,
+      "database_writes": 0,
+      "bricks_writes": 0,
+      "fluentsnippet_writes": 0,
+      "platform_core_deployments": 0
+    }
+  }
+}

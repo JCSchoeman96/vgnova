@@ -25,9 +25,12 @@ if (! defined('ABSPATH') && ! defined('VG_PRODUCT_CONTRIBUTION_QA_LIBRARY_ONLY')
 const VG_PRODUCT_CONTRIBUTION_QA_OWNER_META = '_vg_task_8c_product_contribution_qa_owner';
 const VG_PRODUCT_CONTRIBUTION_QA_OWNER_LABEL = '[QA][AUTOMATED] Product Contribution';
 const VG_PRODUCT_CONTRIBUTION_QA_SOURCE_PATH = '/home/jcschoeman96/projects/current/vgnova/site-code/acf-json';
-const VG_PRODUCT_CONTRIBUTION_QA_EXPECTED_TREE_SHA256 = 'a2635dafeb1d82d481b6275526c3850263f549facac80293c810d2b0d93de760';
+const VG_PRODUCT_CONTRIBUTION_QA_EXPECTED_FILE_COUNT = 54;
+const VG_PRODUCT_CONTRIBUTION_QA_EXPECTED_TREE_SHA256 = '856a3e5978559bfb2572b4b1ff4b34df916743f9e72d6b18220ee64e98af5f56';
+const VG_PRODUCT_CONTRIBUTION_QA_EXPECTED_MANIFEST_SHA256 = 'd95f77936381226d364faa0ae23fb4b3cb762cae766d5b0e88ce3e51e0c12e0f';
 
 require_once __DIR__ . '/product-people-qa-side-effects.php';
+require_once __DIR__ . '/platform-core-runtime-integrity.php';
 
 function vg_product_contribution_qa_check(bool $condition, string $message): void
 {
@@ -145,6 +148,56 @@ function vg_product_contribution_qa_relationship_count(int $post_id): int
         $wpdb->prepare("SELECT COUNT(*) FROM {$wpdb->term_relationships} WHERE object_id = %d", $post_id),
         'term relationship count for ' . $post_id
     );
+}
+
+function vg_product_contribution_qa_product_lookup_count(int $product_id): int
+{
+    global $wpdb;
+    $table = $wpdb->prefix . 'wc_product_meta_lookup';
+    return vg_product_contribution_qa_count(
+        $wpdb->prepare("SELECT COUNT(*) FROM {$table} WHERE product_id = %d", $product_id),
+        'WooCommerce lookup rows in ' . $table . ' for Product ' . $product_id
+    );
+}
+
+/** @return list<array{id:int,type:string,table:string,rows?:int,error?:string}> */
+function vg_product_contribution_qa_product_lookup_residue(array $owned_products): array
+{
+    global $wpdb;
+    $table = $wpdb->prefix . 'wc_product_meta_lookup';
+    $remaining = [];
+    foreach ($owned_products as $key => $record) {
+        $id = (int) ($record['id'] ?? $key);
+        if ($id <= 0) {
+            $remaining[] = [
+                'id' => $id,
+                'type' => 'wc_product_meta_lookup',
+                'table' => $table,
+                'error' => 'Tracked Product record has no positive ID.',
+            ];
+            continue;
+        }
+        try {
+            $rows = vg_product_contribution_qa_product_lookup_count($id);
+        } catch (Throwable $error) {
+            $remaining[] = [
+                'id' => $id,
+                'type' => 'wc_product_meta_lookup',
+                'table' => $table,
+                'error' => $error->getMessage(),
+            ];
+            continue;
+        }
+        if ($rows !== 0) {
+            $remaining[] = [
+                'id' => $id,
+                'type' => 'wc_product_meta_lookup',
+                'table' => $table,
+                'rows' => $rows,
+            ];
+        }
+    }
+    return $remaining;
 }
 
 /** @return array{post_count:int,postmeta_count:int,term_relationship_count:int,posts_sha256:string,postmeta_sha256:string,term_relationships_sha256:string} */
@@ -639,6 +692,14 @@ function vg_product_contribution_qa_delete_owned_record(array $record, string $t
             && vg_product_contribution_qa_relationship_count($id) === 0,
         'Hard deletion did not remove the exact QA post, postmeta, and term relationships.'
     );
+    if ($type === 'product') {
+        global $wpdb;
+        $lookup_rows = vg_product_contribution_qa_product_lookup_count($id);
+        vg_product_contribution_qa_check(
+            $lookup_rows === 0,
+            'WooCommerce lookup table ' . $wpdb->prefix . 'wc_product_meta_lookup retains ' . $lookup_rows . ' rows for Product ' . $id . '.'
+        );
+    }
     if ($type === 'product' && function_exists('wc_get_product')) {
         vg_product_contribution_qa_check(wc_get_product($id) === false, 'WooCommerce still resolves the deleted QA Product.');
     }
@@ -826,6 +887,33 @@ function vg_product_contribution_qa_preflight(array &$context): void
 {
     $context['identity'] = vg_product_contribution_qa_runtime_identity();
     vg_product_contribution_qa_validate_identity($context['identity']);
+    $context['platform_core_integrity'] = vg_product_contribution_qa_platform_core_integrity_report(
+        $context['identity']['platform_core_path'],
+        __DIR__ . '/fixtures/voelgoed-platform-core-pe005.manifest.json',
+        VG_PRODUCT_CONTRIBUTION_QA_EXPECTED_FILE_COUNT,
+        VG_PRODUCT_CONTRIBUTION_QA_EXPECTED_TREE_SHA256,
+        VG_PRODUCT_CONTRIBUTION_QA_EXPECTED_MANIFEST_SHA256
+    );
+    $integrity_report = $context['platform_core_integrity'];
+    vg_product_contribution_qa_check(
+        $integrity_report['exact'],
+        'Active Platform Core files do not match the pinned PE-005 artifact manifest: '
+            . json_encode([
+                'file_count' => $integrity_report['file_count'],
+                'missing' => $integrity_report['missing'],
+                'extra' => $integrity_report['extra'],
+                'mismatched' => $integrity_report['mismatched'],
+                'mode_mismatched' => $integrity_report['mode_mismatched'],
+                'symlinks' => $integrity_report['symlinks'],
+                'unsupported' => $integrity_report['unsupported'],
+                'unreadable' => $integrity_report['unreadable'],
+                'unreadable_directories' => $integrity_report['unreadable_directories'],
+                'directory_errors' => $integrity_report['directory_errors'],
+                'manifest_errors' => $integrity_report['manifest_errors'],
+                'expected_tree_sha256' => $integrity_report['expected_tree_sha256'],
+                'runtime_tree_sha256' => $integrity_report['runtime_tree_sha256'],
+            ], JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR)
+    );
     foreach ([
         ProductContributionRepository::POST_TYPE,
         ProductContributionRepository::PERSON_POST_TYPE,
@@ -951,6 +1039,7 @@ function vg_product_contribution_qa_owned_residue(array $context, string $token)
             }
         }
     }
+    $remaining = [...$remaining, ...vg_product_contribution_qa_product_lookup_residue($context['owned']['product'] ?? [])];
     foreach (vg_product_contribution_qa_tickera_api_rows() as $row) {
         if (! in_array((int) $row['id'], $context['preexisting_api_ids'] ?? [], true)
             && str_contains((string) ($row['api_key_name'] ?? ''), $token)) {
@@ -1213,6 +1302,7 @@ function vg_product_contribution_qa_run(): array
         'run_id' => $run_id,
         'mutation_started' => $guard['mutation_started'],
         'runtime_identity' => $context['identity'] ?? null,
+        'platform_core_integrity' => $context['platform_core_integrity'] ?? null,
         'acf_schema_verified' => $context['acf_schema'] ?? false,
         'product_roles_verified' => $roles_verified,
         'owned_records_created' => $created_ids,

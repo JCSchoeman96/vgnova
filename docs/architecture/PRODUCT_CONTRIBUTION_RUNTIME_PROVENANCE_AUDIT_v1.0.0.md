@@ -290,7 +290,7 @@ The audit did not hash all `wp_options`; volatile options were not used as the p
 - The exact October 23 command and actor remain unknown. The source is the PR #39 merge tree, and the local main fast-forward 15 seconds before the runtime creation batch is strong timeline evidence.
 - No current automatic writer was found for the target paths, but past or external mechanisms cannot be ruled out.
 - PR #45 merged during Task 8A with CI/source-check/plan changes only. The audit branch is rebased onto its merge commit before the provenance PR is opened. Task 9 was not started.
-- No `PRODUCT_CONTRIBUTION_RUNTIME_MANIFEST.json` was created.
+- At the time of this audit, no `PRODUCT_CONTRIBUTION_RUNTIME_MANIFEST_v1.0.0.json` had been created.
 
 
 ## Appendix A. Full runtime file metadata

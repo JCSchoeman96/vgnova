@@ -203,5 +203,5 @@ Postdeployment source commands and exact focused results:
 
 - Machine-readable file and state evidence: [`PRODUCT_CONTRIBUTION_RUNTIME_NORMALIZATION_MANIFEST_v1.0.0.json`](PRODUCT_CONTRIBUTION_RUNTIME_NORMALIZATION_MANIFEST_v1.0.0.json).
 - Task 8A provenance audit was not modified.
-- The final `PRODUCT_CONTRIBUTION_RUNTIME_MANIFEST.json` was not created.
+- At the time of this report, the final `PRODUCT_CONTRIBUTION_RUNTIME_MANIFEST_v1.0.0.json` had not been created.
 - Task 8 runtime QA and Task 9 remain not started.
