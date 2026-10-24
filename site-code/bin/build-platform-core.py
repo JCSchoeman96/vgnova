@@ -1156,6 +1156,12 @@ def validate_assembled_bootstrap(
         )
 
     for index in range(first_integration_registration, loop_index):
+        if token_matches(
+            method_tokens,
+            index,
+            [("T_VARIABLE", "$this"), ("T_OBJECT_OPERATOR", "->"), (None, "{")],
+        ):
+            fail("The component collection cannot be accessed after lifecycle registration before dispatch.")
         if token_matches(method_tokens, index, component_reset) and not is_safe_root_component_assignment(index):
             fail("The component collection cannot be accessed after lifecycle registration before dispatch.")
 
