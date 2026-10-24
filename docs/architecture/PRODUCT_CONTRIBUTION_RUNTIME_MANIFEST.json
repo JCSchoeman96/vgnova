@@ -1,0 +1,1110 @@
+{
+  "task": "VG Nova Product Contribution Task 8C — Targeted ACF Synchronization, Product Role Seed and Guarded Runtime QA",
+  "task_id": "8C",
+  "execution_baseline": "ea4dc65121db74f4b8dabfb1aa95d9afc17b1ed7",
+  "branch": "test/product-contribution-runtime-qa-v2",
+  "runtime_identity": {
+    "wordpress_path": "/home/jcschoeman96/Local Sites/voelgoed-novamira/app/public/",
+    "home": "http://localhost:10039",
+    "site": "http://localhost:10039",
+    "effective_port": 10039,
+    "database": "local",
+    "database_host": "localhost",
+    "php": "8.5.4",
+    "wordpress": "7.1.3",
+    "acf_pro": "6.8.1",
+    "woocommerce": "11.2.1",
+    "platform_core_version": "0.1.0",
+    "platform_core_path": "/home/jcschoeman96/Local Sites/voelgoed-novamira/app/public/wp-content/plugins/voelgoed-platform-core/",
+    "child_theme_acf_json_path": "/home/jcschoeman96/projects/current/vgnova/site-code/acf-json"
+  },
+  "platform_core": {
+    "runtime_path": "/home/jcschoeman96/Local Sites/voelgoed-novamira/app/public/wp-content/plugins/voelgoed-platform-core/",
+    "expected_tree_sha256": "a2635dafeb1d82d481b6275526c3850263f549facac80293c810d2b0d93de760",
+    "observed_prewrite_tree_sha256": "a2635dafeb1d82d481b6275526c3850263f549facac80293c810d2b0d93de760",
+    "observed_final_tree_sha256": "a2635dafeb1d82d481b6275526c3850263f549facac80293c810d2b0d93de760",
+    "file_count": 54,
+    "entrypoint_sha256": "3fc688ccf27ec11ee4bb9fe5e282630ded724d4a987e5489f9bc77142dca72bb",
+    "includes/Plugin.php_sha256": "054b373bc4512cadf7f4e9700347867dc90ca359527770b0ecf3a3a825512625",
+    "PersonProductsBricks.php_sha256": "a7460a1e21d4318a9d3997e52ad9e0d804a155798b1b7992e786b4cb976170e5",
+    "prewrite_parity": {
+      "exact": true,
+      "missing": 0,
+      "extra": 0,
+      "mismatched": 0
+    },
+    "final_parity": {
+      "exact": true,
+      "missing": 0,
+      "extra": 0,
+      "mismatched": 0
+    },
+    "rollback_directory_retained": "/home/jcschoeman96/Local Sites/voelgoed-novamira/app/.task8b-platform-core-backup-20261024T095612Z",
+    "deployed_or_patched_during_task_8c": false,
+    "tree_hash_algorithm": "SHA-256 over sorted entries: relative path + NUL + file SHA-256 + newline."
+  },
+  "wp_cli": {
+    "php_executable": "/usr/bin/php8.5",
+    "php_version": "8.5.4",
+    "wp_executable": "/usr/local/bin/wp",
+    "wordpress_path": "/home/jcschoeman96/Local Sites/voelgoed-novamira/app/public/",
+    "home": "http://localhost:10039",
+    "site": "http://localhost:10039",
+    "database": "local",
+    "database_host": "localhost",
+    "socket_override": "/home/jcschoeman96/.config/Local/run/nAZNpFs99/mysql/mysqld.sock",
+    "site_bootstrap": "PASS",
+    "vgnova_not_danoptics": true,
+    "product_role_command_registered_before_mutation": true,
+    "registration_proof": "wp help vg-product-role-setup succeeded before ACF sync and role seeding."
+  },
+  "acf": {
+    "source_path": "/home/jcschoeman96/projects/current/vgnova/site-code/acf-json",
+    "stable_canonical_path": true,
+    "source_file_hashes": {
+      "post_type_product_contribution.json": "e98b4ad7ebf1831975fa7777bcccf2baf9966e21665293533b1dbef6d88ff747",
+      "taxonomy_product_role.json": "d371c6a1ac769b7491b810d04080991ba638258781bce320e0f4f7b842cb144e",
+      "group_vg_product_contribution_details.json": "3ed2d1a00e3c224adcb7f51e33fa82ed7d5694c5f33a9503da446faaa00f1c03"
+    },
+    "pre_status": {
+      "post_type_product_contribution": "Create pending",
+      "taxonomy_product_role": "Create pending",
+      "group_vg_product_contribution_details": "Create pending",
+      "unrelated_pending": [
+        {
+          "key": "group_vgmp_perk_details",
+          "title": "Member Perk Details",
+          "action": "Create"
+        },
+        {
+          "key": "group_vgmp_options",
+          "title": "Voelgoed Perk Settings",
+          "action": "Create"
+        }
+      ]
+    },
+    "dry_run_results": {
+      "post_type_product_contribution": {
+        "result": "PASS",
+        "matching_items": 1,
+        "action": "Create",
+        "isolated_key": true
+      },
+      "taxonomy_product_role": {
+        "result": "PASS",
+        "matching_items": 1,
+        "action": "Create",
+        "isolated_key": true
+      },
+      "group_vg_product_contribution_details": {
+        "result": "PASS",
+        "matching_items": 1,
+        "action": "Create",
+        "isolated_key": true
+      }
+    },
+    "sync_results": {
+      "post_type_product_contribution": {
+        "result": "PASS",
+        "action": "Created"
+      },
+      "taxonomy_product_role": {
+        "result": "PASS",
+        "action": "Created"
+      },
+      "group_vg_product_contribution_details": {
+        "result": "PASS",
+        "action": "Created"
+      }
+    },
+    "synced_keys": [
+      "post_type_product_contribution",
+      "taxonomy_product_role",
+      "group_vg_product_contribution_details"
+    ],
+    "final_status": {
+      "post_type_product_contribution": "In sync",
+      "taxonomy_product_role": "In sync",
+      "group_vg_product_contribution_details": "In sync",
+      "status_command_summary": {
+        "field-group": {
+          "pending": 2,
+          "total": 23
+        },
+        "post-type": {
+          "pending": 0,
+          "total": 10
+        },
+        "taxonomy": {
+          "pending": 0,
+          "total": 15
+        },
+        "options-page": {
+          "pending": 0,
+          "total": 4
+        }
+      },
+      "unrelated_pending": [
+        {
+          "key": "group_vgmp_perk_details",
+          "title": "Member Perk Details",
+          "action": "Create"
+        },
+        {
+          "key": "group_vgmp_options",
+          "title": "Voelgoed Perk Settings",
+          "action": "Create"
+        }
+      ]
+    },
+    "unrelated_pending_untouched": true,
+    "runtime_parity": {
+      "verified": true,
+      "canonical_source_path": "/home/jcschoeman96/projects/current/vgnova/site-code/acf-json",
+      "source_file_hashes": {
+        "post_type_product_contribution.json": "e98b4ad7ebf1831975fa7777bcccf2baf9966e21665293533b1dbef6d88ff747",
+        "taxonomy_product_role.json": "d371c6a1ac769b7491b810d04080991ba638258781bce320e0f4f7b842cb144e",
+        "group_vg_product_contribution_details.json": "3ed2d1a00e3c224adcb7f51e33fa82ed7d5694c5f33a9503da446faaa00f1c03"
+      },
+      "parity_normalization": {
+        "generated_acf_defaults": {
+          "post_type_product_contribution": [
+            "allow_ai_access=false",
+            "ai_description=\"\""
+          ],
+          "taxonomy_product_role": [
+            "meta_box_cb=\"\"",
+            "meta_box_sanitize_cb=\"\"",
+            "allow_ai_access=false",
+            "ai_description=\"\""
+          ]
+        },
+        "database_ids": "Verified as positive and excluded from JSON equality comparison.",
+        "field_parent_and_order": "Parent IDs and menu_order values verified against the persisted group and source position, then excluded from JSON equality comparison.",
+        "number_step": "Source and database values must be numerically equal; the persisted value is normalized to the source scalar type.",
+        "empty_placeholder": "An ACF-added empty placeholder is accepted only when absent from source JSON.",
+        "key_order": "Associative keys are sorted for comparison; list order is preserved."
+      },
+      "database_backed_ids": {
+        "post_type_product_contribution": 1476,
+        "taxonomy_product_role": 1477,
+        "group_vg_product_contribution_details": 1478
+      },
+      "runtime_contracts": {
+        "post_type_product_contribution": {
+          "public": false,
+          "publicly_queryable": false,
+          "exclude_from_search": true,
+          "show_ui": true,
+          "show_in_rest": true,
+          "has_archive": false,
+          "rewrite": false,
+          "query_var": "product_contribution",
+          "supports": [
+            "title"
+          ]
+        },
+        "taxonomy_product_role": {
+          "public": false,
+          "publicly_queryable": false,
+          "hierarchical": false,
+          "show_ui": true,
+          "show_in_rest": true,
+          "rewrite": false,
+          "query_var": false,
+          "object_type": [
+            "product_contribution"
+          ]
+        },
+        "field_signature": [
+          {
+            "key": "field_vg_product_contribution_product",
+            "name": "product_contribution_product",
+            "label": "Product Contribution: Product",
+            "type": "post_object",
+            "required": 0,
+            "parent": "group_vg_product_contribution_details",
+            "post_type": [
+              "product"
+            ],
+            "taxonomy": ""
+          },
+          {
+            "key": "field_vg_product_contribution_person",
+            "name": "product_contribution_person",
+            "label": "Product Contribution: Person",
+            "type": "post_object",
+            "required": 0,
+            "parent": "group_vg_product_contribution_details",
+            "post_type": [
+              "person"
+            ],
+            "taxonomy": ""
+          },
+          {
+            "key": "field_vg_product_contribution_roles",
+            "name": "product_contribution_roles",
+            "label": "Product Contribution: Roles",
+            "type": "taxonomy",
+            "required": 0,
+            "parent": "group_vg_product_contribution_details",
+            "post_type": null,
+            "taxonomy": "product_role"
+          },
+          {
+            "key": "field_vg_product_contribution_display_order",
+            "name": "product_contribution_display_order",
+            "label": "Product Contribution: Display Order",
+            "type": "number",
+            "required": 0,
+            "parent": "group_vg_product_contribution_details",
+            "post_type": null,
+            "taxonomy": null
+          }
+        ]
+      }
+    }
+  },
+  "product_roles": {
+    "first_seed": {
+      "result": "PASS",
+      "created": [
+        "aanbieder",
+        "skrywer",
+        "instrukteur",
+        "skepper"
+      ],
+      "existing": []
+    },
+    "second_seed": {
+      "result": "PASS",
+      "created": [],
+      "existing": [
+        "aanbieder",
+        "skrywer",
+        "instrukteur",
+        "skepper"
+      ]
+    },
+    "exact_terms": [
+      {
+        "name": "Aanbieder",
+        "slug": "aanbieder"
+      },
+      {
+        "name": "Skrywer",
+        "slug": "skrywer"
+      },
+      {
+        "name": "Instrukteur",
+        "slug": "instrukteur"
+      },
+      {
+        "name": "Skepper",
+        "slug": "skepper"
+      }
+    ],
+    "exact_count": 4,
+    "relationship_count": 0,
+    "duplicate_slugs": 0,
+    "unexpected_terms": 0
+  },
+  "runtime_qa": {
+    "run_token": "[QA][AUTOMATED] Product Contribution 20261024T171437Z-655c28661e",
+    "result": "PASS",
+    "mutation_started": true,
+    "assertions": [
+      {
+        "name": "product_role_vocabulary_exact",
+        "result": "PASS",
+        "evidence": [
+          {
+            "id": 415,
+            "name": "Aanbieder",
+            "slug": "aanbieder",
+            "parent": 0,
+            "count": 0
+          },
+          {
+            "id": 417,
+            "name": "Instrukteur",
+            "slug": "instrukteur",
+            "parent": 0,
+            "count": 0
+          },
+          {
+            "id": 418,
+            "name": "Skepper",
+            "slug": "skepper",
+            "parent": 0,
+            "count": 0
+          },
+          {
+            "id": 416,
+            "name": "Skrywer",
+            "slug": "skrywer",
+            "parent": 0,
+            "count": 0
+          }
+        ]
+      },
+      {
+        "name": "acf_schema_source_parity",
+        "result": "PASS",
+        "evidence": {
+          "verified": true,
+          "canonical_source_path": "/home/jcschoeman96/projects/current/vgnova/site-code/acf-json",
+          "source_file_hashes": {
+            "post_type_product_contribution.json": "e98b4ad7ebf1831975fa7777bcccf2baf9966e21665293533b1dbef6d88ff747",
+            "taxonomy_product_role.json": "d371c6a1ac769b7491b810d04080991ba638258781bce320e0f4f7b842cb144e",
+            "group_vg_product_contribution_details.json": "3ed2d1a00e3c224adcb7f51e33fa82ed7d5694c5f33a9503da446faaa00f1c03"
+          },
+          "parity_normalization": {
+            "generated_acf_defaults": {
+              "post_type_product_contribution": [
+                "allow_ai_access=false",
+                "ai_description=\"\""
+              ],
+              "taxonomy_product_role": [
+                "meta_box_cb=\"\"",
+                "meta_box_sanitize_cb=\"\"",
+                "allow_ai_access=false",
+                "ai_description=\"\""
+              ]
+            },
+            "database_ids": "Verified as positive and excluded from JSON equality comparison.",
+            "field_parent_and_order": "Parent IDs and menu_order values verified against the persisted group and source position, then excluded from JSON equality comparison.",
+            "number_step": "Source and database values must be numerically equal; the persisted value is normalized to the source scalar type.",
+            "empty_placeholder": "An ACF-added empty placeholder is accepted only when absent from source JSON.",
+            "key_order": "Associative keys are sorted for comparison; list order is preserved."
+          },
+          "database_backed_ids": {
+            "post_type_product_contribution": 1476,
+            "taxonomy_product_role": 1477,
+            "group_vg_product_contribution_details": 1478
+          },
+          "runtime_contracts": {
+            "post_type_product_contribution": {
+              "public": false,
+              "publicly_queryable": false,
+              "exclude_from_search": true,
+              "show_ui": true,
+              "show_in_rest": true,
+              "has_archive": false,
+              "rewrite": false,
+              "query_var": "product_contribution",
+              "supports": [
+                "title"
+              ]
+            },
+            "taxonomy_product_role": {
+              "public": false,
+              "publicly_queryable": false,
+              "hierarchical": false,
+              "show_ui": true,
+              "show_in_rest": true,
+              "rewrite": false,
+              "query_var": false,
+              "object_type": [
+                "product_contribution"
+              ]
+            },
+            "field_signature": [
+              {
+                "key": "field_vg_product_contribution_product",
+                "name": "product_contribution_product",
+                "label": "Product Contribution: Product",
+                "type": "post_object",
+                "required": 0,
+                "parent": "group_vg_product_contribution_details",
+                "post_type": [
+                  "product"
+                ],
+                "taxonomy": ""
+              },
+              {
+                "key": "field_vg_product_contribution_person",
+                "name": "product_contribution_person",
+                "label": "Product Contribution: Person",
+                "type": "post_object",
+                "required": 0,
+                "parent": "group_vg_product_contribution_details",
+                "post_type": [
+                  "person"
+                ],
+                "taxonomy": ""
+              },
+              {
+                "key": "field_vg_product_contribution_roles",
+                "name": "product_contribution_roles",
+                "label": "Product Contribution: Roles",
+                "type": "taxonomy",
+                "required": 0,
+                "parent": "group_vg_product_contribution_details",
+                "post_type": null,
+                "taxonomy": "product_role"
+              },
+              {
+                "key": "field_vg_product_contribution_display_order",
+                "name": "product_contribution_display_order",
+                "label": "Product Contribution: Display Order",
+                "type": "number",
+                "required": 0,
+                "parent": "group_vg_product_contribution_details",
+                "post_type": null,
+                "taxonomy": null
+              }
+            ]
+          }
+        }
+      },
+      {
+        "name": "manual_product_people_authority_and_order",
+        "result": "PASS",
+        "evidence": {
+          "contribution_ids": [
+            1542,
+            1543,
+            1544,
+            1541
+          ],
+          "people_ids": [
+            1536,
+            1538,
+            1537
+          ],
+          "resolver_ids": [
+            1536,
+            1538,
+            1537
+          ]
+        }
+      },
+      {
+        "name": "reverse_person_products_are_sorted_and_published_only",
+        "result": "PASS",
+        "evidence": {
+          "published_products": [
+            1535,
+            1545
+          ],
+          "draft_person_products": [],
+          "excluded_draft_product": 1547
+        }
+      },
+      {
+        "name": "role_integrity_rejects_invalid_published_contributions_without_partial_rows",
+        "result": "PASS",
+        "evidence": {
+          "rejected": {
+            "zero_roles": true,
+            "malformed_role_id": true,
+            "wrong_taxonomy": true
+          },
+          "contribution_count_before": 7,
+          "contribution_count_after": 7
+        }
+      },
+      {
+        "name": "pair_uniqueness_rejects_second_nonretired_pair",
+        "result": "PASS",
+        "evidence": {
+          "rejected": true,
+          "pair_ids": [
+            1542
+          ]
+        }
+      },
+      {
+        "name": "contribution_title_is_derived_at_creation",
+        "result": "PASS",
+        "evidence": {
+          "title": "[QA][AUTOMATED] Product Contribution 20261024T171437Z-655c28661e Manual Product — [QA][AUTOMATED] Product Contribution 20261024T171437Z-655c28661e Person A"
+        }
+      },
+      {
+        "name": "admin_endpoint_title_sync_updates_nonretired_contributions",
+        "result": "PASS",
+        "evidence": {
+          "title": "[QA][AUTOMATED] Product Contribution 20261024T171437Z-655c28661e Manual Product Renamed — [QA][AUTOMATED] Product Contribution 20261024T171437Z-655c28661e Person A Renamed"
+        }
+      },
+      {
+        "name": "event_membership_authority_comes_only_from_event_participation",
+        "result": "PASS",
+        "evidence": {
+          "event_people": [
+            1555
+          ],
+          "draft_nonmember_annotation_id": 1560
+        }
+      },
+      {
+        "name": "stale_event_annotation_is_stored_but_inactive",
+        "result": "PASS",
+        "evidence": {
+          "stored_contribution_id": 1559,
+          "active_contribution_ids": [],
+          "event_people": []
+        }
+      },
+      {
+        "name": "public_filtering_excludes_malformed_contribution_endpoint",
+        "result": "PASS",
+        "evidence": {
+          "before_ids": [
+            1546
+          ]
+        }
+      },
+      {
+        "name": "public_filtering_excludes_unpublished_people_invalid_modes_and_stale_annotations",
+        "result": "PASS",
+        "evidence": {
+          "manual_people": [
+            1536,
+            1538,
+            1537
+          ],
+          "invalid_mode_people": [],
+          "event_people_after_restore": [
+            1555
+          ]
+        }
+      },
+      {
+        "name": "person_products_bricks_adapter_resolves_canonical_repository_ids",
+        "result": "PASS",
+        "evidence": {
+          "query": {
+            "post_type": [
+              "product"
+            ],
+            "post_status": "publish",
+            "post__in": [
+              1535,
+              1545
+            ],
+            "orderby": "post__in",
+            "posts_per_page": -1,
+            "meta_query": [],
+            "tax_query": [
+              {
+                "taxonomy": "product_visibility",
+                "field": "term_taxonomy_id",
+                "terms": [
+                  25
+                ],
+                "operator": "NOT IN"
+              }
+            ],
+            "order": "DESC"
+          },
+          "expected_product_ids": [
+            1535,
+            1545
+          ]
+        }
+      },
+      {
+        "name": "person_products_bricks_empty_result_uses_post_in_zero",
+        "result": "PASS",
+        "evidence": {
+          "query": {
+            "post_type": [
+              "product"
+            ],
+            "post_status": "publish",
+            "post__in": [
+              0
+            ],
+            "orderby": "post__in",
+            "posts_per_page": -1,
+            "meta_query": [],
+            "tax_query": [
+              {
+                "taxonomy": "product_visibility",
+                "field": "term_taxonomy_id",
+                "terms": [
+                  25
+                ],
+                "operator": "NOT IN"
+              }
+            ],
+            "order": "DESC"
+          }
+        }
+      }
+    ],
+    "owned_created_ids": {
+      "product_contribution": [
+        1541,
+        1542,
+        1543,
+        1544,
+        1546,
+        1548,
+        1550,
+        1559,
+        1560
+      ],
+      "event_participation": [
+        1558
+      ],
+      "product": [
+        1535,
+        1545,
+        1547,
+        1549,
+        1557
+      ],
+      "person": [
+        1536,
+        1537,
+        1538,
+        1539,
+        1540,
+        1555,
+        1556
+      ],
+      "tc_events": [
+        1553
+      ]
+    },
+    "cleanup_attempted": true,
+    "cleanup": {
+      "errors": [],
+      "tickera": {
+        "deleted": [
+          1554
+        ],
+        "unexplained": [],
+        "errors": []
+      }
+    },
+    "remaining_owned_records": [],
+    "cleanup_errors": [],
+    "protected_state_result": "PASS",
+    "persistent_state_pre_live_qa": {
+      "product_contribution_posts": 0,
+      "person_posts": 0,
+      "event_participation_posts": 0,
+      "product_role_terms": 4,
+      "product_role_term_slugs": [
+        "aanbieder",
+        "instrukteur",
+        "skepper",
+        "skrywer"
+      ],
+      "product_role_relationships": 0,
+      "target_acf_database_definitions": 3,
+      "target_acf_database_post_ids": {
+        "acf-post-type": 1476,
+        "acf-taxonomy": 1477,
+        "acf-field-group": 1478
+      },
+      "override_rows": {
+        "product_people_override": 0,
+        "_product_people_override": 0
+      }
+    },
+    "persistent_state_post_live_qa": {
+      "product_contribution_posts": 0,
+      "person_posts": 0,
+      "event_participation_posts": 0,
+      "product_role_terms": 4,
+      "product_role_term_slugs": [
+        "aanbieder",
+        "instrukteur",
+        "skepper",
+        "skrywer"
+      ],
+      "product_role_relationships": 0,
+      "target_acf_database_definitions": 3,
+      "target_acf_database_post_ids": {
+        "acf-post-type": 1476,
+        "acf-taxonomy": 1477,
+        "acf-field-group": 1478
+      },
+      "override_rows": {
+        "product_people_override": 0,
+        "_product_people_override": 0
+      }
+    }
+  },
+  "persistent_state": {
+    "pre_before_sync": {
+      "product_contribution_posts": 0,
+      "person_posts": 0,
+      "event_participation_posts": 0,
+      "product_role_terms": 0,
+      "product_role_relationships": 0,
+      "target_product_contribution_acf_database_definitions": 0,
+      "product_people_override_rows": 0,
+      "_product_people_override_rows": 0,
+      "product_count": 20,
+      "product_ids": [
+        525,
+        527,
+        529,
+        531,
+        642,
+        765,
+        767,
+        768,
+        842,
+        844,
+        845,
+        846,
+        905,
+        908,
+        911,
+        914,
+        917,
+        920,
+        923,
+        1186
+      ]
+    },
+    "post_after_cleanup": {
+      "product_contribution_posts": 0,
+      "person_posts": 0,
+      "event_participation_posts": 0,
+      "product_role_terms": 4,
+      "product_role_term_slugs": [
+        "aanbieder",
+        "instrukteur",
+        "skepper",
+        "skrywer"
+      ],
+      "product_role_relationships": 0,
+      "target_acf_database_definitions": 3,
+      "target_acf_database_post_ids": {
+        "acf-post-type": 1476,
+        "acf-taxonomy": 1477,
+        "acf-field-group": 1478
+      },
+      "override_rows": {
+        "product_people_override": 0,
+        "_product_people_override": 0
+      }
+    },
+    "post_cleanup_product_count": 20,
+    "post_cleanup_product_inventory_unchanged": true
+  },
+  "protected_state": {
+    "result": "PASS",
+    "comparison": {
+      "equal": true,
+      "before": {
+        "profiles_753_757": {
+          "post_count": 5,
+          "postmeta_count": 34,
+          "term_relationship_count": 10,
+          "posts_sha256": "6cb107bcb3a70ed61526caff114e5f7771d838905e1ebf4de2bf207e894ba420",
+          "postmeta_sha256": "3a5bfb948796c6ba11ad98c50d4de8d1eabcdd2db73d6fc94abfe15203f24e5c",
+          "term_relationships_sha256": "37ef040584ca77a139e611763910d7700ec9e9b05a50d63241f871817c489ae3"
+        },
+        "event_763": {
+          "post_count": 1,
+          "postmeta_count": 15,
+          "term_relationship_count": 0,
+          "posts_sha256": "be163f4a063ede077b98c9c1b24cc3b5cc519fdbf559e40a47ff270013e1ea6b",
+          "postmeta_sha256": "f7ca21d464725e1d20573954880fcc13084207274b1618eb011e420e2e8a9a99",
+          "term_relationships_sha256": "35786c7117b4e38d0f169239752ce71158266ae2f6e4aa230fbbb87bd699c0e3"
+        },
+        "products_765_767_768": {
+          "post_count": 3,
+          "postmeta_count": 20,
+          "term_relationship_count": 0,
+          "posts_sha256": "97a956b5881cd58aeef2c9765e4080692a968bc3b25e1266acfd53cc5740630a",
+          "postmeta_sha256": "7e95f2f96d0d4a2357a199acab176a01b91209240acb8fb16f1b4ab45c6e8934",
+          "term_relationships_sha256": "35786c7117b4e38d0f169239752ce71158266ae2f6e4aa230fbbb87bd699c0e3"
+        },
+        "templates_773_1127": {
+          "post_count": 2,
+          "postmeta_count": 11,
+          "term_relationship_count": 0,
+          "posts_sha256": "7f2c9eb0c0918d5ff4cbdae818840c7b0b8f2bb8e8bbe33ce421e6399911dc81",
+          "postmeta_sha256": "6b3cd25ddde6b06f1748900a65612ae530f2c10163834a6ea2844df52f110e03",
+          "term_relationships_sha256": "35786c7117b4e38d0f169239752ce71158266ae2f6e4aa230fbbb87bd699c0e3"
+        },
+        "bricks_component_6b463f": {
+          "sha256": "57370bbb83d3125758eba9a5194eb1a898b8914b546ee4d84b32f642e07aeaac"
+        },
+        "bricks_option_row_sha256": "55beb9ae2508c235362bc850d6f11954f0634d1bace3d8a59e3869c750b7d004",
+        "fluentsnippets": {
+          "9-acf-product-copy.php": {
+            "size": 1263,
+            "sha256": "58e8035502b30397b9659f952e4d49bbdbd7cdbd15070e37e5b07ebaa5ce2f70"
+          },
+          "10-vg-bricks-medewerker-queries.php": {
+            "size": 5998,
+            "sha256": "e1b7c014cd15a673d663426403a2024a21a1286075c355015f4e217d7e498fa2"
+          }
+        },
+        "event_participation_schema": [
+          {
+            "key": "field_vg_event_participation_event",
+            "name": "event_participation_event",
+            "label": "Event Participation: Event",
+            "type": "post_object",
+            "required": 1,
+            "parent": "group_vg_event_participation_details"
+          },
+          {
+            "key": "field_vg_event_participation_person",
+            "name": "event_participation_person",
+            "label": "Event Participation: Person",
+            "type": "post_object",
+            "required": 1,
+            "parent": "group_vg_event_participation_details"
+          },
+          {
+            "key": "field_vg_event_participation_roles",
+            "name": "event_participation_roles",
+            "label": "Event Participation: Roles",
+            "type": "taxonomy",
+            "required": 0,
+            "parent": "group_vg_event_participation_details"
+          },
+          {
+            "key": "field_vg_event_participation_display_order",
+            "name": "event_participation_display_order",
+            "label": "Event Participation: Display Order",
+            "type": "number",
+            "required": 0,
+            "parent": "group_vg_event_participation_details"
+          }
+        ],
+        "post_type_status_counts": {
+          "acf-field-group|acf-disabled": 1,
+          "acf-field-group|publish": 18,
+          "acf-field|publish": 114,
+          "acf-post-type|publish": 10,
+          "acf-taxonomy|publish": 15,
+          "acf-ui-options-page|publish": 4,
+          "attachment|inherit": 92,
+          "bricks_template|draft": 1,
+          "bricks_template|publish": 26,
+          "bricks_template|trash": 1,
+          "course|publish": 1,
+          "lesson|publish": 13,
+          "llms_form|publish": 3,
+          "medewerker|publish": 5,
+          "mto-course|draft": 1,
+          "mto-course|publish": 5,
+          "novamira_memory|publish": 1,
+          "novamira_skill|publish": 1,
+          "page|draft": 2,
+          "page|publish": 35,
+          "page|trash": 2,
+          "post|publish": 1,
+          "product_variation|publish": 14,
+          "product|draft": 7,
+          "product|private": 1,
+          "product|publish": 9,
+          "product|trash": 3,
+          "revision|inherit": 262,
+          "section|publish": 4,
+          "shop_coupon|publish": 1,
+          "shop_order_placehold|draft": 15,
+          "tc_api_keys|publish": 18,
+          "tc_events|publish": 17,
+          "tc_orders|order_paid": 4,
+          "tc_templates|publish": 1,
+          "tc_tickets_instances|publish": 17,
+          "tc_tickets_instances|trash": 1,
+          "tc_tickets|publish": 3,
+          "uitsending|publish": 5,
+          "vennoot|publish": 7,
+          "vg_perk|draft": 5,
+          "vg_perk|publish": 15,
+          "wp_block|publish": 6,
+          "wp_global_styles|publish": 1
+        }
+      },
+      "after": {
+        "profiles_753_757": {
+          "post_count": 5,
+          "postmeta_count": 34,
+          "term_relationship_count": 10,
+          "posts_sha256": "6cb107bcb3a70ed61526caff114e5f7771d838905e1ebf4de2bf207e894ba420",
+          "postmeta_sha256": "3a5bfb948796c6ba11ad98c50d4de8d1eabcdd2db73d6fc94abfe15203f24e5c",
+          "term_relationships_sha256": "37ef040584ca77a139e611763910d7700ec9e9b05a50d63241f871817c489ae3"
+        },
+        "event_763": {
+          "post_count": 1,
+          "postmeta_count": 15,
+          "term_relationship_count": 0,
+          "posts_sha256": "be163f4a063ede077b98c9c1b24cc3b5cc519fdbf559e40a47ff270013e1ea6b",
+          "postmeta_sha256": "f7ca21d464725e1d20573954880fcc13084207274b1618eb011e420e2e8a9a99",
+          "term_relationships_sha256": "35786c7117b4e38d0f169239752ce71158266ae2f6e4aa230fbbb87bd699c0e3"
+        },
+        "products_765_767_768": {
+          "post_count": 3,
+          "postmeta_count": 20,
+          "term_relationship_count": 0,
+          "posts_sha256": "97a956b5881cd58aeef2c9765e4080692a968bc3b25e1266acfd53cc5740630a",
+          "postmeta_sha256": "7e95f2f96d0d4a2357a199acab176a01b91209240acb8fb16f1b4ab45c6e8934",
+          "term_relationships_sha256": "35786c7117b4e38d0f169239752ce71158266ae2f6e4aa230fbbb87bd699c0e3"
+        },
+        "templates_773_1127": {
+          "post_count": 2,
+          "postmeta_count": 11,
+          "term_relationship_count": 0,
+          "posts_sha256": "7f2c9eb0c0918d5ff4cbdae818840c7b0b8f2bb8e8bbe33ce421e6399911dc81",
+          "postmeta_sha256": "6b3cd25ddde6b06f1748900a65612ae530f2c10163834a6ea2844df52f110e03",
+          "term_relationships_sha256": "35786c7117b4e38d0f169239752ce71158266ae2f6e4aa230fbbb87bd699c0e3"
+        },
+        "bricks_component_6b463f": {
+          "sha256": "57370bbb83d3125758eba9a5194eb1a898b8914b546ee4d84b32f642e07aeaac"
+        },
+        "bricks_option_row_sha256": "55beb9ae2508c235362bc850d6f11954f0634d1bace3d8a59e3869c750b7d004",
+        "fluentsnippets": {
+          "9-acf-product-copy.php": {
+            "size": 1263,
+            "sha256": "58e8035502b30397b9659f952e4d49bbdbd7cdbd15070e37e5b07ebaa5ce2f70"
+          },
+          "10-vg-bricks-medewerker-queries.php": {
+            "size": 5998,
+            "sha256": "e1b7c014cd15a673d663426403a2024a21a1286075c355015f4e217d7e498fa2"
+          }
+        },
+        "event_participation_schema": [
+          {
+            "key": "field_vg_event_participation_event",
+            "name": "event_participation_event",
+            "label": "Event Participation: Event",
+            "type": "post_object",
+            "required": 1,
+            "parent": "group_vg_event_participation_details"
+          },
+          {
+            "key": "field_vg_event_participation_person",
+            "name": "event_participation_person",
+            "label": "Event Participation: Person",
+            "type": "post_object",
+            "required": 1,
+            "parent": "group_vg_event_participation_details"
+          },
+          {
+            "key": "field_vg_event_participation_roles",
+            "name": "event_participation_roles",
+            "label": "Event Participation: Roles",
+            "type": "taxonomy",
+            "required": 0,
+            "parent": "group_vg_event_participation_details"
+          },
+          {
+            "key": "field_vg_event_participation_display_order",
+            "name": "event_participation_display_order",
+            "label": "Event Participation: Display Order",
+            "type": "number",
+            "required": 0,
+            "parent": "group_vg_event_participation_details"
+          }
+        ],
+        "post_type_status_counts": {
+          "acf-field-group|acf-disabled": 1,
+          "acf-field-group|publish": 18,
+          "acf-field|publish": 114,
+          "acf-post-type|publish": 10,
+          "acf-taxonomy|publish": 15,
+          "acf-ui-options-page|publish": 4,
+          "attachment|inherit": 92,
+          "bricks_template|draft": 1,
+          "bricks_template|publish": 26,
+          "bricks_template|trash": 1,
+          "course|publish": 1,
+          "lesson|publish": 13,
+          "llms_form|publish": 3,
+          "medewerker|publish": 5,
+          "mto-course|draft": 1,
+          "mto-course|publish": 5,
+          "novamira_memory|publish": 1,
+          "novamira_skill|publish": 1,
+          "page|draft": 2,
+          "page|publish": 35,
+          "page|trash": 2,
+          "post|publish": 1,
+          "product_variation|publish": 14,
+          "product|draft": 7,
+          "product|private": 1,
+          "product|publish": 9,
+          "product|trash": 3,
+          "revision|inherit": 262,
+          "section|publish": 4,
+          "shop_coupon|publish": 1,
+          "shop_order_placehold|draft": 15,
+          "tc_api_keys|publish": 18,
+          "tc_events|publish": 17,
+          "tc_orders|order_paid": 4,
+          "tc_templates|publish": 1,
+          "tc_tickets_instances|publish": 17,
+          "tc_tickets_instances|trash": 1,
+          "tc_tickets|publish": 3,
+          "uitsending|publish": 5,
+          "vennoot|publish": 7,
+          "vg_perk|draft": 5,
+          "vg_perk|publish": 15,
+          "wp_block|publish": 6,
+          "wp_global_styles|publish": 1
+        }
+      }
+    }
+  },
+  "runtime_drift": {
+    "result": "NO",
+    "unexplained_runtime_drift_during_task_8c": false,
+    "expected_file_count": 54,
+    "observed_final_file_count": 54,
+    "expected_tree_sha256": "a2635dafeb1d82d481b6275526c3850263f549facac80293c810d2b0d93de760",
+    "observed_prewrite_tree_sha256": "a2635dafeb1d82d481b6275526c3850263f549facac80293c810d2b0d93de760",
+    "observed_final_tree_sha256": "a2635dafeb1d82d481b6275526c3850263f549facac80293c810d2b0d93de760",
+    "prewrite_missing_extra_mismatched": {
+      "missing": 0,
+      "extra": 0,
+      "mismatched": 0
+    },
+    "final_missing_extra_mismatched": {
+      "missing": 0,
+      "extra": 0,
+      "mismatched": 0
+    },
+    "historical_ongoing_automatic_writer": "UNKNOWN",
+    "hash_algorithm": "SHA-256 over sorted entries: relative path + NUL + file SHA-256 + newline."
+  },
+  "source_regression": {
+    "pre_mutation_gate": "PASS",
+    "post_runtime_qa": "PASS",
+    "check_source_sh": "PASS",
+    "exact_test_counts": {
+      "product_contribution": 142,
+      "product_people": 101,
+      "event_participation": 68,
+      "event_participation_bricks": 12,
+      "event_role_seeder": 13,
+      "qa_setup_safety": 2,
+      "qa_cleanup_safety": 4
+    },
+    "php_lint_new_php_files": "PASS",
+    "git_diff_check": "PASS"
+  },
+  "forbidden_operations": {
+    "direct_sql_writes": false,
+    "global_acf_sync": false,
+    "unrelated_acf_sync": false,
+    "bricks_template_mutation": false,
+    "fluentsnippet_mutation": false,
+    "platform_core_deployment_or_patch": false,
+    "legacy_migration": false,
+    "task_9": false
+  },
+  "overall_verdict": "PASS",
+  "artifact_validation": {
+    "json_parser": "PASS",
+    "php_lint_new_php_files": "PASS",
+    "git_diff_check": "PASS"
+  }
+}
