@@ -833,6 +833,46 @@ def run_negative_cases(
     cases = temporary_root / "negative-cases"
     cases.mkdir()
 
+    fixture = create_fixture(repo_root, commit, cases / "entrypoint-return-before-includes")
+    entrypoint = fixture / ROOT_PLUGIN / "voelgoed-platform-core.php"
+    entrypoint_text = entrypoint.read_text(encoding="utf-8")
+    assignment = "$vgpc_include_paths = ["
+    if entrypoint_text.count(assignment) != 1:
+        raise CheckFailure("Cannot prepare entrypoint return-before-includes fixture.")
+    entrypoint.write_text(
+        entrypoint_text.replace(assignment, "return;\n" + assignment, 1),
+        encoding="utf-8",
+    )
+    commit_fixture_changes(fixture, "fixture: return before module includes")
+    expect_build_failure(
+        label="entrypoint cannot return before module includes",
+        builder=builder,
+        fixture=fixture,
+        ref="HEAD",
+        output=cases / "entrypoint-return-before-includes-output",
+        expected_text="entrypoint can exit before include consumption",
+    )
+
+    fixture = create_fixture(repo_root, commit, cases / "reset-components-before-dispatch")
+    plugin_class = fixture / ROOT_PLUGIN / "includes/Plugin.php"
+    plugin_text = plugin_class.read_text(encoding="utf-8")
+    dispatch = "        foreach ($this->components as $component) {"
+    if plugin_text.count(dispatch) != 1:
+        raise CheckFailure("Cannot prepare component-reset-before-dispatch fixture.")
+    plugin_class.write_text(
+        plugin_text.replace(dispatch, "        $this->components = [];\n\n" + dispatch, 1),
+        encoding="utf-8",
+    )
+    commit_fixture_changes(fixture, "fixture: clear components before lifecycle dispatch")
+    expect_build_failure(
+        label="registered components cannot be cleared before dispatch",
+        builder=builder,
+        fixture=fixture,
+        ref="HEAD",
+        output=cases / "reset-components-before-dispatch-output",
+        expected_text="component collection cannot be reset after lifecycle registration",
+    )
+
     fixture = create_fixture(repo_root, commit, cases / "binary-patch-path")
     overlay = fixture / "site-code/voelgoed-platform-core/includes/Product/ProductRoleVocabulary.php"
     patch_file = fixture / PATCH_PATH
