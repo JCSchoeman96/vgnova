@@ -16,6 +16,7 @@ import subprocess
 import sys
 import tarfile
 import tempfile
+import zlib
 from pathlib import Path, PurePosixPath
 from typing import Any
 
@@ -173,9 +174,12 @@ def verify_archive(archive_path: Path, manifest: dict[str, Any]) -> None:
             info.size = len(contents) if contents is not None else 0
             writer.addfile(info, io.BytesIO(contents) if contents is not None else None)
     try:
-        raw_archive = gzip.decompress(archive_bytes)
-    except OSError as error:
+        decompressor = zlib.decompressobj(wbits=31)
+        raw_archive = decompressor.decompress(archive_bytes) + decompressor.flush()
+    except zlib.error as error:
         raise CheckFailure(f"Cannot decompress canonical tar.gz archive: {error}") from error
+    if not decompressor.eof or decompressor.unused_data or decompressor.unconsumed_tail:
+        raise CheckFailure("Archive is not a single canonical gzip stream with no trailing data.")
     if raw_archive != canonical_tar.getvalue():
         raise CheckFailure("Tar metadata or PAX fields differ from canonical tar encoding.")
 
@@ -424,6 +428,34 @@ def commit_fixture_changes(fixture: Path, message: str) -> None:
     command(["git", "commit", "--quiet", "--amend", "-m", message], cwd=fixture)
 
 
+def insert_patch_additions(
+    fixture: Path,
+    *,
+    marker: str,
+    lines: list[str],
+    before: bool,
+    message: str,
+) -> None:
+    patch_file = fixture / PATCH_PATH
+    patch_lines = patch_file.read_text(encoding="utf-8").splitlines(keepends=True)
+    marker_index = next(
+        (index for index, line in enumerate(patch_lines) if line.startswith("+") and marker in line),
+        None,
+    )
+    if marker_index is None:
+        raise CheckFailure(f"Cannot prepare patch fixture around marker: {marker}")
+    hunk_index = max(index for index in range(marker_index) if patch_lines[index].startswith("@@ "))
+    hunk_match = re.match(r"(@@ -\d+,0 \+\d+,)(\d+)( @@.*\n?)$", patch_lines[hunk_index])
+    if hunk_match is None:
+        raise CheckFailure("Cannot update a fixture patch hunk count.")
+    patch_lines[hunk_index] = f"{hunk_match.group(1)}{int(hunk_match.group(2)) + len(lines)}{hunk_match.group(3)}"
+    additions = [line if line.endswith("\n") else line + "\n" for line in lines]
+    insertion_index = marker_index if before else marker_index + 1
+    patch_lines[insertion_index:insertion_index] = additions
+    patch_file.write_text("".join(patch_lines), encoding="utf-8")
+    commit_fixture_changes(fixture, message)
+
+
 def tamper_archive(source_archive: Path, destination: Path) -> None:
     changed = False
     with tarfile.open(source_archive, mode="r:gz") as source:
@@ -599,6 +631,17 @@ def run_verifier_hardening_cases(
         archive=gzip_tamper,
         manifest=gzip_manifest,
         expected_text="gzip header",
+    )
+
+    concatenated_gzip = temporary_root / "concatenated-gzip-members.tar.gz"
+    concatenated_gzip.write_bytes(archive_path.read_bytes() + gzip.compress(b"", mtime=0))
+    concatenated_manifest = json.loads(json.dumps(manifest))
+    concatenated_manifest["archive_sha256"] = sha256(concatenated_gzip.read_bytes())
+    expect_archive_rejected(
+        label="concatenated gzip member is rejected",
+        archive=concatenated_gzip,
+        manifest=concatenated_manifest,
+        expected_text="canonical gzip stream",
     )
 
     pax_archive = temporary_root / "pax-metadata-tamper.tar.gz"
@@ -925,6 +968,132 @@ def run_negative_cases(
         ref="HEAD",
         output=cases / "conditional-lifecycle-output",
         expected_text="unconditional",
+    )
+
+    fixture = create_fixture(repo_root, commit, cases / "false-short-circuit-lifecycle")
+    patch_file = fixture / PATCH_PATH
+    patch_text = patch_file.read_text(encoding="utf-8")
+    registration = "+        $this->register_component('content_topic_taxonomy', ContentTopicTaxonomy::class);"
+    if registration not in patch_text:
+        raise CheckFailure("Cannot prepare short-circuit lifecycle fixture.")
+    patch_file.write_text(
+        patch_text.replace(registration, "+        false && $this->register_component('content_topic_taxonomy', ContentTopicTaxonomy::class);", 1),
+        encoding="utf-8",
+    )
+    commit_fixture_changes(fixture, "fixture: short-circuit a lifecycle registration")
+    expect_build_failure(
+        label="short-circuited lifecycle registration",
+        builder=builder,
+        fixture=fixture,
+        ref="HEAD",
+        output=cases / "false-short-circuit-lifecycle-output",
+        expected_text="unconditional",
+    )
+
+    fixture = create_fixture(repo_root, commit, cases / "alternate-syntax-lifecycle")
+    insert_patch_additions(
+        fixture,
+        marker="register_component('content_topic_taxonomy'",
+        lines=["+        if (false):"],
+        before=True,
+        message="fixture: use false alternate lifecycle syntax",
+    )
+    insert_patch_additions(
+        fixture,
+        marker="register_component('person_products_bricks'",
+        lines=["+        endif;"],
+        before=False,
+        message="fixture: close false alternate lifecycle syntax",
+    )
+    expect_build_failure(
+        label="alternate conditional lifecycle registrations",
+        builder=builder,
+        fixture=fixture,
+        ref="HEAD",
+        output=cases / "alternate-syntax-lifecycle-output",
+        expected_text="unconditional",
+    )
+
+    fixture = create_fixture(repo_root, commit, cases / "commented-lifecycle")
+    insert_patch_additions(
+        fixture,
+        marker="register_component('content_topic_taxonomy'",
+        lines=["+        /*"],
+        before=True,
+        message="fixture: comment out lifecycle registrations",
+    )
+    insert_patch_additions(
+        fixture,
+        marker="register_component('person_products_bricks'",
+        lines=["+        */"],
+        before=False,
+        message="fixture: close commented lifecycle registrations",
+    )
+    expect_build_failure(
+        label="commented lifecycle registrations",
+        builder=builder,
+        fixture=fixture,
+        ref="HEAD",
+        output=cases / "commented-lifecycle-output",
+        expected_text="executable",
+    )
+
+    fixture = create_fixture(repo_root, commit, cases / "conditional-dispatch-loop")
+    plugin_class = fixture / ROOT_PLUGIN / "includes/Plugin.php"
+    plugin_text = plugin_class.read_text(encoding="utf-8")
+    loop = "        foreach ($this->components as $component) {"
+    if plugin_text.count(loop) != 1:
+        raise CheckFailure("Cannot prepare conditional dispatch-loop fixture.")
+    plugin_class.write_text(plugin_text.replace(loop, "        if (false)\n" + loop, 1), encoding="utf-8")
+    commit_fixture_changes(fixture, "fixture: conditionally disable lifecycle dispatch")
+    expect_build_failure(
+        label="conditional lifecycle dispatch loop",
+        builder=builder,
+        fixture=fixture,
+        ref="HEAD",
+        output=cases / "conditional-dispatch-loop-output",
+        expected_text="dispatch loop must execute unconditionally",
+    )
+
+    fixture = create_fixture(repo_root, commit, cases / "missing-dispatch-call")
+    plugin_class = fixture / ROOT_PLUGIN / "includes/Plugin.php"
+    plugin_text = plugin_class.read_text(encoding="utf-8")
+    dispatch_call = "                $component->register();"
+    if plugin_text.count(dispatch_call) != 1:
+        raise CheckFailure("Cannot prepare missing dispatch-call fixture.")
+    plugin_class.write_text(
+        plugin_text.replace(dispatch_call, "                /* $component->register(); */", 1),
+        encoding="utf-8",
+    )
+    commit_fixture_changes(fixture, "fixture: remove lifecycle dispatch call")
+    expect_build_failure(
+        label="missing lifecycle dispatch call",
+        builder=builder,
+        fixture=fixture,
+        ref="HEAD",
+        output=cases / "missing-dispatch-call-output",
+        expected_text="dispatch loop must invoke component register",
+    )
+
+    fixture = create_fixture(repo_root, commit, cases / "commented-class-declaration")
+    class_file = fixture / "site-code/voelgoed-platform-core/includes/Taxonomy/ContentTopicTaxonomy.php"
+    class_file.write_text(
+        "<?php\n"
+        "declare(strict_types=1);\n"
+        "namespace Voelgoed\\PlatformCore\\Taxonomy;\n"
+        "/*\n"
+        "final class ContentTopicTaxonomy {}\n"
+        "*/\n",
+        encoding="utf-8",
+    )
+    commit_fixture_changes(fixture, "fixture: comment out module class declaration")
+    expect_build_failure(
+        label="commented module class declaration",
+        builder=builder,
+        fixture=fixture,
+        ref="HEAD",
+        output=cases / "commented-class-declaration-output",
+        expected_text="no matching assembled module declaration",
     )
 
     fixture = create_fixture(repo_root, commit, cases / "unsafe-output")

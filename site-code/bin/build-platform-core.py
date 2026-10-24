@@ -304,25 +304,10 @@ def parse_include_paths(entrypoint: str) -> list[str]:
     return paths
 
 
-def php_classes(module_root: Path) -> set[str]:
-    classes: set[str] = set()
-    for path in module_root.rglob("*.php"):
-        contents = text_file(path, f"assembled module {path}")
-        namespace_match = re.search(r"^\s*namespace\s+([^;]+);", contents, re.M)
-        namespace = namespace_match.group(1).strip() if namespace_match else ""
-        for match in re.finditer(
-            r"^\s*(?:(?:final|abstract|readonly)\s+)*(?:class|interface|trait|enum)\s+([A-Za-z_][A-Za-z0-9_]*)\b",
-            contents,
-            re.M,
-        ):
-            classes.add(f"{namespace}\\{match.group(1)}" if namespace else match.group(1))
-    return classes
-
-
-def php_registration_contexts(method_body: str, registration_lines: list[str]) -> dict[str, tuple[int, bool]]:
+def php_tokens(source: str, purpose: str) -> list[tuple[str | None, str, int, int]]:
     tokenizer = r"""
 $source = stream_get_contents(STDIN);
-$tokens = token_get_all("<?php\n" . $source);
+$tokens = token_get_all($source);
 $result = [];
 foreach ($tokens as $token) {
     if (is_array($token)) {
@@ -333,89 +318,213 @@ foreach ($tokens as $token) {
 }
 echo json_encode($result, JSON_THROW_ON_ERROR);
 """
-    source_bytes = method_body.encode("utf-8")
-    prefix_bytes = len(b"<?php\n")
-    targets: dict[int, str] = {}
-    for line in registration_lines:
-        line_bytes = line.encode("utf-8")
-        position = source_bytes.find(line_bytes)
-        if position < 0:
-            fail(f"Cannot locate lifecycle registration for control-flow validation: {line}")
-        call_offset = len(line_bytes) - len(line_bytes.lstrip())
-        targets[position + call_offset] = line
-
+    prefix = "" if source.lstrip().startswith("<?php") else "<?php\n"
+    full_source = prefix + source
+    prefix_length = len(prefix.encode("utf-8"))
     result = subprocess.run(
         ["php", "-r", tokenizer],
-        input=source_bytes,
+        input=full_source.encode("utf-8"),
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         check=False,
     )
     if result.returncode != 0:
         fail(
-            "PHP tokenizer could not inspect lifecycle registration control flow: "
+            f"PHP tokenizer could not inspect {purpose}: "
             + result.stderr.decode("utf-8", "replace")
         )
     try:
-        tokens = json.loads(result.stdout.decode("utf-8", "strict"))
+        raw_tokens = json.loads(result.stdout.decode("utf-8", "strict"))
     except (UnicodeDecodeError, json.JSONDecodeError) as error:
-        fail(f"PHP tokenizer returned invalid token data: {error}")
+        fail(f"PHP tokenizer returned invalid token data while inspecting {purpose}: {error}")
 
-    contexts: dict[str, tuple[int, bool]] = {}
+    tokens: list[tuple[str | None, str, int, int]] = []
+    offset = -prefix_length
+    for token_name, token_text in tokens_from_json(raw_tokens):
+        start = offset
+        offset += len(token_text.encode("utf-8"))
+        tokens.append((token_name, token_text, start, offset))
+    return tokens
+
+
+def tokens_from_json(raw_tokens: list[object]) -> list[tuple[str | None, str]]:
+    result: list[tuple[str | None, str]] = []
+    for raw in raw_tokens:
+        if (
+            not isinstance(raw, list)
+            or len(raw) != 2
+            or (raw[0] is not None and not isinstance(raw[0], str))
+            or not isinstance(raw[1], str)
+        ):
+            fail("PHP tokenizer returned an invalid token record.")
+        result.append((raw[0], raw[1]))
+    return result
+
+
+PHP_NON_CODE_TOKENS = {"T_WHITESPACE", "T_COMMENT", "T_DOC_COMMENT", "T_OPEN_TAG", "T_CLOSE_TAG", "T_INLINE_HTML"}
+PHP_CONTROL_TOKENS = {
+    "T_IF",
+    "T_ELSEIF",
+    "T_ELSE",
+    "T_FOR",
+    "T_FOREACH",
+    "T_WHILE",
+    "T_DO",
+    "T_SWITCH",
+    "T_CASE",
+    "T_DEFAULT",
+    "T_TRY",
+    "T_CATCH",
+    "T_FINALLY",
+    "T_MATCH",
+    "T_FN",
+    "T_DECLARE",
+}
+
+
+def significant_php_tokens(
+    tokens: list[tuple[str | None, str, int, int]],
+) -> list[tuple[str | None, str, int, int]]:
+    return [token for token in tokens if token[0] not in PHP_NON_CODE_TOKENS]
+
+
+def php_classes(module_root: Path) -> set[str]:
+    classes: set[str] = set()
+    declaration_tokens = {"T_CLASS", "T_INTERFACE", "T_TRAIT", "T_ENUM"}
+    for path in module_root.rglob("*.php"):
+        contents = text_file(path, f"assembled module {path}")
+        tokens = significant_php_tokens(php_tokens(contents, f"module declarations in {path}"))
+        namespace = ""
+        namespace_scopes: list[tuple[int, str]] = []
+        brace_depth = 0
+        index = 0
+        while index < len(tokens):
+            token_name, token_text, _, _ = tokens[index]
+            if token_name == "T_NAMESPACE":
+                namespace_parts: list[str] = []
+                terminator_index = index + 1
+                while terminator_index < len(tokens) and tokens[terminator_index][1] not in (";", "{"):
+                    part_name, part_text, _, _ = tokens[terminator_index]
+                    if part_name not in {"T_STRING", "T_NAME_QUALIFIED", "T_NAME_FULLY_QUALIFIED"} and part_text != "\\":
+                        fail(f"Unsupported PHP namespace syntax in assembled module {path}.")
+                    namespace_parts.append(part_text)
+                    terminator_index += 1
+                if terminator_index >= len(tokens):
+                    fail(f"Unterminated PHP namespace declaration in assembled module {path}.")
+                declared_namespace = "".join(namespace_parts).strip("\\")
+                if tokens[terminator_index][1] == ";":
+                    namespace = declared_namespace
+                    index = terminator_index + 1
+                    continue
+                namespace_scopes.append((brace_depth + 1, namespace))
+                namespace = declared_namespace
+                index = terminator_index
+            elif token_name in declaration_tokens:
+                previous = tokens[index - 1] if index > 0 else (None, "", 0, 0)
+                if token_name != "T_CLASS" or previous[0] != "T_DOUBLE_COLON":
+                    next_index = index + 1
+                    if next_index < len(tokens) and tokens[next_index][0] == "T_STRING":
+                        short_name = tokens[next_index][1]
+                        qualified = f"{namespace}\\{short_name}" if namespace else short_name
+                        classes.add(qualified.lstrip("\\"))
+            if token_text == "{":
+                brace_depth += 1
+            elif token_text == "}":
+                if namespace_scopes and namespace_scopes[-1][0] == brace_depth:
+                    _, namespace = namespace_scopes.pop()
+                brace_depth = max(0, brace_depth - 1)
+            index += 1
+    return classes
+
+
+def token_matches(
+    tokens: list[tuple[str | None, str, int, int]],
+    start: int,
+    expected: list[tuple[str | None, str]],
+) -> bool:
+    return start + len(expected) <= len(tokens) and all(
+        (tokens[start + offset][0], tokens[start + offset][1]) == pair
+        for offset, pair in enumerate(expected)
+    )
+
+
+def is_first_statement_token(
+    tokens: list[tuple[str | None, str, int, int]],
+    target_index: int,
+) -> tuple[bool, int]:
     brace_depth = 0
-    parenthesis_depth = 0
-    pending_control = False
-    offset = -prefix_bytes
-    control_tokens = {
-        "T_IF",
-        "T_ELSEIF",
-        "T_ELSE",
-        "T_FOR",
-        "T_FOREACH",
-        "T_WHILE",
-        "T_DO",
-        "T_SWITCH",
-        "T_CASE",
-        "T_DEFAULT",
-        "T_TRY",
-        "T_CATCH",
-        "T_FINALLY",
-        "T_MATCH",
-        "T_FN",
-        "T_FUNCTION",
-        "T_DECLARE",
-    }
-    alternate_end_tokens = {"T_ENDIF", "T_ENDFOR", "T_ENDFOREACH", "T_ENDWHILE", "T_ENDSWITCH", "T_ENDDECLARE"}
-
-    for token_name, token_text in tokens:
-        token_bytes = token_text.encode("utf-8")
-        token_end = offset + len(token_bytes)
-        for target, line in targets.items():
-            if offset <= target < token_end:
-                contexts[line] = (brace_depth, pending_control)
-
-        if token_name in control_tokens and brace_depth == 0:
-            pending_control = True
-        elif token_name in alternate_end_tokens and brace_depth == 0:
-            pending_control = False
-        elif token_text == "(":
-            parenthesis_depth += 1
-        elif token_text == ")":
-            parenthesis_depth = max(0, parenthesis_depth - 1)
-        elif token_text == "{":
+    paren_depth = 0
+    bracket_depth = 0
+    last_boundary = -1
+    for index, (_, token_text, _, _) in enumerate(tokens[:target_index]):
+        if token_text == "{":
             brace_depth += 1
         elif token_text == "}":
             brace_depth = max(0, brace_depth - 1)
-            if brace_depth == 0:
-                pending_control = False
-        elif token_text == ";" and brace_depth == 0 and parenthesis_depth == 0:
-            pending_control = False
-        offset = token_end
+            if brace_depth == 0 and paren_depth == 0 and bracket_depth == 0:
+                last_boundary = index
+        elif token_text == "(":
+            paren_depth += 1
+        elif token_text == ")":
+            paren_depth = max(0, paren_depth - 1)
+        elif token_text == "[":
+            bracket_depth += 1
+        elif token_text == "]":
+            bracket_depth = max(0, bracket_depth - 1)
+        elif token_text == ";" and brace_depth == 0 and paren_depth == 0 and bracket_depth == 0:
+            last_boundary = index
+    return brace_depth == 0 and last_boundary == target_index - 1, brace_depth
 
-    if set(contexts) != set(registration_lines):
-        missing = sorted(set(registration_lines) - set(contexts))
-        fail(f"PHP tokenizer could not locate lifecycle registrations: {missing}")
-    return contexts
+
+def method_guard_sequence() -> list[tuple[str | None, str]]:
+    return [
+        ("T_IF", "if"),
+        (None, "("),
+        ("T_VARIABLE", "$this"),
+        ("T_OBJECT_OPERATOR", "->"),
+        ("T_STRING", "registered"),
+        (None, ")"),
+        (None, "{"),
+        ("T_RETURN", "return"),
+        (None, ";"),
+        (None, "}"),
+    ]
+
+
+def lifecycle_dispatch_sequence() -> list[tuple[str | None, str]]:
+    return [
+        ("T_IF", "if"),
+        (None, "("),
+        ("T_STRING", "method_exists"),
+        (None, "("),
+        ("T_VARIABLE", "$component"),
+        (None, ","),
+        ("T_CONSTANT_ENCAPSED_STRING", "'register'"),
+        (None, ")"),
+        (None, ")"),
+        (None, "{"),
+        ("T_VARIABLE", "$component"),
+        ("T_OBJECT_OPERATOR", "->"),
+        ("T_STRING", "register"),
+        (None, "("),
+        (None, ")"),
+        (None, ";"),
+        (None, "}"),
+    ]
+
+
+def lifecycle_dispatch_header() -> list[tuple[str | None, str]]:
+    return [
+        ("T_FOREACH", "foreach"),
+        (None, "("),
+        ("T_VARIABLE", "$this"),
+        ("T_OBJECT_OPERATOR", "->"),
+        ("T_STRING", "components"),
+        ("T_AS", "as"),
+        ("T_VARIABLE", "$component"),
+        (None, ")"),
+        (None, "{"),
+    ]
 
 
 def validate_assembled_bootstrap(
@@ -449,9 +558,22 @@ def validate_assembled_bootstrap(
     if len(import_lines) != len(set(line.strip() for line in import_lines)):
         fail("Duplicate import lines exist in includes/Plugin.php.")
     integration_imports, integration_registrations = patch_integration_markers(patch_text)
+    plugin_tokens = significant_php_tokens(php_tokens(plugin_class, "integration import declarations"))
     for line in integration_imports:
         if sum(existing.strip() == line for existing in import_lines) != 1:
             fail(f"Integration lifecycle import must appear exactly once: {line}")
+        match = re.fullmatch(
+            r"use\s+Voelgoed\\PlatformCore\\(?:Taxonomy|Event|Product)\\[A-Za-z_][A-Za-z0-9_]*;",
+            line,
+        )
+        if match is None:
+            fail(f"Integration lifecycle import has an unsupported form: {line}")
+        source_position = plugin_class.encode("utf-8").find(line.encode("utf-8"))
+        if source_position < 0 or not any(
+            token_start == source_position and token_name == "T_USE" and token_text == "use"
+            for token_name, token_text, token_start, _ in plugin_tokens
+        ):
+            fail(f"Integration lifecycle import must be an executable PHP use statement: {line}")
 
     register_method_match = re.search(
         r"\bpublic\s+function\s+register\s*\(\s*\)\s*:\s*void\s*\{",
@@ -468,30 +590,46 @@ def validate_assembled_bootstrap(
     if next_method_match is None:
         fail("Cannot identify the end of Plugin::register() for lifecycle validation.")
     register_method_body = register_method_tail[:next_method_match.start()]
-    lifecycle_loop = re.search(
-        r"^\s*foreach\s*\(\s*\$this->components\s+as\s+\$component\s*\)\s*\{",
-        register_method_body,
-        re.M,
-    )
-    if lifecycle_loop is None:
+    method_tokens = significant_php_tokens(php_tokens(register_method_body, "Plugin::register() structure"))
+    guard = method_guard_sequence()
+    if not token_matches(method_tokens, 0, guard):
+        fail("Plugin::register() is missing its expected idempotency guard.")
+    dispatch_header = lifecycle_dispatch_header()
+    loop_candidates = [
+        index
+        for index in range(len(method_tokens))
+        if token_matches(method_tokens, index, dispatch_header)
+    ]
+    if len(loop_candidates) != 1:
         fail("Plugin::register() has no component lifecycle dispatch loop.")
-
-    lifecycle_setup = register_method_body[:lifecycle_loop.start()]
-    idempotency_guard = re.compile(
-        r"if\s*\(\s*\$this->registered\s*\)\s*\{\s*return\s*;\s*\}",
-        re.S,
-    )
-    lifecycle_setup = idempotency_guard.sub("", lifecycle_setup, count=1)
-    if re.search(r"\b(?:return|throw|exit|die)\b", lifecycle_setup):
+    loop_index = loop_candidates[0]
+    before_loop = method_tokens[len(guard):loop_index]
+    if any(token_name in PHP_CONTROL_TOKENS for token_name, _, _, _ in before_loop):
+        fail("Lifecycle registrations and the component dispatch loop must execute unconditionally.")
+    if any(token_name in {"T_RETURN", "T_THROW", "T_EXIT"} for token_name, _, _, _ in before_loop):
         fail("Plugin::register() can exit before lifecycle registrations are dispatched.")
+    loop_first_statement, loop_brace_depth = is_first_statement_token(method_tokens, loop_index)
+    if loop_brace_depth != 0 or not loop_first_statement:
+        fail("The component dispatch loop must execute unconditionally as a direct statement.")
 
-    registration_contexts = php_registration_contexts(register_method_body, integration_registrations)
-    for line, (brace_depth, pending_control) in registration_contexts.items():
-        if brace_depth != 0 or pending_control:
-            fail(
-                "Integration lifecycle registrations must be unconditional direct statements "
-                f"in Plugin::register(): {line}"
-            )
+    loop_open_index = loop_index + len(dispatch_header) - 1
+    body_depth = 1
+    loop_close_index = None
+    for index in range(loop_open_index + 1, len(method_tokens)):
+        if method_tokens[index][1] == "{":
+            body_depth += 1
+        elif method_tokens[index][1] == "}":
+            body_depth -= 1
+            if body_depth == 0:
+                loop_close_index = index
+                break
+    if loop_close_index is None:
+        fail("The component dispatch loop has no matching closing brace.")
+    if [
+        (token_name, token_text)
+        for token_name, token_text, _, _ in method_tokens[loop_open_index + 1:loop_close_index]
+    ] != lifecycle_dispatch_sequence():
+        fail("The component dispatch loop must invoke component register() behind method_exists().")
 
     registration_pattern = re.compile(
         r"register_component\s*\(\s*'([^']+)'\s*,\s*([A-Za-z_\\][A-Za-z0-9_\\]*)::class",
@@ -502,11 +640,35 @@ def validate_assembled_bootstrap(
     classes = [class_name for _, class_name in registrations]
     if len(keys) != len(set(keys)) or len(classes) != len(set(classes)):
         fail("Duplicate lifecycle registration keys or classes exist in includes/Plugin.php.")
+    body_tokens = significant_php_tokens(php_tokens(register_method_body, "integration lifecycle registrations"))
+    body_bytes = register_method_body.encode("utf-8")
     for line in integration_registrations:
         if sum(existing.strip() == line for existing in plugin_class.splitlines()) != 1:
             fail(f"Integration lifecycle registration must appear exactly once: {line}")
-        position = register_method_body.find(line)
-        if position < 0 or position >= lifecycle_loop.start():
+        if re.fullmatch(
+            r"\$this->register_component\('[a-z0-9_]+',\s*[A-Za-z_\\][A-Za-z0-9_\\]*::class\);",
+            line,
+        ) is None:
+            fail(f"Integration lifecycle registrations must be unconditional direct statements: {line}")
+        position = body_bytes.find(line.encode("utf-8"))
+        target = position if position >= 0 else -1
+        token_index = next(
+            (
+                index
+                for index, (token_name, token_text, token_start, _) in enumerate(body_tokens)
+                if token_name == "T_VARIABLE" and token_text == "$this" and token_start == target
+            ),
+            None,
+        )
+        if token_index is None:
+            fail(f"Integration lifecycle registration must be executable PHP code: {line}")
+        first_statement, brace_depth = is_first_statement_token(body_tokens, token_index)
+        if not first_statement or brace_depth != 0:
+            fail(
+                "Integration lifecycle registrations must be unconditional direct statements "
+                f"in Plugin::register(): {line}"
+            )
+        if token_index >= loop_index:
             fail(
                 "Integration lifecycle registration must execute in Plugin::register() "
                 f"before component dispatch: {line}"
