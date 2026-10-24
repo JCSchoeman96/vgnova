@@ -195,27 +195,57 @@ $tests = [
         editorial_dimensions_test_assert_same(1, (int) ($collection['save_terms'] ?? 0), 'Collection selections must save taxonomy relationships.');
         editorial_dimensions_test_assert_same(1, (int) ($collection['load_terms'] ?? 0), 'Collection selections must load taxonomy relationships.');
     },
-    'the shared source contains the approved Event, editorial, Person, and Product Contribution ACF definitions' => static function (): void {
+    'the shared source contains exactly the Editorial-owned ACF definitions' => static function (): void {
         $files = glob(dirname(__DIR__, 2) . '/acf-json/*.json') ?: [];
-        $actual = array_map('basename', $files);
+        $actual = [];
+
+        foreach ($files as $file) {
+            $filename = basename($file);
+            $schema = json_decode((string) file_get_contents($file), true);
+            $schema = is_array($schema) ? $schema : [];
+            $schema_key = (string) ($schema['key'] ?? '');
+            $taxonomy = (string) ($schema['taxonomy'] ?? '');
+            $editorial_field_names = ['editorial_format', 'editorial_collection'];
+            $has_editorial_field = false;
+            $fields = is_array($schema['fields'] ?? null) ? $schema['fields'] : [];
+
+            foreach ($fields as $field) {
+                if (! is_array($field)) {
+                    continue;
+                }
+
+                $field_name = (string) ($field['name'] ?? '');
+                $field_taxonomy = (string) ($field['taxonomy'] ?? '');
+
+                if (in_array($field_name, $editorial_field_names, true) || str_starts_with($field_taxonomy, 'editorial_')) {
+                    $has_editorial_field = true;
+                    break;
+                }
+            }
+
+            $is_editorial_definition = str_starts_with($filename, 'group_vg_editorial_')
+                || str_starts_with($filename, 'post_type_editorial_')
+                || str_starts_with($filename, 'taxonomy_editorial_')
+                || str_starts_with($schema_key, 'group_vg_editorial_')
+                || str_starts_with($schema_key, 'post_type_editorial_')
+                || str_starts_with($schema_key, 'taxonomy_editorial_')
+                || str_starts_with($taxonomy, 'editorial_')
+                || $has_editorial_field;
+
+            if ($is_editorial_definition) {
+                $actual[] = $filename;
+            }
+        }
+
         sort($actual);
         $expected = [
-            'group_vg_event_participation_details.json',
-            'group_vg_person_details.json',
             'group_vg_editorial_classification.json',
-            'group_vg_product_contribution_details.json',
-            'post_type_event_participation.json',
-            'post_type_product_contribution.json',
             'taxonomy_editorial_collection.json',
-            'taxonomy_event_role.json',
             'taxonomy_editorial_format.json',
-            'taxonomy_person_type.json',
-            'taxonomy_product_role.json',
-            'post_type_person.json',
         ];
         sort($expected);
 
-        editorial_dimensions_test_assert_same($expected, $actual, 'The shared ACF JSON directory must contain exactly the approved source definitions.');
+        editorial_dimensions_test_assert_same($expected, $actual, 'Editorial Dimensions must own exactly the approved Editorial ACF definitions.');
     },
     'seeds only the three approved format terms and assigns no posts' => static function (): void {
         editorial_dimensions_test_reset();
