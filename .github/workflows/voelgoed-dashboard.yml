@@ -33,13 +33,23 @@ jobs:
         working-directory: voelgoed-platform-core
         run: ./bin/check.sh
 
-      - name: Check pull request patch whitespace
-        if: ${{ github.event_name == 'pull_request' }}
-        run: git diff --check "${{ github.event.pull_request.base.sha }}...${{ github.event.pull_request.head.sha }}"
-
-      - name: Check push patch whitespace
-        if: ${{ github.event_name == 'push' }}
-        run: git diff --check "${{ github.event.before }}...${{ github.sha }}"
+      - name: Check event patch whitespace
+        if: ${{ always() }}
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PUSH_BEFORE_SHA: ${{ github.event.before }}
+          EVENT_SHA: ${{ github.sha }}
+        run: |
+          if [[ "$EVENT_NAME" == pull_request ]]; then
+            git diff --check "$PR_BASE_SHA...$PR_HEAD_SHA"
+          elif [[ "$EVENT_NAME" == push ]]; then
+            git diff --check "$PUSH_BEFORE_SHA...$EVENT_SHA"
+          else
+            printf 'Unsupported event: %s\n' "$EVENT_NAME" >&2
+            exit 1
+          fi
 
   source:
     name: Canonical source checks

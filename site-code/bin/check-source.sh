@@ -24,7 +24,7 @@ mapfile -d '' tracked_files < "$tracked_inventory"
 php_files=()
 json_files=()
 python_files=()
-shell_files=(site-code/bin/check-source.sh)
+shell_files=()
 
 for file in "${tracked_files[@]}"; do
   case "$file" in
@@ -32,6 +32,16 @@ for file in "${tracked_files[@]}"; do
     *.json) json_files+=("$file") ;;
     *.py) python_files+=("$file") ;;
     *.sh|*.bash) shell_files+=("$file") ;;
+    *)
+      filename="${file##*/}"
+      if [[ "$filename" != *.* && -f "$file" ]]; then
+        first_line=''
+        IFS= read -r first_line < "$file" || true
+        if [[ "$first_line" =~ ^\#\!.*(/|[[:space:]])(ba)?sh([[:space:]]|$) ]]; then
+          shell_files+=("$file")
+        fi
+      fi
+      ;;
   esac
 done
 
