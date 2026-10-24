@@ -900,6 +900,74 @@ def run_negative_cases(
             expected_text="component collection cannot be reset after lifecycle registration",
         )
 
+    for case_name, statement in (
+        (
+            "replace-registered-component-before-dispatch",
+            "$this->components['content_topic_taxonomy'] = new \\stdClass();",
+        ),
+        ("splice-components-before-dispatch", "array_splice($this->components, 0);"),
+    ):
+        fixture = create_fixture(repo_root, commit, cases / case_name)
+        plugin_class = fixture / ROOT_PLUGIN / "includes/Plugin.php"
+        plugin_text = plugin_class.read_text(encoding="utf-8")
+        dispatch = "        foreach ($this->components as $component) {"
+        if plugin_text.count(dispatch) != 1:
+            raise CheckFailure(f"Cannot prepare {case_name} fixture.")
+        plugin_class.write_text(
+            plugin_text.replace(dispatch, f"        {statement}\n\n{dispatch}", 1),
+            encoding="utf-8",
+        )
+        commit_fixture_changes(fixture, f"fixture: {case_name}")
+        expect_build_failure(
+            label=f"component mutation is rejected ({case_name})",
+            builder=builder,
+            fixture=fixture,
+            ref="HEAD",
+            output=cases / f"{case_name}-output",
+            expected_text="component collection cannot be accessed after lifecycle registration",
+        )
+
+    fixture = create_fixture(repo_root, commit, cases / "component-registration-helper-returns")
+    plugin_class = fixture / ROOT_PLUGIN / "includes/Plugin.php"
+    plugin_text = plugin_class.read_text(encoding="utf-8")
+    helper_start = "    private function register_component(string $key, string $class, array $constructor_args = []): void\n    {"
+    if plugin_text.count(helper_start) != 1:
+        raise CheckFailure("Cannot prepare register_component early-return fixture.")
+    plugin_class.write_text(
+        plugin_text.replace(helper_start, helper_start + "\n        return;", 1),
+        encoding="utf-8",
+    )
+    commit_fixture_changes(fixture, "fixture: return before component registration")
+    expect_build_failure(
+        label="register_component helper cannot return before insertion",
+        builder=builder,
+        fixture=fixture,
+        ref="HEAD",
+        output=cases / "component-registration-helper-returns-output",
+        expected_text="register_component() implementation",
+    )
+
+    fixture = create_fixture(repo_root, commit, cases / "missing-plugins-loaded-hook")
+    entrypoint = fixture / ROOT_PLUGIN / "voelgoed-platform-core.php"
+    entrypoint_text = entrypoint.read_text(encoding="utf-8")
+    lifecycle_hook = (
+        "add_action('plugins_loaded', static function (): void {\n"
+        "    (new Plugin())->register();\n"
+        "}, 20);\n"
+    )
+    if entrypoint_text.count(lifecycle_hook) != 1:
+        raise CheckFailure("Cannot prepare missing plugins_loaded hook fixture.")
+    entrypoint.write_text(entrypoint_text.replace(lifecycle_hook, "", 1), encoding="utf-8")
+    commit_fixture_changes(fixture, "fixture: remove Platform Core lifecycle hook")
+    expect_build_failure(
+        label="plugins_loaded hook must dispatch the assembled plugin",
+        builder=builder,
+        fixture=fixture,
+        ref="HEAD",
+        output=cases / "missing-plugins-loaded-hook-output",
+        expected_text="plugins_loaded lifecycle callback",
+    )
+
     fixture = create_fixture(repo_root, commit, cases / "binary-patch-path")
     overlay = fixture / "site-code/voelgoed-platform-core/includes/Product/ProductRoleVocabulary.php"
     patch_file = fixture / PATCH_PATH
