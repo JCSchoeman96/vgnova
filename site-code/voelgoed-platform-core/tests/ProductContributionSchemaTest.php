@@ -28,7 +28,7 @@ final class ProductContributionSchemaTest
         vgpc_test_same('no_permalink', $post_type['rewrite']['permalink_rewrite'] ?? null, 'Product Contribution must not have a public permalink route.');
         vgpc_test_same('', $post_type['rewrite']['slug'] ?? null, 'Product Contribution must not define a rewrite slug.');
         vgpc_test_same(false, $post_type['rewrite']['with_front'] ?? null, 'Product Contribution rewrites must not use the site permalink front.');
-        vgpc_test_same(false, $post_type['query_var'] ?? null, 'Product Contribution must not register a query var.');
+        vgpc_test_same('none', $post_type['query_var'] ?? null, 'Product Contribution must use ACF\'s disabled-query-var sentinel.');
         vgpc_test_same('', $post_type['query_var_name'] ?? null, 'Product Contribution must not define a query variable name.');
         vgpc_test_same(false, $post_type['show_in_graphql'] ?? null, 'Product Contribution must not register a GraphQL route.');
         vgpc_test_same(['title'], $post_type['supports'] ?? null, 'Product Contribution must support the title only.');
