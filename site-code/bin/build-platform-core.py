@@ -489,7 +489,15 @@ def apply_patch(staging_root: Path, patch_path: Path, patch_text: str) -> None:
     git_environment = os.environ.copy()
     git_environment["GIT_NO_REPLACE_OBJECTS"] = "1"
     check = subprocess.run(
-        ["git", "apply", "--unidiff-zero", "--check", f"--directory={ROOT_PATH}", str(patch_path)],
+        [
+            "git",
+            "apply",
+            "--unidiff-zero",
+            "--whitespace=nowarn",
+            "--check",
+            f"--directory={ROOT_PATH}",
+            str(patch_path),
+        ],
         cwd=staging_root,
         env=git_environment,
         stdout=subprocess.PIPE,
@@ -499,7 +507,14 @@ def apply_patch(staging_root: Path, patch_path: Path, patch_text: str) -> None:
     if check.returncode != 0:
         fail("integration.patch failed git apply --check:\n" + check.stderr.decode("utf-8", "replace"))
     applied = subprocess.run(
-        ["git", "apply", "--unidiff-zero", f"--directory={ROOT_PATH}", str(patch_path)],
+        [
+            "git",
+            "apply",
+            "--unidiff-zero",
+            "--whitespace=nowarn",
+            f"--directory={ROOT_PATH}",
+            str(patch_path),
+        ],
         cwd=staging_root,
         env=git_environment,
         stdout=subprocess.PIPE,

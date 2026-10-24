@@ -71,10 +71,12 @@ def command(
     cwd: Path,
     input_bytes: bytes | None = None,
     check: bool = True,
+    env: dict[str, str] | None = None,
 ) -> subprocess.CompletedProcess[bytes]:
-    environment = None
+    environment = env.copy() if env is not None else None
     if args and args[0] == "git":
-        environment = os.environ.copy()
+        if environment is None:
+            environment = os.environ.copy()
         environment["GIT_NO_REPLACE_OBJECTS"] = "1"
     result = subprocess.run(
         args,
@@ -443,21 +445,46 @@ def validate_manifest(
         raise CheckFailure("Manifest files are not sorted by UTF-8 path bytes.")
 
 
-def git_regular_file_modes(repo_root: Path, commit: str, pathspecs: tuple[str, ...]) -> dict[str, str]:
+def git_tree_blobs(
+    repo_root: Path,
+    commit: str,
+    pathspecs: tuple[str, ...],
+) -> list[tuple[str, str, str]]:
     listing = command(
         ["git", "ls-tree", "-r", "-z", "--full-tree", commit, "--", *pathspecs],
         cwd=repo_root,
     )
-    modes: dict[str, str] = {}
+    entries: list[tuple[str, str, str]] = []
     for record in listing.stdout.split(b"\0"):
         if not record:
             continue
         metadata, raw_path = record.split(b"\t", 1)
-        mode_bytes, object_type, _object_id = metadata.split(b" ", 2)
+        mode_bytes, object_type, object_id = metadata.split(b" ", 2)
         path = raw_path.decode("utf-8", "strict")
         mode = mode_bytes.decode("ascii", "strict")
         if object_type != b"blob" or mode not in ("100644", "100755"):
             raise CheckFailure(f"Expected assembly input has an unsupported Git entry: {mode} {path}")
+        entries.append((path, mode, object_id.decode("ascii", "strict")))
+    return entries
+
+
+def materialize_git_blobs(
+    repo_root: Path,
+    commit: str,
+    pathspecs: tuple[str, ...],
+    destination: Path,
+) -> dict[str, str]:
+    destination.mkdir(parents=True, exist_ok=False)
+    modes: dict[str, str] = {}
+    for path, mode, object_id in git_tree_blobs(repo_root, commit, pathspecs):
+        relative_path = safe_member_name(path)
+        target = destination.joinpath(*relative_path.parts)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        if target.exists() or target.is_symlink():
+            raise CheckFailure(f"Duplicate or unsafe Git source path while materializing commit: {path}")
+        contents = command(["git", "cat-file", "blob", object_id], cwd=repo_root).stdout
+        target.write_bytes(contents)
+        target.chmod(0o755 if mode == "100755" else 0o644)
         modes[path] = mode
     return modes
 
@@ -467,9 +494,14 @@ def expected_assembled_inventory_from_git(
     commit: str,
     destination: Path,
 ) -> list[dict[str, Any]]:
-    fixture = create_fixture(repo_root, commit, destination)
+    fixture = destination
+    source_modes = materialize_git_blobs(
+        repo_root,
+        commit,
+        (ROOT_PLUGIN, *OVERLAY_PATHS, PATCH_PATH),
+        fixture,
+    )
     plugin_root = fixture / ROOT_PLUGIN
-    source_modes = git_regular_file_modes(fixture, "HEAD", (ROOT_PLUGIN, *OVERLAY_PATHS))
     runtime_modes = {
         source_path[len(ROOT_PLUGIN) + 1 :]: mode
         for source_path, mode in source_modes.items()
@@ -484,7 +516,7 @@ def expected_assembled_inventory_from_git(
     for overlay_path in OVERLAY_PATHS:
         source_root = fixture / overlay_path
         if not source_root.is_dir() or source_root.is_symlink():
-            raise CheckFailure(f"Canonical overlay directory is missing from the Git archive: {overlay_path}")
+            raise CheckFailure(f"Canonical overlay directory is missing from the requested Git commit: {overlay_path}")
         overlay_sources = sorted(
             (path for path in source_root.rglob("*") if path.is_file() or path.is_symlink()),
             key=lambda path: path.relative_to(source_root).as_posix().encode("utf-8"),
@@ -507,10 +539,32 @@ def expected_assembled_inventory_from_git(
             destination_path.chmod(0o755 if git_mode == "100755" else 0o644)
 
     patch_path = fixture / PATCH_PATH
-    command(
-        ["git", "apply", "--unidiff-zero", f"--directory={ROOT_PLUGIN}", str(patch_path)],
+    patch_bytes = patch_path.read_bytes()
+    patch_args = [
+        "git",
+        "apply",
+        "--unidiff-zero",
+        "--whitespace=nowarn",
+        f"--directory={ROOT_PLUGIN}",
+        "-",
+    ]
+    checked_patch = command(
+        [*patch_args[:-1], "--check", patch_args[-1]],
         cwd=fixture,
+        input_bytes=patch_bytes,
+        check=False,
     )
+    if checked_patch.returncode != 0:
+        raise CheckFailure(
+            "Committed integration.patch cannot be applied to its exact committed source:\n"
+            + checked_patch.stderr.decode("utf-8", "replace")
+        )
+    applied_patch = command(patch_args, cwd=fixture, input_bytes=patch_bytes, check=False)
+    if applied_patch.returncode != 0:
+        raise CheckFailure(
+            "Committed integration.patch failed to apply to its exact committed source:\n"
+            + applied_patch.stderr.decode("utf-8", "replace")
+        )
 
     expected = []
     for path in plugin_root.rglob("*"):
@@ -603,36 +657,12 @@ def verify_existing_output(
     return manifest
 
 
-def extract_fixture_archive(archive_bytes: bytes, destination: Path) -> None:
-    with tarfile.open(fileobj=io.BytesIO(archive_bytes), mode="r:") as archive:
-        for member in archive.getmembers():
-            path = safe_member_name(member.name)
-            target = destination.joinpath(*path.parts)
-            if member.isdir():
-                target.mkdir(parents=True, exist_ok=True)
-                target.chmod(0o755)
-            elif member.isfile():
-                target.parent.mkdir(parents=True, exist_ok=True)
-                stream = archive.extractfile(member)
-                if stream is None:
-                    raise CheckFailure(f"Cannot read fixture input: {member.name}")
-                target.write_bytes(stream.read())
-                target.chmod(member.mode & 0o777)
-            else:
-                raise CheckFailure(f"Source archive contains unsupported entry: {member.name}")
-
-
 def create_fixture(repo_root: Path, commit: str, destination: Path) -> Path:
-    destination.mkdir(parents=True)
-    archive = command(
-        ["git", "archive", "--format=tar", commit, "--", *FIXTURE_PATHS],
-        cwd=repo_root,
-    )
-    extract_fixture_archive(archive.stdout, destination)
+    materialize_git_blobs(repo_root, commit, FIXTURE_PATHS, destination)
     command(["git", "init", "--quiet"], cwd=destination)
     command(["git", "config", "user.name", "PE-005 verifier"], cwd=destination)
     command(["git", "config", "user.email", "pe005-verifier@example.invalid"], cwd=destination)
-    command(["git", "add", "--all"], cwd=destination)
+    command(["git", "add", "--all", "--force"], cwd=destination)
     fixture_environment = {
         **os.environ,
         "GIT_AUTHOR_DATE": "2026-10-24T00:00:00+00:00",
@@ -657,6 +687,7 @@ def run_builder(
     ref: str,
     output: Path,
     requested_ref: str | None = None,
+    env: dict[str, str] | None = None,
 ) -> subprocess.CompletedProcess[bytes]:
     args = [sys.executable, str(builder), "--ref", ref, "--output", str(output)]
     if requested_ref is not None:
@@ -665,6 +696,7 @@ def run_builder(
         args,
         cwd=repo_root,
         check=False,
+        env=env,
     )
 
 
@@ -764,14 +796,19 @@ def rewrite_archive(
     *,
     extra_directory: str | None = None,
     rename_first_file: str | None = None,
+    omit_file: str | None = None,
     pax_headers: dict[str, str] | None = None,
 ) -> str | None:
     directories: list[tarfile.TarInfo] = []
     files: list[tuple[tarfile.TarInfo, bytes]] = []
     renamed_to: str | None = None
+    omitted_file = False
     pax_headers_added = False
     with tarfile.open(source_archive, mode="r:gz") as source:
         for member in source.getmembers():
+            if omit_file is not None and member.name == omit_file:
+                omitted_file = True
+                continue
             info = tarfile.TarInfo(member.name)
             info.type = member.type
             info.mode = member.mode
@@ -796,6 +833,9 @@ def rewrite_archive(
                 renamed_to = rename_first_file
             info.size = len(contents)
             files.append((info, contents))
+
+    if omit_file is not None and not omitted_file:
+        raise CheckFailure(f"Cannot prepare archive omission fixture for missing file: {omit_file}")
 
     if extra_directory is not None:
         info = tarfile.TarInfo(extra_directory)
@@ -2288,6 +2328,75 @@ def run_exact_output_verification_cases(
         raise CheckFailure(f"Exact-output verifier accepted source-divergent archive bytes:\n{combined}")
     print("PASS negative case: self-consistent archive and manifest cannot diverge from committed source")
 
+    attribute_divergent = temporary_root / "exact-output-export-ignored-source"
+    shutil.copytree(verified_output, attribute_divergent)
+    attribute_archive = attribute_divergent / ARCHIVE_NAME
+    omitted_member = f"{ROOT_PLUGIN}/includes/Event/EventParticipationPairLock.php"
+    rewrite_archive(
+        verified_output / ARCHIVE_NAME,
+        attribute_archive,
+        omit_file=omitted_member,
+    )
+    attribute_manifest_path = attribute_divergent / MANIFEST_NAME
+    attribute_manifest = json.loads(attribute_manifest_path.read_text(encoding="utf-8"))
+    attribute_records = []
+    with tarfile.open(attribute_archive, mode="r:gz") as archive:
+        for member in archive.getmembers():
+            if not member.isfile():
+                continue
+            stream = archive.extractfile(member)
+            if stream is None:
+                raise CheckFailure(f"Cannot read export-ignore fixture member: {member.name}")
+            contents = stream.read()
+            relative_path = PurePosixPath(member.name).relative_to(ROOT_PLUGIN).as_posix()
+            attribute_records.append(
+                {
+                    "path": relative_path,
+                    "mode": "100755" if member.mode == 0o755 else "100644",
+                    "size": len(contents),
+                    "sha256": sha256(contents),
+                }
+            )
+    attribute_records.sort(key=lambda item: item["path"].encode("utf-8"))
+    attribute_manifest["files"] = attribute_records
+    attribute_manifest["file_count"] = len(attribute_records)
+    attribute_manifest["tree_sha256"] = update_tree_hash(attribute_records)
+    attribute_manifest["archive_sha256"] = sha256(attribute_archive.read_bytes())
+    attribute_manifest_path.write_bytes(canonical_manifest_bytes(attribute_manifest))
+    attribute_file = temporary_root / "external-git-attributes"
+    attribute_file.write_text(
+        "site-code/voelgoed-platform-core/includes/Event/EventParticipationPairLock.php export-ignore\n",
+        encoding="utf-8",
+    )
+    attribute_env = os.environ.copy()
+    attribute_env.update(
+        {
+            "GIT_CONFIG_COUNT": "1",
+            "GIT_CONFIG_KEY_0": "core.attributesFile",
+            "GIT_CONFIG_VALUE_0": str(attribute_file),
+        }
+    )
+    rejected = command(
+        [
+            sys.executable,
+            str(verifier),
+            "--ref",
+            requested_ref,
+            "--verify-output",
+            str(attribute_divergent),
+        ],
+        cwd=repo_root,
+        check=False,
+        env=attribute_env,
+    )
+    combined = (rejected.stdout + rejected.stderr).decode("utf-8", "replace")
+    if rejected.returncode == 0 or expected_failure not in combined.lower():
+        raise CheckFailure(
+            "Exact-output verifier accepted a source-divergent artifact while external export-ignore attributes were configured:\n"
+            + combined
+        )
+    print("PASS negative case: external Git export-ignore attributes cannot hide committed source from verification")
+
     extra_manifest_field = temporary_root / "exact-output-extra-manifest-field"
     shutil.copytree(verified_output, extra_manifest_field)
     extra_manifest_path = extra_manifest_field / MANIFEST_NAME
@@ -2310,6 +2419,50 @@ def run_exact_output_verification_cases(
     if rejected.returncode == 0 or "unexpected=['build_host']" not in combined:
         raise CheckFailure(f"Exact-output verifier accepted an unrecognized manifest field:\n{combined}")
     print("PASS negative case: exact-output verification rejects non-schema provenance fields")
+
+
+def run_git_whitespace_reproducibility_case(
+    *,
+    builder: Path,
+    repo_root: Path,
+    commit: str,
+    requested_ref: str,
+    expected_output: Path,
+    temporary_root: Path,
+) -> None:
+    configured_output = temporary_root / "git-whitespace-configured-build"
+    configured_env = os.environ.copy()
+    configured_env.update(
+        {
+            "GIT_CONFIG_COUNT": "2",
+            "GIT_CONFIG_KEY_0": "apply.whitespace",
+            "GIT_CONFIG_VALUE_0": "fix",
+            "GIT_CONFIG_KEY_1": "core.whitespace",
+            "GIT_CONFIG_VALUE_1": "indent-with-non-tab",
+        }
+    )
+    result = run_builder(
+        builder,
+        repo_root,
+        commit,
+        configured_output,
+        requested_ref=requested_ref,
+        env=configured_env,
+    )
+    if result.returncode != 0:
+        raise CheckFailure(
+            "Builder failed under Git whitespace configuration instead of preserving canonical patch bytes:\n"
+            + (result.stdout + result.stderr).decode("utf-8", "replace")
+        )
+    expected_archive = (expected_output / ARCHIVE_NAME).read_bytes()
+    actual_archive = (configured_output / ARCHIVE_NAME).read_bytes()
+    expected_manifest = (expected_output / MANIFEST_NAME).read_bytes()
+    actual_manifest = (configured_output / MANIFEST_NAME).read_bytes()
+    if actual_archive != expected_archive or actual_manifest != expected_manifest:
+        raise CheckFailure(
+            "Git apply whitespace configuration changed canonical Platform Core artifact or manifest bytes."
+        )
+    print("PASS reproducibility case: Git whitespace configuration cannot change canonical artifact bytes")
 
 
 def parse_args() -> argparse.Namespace:
@@ -2438,6 +2591,14 @@ def main() -> int:
             commit=commit,
             requested_ref=args.ref,
             verified_output=build_a,
+            temporary_root=temporary_root,
+        )
+        run_git_whitespace_reproducibility_case(
+            builder=builder,
+            repo_root=repo_root,
+            commit=commit,
+            requested_ref=args.ref,
+            expected_output=build_a,
             temporary_root=temporary_root,
         )
 

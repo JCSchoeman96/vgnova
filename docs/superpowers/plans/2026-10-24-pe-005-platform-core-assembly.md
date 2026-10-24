@@ -98,6 +98,7 @@
 - [ ] Push `chore/pe-005-platform-core-assembly` and open a focused PR titled `build: add deterministic Platform Core assembly`.
 - [ ] Link the PR to this thread immediately. Verify the PR head equals the pushed commit and the base equals the current `main` SHA.
 - [ ] Confirm `Dashboard checks`, `Canonical source checks`, and `VG Nova Platform Gate` succeed on the exact PR head, and inspect logs for the reproducibility verifier.
+- [x] Keep source-bound verification independent of external Git attributes by reading exact tree/blob objects, and lock patch application against Git whitespace configuration. The verifier rejects a self-consistent archive missing `EventParticipationPairLock.php` even when external `export-ignore` is set; builds remain byte-identical under `apply.whitespace=fix` and `core.whitespace=indent-with-non-tab`.
 - [ ] Stop with the PR open and unmerged.
 
 ## PE-005A: close canonical archive verification gaps
