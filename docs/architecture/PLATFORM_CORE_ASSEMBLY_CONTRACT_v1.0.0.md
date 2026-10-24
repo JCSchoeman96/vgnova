@@ -37,13 +37,13 @@ After application, the builder:
 1. Enumerates the tracked runtime PHP files under the three overlay directories from the resolved Git tree.
 2. Parses the plugin entrypoint's include list and requires each enumerated overlay PHP path exactly once.
 3. Requires every entrypoint include path to name an existing assembled file and rejects duplicate paths.
-4. Rejects duplicate integration-owned imports and lifecycle registrations. Each registration must resolve to one class declared in an overlaid module file.
+4. Rejects duplicate integration-owned imports and lifecycle registrations. Each registration must resolve to one class declared in an overlaid module file and occur inside `Plugin::register()` before the component dispatch loop. The setup region must not exit before that loop.
 5. Leaves lifecycle ownership to the tracked patch and existing subsystem integration tests. It does not infer lifecycle status from the total number of PHP files or hard-code historical module counts.
 6. Lints every assembled PHP file with the PHP 8.5 CLI. A different PHP major/minor version or any syntax error fails the build.
 
 ## Artifact layout
 
-The requested output directory must not already exist. The builder stages all work in a temporary sibling directory, completes validation, then atomically renames the completed output directory into place. A failed build leaves no partial output. It does not overwrite a file, symlink, empty directory, or non-empty directory supplied as the output path.
+The requested output directory must not already exist. The builder stages all work in a temporary sibling directory, completes validation, then publishes it with Linux `renameat2(RENAME_NOREPLACE)`. The no-replace operation prevents a destination created during assembly from being overwritten. Hosts without this syscall fail closed. A failed build leaves no partial output. It does not overwrite a file, symlink, empty directory, or non-empty directory supplied as the output path.
 
 The output contains exactly:
 
@@ -59,11 +59,11 @@ The gzip tar archive contains one top-level directory, `voelgoed-platform-core/`
 
 The tar writer uses POSIX PAX format and a fixed, documented ordering: the root directory first, other directories sorted by UTF-8 path bytes, then files sorted by UTF-8 path bytes. Every tar entry has mtime `0`, uid/gid `0`, empty user/group names, and normalized directory mode `0755`.
 
-Regular-file modes come from Git. Git mode `100755` becomes archive mode `0755`; `100644` becomes `0644`. Other file modes fail. Gzip uses an empty original filename, mtime `0`, and compression level `9`. No host timestamp, username, absolute path, umask, or machine-specific field enters the archive.
+Regular-file modes come from Git. Git mode `100755` becomes archive mode `0755`; `100644` becomes `0644`. Other file modes fail. Gzip uses an empty original filename, mtime `0`, and compression level `9`. Its first ten header bytes are fixed to `1f 8b 08 00 00 00 00 00 02 ff`: deflate method, no optional fields, zero timestamp, maximum-compression hint, and unknown OS. No host timestamp, username, absolute path, umask, or machine-specific field enters the archive.
 
 ## Manifest schema version 1
 
-The UTF-8 JSON manifest uses stable key ordering and a final newline. `files` is sorted by bytewise UTF-8 order of normalized `/` relative paths within the plugin root. Paths must be valid UTF-8 and cannot contain CR or LF. They contain no absolute paths or `..` components.
+The UTF-8 JSON manifest uses stable key ordering and a final newline. `files` is sorted by bytewise UTF-8 order of normalized `/` relative paths within the plugin root. Paths must be valid UTF-8 normalized relative POSIX paths, cannot contain CR or LF or backslashes, and contain no absolute paths or `..` components.
 
 Required fields:
 
@@ -129,9 +129,9 @@ The manifest itself is outside the plugin tree and cannot recursively contribute
 - archive SHA-256 and byte-for-byte archive contents;
 - parsed manifest content.
 
-It inspects the tar without extracting unsafe paths, requires exactly one top-level plugin directory and only directory/regular-file entries, and independently recomputes the manifest inventory, tree hash, and archive hash. A changed archive file fails verification even if an attacker updates the manifest's `archive_sha256`, because the per-file digest and tree digest must still match.
+It inspects the tar without extracting unsafe paths, requires exactly one top-level plugin directory and only directory/regular-file entries, and independently recomputes the manifest inventory, implied directory set, tree hash, and archive hash. It rejects unmanifested empty directories, invalid paths, and non-normalized gzip header fields. A changed archive file fails verification even if an attacker updates the manifest's `archive_sha256`, because the per-file digest and tree digest must still match.
 
-Negative fixtures use temporary Git repositories made from committed assembly inputs. They prove failure for a non-applying patch, an already-integrated base bootstrap, a missing overlay PHP file, a patch include to a missing file, duplicate integration bootstrap entries, an existing non-empty output destination, and a modified artifact. The verifier checks that fixture inputs remain unchanged and that all temporary directories are removed.
+Negative fixtures use temporary Git repositories made from committed assembly inputs. They prove failure for a non-applying patch, an already-integrated base bootstrap, a missing overlay PHP file, a patch include to a missing file, duplicate integration bootstrap entries, lifecycle registrations that are unreachable or outside the registration method, an existing or concurrently appearing output destination, a deleted output sentinel, a malformed archive header, unmanifested empty directories, CR/LF paths, and a modified artifact. The verifier checks that fixture inputs remain unchanged and that all temporary directories are removed.
 
 ## Source gate and main publication
 
@@ -141,6 +141,6 @@ Only a successful push run for `refs/heads/main` creates and uploads the canonic
 
 ## Failure and runtime boundary
 
-Any unresolved ref, absent or mismatched builder blob, unsupported Git object, collision, unsafe path, invalid source mode, already-integrated bootstrap, patch error, missing include, duplicate include/import/registration, undeclared lifecycle class, non-PHP-8.5 runtime, PHP lint error, unsafe output destination, nondeterministic result, or archive/manifest mismatch fails nonzero. The builder must not leave a partial destination.
+Any unresolved ref, absent or mismatched builder blob, unsupported Git object, collision, unsafe path, invalid source mode, already-integrated bootstrap, patch error, missing include, duplicate include/import/registration, unreachable lifecycle registration, undeclared lifecycle class, non-PHP-8.5 runtime, PHP lint error, unsafe output destination, unavailable no-replace publication, nondeterministic result, or archive/manifest mismatch fails nonzero. The builder must not leave a partial destination.
 
 The builder and verifier use only the repository's Git objects, temporary files, Python standard library, Git, and PHP 8.5 CLI. They do not call WordPress, Novamira, WP-CLI, a database, or the active plugin directory. They do not deploy or modify runtime files. Deployment and runtime parity checks belong to PE-006.

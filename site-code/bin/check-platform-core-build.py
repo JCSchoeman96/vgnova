@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import gzip
 import hashlib
+import importlib.util
 import io
 import json
 import os
@@ -80,6 +81,8 @@ def safe_member_name(name: str) -> PurePosixPath:
     path = PurePosixPath(normalized)
     if (
         not normalized
+        or "\r" in normalized
+        or "\n" in normalized
         or path.is_absolute()
         or ".." in path.parts
         or "\\" in normalized
@@ -93,10 +96,11 @@ def verify_archive(archive_path: Path, manifest: dict[str, Any]) -> None:
     archive_bytes = archive_path.read_bytes()
     if sha256(archive_bytes) != manifest.get("archive_sha256"):
         raise CheckFailure("Archive SHA-256 does not match the manifest.")
-    if len(archive_bytes) < 10 or archive_bytes[:3] != b"\x1f\x8b\x08":
+    expected_gzip_header = b"\x1f\x8b\x08\x00\x00\x00\x00\x00\x02\xff"
+    if len(archive_bytes) < len(expected_gzip_header) or archive_bytes[:3] != b"\x1f\x8b\x08":
         raise CheckFailure("Artifact is not a gzip-compressed tar archive.")
-    if archive_bytes[3] & 0x08 or archive_bytes[4:8] != b"\0\0\0\0":
-        raise CheckFailure("Gzip filename and timestamp must be normalized.")
+    if archive_bytes[:10] != expected_gzip_header:
+        raise CheckFailure("Gzip header does not match normalized deterministic metadata.")
 
     actual_files: list[dict[str, Any]] = []
     directory_names: set[str] = set()
@@ -159,14 +163,30 @@ def verify_archive(archive_path: Path, manifest: dict[str, Any]) -> None:
     if not actual_files:
         raise CheckFailure("Archive contains no regular plugin files.")
 
+    expected_files = manifest.get("files")
+    if not isinstance(expected_files, list) or not all(isinstance(item, dict) for item in expected_files):
+        raise CheckFailure("Manifest files must be an array of file records.")
+    expected_directory_names = {ROOT_PLUGIN}
+    for record in expected_files:
+        relative_path = record.get("path")
+        if not isinstance(relative_path, str):
+            raise CheckFailure("Manifest file path must be a string.")
+        relative = safe_member_name(relative_path)
+        for parent in relative.parents:
+            if parent.as_posix() != ".":
+                expected_directory_names.add(f"{ROOT_PLUGIN}/{parent.as_posix()}")
+    if directory_names != expected_directory_names:
+        raise CheckFailure(
+            "Archive directory inventory differs from the directories implied by manifest files."
+        )
+
     actual_files.sort(key=lambda item: item["path"].encode("utf-8"))
     expected_directories = [ROOT_PLUGIN] + sorted(
-        directory_names - {ROOT_PLUGIN}, key=lambda value: value.encode("utf-8")
+        expected_directory_names - {ROOT_PLUGIN}, key=lambda value: value.encode("utf-8")
     )
     expected_order = expected_directories + [ROOT_PLUGIN + "/" + item["path"] for item in actual_files]
     if entry_order != expected_order:
         raise CheckFailure("Archive entries are not in the documented deterministic order.")
-    expected_files = manifest.get("files")
     if actual_files != expected_files:
         raise CheckFailure("Archive file inventory, mode, size, or file hash differs from the manifest.")
     if manifest.get("file_count") != len(actual_files):
@@ -235,6 +255,24 @@ def validate_manifest(
     paths = [record.get("path") for record in manifest["files"] if isinstance(record, dict)]
     if len(paths) != len(manifest["files"]):
         raise CheckFailure("Manifest files contains a non-object record.")
+    for path in paths:
+        if not isinstance(path, str):
+            raise CheckFailure("Manifest file path must be a string.")
+        try:
+            path.encode("utf-8", "strict")
+        except UnicodeEncodeError as error:
+            raise CheckFailure(f"Manifest path is not valid UTF-8: {path!r}") from error
+        if "\r" in path or "\n" in path:
+            raise CheckFailure("Manifest paths cannot contain CR or LF.")
+        normalized = PurePosixPath(path)
+        if (
+            not path
+            or normalized.is_absolute()
+            or ".." in normalized.parts
+            or "\\" in path
+            or normalized.as_posix() != path
+        ):
+            raise CheckFailure(f"Manifest path is unsafe or non-normalized: {path!r}")
     if paths != sorted(paths, key=lambda value: str(value).encode("utf-8")):
         raise CheckFailure("Manifest files are not sorted by UTF-8 path bytes.")
 
@@ -313,6 +351,7 @@ def expect_build_failure(
     output: Path,
     expected_text: str,
     output_must_remain: bool = False,
+    sentinel_must_remain: bool = False,
 ) -> None:
     result = run_builder(builder, fixture, ref, output)
     combined = (result.stdout + result.stderr).decode("utf-8", "replace")
@@ -326,7 +365,9 @@ def expect_build_failure(
         if not output.is_dir():
             raise CheckFailure(f"Negative case {label} removed its existing output directory.")
         sentinel = output / "sentinel.txt"
-        if sentinel.exists() and sentinel.read_text(encoding="utf-8") != "preserve me\n":
+        if sentinel_must_remain and not sentinel.is_file():
+            raise CheckFailure(f"Negative case {label} removed its existing output sentinel.")
+        if sentinel.is_file() and sentinel.read_text(encoding="utf-8") != "preserve me\n":
             raise CheckFailure(f"Negative case {label} changed its existing output sentinel.")
     elif output.exists() or output.is_symlink():
         raise CheckFailure(f"Negative case {label} left a partial output directory.")
@@ -379,6 +420,205 @@ def tamper_archive(source_archive: Path, destination: Path) -> None:
     with gzip.GzipFile(fileobj=compressed, mode="wb", filename="", compresslevel=9, mtime=0) as target:
         target.write(raw_tar.getvalue())
     destination.write_bytes(compressed.getvalue())
+
+
+def rewrite_archive(
+    source_archive: Path,
+    destination: Path,
+    *,
+    extra_directory: str | None = None,
+    rename_first_file: str | None = None,
+) -> str | None:
+    directories: list[tarfile.TarInfo] = []
+    files: list[tuple[tarfile.TarInfo, bytes]] = []
+    renamed_to: str | None = None
+    with tarfile.open(source_archive, mode="r:gz") as source:
+        for member in source.getmembers():
+            info = tarfile.TarInfo(member.name)
+            info.type = member.type
+            info.mode = member.mode
+            info.uid = 0
+            info.gid = 0
+            info.uname = ""
+            info.gname = ""
+            info.mtime = 0
+            if member.isdir():
+                info.size = 0
+                directories.append(info)
+                continue
+            stream = source.extractfile(member)
+            if stream is None:
+                raise CheckFailure(f"Cannot read file while rewriting archive fixture: {member.name}")
+            contents = stream.read()
+            if rename_first_file is not None and renamed_to is None:
+                info.name = rename_first_file
+                renamed_to = rename_first_file
+            info.size = len(contents)
+            files.append((info, contents))
+
+    if extra_directory is not None:
+        info = tarfile.TarInfo(extra_directory)
+        info.type = tarfile.DIRTYPE
+        info.mode = 0o755
+        info.uid = 0
+        info.gid = 0
+        info.uname = ""
+        info.gname = ""
+        info.mtime = 0
+        info.size = 0
+        directories.append(info)
+
+    directories.sort(key=lambda item: (item.name != ROOT_PLUGIN, item.name.encode("utf-8")))
+    files.sort(key=lambda item: item[0].name.encode("utf-8"))
+    raw_tar = io.BytesIO()
+    with tarfile.open(fileobj=raw_tar, mode="w", format=tarfile.PAX_FORMAT) as target:
+        for info in directories:
+            target.addfile(info)
+        for info, contents in files:
+            target.addfile(info, io.BytesIO(contents))
+    compressed = io.BytesIO()
+    with gzip.GzipFile(fileobj=compressed, mode="wb", filename="", compresslevel=9, mtime=0) as target:
+        target.write(raw_tar.getvalue())
+    destination.write_bytes(compressed.getvalue())
+    return renamed_to
+
+
+def update_tree_hash(file_records: list[dict[str, Any]]) -> str:
+    ordered = sorted(file_records, key=lambda item: item["path"].encode("utf-8"))
+    canonical = b"".join(
+        f"{item['mode']} {item['sha256']} {item['path']}\n".encode("utf-8")
+        for item in ordered
+    )
+    return sha256(canonical)
+
+
+def expect_archive_rejected(
+    *,
+    label: str,
+    archive: Path,
+    manifest: dict[str, Any],
+    expected_text: str,
+) -> None:
+    try:
+        verify_archive(archive, manifest)
+    except CheckFailure as error:
+        if expected_text.lower() not in str(error).lower():
+            raise CheckFailure(f"{label} was rejected for the wrong reason: {error}") from error
+    else:
+        raise CheckFailure(f"Malformed archive passed verification: {label}")
+    print(f"PASS negative case: {label}")
+
+
+def run_verifier_hardening_cases(
+    *,
+    archive_path: Path,
+    manifest: dict[str, Any],
+    repo_root: Path,
+    commit: str,
+    temporary_root: Path,
+) -> None:
+    gzip_tamper = temporary_root / "gzip-header-tamper.tar.gz"
+    gzip_bytes = bytearray(archive_path.read_bytes())
+    gzip_bytes[9] = 0x03
+    gzip_tamper.write_bytes(gzip_bytes)
+    gzip_manifest = json.loads(json.dumps(manifest))
+    gzip_manifest["archive_sha256"] = sha256(gzip_tamper.read_bytes())
+    expect_archive_rejected(
+        label="non-normalized gzip header is rejected",
+        archive=gzip_tamper,
+        manifest=gzip_manifest,
+        expected_text="gzip header",
+    )
+
+    extra_directory_archive = temporary_root / "unmanifested-directory.tar.gz"
+    rewrite_archive(
+        archive_path,
+        extra_directory_archive,
+        extra_directory=f"{ROOT_PLUGIN}/unmanifested-empty-directory",
+    )
+    directory_manifest = json.loads(json.dumps(manifest))
+    directory_manifest["archive_sha256"] = sha256(extra_directory_archive.read_bytes())
+    expect_archive_rejected(
+        label="unmanifested empty directory is rejected",
+        archive=extra_directory_archive,
+        manifest=directory_manifest,
+        expected_text="directory inventory",
+    )
+
+    first_path = PurePosixPath(manifest["files"][0]["path"])
+    parent = first_path.parent.as_posix()
+    newline_basename = "PE005-invalid\npath.bin"
+    newline_relative_path = newline_basename if parent == "." else f"{parent}/{newline_basename}"
+    newline_archive = temporary_root / "newline-path.tar.gz"
+    renamed_to = rewrite_archive(
+        archive_path,
+        newline_archive,
+        rename_first_file=f"{ROOT_PLUGIN}/{newline_relative_path}",
+    )
+    if renamed_to is None:
+        raise CheckFailure("Cannot prepare newline-path archive fixture.")
+    newline_manifest = json.loads(json.dumps(manifest))
+    newline_manifest["files"][0]["path"] = newline_relative_path
+    newline_manifest["files"].sort(key=lambda item: item["path"].encode("utf-8"))
+    newline_manifest["tree_sha256"] = update_tree_hash(newline_manifest["files"])
+    newline_manifest["archive_sha256"] = sha256(newline_archive.read_bytes())
+    expect_archive_rejected(
+        label="newline-bearing archive path is rejected",
+        archive=newline_archive,
+        manifest=newline_manifest,
+        expected_text="unsafe or non-normalized archive path",
+    )
+
+    try:
+        validate_manifest(
+            newline_manifest,
+            repo_root=repo_root,
+            commit=commit,
+            requested_ref=manifest["source_ref_requested"],
+        )
+    except CheckFailure as error:
+        if "cr or lf" not in str(error).lower():
+            raise CheckFailure(f"Newline-bearing manifest path failed for the wrong reason: {error}") from error
+    else:
+        raise CheckFailure("Newline-bearing manifest path passed schema validation.")
+    print("PASS negative case: newline-bearing manifest path is rejected")
+
+
+def run_output_sentinel_guard_case(
+    *,
+    fixture: Path,
+    temporary_root: Path,
+) -> None:
+    output = temporary_root / "sentinel-guard-output"
+    output.mkdir()
+    (output / "sentinel.txt").write_text("preserve me\n", encoding="utf-8")
+    malicious_builder = temporary_root / "delete-sentinel-builder.py"
+    malicious_builder.write_text(
+        "import sys\n"
+        "from pathlib import Path\n"
+        "output = Path(sys.argv[sys.argv.index('--output') + 1])\n"
+        "(output / 'sentinel.txt').unlink()\n"
+        "print('sentinel guard probe', file=sys.stderr)\n"
+        "raise SystemExit(1)\n",
+        encoding="utf-8",
+    )
+    try:
+        expect_build_failure(
+            label="verifier detects output sentinel deletion",
+            builder=malicious_builder,
+            fixture=fixture,
+            ref="HEAD",
+            output=output,
+            expected_text="sentinel guard probe",
+            output_must_remain=True,
+            sentinel_must_remain=True,
+        )
+    except CheckFailure as error:
+        if "sentinel" not in str(error).lower():
+            raise CheckFailure(f"Sentinel deletion was rejected for the wrong reason: {error}") from error
+    else:
+        raise CheckFailure("Verifier accepted a builder that deleted an existing output sentinel.")
+    print("PASS negative case: verifier detects output sentinel deletion")
 
 
 def run_negative_cases(
@@ -492,6 +732,36 @@ def run_negative_cases(
         expected_text="duplicate",
     )
 
+    fixture = create_fixture(repo_root, commit, cases / "unreachable-lifecycle")
+    patch_file = fixture / PATCH_PATH
+    patch_lines = patch_file.read_text(encoding="utf-8").splitlines(keepends=True)
+    registration_index = next(
+        (
+            index
+            for index, line in enumerate(patch_lines)
+            if line.startswith("+        $this->register_component('content_topic_taxonomy'")
+        ),
+        None,
+    )
+    if registration_index is None:
+        raise CheckFailure("Cannot prepare unreachable-lifecycle fixture.")
+    hunk_index = max(index for index in range(registration_index) if patch_lines[index].startswith("@@ "))
+    hunk_match = re.match(r"(@@ -\d+,0 \+\d+,)(\d+)( @@.*\n?)$", patch_lines[hunk_index])
+    if hunk_match is None:
+        raise CheckFailure("Cannot update unreachable-lifecycle patch hunk count.")
+    patch_lines[hunk_index] = f"{hunk_match.group(1)}{int(hunk_match.group(2)) + 1}{hunk_match.group(3)}"
+    patch_lines.insert(registration_index, "+        return;\n")
+    patch_file.write_text("".join(patch_lines), encoding="utf-8")
+    commit_fixture_changes(fixture, "fixture: make lifecycle registrations unreachable")
+    expect_build_failure(
+        label="unreachable lifecycle registrations",
+        builder=builder,
+        fixture=fixture,
+        ref="HEAD",
+        output=cases / "unreachable-lifecycle-output",
+        expected_text="exit before",
+    )
+
     fixture = create_fixture(repo_root, commit, cases / "unsafe-output")
     protected_source = fixture / ROOT_PLUGIN / "voelgoed-platform-core.php"
     original_sha = sha256(protected_source.read_bytes())
@@ -520,7 +790,39 @@ def run_negative_cases(
         output=occupied_output,
         expected_text="output",
         output_must_remain=True,
+        sentinel_must_remain=True,
     )
+    run_output_sentinel_guard_case(fixture=fixture, temporary_root=cases)
+
+
+def run_atomic_publish_case(builder: Path, temporary_root: Path) -> None:
+    spec = importlib.util.spec_from_file_location("pe005_platform_builder_under_test", builder)
+    if spec is None or spec.loader is None:
+        raise CheckFailure("Cannot load the builder publication primitive for its race fixture.")
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+    publish = getattr(module, "atomic_publish_no_replace", None)
+    if not callable(publish):
+        raise CheckFailure("Builder has no atomic no-replace publication primitive.")
+
+    source = temporary_root / "publication-source"
+    source.mkdir()
+    (source / "artifact.txt").write_text("staged artifact\n", encoding="utf-8")
+    destination = temporary_root / "publication-destination"
+    destination.mkdir()
+    try:
+        publish(source, destination)
+    except module.BuildFailure as error:
+        if "already exists" not in str(error).lower() and "appeared" not in str(error).lower():
+            raise CheckFailure(f"No-replace publication failed for the wrong reason: {error}") from error
+    else:
+        raise CheckFailure("Atomic publication replaced a destination that appeared before publish.")
+    if not destination.is_dir() or list(destination.iterdir()):
+        raise CheckFailure("No-replace publication changed the existing empty destination.")
+    if not (source / "artifact.txt").is_file():
+        raise CheckFailure("No-replace publication consumed the staged source after rejection.")
+    print("PASS negative case: atomic publish refuses a destination that appears during assembly")
 
 
 def run_integrity_tamper_case(archive_path: Path, manifest: dict[str, Any], temporary_root: Path) -> None:
@@ -613,12 +915,20 @@ def main() -> int:
             print(f"build_{label}_manifest_sha256={sha256(manifest_path.read_bytes())}")
 
         run_integrity_tamper_case(archive_path_a, manifest_a, temporary_root)
+        run_verifier_hardening_cases(
+            archive_path=archive_path_a,
+            manifest=manifest_a,
+            repo_root=repo_root,
+            commit=commit,
+            temporary_root=temporary_root,
+        )
         run_negative_cases(
             repo_root=repo_root,
             commit=commit,
             builder=builder,
             temporary_root=temporary_root,
         )
+        run_atomic_publish_case(builder, temporary_root)
 
     if temporary_root.exists():
         raise CheckFailure("Temporary verifier state was not cleaned.")
