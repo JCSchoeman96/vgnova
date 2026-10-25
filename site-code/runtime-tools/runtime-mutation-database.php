@@ -9,15 +9,20 @@ final class VgRuntimeMutationDatabase
      * Start a separate process that owns the database advisory lock until its lifetime pipe reaches EOF.
      *
      * @param array<string,mixed> $target
+     * @param resource $hostLockHandle
      * @return array<string,mixed>
      */
     public static function startKeeper(
         array $target,
         string $wpRoot,
         string $lockName,
+        $hostLockHandle,
         ?string $socketOverride = null,
         ?array $environment = null
     ): array {
+        if (! is_resource($hostLockHandle)) {
+            throw new VgRuntimeMutationException(70, 'HOST_LOCK_HANDLE_UNAVAILABLE', 'The host lock handle is unavailable to the database lock keeper.');
+        }
         if (! VgRuntimeMutationCore::isAbsolutePathForDatabase($wpRoot) || ! is_dir($wpRoot)) {
             throw new VgRuntimeMutationException(71, 'INVALID_WORDPRESS_ROOT', 'WordPress root must be an existing absolute path.');
         }
@@ -34,13 +39,15 @@ final class VgRuntimeMutationDatabase
             '--lock-name=' . $lockName,
             '--db-socket=' . ($socketOverride ?? ''),
         ];
-        $command = VgRuntimeMutationCore::descriptorSafeCommand($arguments, []);
+        $command = VgRuntimeMutationCore::descriptorSafeCommand($arguments, [3, 4]);
         $environment ??= self::readEnvironment();
         $environment = VgRuntimeMutationCore::safeEnvironment($environment);
         $process = @proc_open($command, [
             0 => ['pipe', 'r'],
             1 => ['pipe', 'w'],
             2 => ['file', '/dev/null', 'w'],
+            3 => $hostLockHandle,
+            4 => ['pipe', 'r'],
         ], $pipes, null, $environment);
         if (! is_resource($process)) {
             throw new VgRuntimeMutationException(70, 'DATABASE_LOCK_KEEPER_START_FAILED', 'Database lock keeper could not be started.');
@@ -63,6 +70,7 @@ final class VgRuntimeMutationDatabase
             @proc_terminate($process, SIGKILL);
             fclose($pipes[0]);
             fclose($pipes[1]);
+            fclose($pipes[4]);
             $status = proc_close($process);
             $exitCode = is_array($ready) && is_int($ready['exit_code'] ?? null)
                 ? $ready['exit_code']
@@ -85,6 +93,7 @@ final class VgRuntimeMutationDatabase
             @proc_terminate($process, SIGKILL);
             fclose($pipes[0]);
             fclose($pipes[1]);
+            fclose($pipes[4]);
             proc_close($process);
             throw new VgRuntimeMutationException(70, 'DATABASE_LOCK_KEEPER_PROTOCOL_FAILED', 'Database lock keeper returned an invalid proof.');
         }
@@ -94,6 +103,7 @@ final class VgRuntimeMutationDatabase
             'connection_id' => (int) $connectionId,
             'identity' => $identity,
             'lifetime_handle' => $pipes[0],
+            'registration_handle' => $pipes[4],
             'keeper_process' => $process,
             'keeper_stdout' => $pipes[1],
         ];
@@ -102,6 +112,10 @@ final class VgRuntimeMutationDatabase
     /** @param array<string,mixed> $lease */
     public static function releaseKeeper(array $lease): void
     {
+        $registrationHandle = $lease['registration_handle'] ?? null;
+        if (is_resource($registrationHandle)) {
+            fclose($registrationHandle);
+        }
         $lifetimeHandle = $lease['lifetime_handle'] ?? null;
         if (is_resource($lifetimeHandle)) {
             fclose($lifetimeHandle);
@@ -124,12 +138,12 @@ final class VgRuntimeMutationDatabase
         } while (microtime(true) < $deadline);
 
         if (is_array($status) && ($status['running'] ?? false)) {
-            @proc_terminate($process, SIGKILL);
-            if (is_resource($stdout)) {
-                fclose($stdout);
-            }
-            proc_close($process);
-            throw new VgRuntimeMutationException(70, 'DATABASE_LOCK_KEEPER_RELEASE_TIMEOUT', 'Database lock keeper did not stop after the mutator exited.');
+            throw new VgRuntimeMutationException(
+                70,
+                'DATABASE_LOCK_KEEPER_RELEASE_TIMEOUT',
+                'Database lock keeper continues to hold the host and database locks while a child process remains live.',
+                true
+            );
         }
         $releaseResponse = is_resource($stdout) ? stream_get_contents($stdout, 65536) : false;
         if (is_resource($stdout)) {
@@ -269,7 +283,12 @@ final class VgRuntimeMutationDatabase
                 'identity' => $identity,
             ]);
             $responseSent = true;
-            self::waitForLifetimePipe();
+            $supervisorPid = self::readProcessGroupRegistration();
+            if ($supervisorPid === null) {
+                throw new VgRuntimeMutationException(70, 'DATABASE_LOCK_KEEPER_PROTOCOL_FAILED');
+            }
+            // Only an explicit acknowledgement from the registered supervisor permits release.
+            self::waitForLifetimePipe($supervisorPid);
 
             $releaseResult = self::fetchPreparedValue($database, 'SELECT RELEASE_LOCK(?)', $lockName);
             if (! in_array($releaseResult, [1, '1'], true)) {
@@ -458,14 +477,54 @@ final class VgRuntimeMutationDatabase
         return $value;
     }
 
-    private static function waitForLifetimePipe(): void
+    private static function waitForLifetimePipe(int $supervisorPid): void
     {
+        $expectedAcknowledgement = 'VGNOVA_RUNTIME_MUTATION_SUPERVISOR_COMPLETE_V1:' . $supervisorPid . "\n";
+        $acknowledgement = fgets(STDIN, 128);
+        if ($acknowledgement !== $expectedAcknowledgement) {
+            self::retainLocksAfterUnexpectedSupervisorExit();
+        }
         while (! feof(STDIN)) {
             $chunk = fread(STDIN, 8192);
-            if ($chunk === false || ($chunk === '' && ! feof(STDIN))) {
+            if ($chunk === false || $chunk !== '') {
+                self::retainLocksAfterUnexpectedSupervisorExit();
+            }
+            if ($chunk === '' && ! feof(STDIN)) {
                 usleep(10000);
             }
         }
+    }
+
+    private static function retainLocksAfterUnexpectedSupervisorExit(): void
+    {
+        while (true) {
+            sleep(60);
+        }
+    }
+
+    private static function readProcessGroupRegistration(): ?int
+    {
+        $registration = @fopen('php://fd/4', 'r');
+        if (! is_resource($registration)) {
+            throw new VgRuntimeMutationException(70, 'DATABASE_LOCK_KEEPER_PROTOCOL_FAILED');
+        }
+        $line = fgets($registration, 32);
+        $timedOut = (bool) (stream_get_meta_data($registration)['timed_out'] ?? false);
+        $atEnd = feof($registration);
+        fclose($registration);
+        if ($timedOut) {
+            throw new VgRuntimeMutationException(70, 'DATABASE_LOCK_KEEPER_PROTOCOL_FAILED');
+        }
+        if (! is_string($line)) {
+            if ($atEnd) {
+                return null;
+            }
+            throw new VgRuntimeMutationException(70, 'DATABASE_LOCK_KEEPER_PROTOCOL_FAILED');
+        }
+        if (preg_match('/\A([1-9][0-9]{0,9})\n\z/', $line, $matches) !== 1 || (int) $matches[1] < 2) {
+            throw new VgRuntimeMutationException(70, 'DATABASE_LOCK_KEEPER_PROTOCOL_FAILED');
+        }
+        return (int) $matches[1];
     }
 
     /** @param array<string,mixed> $response */

@@ -10,6 +10,18 @@ if (is_file($core_file)) {
 if (is_file($library_file)) {
     require_once $library_file;
 }
+if (! defined('DB_NAME')) {
+    define('DB_NAME', 'test_database');
+}
+if (! function_exists('get_option')) {
+    function get_option(string $name): ?string
+    {
+        return match ($name) {
+            'home', 'siteurl' => 'http://localhost:10039',
+            default => null,
+        };
+    }
+}
 
 if (! function_exists('vg_runtime_mutation_session_report')
     || ! function_exists('vg_runtime_mutation_assert_session')
@@ -41,6 +53,17 @@ function vg_runtime_mutation_test_assert(bool $condition, string $message): void
 function vg_runtime_mutation_test_fixture(array $metadata_overrides = []): array
 {
     $target = 'vgnova-test-10039';
+    $identity = [
+        'database_name' => 'test_database',
+        'home' => 'http://localhost:10039',
+        'site' => 'http://localhost:10039',
+    ];
+    $lock_name = 'vgnova.mutation.' . substr(hash('sha256', implode("\n", [
+        $target,
+        $identity['database_name'],
+        $identity['home'],
+        $identity['site'],
+    ])), 0, 40);
     $session_id = str_repeat('a', 32);
     $directory = sys_get_temp_dir() . '/vg-runtime-mutation-' . bin2hex(random_bytes(8));
     if (! mkdir($directory, 0700, true)) {
@@ -59,7 +82,7 @@ function vg_runtime_mutation_test_fixture(array $metadata_overrides = []): array
         'state' => 'active',
         'target' => $target,
         'session_id' => $session_id,
-        'database_lock_name' => 'vgnova.mutation.' . str_repeat('b', 40),
+        'database_lock_name' => $lock_name,
         'database_connection_id' => 12345,
     ], $metadata_overrides);
     $encoded_metadata = json_encode($metadata, JSON_THROW_ON_ERROR);
@@ -71,7 +94,7 @@ function vg_runtime_mutation_test_fixture(array $metadata_overrides = []): array
     $environment = [
         'VGNOVA_MUTATION_SESSION_ID' => $session_id,
         'VGNOVA_MUTATION_TARGET' => $target,
-        'VGNOVA_MUTATION_DB_LOCK' => 'vgnova.mutation.' . str_repeat('b', 40),
+        'VGNOVA_MUTATION_DB_LOCK' => $lock_name,
         'VGNOVA_MUTATION_DB_CONNECTION_ID' => '12345',
         'VGNOVA_MUTATION_LOCK_FILE' => $lock_file,
         'XDG_STATE_HOME' => $state_home,
@@ -86,6 +109,7 @@ function vg_runtime_mutation_test_fixture(array $metadata_overrides = []): array
         'metadata' => $metadata,
         'session_id' => $session_id,
         'target' => $target,
+        'identity' => $identity,
     ];
 }
 
@@ -158,6 +182,10 @@ function vg_runtime_mutation_test_guard_result(
     $report_json = $environment === null ? 'null' : base64_encode(json_encode($environment, JSON_THROW_ON_ERROR));
     $owner_json = base64_encode(json_encode($owner, JSON_THROW_ON_ERROR));
     $script = <<<'PHP'
+define('DB_NAME', 'test_database');
+function get_option(string $name): ?string {
+    return match ($name) { 'home', 'siteurl' => 'http://localhost:10039', default => null };
+}
 require_once $argv[1];
 $environment = $argv[3] === 'null' ? null : json_decode(base64_decode($argv[3]), true, 32, JSON_THROW_ON_ERROR);
 $owner = json_decode(base64_decode($argv[4]), true, 32, JSON_THROW_ON_ERROR);
@@ -243,6 +271,58 @@ $run_case = static function (string $name, callable $test) use (&$passed, &$fail
     }
 };
 
+$run_case('deployed and repository guard loaders share one declaration set', static function () use ($canonical_guard_file, $library_file): void {
+    $directory = sys_get_temp_dir() . '/vg-runtime-mutation-loader-' . bin2hex(random_bytes(8));
+    if (! mkdir($directory, 0700, true)) {
+        throw new RuntimeException('Could not create the guard-loader fixture directory.');
+    }
+    $deployed_guard = $directory . '/RuntimeMutationSession.php';
+    try {
+        if (! copy($canonical_guard_file, $deployed_guard)) {
+            throw new RuntimeException('Could not copy the deployed guard fixture.');
+        }
+        $script = <<<'PHP'
+require $argv[1];
+require $argv[2];
+PHP;
+        $process = proc_open(
+            [PHP_BINARY, '-r', $script, $deployed_guard, $library_file],
+            [0 => ['file', '/dev/null', 'r'], 1 => ['pipe', 'w'], 2 => ['pipe', 'w']],
+            $pipes
+        );
+        if (! is_resource($process)) {
+            throw new RuntimeException('The guard-loader fixture process did not start.');
+        }
+        $stdout = stream_get_contents($pipes[1]);
+        $stderr = stream_get_contents($pipes[2]);
+        fclose($pipes[1]);
+        fclose($pipes[2]);
+        $exit_code = proc_close($process);
+        vg_runtime_mutation_test_assert($exit_code === 0, 'Loading the deployed guard before the repository loader failed: ' . trim((string) $stderr));
+
+        $reverse_script = <<<'PHP'
+require $argv[1];
+require $argv[2];
+PHP;
+        $reverse = proc_open(
+            [PHP_BINARY, '-r', $reverse_script, $library_file, $deployed_guard],
+            [0 => ['file', '/dev/null', 'r'], 1 => ['pipe', 'w'], 2 => ['pipe', 'w']],
+            $reverse_pipes
+        );
+        vg_runtime_mutation_test_assert(is_resource($reverse), 'The reverse guard-loader fixture process did not start.');
+        $reverse_stderr = stream_get_contents($reverse_pipes[2]);
+        fclose($reverse_pipes[1]);
+        fclose($reverse_pipes[2]);
+        $reverse_exit = proc_close($reverse);
+        vg_runtime_mutation_test_assert($reverse_exit === 0, 'Loading the repository guard before the deployed copy failed: ' . trim((string) $reverse_stderr));
+    } finally {
+        if (is_file($deployed_guard)) {
+            unlink($deployed_guard);
+        }
+        rmdir($directory);
+    }
+});
+
 $run_case('valid report requires a real lock holder and matching database owner', static function (): void {
     $fixture = vg_runtime_mutation_test_fixture();
     $holder = null;
@@ -297,6 +377,10 @@ $run_case('copied session values without inherited lock descriptor are rejected'
         $holder = vg_runtime_mutation_test_start_lock_holder($fixture['lock_file']);
         $script = <<<'PHP'
 require_once $argv[1];
+define('DB_NAME', 'test_database');
+function get_option(string $name): ?string {
+    return match ($name) { 'home', 'siteurl' => 'http://localhost:10039', default => null };
+}
 $environment = json_decode(base64_decode($argv[2]), true, 32, JSON_THROW_ON_ERROR);
 $report = vg_runtime_mutation_session_report(
     $environment['VGNOVA_MUTATION_TARGET'],
@@ -326,6 +410,36 @@ PHP;
         vg_runtime_mutation_test_assert(
             in_array('filesystem_lock_descriptor_unowned', $report['errors'], true),
             'The missing inherited lock descriptor was not reported.'
+        );
+    } finally {
+        if ($holder !== null) {
+            vg_runtime_mutation_test_stop_lock_holder($holder);
+        }
+        vg_runtime_mutation_test_cleanup_fixture($fixture);
+    }
+});
+
+$run_case('a validly shaped but unrelated advisory lock name is rejected', static function (): void {
+    $fixture = vg_runtime_mutation_test_fixture();
+    $holder = null;
+    try {
+        $holder = vg_runtime_mutation_test_start_lock_holder($fixture['lock_file']);
+        $unrelated_lock = 'vgnova.mutation.' . str_repeat('c', 40);
+        $metadata = $fixture['metadata'];
+        $metadata['database_lock_name'] = $unrelated_lock;
+        file_put_contents($fixture['lock_file'], json_encode($metadata, JSON_THROW_ON_ERROR));
+        $environment = $fixture['environment'];
+        $environment['VGNOVA_MUTATION_DB_LOCK'] = $unrelated_lock;
+        $report = vg_runtime_mutation_test_report(
+            $holder,
+            $fixture['target'],
+            $environment,
+            vg_runtime_mutation_test_owner($environment)
+        );
+        vg_runtime_mutation_test_assert($report['valid'] === false, 'An unrelated advisory lock was accepted as session proof.');
+        vg_runtime_mutation_test_assert(
+            in_array('database_lock_name_not_canonical', $report['errors'], true),
+            'The unrelated advisory lock was not rejected against runtime identity.'
         );
     } finally {
         if ($holder !== null) {

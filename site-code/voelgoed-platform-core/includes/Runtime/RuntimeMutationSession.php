@@ -1,6 +1,8 @@
 <?php
 declare(strict_types=1);
 
+if (! function_exists('vg_runtime_mutation_session_report')) {
+
 /**
  * Read one allow-listed mutation-session value without inspecting the full environment.
  */
@@ -44,6 +46,30 @@ function vg_runtime_mutation_session_connection_id(mixed $value): ?string
 
     $normalized = ltrim($digits, '0');
     return $normalized === '' ? null : $normalized;
+}
+
+function vg_runtime_mutation_session_canonical_lock_name(string $target): ?string
+{
+    global $wpdb;
+    $database_name = defined('DB_NAME') ? constant('DB_NAME') : (is_object($wpdb) ? ($wpdb->dbname ?? null) : null);
+    $identity = [
+        'database_name' => $database_name,
+        'home' => function_exists('get_option') ? get_option('home') : null,
+        'site' => function_exists('get_option') ? get_option('siteurl') : null,
+    ];
+
+    foreach (['database_name', 'home', 'site'] as $field) {
+        if (! is_string($identity[$field] ?? null) || $identity[$field] === '') {
+            return null;
+        }
+    }
+
+    return 'vgnova.mutation.' . substr(hash('sha256', implode("\n", [
+        $target,
+        $identity['database_name'],
+        $identity['home'],
+        $identity['site'],
+    ])), 0, 40);
 }
 
 /**
@@ -131,6 +157,10 @@ function vg_runtime_mutation_session_report(
     $metadata_session_id = null;
     $observed_connection_id = null;
     $filesystem_lock_held = false;
+    $canonical_lock_name = vg_runtime_mutation_session_canonical_lock_name($expected_target);
+    if ($canonical_lock_name === null) {
+        $errors[] = 'database_identity_unavailable';
+    }
 
     $target_pattern = '/\A[a-z0-9][a-z0-9-]{0,63}\z/';
     if (preg_match($target_pattern, $expected_target) !== 1) {
@@ -284,6 +314,8 @@ function vg_runtime_mutation_session_report(
 
     if ($database_lock_name === null || preg_match('/\Avgnova\.mutation\.[a-f0-9]{40}\z/', $database_lock_name) !== 1) {
         $errors[] = 'database_owner_unavailable';
+    } elseif ($canonical_lock_name === null || ! hash_equals($canonical_lock_name, $database_lock_name)) {
+        $errors[] = 'database_lock_name_not_canonical';
     } else {
         try {
             if ($database_lock_owner !== null) {
@@ -368,4 +400,6 @@ function vg_runtime_mutation_assert_session(
     }
 
     return $report;
+}
+
 }

@@ -238,6 +238,101 @@ $test('guard in an uncalled helper does not protect a top-level mutation', stati
     });
 });
 
+$test('a conditional guard does not protect a write outside its branch', static function (): void {
+    vg_runtime_mutation_policy_with_temp_root(static function (string $root): void {
+        file_put_contents(
+            $root . '/mutator.php',
+            '<?php if ($dryRun) { vg_runtime_mutation_assert_session("vgnova-local-10039"); } wp_insert_post([]);'
+        );
+        $inventoryPath = $root . '/inventory.json';
+        file_put_contents($inventoryPath, vg_runtime_mutation_policy_inventory([
+            vg_runtime_mutation_policy_entry('mutator.php', 'mutating', [
+                'session_guard_required' => true,
+                'guard_function' => 'vg_runtime_mutation_assert_session',
+                'purpose' => 'runtime-qa',
+            ]),
+        ]));
+        $result = vg_runtime_mutation_policy_check($root, $inventoryPath, ['mutator.php']);
+        vg_runtime_mutation_policy_test(! $result['valid'], 'A guard confined to a conditional branch protected an unconditional write.');
+    });
+});
+
+$test('a short-circuit guard does not protect a later write', static function (): void {
+    vg_runtime_mutation_policy_with_temp_root(static function (string $root): void {
+        file_put_contents(
+            $root . '/mutator.php',
+            '<?php $dryRun && vg_runtime_mutation_assert_session("vgnova-local-10039"); wp_insert_post([]);'
+        );
+        $inventoryPath = $root . '/inventory.json';
+        file_put_contents($inventoryPath, vg_runtime_mutation_policy_inventory([
+            vg_runtime_mutation_policy_entry('mutator.php', 'mutating', [
+                'session_guard_required' => true,
+                'guard_function' => 'vg_runtime_mutation_assert_session',
+                'purpose' => 'runtime-qa',
+            ]),
+        ]));
+        $result = vg_runtime_mutation_policy_check($root, $inventoryPath, ['mutator.php']);
+        vg_runtime_mutation_policy_test(! $result['valid'], 'A conditionally executed short-circuit guard protected a later write.');
+    });
+});
+
+$test('session guard in try does not protect writes in finally', static function (): void {
+    vg_runtime_mutation_policy_with_temp_root(static function (string $root): void {
+        file_put_contents(
+            $root . '/mutator.php',
+            '<?php try { vg_runtime_mutation_assert_session("vgnova-local-10039"); } finally { wp_delete_post(1, true); }'
+        );
+        $inventoryPath = $root . '/inventory.json';
+        file_put_contents($inventoryPath, vg_runtime_mutation_policy_inventory([
+            vg_runtime_mutation_policy_entry('mutator.php', 'mutating', [
+                'session_guard_required' => true,
+                'guard_function' => 'vg_runtime_mutation_assert_session',
+                'purpose' => 'runtime-qa',
+            ]),
+        ]));
+        $result = vg_runtime_mutation_policy_check($root, $inventoryPath, ['mutator.php']);
+        vg_runtime_mutation_policy_test(! $result['valid'], 'A guard inside try protected a cleanup write that runs when the guard throws.');
+    });
+});
+
+$test('session guard in try does not protect writes in catch', static function (): void {
+    vg_runtime_mutation_policy_with_temp_root(static function (string $root): void {
+        file_put_contents(
+            $root . '/mutator.php',
+            '<?php try { vg_runtime_mutation_assert_session("vgnova-local-10039"); } catch (Throwable $error) { wp_delete_post(1, true); }'
+        );
+        $inventoryPath = $root . '/inventory.json';
+        file_put_contents($inventoryPath, vg_runtime_mutation_policy_inventory([
+            vg_runtime_mutation_policy_entry('mutator.php', 'mutating', [
+                'session_guard_required' => true,
+                'guard_function' => 'vg_runtime_mutation_assert_session',
+                'purpose' => 'runtime-qa',
+            ]),
+        ]));
+        $result = vg_runtime_mutation_policy_check($root, $inventoryPath, ['mutator.php']);
+        vg_runtime_mutation_policy_test(! $result['valid'], 'A guard inside try protected a mutation in the exception catch path.');
+    });
+});
+
+$test('session guard before try protects writes in finally', static function (): void {
+    vg_runtime_mutation_policy_with_temp_root(static function (string $root): void {
+        file_put_contents(
+            $root . '/mutator.php',
+            '<?php vg_runtime_mutation_assert_session("vgnova-local-10039"); try { do_work(); } finally { wp_delete_post(1, true); }'
+        );
+        $inventoryPath = $root . '/inventory.json';
+        file_put_contents($inventoryPath, vg_runtime_mutation_policy_inventory([
+            vg_runtime_mutation_policy_entry('mutator.php', 'mutating', [
+                'session_guard_required' => true,
+                'guard_function' => 'vg_runtime_mutation_assert_session',
+                'purpose' => 'runtime-qa',
+            ]),
+        ]));
+        $result = vg_runtime_mutation_policy_check($root, $inventoryPath, ['mutator.php']);
+        vg_runtime_mutation_policy_test($result['valid'], implode("\n", $result['errors']));
+    });
+});
+
 $test('wpdb INSERT UPDATE and DELETE statements are detected', static function (): void {
     $source = <<<'PHP'
 <?php
@@ -269,6 +364,76 @@ PHP;
     }
 });
 
+$test('wpdb query methods, outfile selects and dynamic method dispatch are detected', static function (): void {
+    $source = <<<'PHP'
+<?php
+$wpdb->get_results('UPDATE wp_posts SET post_status = "draft"');
+$wpdb->get_var($sql);
+$wpdb->query('SELECT * FROM wp_posts INTO OUTFILE "/tmp/posts.csv"');
+$wpdb->{$operation}('wp_posts', $data);
+$wpdb->$operation('wp_posts', $data);
+PHP;
+    $calls = vg_runtime_mutation_policy_detect_mutations($source);
+    foreach ([
+        'wpdb.get_results:UPDATE',
+        'wpdb.get_var:DYNAMIC',
+        'wpdb.query:DYNAMIC',
+        'wpdb.dynamic-method',
+    ] as $expected) {
+        vg_runtime_mutation_policy_test(in_array($expected, $calls, true), 'Missing detection for ' . $expected . '.');
+    }
+});
+
+$test('a SELECT prefix concatenated with unknown SQL remains mutation-capable', static function (): void {
+    $source = <<<'PHP'
+<?php
+$wpdb->query('SELECT * FROM wp_posts' . $suffix);
+PHP;
+    $calls = vg_runtime_mutation_policy_detect_mutations($source);
+    vg_runtime_mutation_policy_test(in_array('wpdb.query:DYNAMIC', $calls, true), 'A SELECT prefix with an unknown SQL suffix was incorrectly treated as read-only.');
+});
+
+$test('a local prepared read query is resolved as read-only', static function (): void {
+    $source = <<<'PHP'
+<?php
+$query = $wpdb->prepare('SELECT IS_USED_LOCK(%s)', $lock_name);
+$owner = $wpdb->get_var($query);
+PHP;
+    $calls = vg_runtime_mutation_policy_detect_mutations($source);
+    vg_runtime_mutation_policy_test($calls === [], 'A prepared SELECT assigned to a local query variable was reported as a persistent mutation.');
+});
+
+$test('prepared reads in a local foreach query list are resolved as read-only', static function (): void {
+    $source = <<<'PHP'
+<?php
+function vg_policy_test_read_count(string $sql): int {
+    global $wpdb;
+    return (int) $wpdb->get_var($sql);
+}
+$queries = [
+    $wpdb->prepare('SELECT COUNT(*) FROM wp_posts WHERE ID = %d', 1),
+    $wpdb->prepare('SELECT COUNT(*) FROM wp_options WHERE option_name = %s', 'example'),
+];
+foreach ($queries as $query) {
+    vg_policy_test_read_count($query);
+}
+PHP;
+    $calls = vg_runtime_mutation_policy_detect_mutations($source);
+    vg_runtime_mutation_policy_test($calls === [], 'A prepared read query from a local list was reported as a persistent mutation.');
+});
+
+$test('unknown SQL in a local foreach query list remains mutation-capable', static function (): void {
+    $source = <<<'PHP'
+<?php
+$queries = ['SELECT * FROM wp_posts' . $suffix];
+foreach ($queries as $query) {
+    $wpdb->query($query);
+}
+PHP;
+    $calls = vg_runtime_mutation_policy_detect_mutations($source);
+    vg_runtime_mutation_policy_test(in_array('wpdb.query:DYNAMIC', $calls, true), 'Unknown SQL in a foreach list was incorrectly treated as read-only.');
+});
+
 $test('dynamic function dispatch is treated as a possible mutation', static function (): void {
     $calls = vg_runtime_mutation_policy_detect_mutations('<?php call_user_func($callback, $value);');
     vg_runtime_mutation_policy_test(in_array('dynamic-dispatch', $calls, true), 'Dynamic function dispatch was not classified as mutation-capable.');
@@ -290,7 +455,7 @@ $test('mutation library caller must include and invoke the library', static func
         $result = vg_runtime_mutation_policy_check($root, $inventoryPath, ['library.php', 'caller.php']);
         vg_runtime_mutation_policy_test(! $result['valid'], 'A caller that omitted the library invocation passed policy.');
         vg_runtime_mutation_policy_test(
-            str_contains(implode("\n", $result['errors']), 'does not include and invoke this library'),
+            str_contains(implode("\n", $result['errors']), 'does not include and invoke a function that reaches this library'),
             'Policy did not identify the stale mutation caller edge.'
         );
         file_put_contents(
@@ -299,7 +464,43 @@ $test('mutation library caller must include and invoke the library', static func
         );
         $result = vg_runtime_mutation_policy_check($root, $inventoryPath, ['library.php', 'caller.php']);
         vg_runtime_mutation_policy_test($result['valid'], implode("\n", $result['errors']));
+
+        file_put_contents(
+            $root . '/caller.php',
+            '<?php require_once __DIR__ . "/library.php"; vg_test_library_write(); vg_runtime_mutation_assert_session("vgnova-local-10039");'
+        );
+        $result = vg_runtime_mutation_policy_check($root, $inventoryPath, ['library.php', 'caller.php']);
+        vg_runtime_mutation_policy_test(! $result['valid'], 'A library caller with a guard after the write passed policy.');
     });
+});
+
+$test('a library caller must invoke a function that can reach its write', static function (): void {
+    vg_runtime_mutation_policy_with_temp_root(static function (string $root): void {
+        file_put_contents($root . '/library.php', '<?php function vg_test_library_read() { return get_option("x"); } function vg_test_library_write() { wp_insert_post([]); }');
+        file_put_contents(
+            $root . '/caller.php',
+            '<?php require_once __DIR__ . "/library.php"; vg_runtime_mutation_assert_session("vgnova-local-10039"); vg_test_library_read();'
+        );
+        $inventoryPath = $root . '/inventory.json';
+        file_put_contents($inventoryPath, vg_runtime_mutation_policy_inventory([
+            vg_runtime_mutation_policy_entry('library.php', 'library', ['mutation_callers' => ['caller.php']]),
+            vg_runtime_mutation_policy_entry('caller.php', 'mutating', [
+                'session_guard_required' => true,
+                'guard_function' => 'vg_runtime_mutation_assert_session',
+                'purpose' => 'runtime-qa',
+            ]),
+        ]));
+        $result = vg_runtime_mutation_policy_check($root, $inventoryPath, ['library.php', 'caller.php']);
+        vg_runtime_mutation_policy_test(! $result['valid'], 'A guarded call to a read-only library function satisfied the mutation caller requirement.');
+    });
+});
+
+$test('the reviewed mutation inventory passes against every tracked PHP file', static function (): void {
+    $repositoryRoot = dirname(__DIR__, 3);
+    $inventoryPath = $repositoryRoot . '/site-code/runtime-tools/mutating-entrypoints.json';
+    $result = vg_runtime_mutation_policy_check($repositoryRoot, $inventoryPath);
+    vg_runtime_mutation_policy_test($result['valid'], implode("\n", $result['errors']));
+    vg_runtime_mutation_policy_test($result['files_scanned'] > 100, 'The inventory regression did not scan the repository PHP sources.');
 });
 
 $test('wpdb CRUD methods and Bricks and ACF write calls are detected', static function (): void {

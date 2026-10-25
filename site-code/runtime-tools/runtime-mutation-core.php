@@ -6,7 +6,8 @@ final class VgRuntimeMutationException extends RuntimeException
     public function __construct(
         public readonly int $exitCode,
         public readonly string $errorCode,
-        string $message = ''
+        string $message = '',
+        public readonly bool $retainHostLock = false
     ) {
         parent::__construct($message !== '' ? $message : $errorCode);
     }
@@ -365,6 +366,40 @@ final class VgRuntimeMutationCore
         ];
     }
 
+    /** @param array<string,mixed> $metadata @return array<string,mixed> */
+    public static function safeStatusMetadata(array $metadata): array
+    {
+        $safe = [];
+        foreach ([
+            'schema_version', 'target', 'purpose', 'pid', 'hostname', 'started_at_utc',
+            'repository_commit', 'working_directory', 'command_summary', 'state',
+            'session_id', 'database_lock_name', 'database_connection_id',
+            'released_at_utc', 'child_exit_code',
+        ] as $key) {
+            if (! array_key_exists($key, $metadata)) {
+                continue;
+            }
+            $value = $metadata[$key];
+            if (! is_string($value) && ! is_int($value) && $value !== null) {
+                continue;
+            }
+            if ($key === 'purpose' && is_string($value)) {
+                try {
+                    $value = self::validatePurpose($value);
+                } catch (VgRuntimeMutationException) {
+                    $value = 'administrative mutation';
+                }
+            } elseif ($key === 'command_summary' && is_string($value)
+                && preg_match('/\\A[A-Za-z0-9_.+-]{1,80} \\[[0-9]{1,6} arguments\\]\\z/', $value) !== 1
+                && $value !== 'command unavailable') {
+                $value = 'command unavailable';
+            }
+            $safe[$key] = $value;
+        }
+
+        return $safe;
+    }
+
     /** @param list<string> $argv */
     public static function commandSummary(array $argv): string
     {
@@ -413,9 +448,10 @@ final class VgRuntimeMutationCore
     {
         $purpose = trim($purpose);
         if ($purpose === '' || strlen($purpose) > 160 || preg_match('/\A[\p{L}\p{N}\p{Zs}\p{P}]+\z/u', $purpose) !== 1
-            || preg_match('/\b(password|passwd|secret|token|api[_ -]?key|credential|mysql_pwd|database_url|salt)\b/i', $purpose) === 1
+            || preg_match('/(?:^|[^A-Za-z0-9])[A-Za-z0-9_-]*(?:password|passwd|pwd|secret|token|api[_ -]?key|auth[_ -]?key|credential|mysql_pwd|database_url|salt)/i', $purpose) === 1
             || preg_match('/\b[A-Za-z0-9_-]{32,}\b/', $purpose) === 1
-            || preg_match('~https?://[^\s]*[?&](?:password|passwd|secret|token|api[_-]?key)=~i', $purpose) === 1) {
+            || preg_match('~https?://[^\s]*[?&](?:password|passwd|secret|token|api[_-]?key)=~i', $purpose) === 1
+            || preg_match('~\b[a-z][a-z0-9+.-]*://[^/\s?#@]+:[^/\s?#@]*@~i', $purpose) === 1) {
             throw new VgRuntimeMutationException(71, 'INVALID_PURPOSE', 'Purpose must be a short, safe human-readable reason.');
         }
         return $purpose;
@@ -446,10 +482,10 @@ final class VgRuntimeMutationCore
             . '[ -e "$descriptor_path" ] || continue; '
             . 'descriptor=${descriptor_path##*/}; '
             . 'case "$descriptor" in ' . $preservePattern . ') ;; '
-            . '*) eval "exec ${descriptor}>&-" ;; esac; '
+            . '*) exec {descriptor}>&- ;; esac; '
             . 'done; exec "$@"';
 
-        return ['/bin/sh', '-c', $script, 'vgnova-fd-launcher', ...$command];
+        return ['/bin/bash', '-c', $script, 'vgnova-fd-launcher', ...$command];
     }
 
     /** @param list<string> $arguments */
@@ -504,9 +540,9 @@ final class VgRuntimeMutationCore
      *
      * @param array<string,mixed> $target
      * @param array<string,mixed> $metadataInput
-     * @param callable(string):array{result:mixed,connection_id:mixed,lifetime_handle?:resource,identity?:array<string,mixed>} $databaseAcquire
+     * @param callable(string,resource):array{result:mixed,connection_id:mixed,lifetime_handle?:resource,registration_handle?:resource,identity?:array<string,mixed>} $databaseAcquire
      * @param callable(array<string,mixed>,array<string,mixed>):void $identityValidator
-     * @param callable(array<string,mixed>,resource,resource|null):int $childRunner
+     * @param callable(array<string,mixed>,resource,resource|null,resource|null):int $childRunner
      * @param callable(string):void $databaseRelease
      * @param null|callable(array<string,mixed>):void $metadataObserver
      */
@@ -531,6 +567,8 @@ final class VgRuntimeMutationCore
         $sessionId = null;
         $childExitCode = null;
         $failure = null;
+        $cleanupFailure = null;
+        $retainHostLock = false;
         $baseMetadata = self::metadata(array_replace($metadataInput, ['target' => $target['id']]));
         $writeState = static function (string $state, array $changes = []) use (
             $lockHandle,
@@ -552,7 +590,7 @@ final class VgRuntimeMutationCore
         };
 
         try {
-            $databaseResult = $databaseAcquire($lockName);
+            $databaseResult = $databaseAcquire($lockName, $lockHandle);
             if (! is_array($databaseResult) || ! array_key_exists('result', $databaseResult)) {
                 throw new VgRuntimeMutationException(70, 'DATABASE_LOCK_FAILED', 'Database lock acquisition failed.');
             }
@@ -580,10 +618,14 @@ final class VgRuntimeMutationCore
             $lifetimeHandle = is_resource($databaseResult['lifetime_handle'] ?? null)
                 ? $databaseResult['lifetime_handle']
                 : null;
-            $childExitCode = $childRunner($proof, $lockHandle, $lifetimeHandle);
-            if (! is_int($childExitCode) || $childExitCode < 0 || $childExitCode > 255) {
+            $registrationHandle = is_resource($databaseResult['registration_handle'] ?? null)
+                ? $databaseResult['registration_handle']
+                : null;
+            $childResult = $childRunner($proof, $lockHandle, $lifetimeHandle, $registrationHandle);
+            if (! is_int($childResult) || $childResult < 0 || $childResult > 255) {
                 throw new VgRuntimeMutationException(70, 'INVALID_CHILD_EXIT_CODE', 'Child process returned an invalid exit code.');
             }
+            $childExitCode = $childResult;
         } catch (Throwable $exception) {
             $failure = $exception;
         } finally {
@@ -591,23 +633,44 @@ final class VgRuntimeMutationCore
                 try {
                     $databaseRelease($lockName);
                 } catch (Throwable $exception) {
-                    $failure ??= new VgRuntimeMutationException(70, 'DATABASE_LOCK_RELEASE_FAILED', 'Database lock release failed.');
+                    $cleanupFailure = $exception instanceof VgRuntimeMutationException
+                        ? $exception
+                        : new VgRuntimeMutationException(70, 'DATABASE_LOCK_RELEASE_FAILED', 'Database lock release failed.');
+                    $retainHostLock = $cleanupFailure->retainHostLock;
                 }
             }
 
             try {
-                $writeState('released', [
+                $writeState($cleanupFailure === null ? 'released' : 'cleanup_failed', [
                     'database_lock_name' => $databaseAcquired ? $lockName : null,
                     'database_connection_id' => null,
+                    'cleanup_error_code' => $cleanupFailure instanceof VgRuntimeMutationException
+                        ? $cleanupFailure->errorCode
+                        : null,
                 ]);
             } catch (Throwable $exception) {
-                $failure ??= new VgRuntimeMutationException(70, 'METADATA_WRITE_FAILED', 'Released session metadata could not be written.');
+                $cleanupFailure ??= new VgRuntimeMutationException(70, 'METADATA_WRITE_FAILED', 'Released session metadata could not be written.');
             }
 
-            flock($lockHandle, LOCK_UN);
+            if (! $retainHostLock) {
+                flock($lockHandle, LOCK_UN);
+            }
             fclose($lockHandle);
         }
 
+        if ($childExitCode !== null) {
+            if ($cleanupFailure !== null) {
+                $cleanupErrorCode = $cleanupFailure instanceof VgRuntimeMutationException
+                    ? $cleanupFailure->errorCode
+                    : 'SESSION_CLEANUP_FAILED';
+                fwrite(STDERR, 'Runtime mutation cleanup failed after child exit: ' . $cleanupErrorCode . ".\n");
+            }
+            return $childExitCode;
+        }
+
+        if ($cleanupFailure !== null) {
+            $failure ??= $cleanupFailure;
+        }
         if ($failure !== null) {
             throw $failure;
         }
@@ -626,19 +689,32 @@ final class VgRuntimeMutationCore
         throw new VgRuntimeMutationException(70, 'DATABASE_LOCK_FAILED', 'Database lock acquisition returned an error.');
     }
 
+    /** @param list<int>|null $descendants @return 'empty'|'present'|'unknown' */
+    public static function classifyDescendantScan(?array $descendants): string
+    {
+        if (! is_array($descendants)) {
+            return 'unknown';
+        }
+
+        return $descendants === [] ? 'empty' : 'present';
+    }
+
     /**
      * Starts a child in a process group with exact argv boundaries. Descriptor 3 carries the flock;
-     * descriptor 4 carries the database keeper's child-lifetime pipe.
+     * descriptor 4 carries the database keeper's child-lifetime pipe. Descriptor 6 gates exec until
+     * the keeper has registered the child's process group.
      *
      * @param list<string> $arguments
      * @param array<string,string> $environment
      * @param resource $lockHandle
      * @param resource|null $lifetimeHandle
+     * @param resource|null $registrationHandle
      */
-    public static function runChildCommand(array $arguments, array $environment, $lockHandle, $lifetimeHandle = null): int
+    public static function runChildCommand(array $arguments, array $environment, $lockHandle, $lifetimeHandle = null, $registrationHandle = null): int
     {
         if (PHP_SAPI !== 'cli' || $arguments === [] || ! array_is_list($arguments) || ! is_resource($lockHandle)
-            || ($lifetimeHandle !== null && ! is_resource($lifetimeHandle))) {
+            || ($lifetimeHandle !== null && ! is_resource($lifetimeHandle))
+            || ($registrationHandle !== null && ! is_resource($registrationHandle))) {
             throw new VgRuntimeMutationException(70, 'CHILD_START_FAILED', 'Child process configuration is invalid.');
         }
         foreach ($arguments as $argument) {
@@ -657,10 +733,11 @@ final class VgRuntimeMutationCore
         $previousTerminate = pcntl_signal_get_handler(SIGTERM);
         $process = null;
         $pipes = [];
+        $supervisorPid = null;
         $childPid = null;
         $groupReady = false;
         $signalState = ['signal' => null, 'sent_at' => null];
-        $handler = static function (int $signal) use (&$signalState, &$process, &$childPid, &$groupReady): void {
+        $handler = static function (int $signal) use (&$signalState, &$process, &$supervisorPid, &$childPid, &$groupReady): void {
             if ($signalState['signal'] === null) {
                 $signalState['signal'] = $signal;
                 $signalState['sent_at'] = microtime(true);
@@ -670,6 +747,9 @@ final class VgRuntimeMutationCore
             if (is_resource($process)) {
                 if ($groupReady && is_int($childPid)) {
                     @posix_kill(-$childPid, $signal);
+                    if (is_int($supervisorPid) && $supervisorPid > 1) {
+                        @posix_kill($supervisorPid, SIGTERM);
+                    }
                 } else {
                     @proc_terminate($process, $signal);
                 }
@@ -688,6 +768,8 @@ final class VgRuntimeMutationCore
                 2 => STDERR,
                 3 => $lockHandle,
                 5 => ['pipe', 'w'],
+                6 => ['pipe', 'r'],
+                7 => ['pipe', 'w'],
             ];
             if (is_resource($lifetimeHandle)) {
                 $descriptors[4] = $lifetimeHandle;
@@ -699,9 +781,13 @@ final class VgRuntimeMutationCore
                     $childEnvironment[$sessionKey] = $environment[$sessionKey];
                 }
             }
+            $runnerArguments = [PHP_BINARY, $runner];
+            if (is_resource($lifetimeHandle)) {
+                $runnerArguments[] = '--completion-channel';
+            }
             $processCommand = self::descriptorSafeCommand(
-                [PHP_BINARY, $runner, ...$arguments],
-                is_resource($lifetimeHandle) ? [3, 4, 5] : [3, 5]
+                [...$runnerArguments, ...$arguments],
+                is_resource($lifetimeHandle) ? [3, 4, 5, 6, 7] : [3, 5, 6, 7]
             );
             $process = @proc_open($processCommand, $descriptors, $pipes, null, $childEnvironment);
             if (! is_resource($process)) {
@@ -709,21 +795,75 @@ final class VgRuntimeMutationCore
             }
 
             $status = proc_get_status($process);
-            $childPid = is_int($status['pid'] ?? null) ? $status['pid'] : null;
+            $supervisorPid = is_int($status['pid'] ?? null) ? $status['pid'] : null;
             if (is_resource($lifetimeHandle)) {
                 fclose($lifetimeHandle);
             }
-            $ready = isset($pipes[5]) && is_resource($pipes[5]) ? fgets($pipes[5]) : false;
+            $ready = false;
+            if (isset($pipes[5]) && is_resource($pipes[5])) {
+                stream_set_blocking($pipes[5], false);
+                $readyBuffer = '';
+                $readyDeadline = microtime(true) + 5.0;
+                while (microtime(true) < $readyDeadline) {
+                    $readinessPoll = self::pollChildReadiness(
+                        $pipes[5],
+                        static fn (): bool => $signalState['signal'] !== null
+                    );
+                    if ($readinessPoll['state'] === 'interrupted') {
+                        if (self::terminateDirectProcess($process, null, false)) {
+                            proc_close($process);
+                            $process = null;
+                        }
+                        throw new VgRuntimeMutationException(70, 'CHILD_START_INTERRUPTED', 'Child start was interrupted by a signal.');
+                    }
+                    if ($readinessPoll['state'] === 'data') {
+                        $readyBuffer .= $readinessPoll['chunk'];
+                    }
+                    if (strlen($readyBuffer) > 128) {
+                        break;
+                    }
+                    if (str_contains($readyBuffer, "\n")) {
+                        $ready = $readyBuffer;
+                        break;
+                    }
+                    if ($readinessPoll['state'] === 'eof') {
+                        break;
+                    }
+                    $status = proc_get_status($process);
+                    if (! ($status['running'] ?? false)) {
+                        break;
+                    }
+                }
+            }
             if (isset($pipes[5]) && is_resource($pipes[5])) {
                 fclose($pipes[5]);
             }
             unset($pipes[5]);
-            if ($ready !== "ready\n" || ! is_int($childPid) || $childPid < 1) {
+            if (! is_string($ready)
+                || preg_match('/\\Aready:([1-9][0-9]{0,9})\\n\\z/', $ready, $readyMatches) !== 1
+                || ! is_int($supervisorPid)
+                || $supervisorPid < 1) {
                 throw new VgRuntimeMutationException(70, 'CHILD_START_FAILED', 'Child process group could not be established.');
             }
+            $childPid = (int) $readyMatches[1];
             $groupReady = true;
+            if (is_resource($registrationHandle)) {
+                $registration = (int) $supervisorPid . "\n";
+                if (fwrite($registrationHandle, $registration) !== strlen($registration) || ! fflush($registrationHandle)) {
+                    throw new VgRuntimeMutationException(70, 'DATABASE_LOCK_KEEPER_PROTOCOL_FAILED', 'Child process group could not be registered with the database lock keeper.');
+                }
+                fclose($registrationHandle);
+            }
+            if (! isset($pipes[6]) || ! is_resource($pipes[6]) || fwrite($pipes[6], "go\n") !== 3 || ! fflush($pipes[6])) {
+                throw new VgRuntimeMutationException(70, 'CHILD_START_FAILED', 'Child command could not pass its start gate.');
+            }
+            fclose($pipes[6]);
+            unset($pipes[6]);
             if ($signalState['signal'] !== null) {
                 @posix_kill(-$childPid, $signalState['signal']);
+                if (is_int($supervisorPid) && $supervisorPid > 1) {
+                    @posix_kill($supervisorPid, SIGTERM);
+                }
             }
 
             $observedExitCode = null;
@@ -748,41 +888,54 @@ final class VgRuntimeMutationCore
                 usleep(50000);
             }
 
+            $statusLine = isset($pipes[7]) && is_resource($pipes[7])
+                ? stream_get_contents($pipes[7], 256)
+                : false;
+            if (isset($pipes[7]) && is_resource($pipes[7])) {
+                fclose($pipes[7]);
+            }
+            unset($pipes[7]);
+            if (is_string($statusLine)) {
+                try {
+                    $childStatus = json_decode(trim($statusLine), true, 8, JSON_THROW_ON_ERROR);
+                } catch (JsonException) {
+                    $childStatus = null;
+                }
+                if (is_array($childStatus) && ($childStatus['kind'] ?? null) === 'exit'
+                    && is_int($childStatus['exit_code'] ?? null)
+                    && $childStatus['exit_code'] >= 0 && $childStatus['exit_code'] <= 255) {
+                    $observedExitCode = $childStatus['exit_code'];
+                    $observedSignal = null;
+                } elseif (is_array($childStatus) && ($childStatus['kind'] ?? null) === 'signal'
+                    && is_int($childStatus['signal'] ?? null)
+                    && $childStatus['signal'] > 0 && $childStatus['signal'] < 128) {
+                    $observedExitCode = null;
+                    $observedSignal = $childStatus['signal'];
+                }
+            }
+
             $closedExitCode = proc_close($process);
             $process = null;
-            self::terminateProcessGroupRemainder($childPid);
-            if ($signalState['signal'] !== null) {
-                return 128 + $signalState['signal'];
-            }
-            if ($observedSignal !== null) {
-                return 128 + $observedSignal;
-            }
             if ($observedExitCode !== null) {
                 return $observedExitCode;
             }
+            if ($observedSignal !== null) {
+                return 128 + ($signalState['signal'] ?? $observedSignal);
+            }
             if ($closedExitCode >= 0) {
                 return $closedExitCode;
+            }
+            if ($signalState['signal'] !== null) {
+                return 128 + $signalState['signal'];
             }
 
             throw new VgRuntimeMutationException(70, 'CHILD_EXIT_UNKNOWN', 'Child process exit status is unavailable.');
         } catch (VgRuntimeMutationException $exception) {
             if (is_resource($process)) {
-                if (is_int($childPid) && $groupReady) {
-                    @posix_kill(-$childPid, SIGTERM);
-                } else {
-                    @proc_terminate($process, SIGTERM);
+                if (self::terminateDirectProcess($process, $childPid, $groupReady)) {
+                    proc_close($process);
+                    $process = null;
                 }
-                usleep(100000);
-                if (is_int($childPid) && $groupReady) {
-                    @posix_kill(-$childPid, SIGKILL);
-                } else {
-                    @proc_terminate($process, SIGKILL);
-                }
-                while (proc_get_status($process)['running']) {
-                    usleep(50000);
-                }
-                proc_close($process);
-                $process = null;
             }
             if (is_int($childPid) && $groupReady) {
                 self::terminateProcessGroupRemainder($childPid);
@@ -790,22 +943,10 @@ final class VgRuntimeMutationCore
             throw $exception;
         } catch (Throwable) {
             if (is_resource($process)) {
-                if (is_int($childPid) && $groupReady) {
-                    @posix_kill(-$childPid, SIGTERM);
-                } else {
-                    @proc_terminate($process, SIGTERM);
+                if (self::terminateDirectProcess($process, $childPid, $groupReady)) {
+                    proc_close($process);
+                    $process = null;
                 }
-                usleep(100000);
-                if (is_int($childPid) && $groupReady) {
-                    @posix_kill(-$childPid, SIGKILL);
-                } else {
-                    @proc_terminate($process, SIGKILL);
-                }
-                while (proc_get_status($process)['running']) {
-                    usleep(50000);
-                }
-                proc_close($process);
-                $process = null;
             }
             if (is_int($childPid) && $groupReady) {
                 self::terminateProcessGroupRemainder($childPid);
@@ -823,24 +964,135 @@ final class VgRuntimeMutationCore
         }
     }
 
-    private static function terminateProcessGroupRemainder(int $processGroupId): void
+    public static function waitForProcessGroupExit(int $processGroupId, float $timeoutSeconds): bool
     {
         if ($processGroupId < 2) {
-            return;
+            return false;
         }
-        if (@posix_kill(-$processGroupId, 0)) {
+        if (! is_finite($timeoutSeconds) || $timeoutSeconds < 0.0) {
+            return false;
+        }
+        $deadline = microtime(true) + $timeoutSeconds;
+        do {
+            if (! self::processGroupHasLiveProcesses($processGroupId)) {
+                return true;
+            }
+            if (microtime(true) >= $deadline) {
+                break;
+            }
+            usleep(20000);
+        } while (true);
+
+        return ! self::processGroupHasLiveProcesses($processGroupId);
+    }
+
+    private static function processGroupHasLiveProcesses(int $processGroupId): bool
+    {
+        $statFiles = @glob('/proc/[0-9]*/stat');
+        if (is_array($statFiles)) {
+            foreach ($statFiles as $statFile) {
+                $stat = @file_get_contents($statFile);
+                if (! is_string($stat)) {
+                    continue;
+                }
+                $closingParenthesis = strrpos($stat, ')');
+                if (! is_int($closingParenthesis)) {
+                    continue;
+                }
+                $fields = preg_split('/\s+/', trim(substr($stat, $closingParenthesis + 1)));
+                if (! is_array($fields) || ! isset($fields[0], $fields[2])
+                    || ! ctype_digit($fields[2]) || (int) $fields[2] !== $processGroupId) {
+                    continue;
+                }
+                if (! in_array($fields[0], ['Z', 'X'], true)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        return @posix_kill(-$processGroupId, 0);
+    }
+
+    private static function terminateProcessGroupRemainder(int $processGroupId): bool
+    {
+        if ($processGroupId < 2 || self::waitForProcessGroupExit($processGroupId, 0.0)) {
+            return true;
+        }
+        @posix_kill(-$processGroupId, SIGTERM);
+        if (self::waitForProcessGroupExit($processGroupId, 1.0)) {
+            return true;
+        }
+        @posix_kill(-$processGroupId, SIGKILL);
+        return self::waitForProcessGroupExit($processGroupId, 2.0);
+    }
+
+    /** @param resource $stream @return array{state:string,chunk:string} */
+    private static function pollChildReadiness($stream, callable $signalPending): array
+    {
+        if ($signalPending()) {
+            return ['state' => 'interrupted', 'chunk' => ''];
+        }
+        if (! is_resource($stream)) {
+            return ['state' => 'eof', 'chunk' => ''];
+        }
+        $read = [$stream];
+        $write = null;
+        $except = null;
+        $selected = @stream_select($read, $write, $except, 0, 50000);
+        if ($selected === false || $selected === 0) {
+            return ['state' => 'waiting', 'chunk' => ''];
+        }
+        $chunk = @fread($stream, 128);
+        if (! is_string($chunk)) {
+            return ['state' => 'eof', 'chunk' => ''];
+        }
+        if ($chunk === '' && feof($stream)) {
+            return ['state' => 'eof', 'chunk' => ''];
+        }
+
+        return ['state' => 'data', 'chunk' => $chunk];
+    }
+
+    /** @param resource $process */
+    private static function terminateDirectProcess($process, ?int $processGroupId, bool $groupReady): bool
+    {
+        if ($groupReady && is_int($processGroupId) && $processGroupId > 1) {
             @posix_kill(-$processGroupId, SIGTERM);
-            $deadline = microtime(true) + 1.0;
-            while (@posix_kill(-$processGroupId, 0) && microtime(true) < $deadline) {
-                usleep(20000);
+            $status = proc_get_status($process);
+            $supervisorPid = is_int($status['pid'] ?? null) ? $status['pid'] : null;
+            if (is_int($supervisorPid) && $supervisorPid > 1) {
+                @posix_kill($supervisorPid, SIGTERM);
             }
-            if (@posix_kill(-$processGroupId, 0)) {
-                @posix_kill(-$processGroupId, SIGKILL);
-            }
-            while (@posix_kill(-$processGroupId, 0)) {
-                usleep(20000);
-            }
+            return self::waitForProcessHandleExit($process, 3.5);
+        } else {
+            @proc_terminate($process, SIGTERM);
         }
+        if (self::waitForProcessHandleExit($process, 0.1)) {
+            return true;
+        }
+        if ($groupReady && is_int($processGroupId) && $processGroupId > 1) {
+            @posix_kill(-$processGroupId, SIGKILL);
+        } else {
+            @proc_terminate($process, SIGKILL);
+        }
+        return self::waitForProcessHandleExit($process, 2.0);
+    }
+
+    /** @param resource $process */
+    private static function waitForProcessHandleExit($process, float $timeoutSeconds): bool
+    {
+        $deadline = microtime(true) + $timeoutSeconds;
+        do {
+            $status = proc_get_status($process);
+            if (! ($status['running'] ?? false)) {
+                return true;
+            }
+            if (microtime(true) >= $deadline) {
+                return false;
+            }
+            usleep(20000);
+        } while (true);
     }
 
     /** @return array<string,string> */

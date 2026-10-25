@@ -529,10 +529,10 @@ function vg_event_consumer_6c_qa_phase_setup(string $run_token): never
     $manifest = null;
     $failure = null;
     $cleanup_failures = [];
+    vg_runtime_mutation_assert_session('vgnova-local-10039');
     try {
         $event_snapshot = vg_event_consumer_6c_qa_read_json(VG_EVENT_CONSUMER_6C_QA_EVENT_FILE);
         $persistent_baseline = vg_event_consumer_6c_qa_preflight($event_snapshot);
-        vg_runtime_mutation_assert_session('vgnova-local-10039');
         $manifest = [
             'task' => '6C',
             'run_token' => $run_token,

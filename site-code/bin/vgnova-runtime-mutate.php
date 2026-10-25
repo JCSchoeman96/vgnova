@@ -53,22 +53,7 @@ function vg_runtime_mutation_cli_parse(array $arguments): array
 /** @param array<string,mixed> $metadata @return array<string,mixed> */
 function vg_runtime_mutation_cli_safe_metadata(array $metadata): array
 {
-    $safe = [];
-    foreach ([
-        'schema_version', 'target', 'purpose', 'pid', 'hostname', 'started_at_utc',
-        'repository_commit', 'working_directory', 'command_summary', 'state',
-        'session_id', 'database_lock_name', 'database_connection_id',
-        'released_at_utc', 'child_exit_code',
-    ] as $key) {
-        if (! array_key_exists($key, $metadata)) {
-            continue;
-        }
-        $value = $metadata[$key];
-        if (is_string($value) || is_int($value) || $value === null) {
-            $safe[$key] = $value;
-        }
-    }
-    return $safe;
+    return VgRuntimeMutationCore::safeStatusMetadata($metadata);
 }
 
 try {
@@ -164,18 +149,18 @@ try {
             'repository_commit' => $revision,
             'working_directory' => getcwd() ?: '',
         ],
-        static function (string $requestedLockName) use (&$lease, $target, $resolvedRoot, $socketOverride): array {
-            $lease = VgRuntimeMutationDatabase::startKeeper($target, $resolvedRoot, $requestedLockName, $socketOverride);
+        static function (string $requestedLockName, $hostLockHandle) use (&$lease, $target, $resolvedRoot, $socketOverride): array {
+            $lease = VgRuntimeMutationDatabase::startKeeper($target, $resolvedRoot, $requestedLockName, $hostLockHandle, $socketOverride);
             return $lease;
         },
         static function (array $registeredTarget, array $observedIdentity) use ($resolvedRoot): void {
             VgRuntimeMutationCore::validateTargetIdentity($registeredTarget, $observedIdentity, $resolvedRoot);
         },
-        static function (array $proof, $lockHandle, $lifetimeHandle) use ($childArguments, $resolvedRoot): int {
+        static function (array $proof, $lockHandle, $lifetimeHandle, $registrationHandle) use ($childArguments, $resolvedRoot): int {
             $baseEnvironment = getenv() ?: [];
             $baseEnvironment['VGNOVA_MUTATION_WP_ROOT'] = $resolvedRoot;
             $environment = VgRuntimeMutationCore::childEnvironment($baseEnvironment, $proof);
-            return VgRuntimeMutationCore::runChildCommand($childArguments, $environment, $lockHandle, $lifetimeHandle);
+            return VgRuntimeMutationCore::runChildCommand($childArguments, $environment, $lockHandle, $lifetimeHandle, $registrationHandle);
         },
         static function (string $requestedLockName) use (&$lease): void {
             if (is_array($lease)) {

@@ -53,6 +53,18 @@ function vg_runtime_mutation_core_with_temp_dir(callable $callback): void
     }
 }
 
+/** @return list<int> */
+function vg_runtime_mutation_core_direct_children(int $processId): array
+{
+    $path = "/proc/{$processId}/task/{$processId}/children";
+    $contents = @file_get_contents($path);
+    if (! is_string($contents)) {
+        return [];
+    }
+    preg_match_all('/[1-9][0-9]*/', $contents, $matches);
+    return array_map('intval', $matches[0] ?? []);
+}
+
 $tests = 0;
 $test = static function (string $name, callable $callback) use (&$tests): void {
     $callback();
@@ -125,6 +137,20 @@ $test('purpose rejects credential phrases even without an equals sign', static f
         static fn () => VgRuntimeMutationCore::validatePurpose('Review the password is hunter2'),
         'Credential phrase'
     );
+});
+
+$test('purpose rejects labeled credentials and short URL passwords', static function (): void {
+    foreach ([
+        'DB_PASSWORD: review-sentinel',
+        'AUTH_KEY: review-sentinel',
+        'https://alice:shortpass@example.org',
+    ] as $purpose) {
+        vg_runtime_mutation_core_throws(
+            71,
+            static fn () => VgRuntimeMutationCore::validatePurpose($purpose),
+            'Credential-bearing purpose'
+        );
+    }
 });
 
 foreach ([
@@ -341,6 +367,70 @@ $test('child failure is propagated and releases locks', static function (): void
     });
 });
 
+$test('cleanup failure is reported without replacing the child exit status', static function (): void {
+    vg_runtime_mutation_core_with_temp_dir(static function (string $directory): void {
+        $metadataStates = [];
+        $status = VgRuntimeMutationCore::withSession(
+            $directory . '/target.lock', vg_runtime_mutation_core_fixture_target(), ['purpose' => 'cleanup failure'],
+            static fn (string $lockName): array => ['result' => 1, 'connection_id' => 42],
+            static function (array $target): void {},
+            static fn (array $proof, $handle): int => 23,
+            static function (string $lockName): void {
+                throw new VgRuntimeMutationException(70, 'DATABASE_LOCK_RELEASE_FAILED', 'test release failure');
+            },
+            static function (array $metadata) use (&$metadataStates): void {
+                $metadataStates[] = $metadata;
+            }
+        );
+        vg_runtime_mutation_core_test($status === 23, 'Cleanup failure replaced the child exit result.');
+        $finalMetadata = $metadataStates[count($metadataStates) - 1] ?? [];
+        vg_runtime_mutation_core_test(($finalMetadata['state'] ?? null) === 'cleanup_failed', 'Cleanup failure was not recorded in session metadata.');
+        vg_runtime_mutation_core_test(($finalMetadata['cleanup_error_code'] ?? null) === 'DATABASE_LOCK_RELEASE_FAILED', 'Cleanup error code was not reported separately.');
+    });
+});
+
+$test('host lock remains held when cleanup guardian is still active', static function (): void {
+    vg_runtime_mutation_core_with_temp_dir(static function (string $directory): void {
+        $lockFile = $directory . '/target.lock';
+        $releaseChild = $directory . '/release-child';
+        $childPid = null;
+        $status = VgRuntimeMutationCore::withSession(
+            $lockFile,
+            vg_runtime_mutation_core_fixture_target(), ['purpose' => 'guardian retention'],
+            static function (string $lockName, $hostLock) use (&$childPid, $releaseChild): array {
+                $childPid = pcntl_fork();
+                if ($childPid === -1) {
+                    throw new RuntimeException('Could not start the host-lock guardian fixture.');
+                }
+                if ($childPid === 0) {
+                    while (! is_file($releaseChild)) {
+                        usleep(10000);
+                    }
+                    usleep(250000);
+                    exit(0);
+                }
+                return ['result' => 1, 'connection_id' => 42];
+            },
+            static function (array $target): void {},
+            static fn (array $proof, $hostLock, $lifetime): int => 23,
+            static function (string $lockName): void {
+                throw new VgRuntimeMutationException(70, 'DATABASE_LOCK_KEEPER_RELEASE_TIMEOUT', 'guardian active', true);
+            }
+        );
+        vg_runtime_mutation_core_test($status === 23, 'Guardian cleanup replaced the child exit status.');
+        $contender = VgRuntimeMutationCore::acquireFilesystemLock($lockFile);
+        if (is_resource($contender)) {
+            fclose($contender);
+        }
+        vg_runtime_mutation_core_test($contender === false, 'The coordinator explicitly unlocked a host lock still held by its guardian.');
+        file_put_contents($releaseChild, 'release');
+        pcntl_waitpid((int) $childPid, $childStatus);
+        $contender = VgRuntimeMutationCore::acquireFilesystemLock($lockFile);
+        vg_runtime_mutation_core_test(is_resource($contender), 'The host lock did not release after the guardian exited.');
+        fclose($contender);
+    });
+});
+
 $test('child exception releases locks', static function (): void {
     vg_runtime_mutation_core_with_temp_dir(static function (string $directory): void {
         $released = false;
@@ -409,6 +499,18 @@ $test('metadata and command summary omit secret values', static function (): voi
     vg_runtime_mutation_core_test($metadata['command_summary'] === 'wp [4 arguments]', 'Command summary is not sanitized.');
 });
 
+$test('status metadata redacts stale credential text from purpose and command summary', static function (): void {
+    $safe = VgRuntimeMutationCore::safeStatusMetadata([
+        'purpose' => 'DB_PASSWORD=review-sentinel',
+        'command_summary' => 'AUTH_KEY=review-sentinel',
+        'state' => 'active',
+    ]);
+    $encoded = json_encode($safe, JSON_THROW_ON_ERROR);
+    vg_runtime_mutation_core_test(! str_contains($encoded, 'review-sentinel'), 'Unsafe stale metadata leaked through status formatting.');
+    vg_runtime_mutation_core_test($safe['purpose'] === 'administrative mutation', 'Unsafe stale purpose was not replaced.');
+    vg_runtime_mutation_core_test($safe['command_summary'] === 'command unavailable', 'Unsafe stale command summary was not omitted.');
+});
+
 $test('forbidden bypass options are rejected', static function (): void {
     foreach (['--force', '--force-unlock', '--steal', '--kill-owner', '--ignore-lock', '--ignore-db-lock', '--ignore-filesystem-lock', '--skip-session-check'] as $option) {
         vg_runtime_mutation_core_throws(71, static fn () => VgRuntimeMutationCore::validateArguments([$option]), 'Forbidden option ' . $option);
@@ -430,7 +532,29 @@ $test('child command preserves argv boundaries and exit status', static function
     });
 });
 
-$test('child process group terminates a mutating descendant before returning', static function (): void {
+$test('child command does not inherit readiness or start-gate descriptors', static function (): void {
+    vg_runtime_mutation_core_with_temp_dir(static function (string $directory): void {
+        $lock = VgRuntimeMutationCore::acquireFilesystemLock($directory . '/target.lock');
+        $capture = $directory . '/descriptors.json';
+        $childCode = '$descriptors = []; foreach (range(3, 8) as $descriptor) { if (file_exists("/proc/self/fd/" . $descriptor)) { $descriptors[] = $descriptor; } } file_put_contents($argv[1], json_encode($descriptors, JSON_THROW_ON_ERROR));';
+        $status = VgRuntimeMutationCore::runChildCommand(
+            [PHP_BINARY, '-r', $childCode, $capture],
+            ['PATH' => (string) getenv('PATH')],
+            $lock
+        );
+        $descriptors = json_decode((string) file_get_contents($capture), true, 8, JSON_THROW_ON_ERROR);
+        vg_runtime_mutation_core_test($status === 0, 'Descriptor probe child did not complete.');
+        vg_runtime_mutation_core_test(is_array($descriptors) && in_array(3, $descriptors, true), 'Child did not inherit the host lock descriptor.');
+        vg_runtime_mutation_core_test(
+            ! in_array(5, $descriptors, true) && ! in_array(6, $descriptors, true) && ! in_array(7, $descriptors, true),
+            'Child inherited a coordinator-only descriptor.'
+        );
+        flock($lock, LOCK_UN);
+        fclose($lock);
+    });
+});
+
+$test('child supervisor retains the session until a mutating descendant exits', static function (): void {
     vg_runtime_mutation_core_with_temp_dir(static function (string $directory): void {
         $lock = VgRuntimeMutationCore::acquireFilesystemLock($directory . '/target.lock');
         $pidFile = $directory . '/descendant.pid';
@@ -443,11 +567,98 @@ $test('child process group terminates a mutating descendant before returning', s
         );
         vg_runtime_mutation_core_test($status === 19, 'The direct child exit status was not propagated.');
         $descendantPid = (int) trim((string) file_get_contents($pidFile));
-        vg_runtime_mutation_core_test($descendantPid > 1 && ! @posix_kill($descendantPid, 0), 'A mutating descendant remained after the runner returned.');
-        vg_runtime_mutation_core_test(! file_exists($lateFile), 'A mutating descendant wrote after the lock runner returned.');
+        vg_runtime_mutation_core_test($descendantPid > 1, 'The descendant PID was invalid.');
+        vg_runtime_mutation_core_test(file_exists($lateFile), 'The runner returned before its descendant finished.');
         flock($lock, LOCK_UN);
         fclose($lock);
     });
+});
+
+$test('descriptor launcher closes inherited descriptors above nine', static function (): void {
+    vg_runtime_mutation_core_with_temp_dir(static function (string $directory): void {
+        $resultFile = $directory . '/descriptor-launcher.txt';
+        $extraDescriptor = fopen('/dev/null', 'r');
+        vg_runtime_mutation_core_test(is_resource($extraDescriptor), 'Could not open the high-descriptor fixture.');
+        $command = VgRuntimeMutationCore::descriptorSafeCommand([
+            PHP_BINARY,
+            '-r',
+            'file_put_contents($argv[1], "started");',
+            $resultFile,
+        ], []);
+        $process = proc_open($command, [
+            0 => ['file', '/dev/null', 'r'],
+            1 => ['pipe', 'w'],
+            2 => ['pipe', 'w'],
+            12 => $extraDescriptor,
+        ], $pipes);
+        fclose($extraDescriptor);
+        vg_runtime_mutation_core_test(is_resource($process), 'High-descriptor child did not start.');
+        $stdout = stream_get_contents($pipes[1]);
+        $stderr = stream_get_contents($pipes[2]);
+        fclose($pipes[1]);
+        fclose($pipes[2]);
+        $exitCode = proc_close($process);
+        vg_runtime_mutation_core_test($exitCode === 0, 'High-descriptor child exited unsuccessfully: ' . trim((string) $stderr));
+        vg_runtime_mutation_core_test(file_get_contents($resultFile) === 'started', 'High-descriptor child did not execute.');
+    });
+});
+
+$test('process-group exit wait uses its timeout', static function (): void {
+    $pid = pcntl_fork();
+    vg_runtime_mutation_core_test($pid !== -1, 'Could not start the process-group timeout fixture.');
+    if ($pid === 0) {
+        if (posix_setsid() === -1) {
+            exit(91);
+        }
+        while (true) {
+            usleep(50000);
+        }
+    }
+    usleep(50000);
+    $startedAt = microtime(true);
+    $exited = VgRuntimeMutationCore::waitForProcessGroupExit($pid, 0.1);
+    $elapsed = microtime(true) - $startedAt;
+    posix_kill(-$pid, SIGKILL);
+    pcntl_waitpid($pid, $status);
+    vg_runtime_mutation_core_test(! $exited, 'A live process group was reported as exited.');
+    vg_runtime_mutation_core_test($elapsed < 0.5, 'The process-group exit wait exceeded its bounded timeout.');
+});
+
+$test('child readiness polling returns promptly to observe pending signals', static function (): void {
+    $pair = stream_socket_pair(STREAM_PF_UNIX, STREAM_SOCK_STREAM, STREAM_IPPROTO_IP);
+    vg_runtime_mutation_core_test(is_array($pair), 'Could not create readiness-poll fixture streams.');
+    stream_set_blocking($pair[0], false);
+    $startedAt = microtime(true);
+    $poll = new ReflectionMethod(VgRuntimeMutationCore::class, 'pollChildReadiness');
+    $poll->setAccessible(true);
+    do {
+        $result = $poll->invoke(null, $pair[0], static fn (): bool => microtime(true) - $startedAt >= 0.075);
+    } while (($result['state'] ?? null) === 'waiting' && microtime(true) - $startedAt < 0.3);
+    $elapsed = microtime(true) - $startedAt;
+    fclose($pair[0]);
+    fclose($pair[1]);
+    vg_runtime_mutation_core_test(($result['state'] ?? null) === 'interrupted', 'Readiness polling did not observe the pending signal callback.');
+    vg_runtime_mutation_core_test($elapsed < 0.3, 'Readiness polling blocked beyond its interruptible interval.');
+});
+
+$test('a stopped pre-ready process is killed within the bounded startup cleanup window', static function (): void {
+    $process = proc_open([PHP_BINARY, '-r', 'usleep(10000000);'], [
+        0 => ['file', '/dev/null', 'r'],
+        1 => ['file', '/dev/null', 'w'],
+        2 => ['file', '/dev/null', 'w'],
+    ], $pipes);
+    vg_runtime_mutation_core_test(is_resource($process), 'Could not start the stopped-process fixture.');
+    $status = proc_get_status($process);
+    $pid = is_int($status['pid'] ?? null) ? $status['pid'] : 0;
+    vg_runtime_mutation_core_test($pid > 1 && posix_kill($pid, SIGSTOP), 'Could not stop the pre-ready process fixture.');
+    $terminate = new ReflectionMethod(VgRuntimeMutationCore::class, 'terminateDirectProcess');
+    $terminate->setAccessible(true);
+    $startedAt = microtime(true);
+    $terminated = $terminate->invoke(null, $process, null, false);
+    $elapsed = microtime(true) - $startedAt;
+    proc_close($process);
+    vg_runtime_mutation_core_test($terminated === true, 'Stopped startup process survived TERM/KILL cleanup.');
+    vg_runtime_mutation_core_test($elapsed < 2.5, 'Stopped startup process exceeded bounded TERM/KILL cleanup.');
 });
 
 $test('child signal exit is reported as 128 plus the signal', static function (): void {
@@ -462,6 +673,21 @@ $test('child signal exit is reported as 128 plus the signal', static function ()
         flock($lock, LOCK_UN);
         fclose($lock);
     });
+});
+
+$test('descendant scan classification keeps unknown distinct from empty', static function (): void {
+    vg_runtime_mutation_core_test(
+        VgRuntimeMutationCore::classifyDescendantScan([]) === 'empty',
+        'An empty descendant scan was not classified as complete.'
+    );
+    vg_runtime_mutation_core_test(
+        VgRuntimeMutationCore::classifyDescendantScan([123]) === 'present',
+        'A non-empty descendant scan was not classified as active.'
+    );
+    vg_runtime_mutation_core_test(
+        VgRuntimeMutationCore::classifyDescendantScan(null) === 'unknown',
+        'An unavailable descendant scan was incorrectly treated as empty or active.'
+    );
 });
 
 $test('coordinator death cannot release host lock while child continues', static function (): void {
@@ -534,10 +760,9 @@ $test('database keeper protects a mutator after coordinator death even when it c
         proc_close($process);
 
         $hostLock = VgRuntimeMutationCore::acquireFilesystemLock($lockFile);
-        vg_runtime_mutation_core_test(is_resource($hostLock), 'The child unexpectedly retained the closed host lock descriptor.');
+        vg_runtime_mutation_core_test($hostLock === false, 'The database keeper did not retain the host lock after coordinator death.');
         $databaseLock = VgRuntimeMutationCore::acquireFilesystemLock($databaseLockFile);
         vg_runtime_mutation_core_test($databaseLock === false, 'A contender bypassed the database keeper while the mutator continued.');
-        fclose($hostLock);
 
         $deadline = microtime(true) + 4.0;
         while (trim((string) @file_get_contents($marker)) !== 'finished' && microtime(true) < $deadline) {
@@ -557,9 +782,273 @@ $test('database keeper protects a mutator after coordinator death even when it c
             usleep(20000);
         }
         vg_runtime_mutation_core_test($databaseAcquired, 'The database keeper did not release after the mutator ended.');
-        $hostLock = VgRuntimeMutationCore::acquireFilesystemLock($lockFile);
+        $hostLock = false;
+        $deadline = microtime(true) + 3.0;
+        while (! is_resource($hostLock) && microtime(true) < $deadline) {
+            $hostLock = VgRuntimeMutationCore::acquireFilesystemLock($lockFile);
+            if (! is_resource($hostLock)) {
+                usleep(20000);
+            }
+        }
         vg_runtime_mutation_core_test(is_resource($hostLock), 'The host lock did not become available after mutation ended.');
         fclose($hostLock);
+    });
+});
+
+$test('database keeper retains both locks for a proofless descendant after coordinator death', static function (): void {
+    vg_runtime_mutation_core_with_temp_dir(static function (string $directory): void {
+        $lockFile = $directory . '/target.lock';
+        $databaseLockFile = $lockFile . '.database';
+        $marker = $directory . '/child.marker';
+        $fixture = __DIR__ . '/../fixtures/runtime-mutation-parent-death.php';
+        $process = proc_open(
+            [PHP_BINARY, $fixture, $lockFile, $marker, 'spawn-proofless-descendant'],
+            [0 => ['file', '/dev/null', 'r'], 1 => ['file', '/dev/null', 'w'], 2 => ['file', '/dev/null', 'w']],
+            $pipes
+        );
+        vg_runtime_mutation_core_test(is_resource($process), 'Descendant lifetime fixture did not start.');
+        $coordinatorPid = proc_get_status($process)['pid'];
+        $deadline = microtime(true) + 3.0;
+        while ((! is_file($marker . '.descendant-started') || ! is_file($marker . '.keeper')) && microtime(true) < $deadline) {
+            usleep(20000);
+        }
+        vg_runtime_mutation_core_test(is_file($marker . '.descendant-started'), 'Proofless descendant did not start.');
+        vg_runtime_mutation_core_test(is_file($marker . '.keeper'), 'Database keeper process was not registered.');
+        posix_kill($coordinatorPid, SIGKILL);
+        proc_close($process);
+        file_put_contents($marker . '.parent-exit', 'exit');
+        $childPid = (int) trim((string) file_get_contents($marker . '.parent-pid'));
+        $deadline = microtime(true) + 3.0;
+        do {
+            $stat = @file_get_contents('/proc/' . $childPid . '/stat');
+            $closingParenthesis = is_string($stat) ? strrpos($stat, ')') : false;
+            $fields = is_int($closingParenthesis) ? preg_split('/\s+/', trim(substr($stat, $closingParenthesis + 1))) : [];
+            $state = is_array($fields) ? ($fields[0] ?? null) : null;
+            if (! is_string($stat) || in_array($state, ['Z', 'X'], true)) {
+                break;
+            }
+            usleep(20000);
+        } while (microtime(true) < $deadline);
+        vg_runtime_mutation_core_test(! is_string($stat) || in_array($state, ['Z', 'X'], true), 'Direct mutator did not exit after coordinator death.');
+
+        $hostLock = VgRuntimeMutationCore::acquireFilesystemLock($lockFile);
+        $databaseLock = VgRuntimeMutationCore::acquireFilesystemLock($databaseLockFile);
+        if (is_resource($hostLock)) {
+            fclose($hostLock);
+        }
+        if (is_resource($databaseLock)) {
+            fclose($databaseLock);
+        }
+        vg_runtime_mutation_core_test($hostLock === false, 'Host lock was released while its descendant could still write.');
+        vg_runtime_mutation_core_test($databaseLock === false, 'Database lock was released while its descendant could still write.');
+        vg_runtime_mutation_core_test(! is_file($marker . '.late-write'), 'Descendant completed before lock retention was checked.');
+
+        $deadline = microtime(true) + 4.0;
+        while (! is_file($marker . '.late-write') && microtime(true) < $deadline) {
+            usleep(20000);
+        }
+        vg_runtime_mutation_core_test(is_file($marker . '.late-write'), 'Proofless descendant did not finish its write.');
+        $hostAcquired = false;
+        $databaseAcquired = false;
+        $deadline = microtime(true) + 3.0;
+        while (microtime(true) < $deadline && (! $hostAcquired || ! $databaseAcquired)) {
+            if (! $hostAcquired) {
+                $handle = VgRuntimeMutationCore::acquireFilesystemLock($lockFile);
+                if (is_resource($handle)) {
+                    $hostAcquired = true;
+                    fclose($handle);
+                }
+            }
+            if (! $databaseAcquired) {
+                $handle = VgRuntimeMutationCore::acquireFilesystemLock($databaseLockFile);
+                if (is_resource($handle)) {
+                    $databaseAcquired = true;
+                    fclose($handle);
+                }
+            }
+            usleep(20000);
+        }
+        vg_runtime_mutation_core_test($hostAcquired && $databaseAcquired, 'Both locks did not release after the descendant exited.');
+    });
+});
+
+$test('locks remain held for a detached descendant after its mutator exits', static function (): void {
+    vg_runtime_mutation_core_with_temp_dir(static function (string $directory): void {
+        $lockFile = $directory . '/target.lock';
+        $databaseLockFile = $lockFile . '.database';
+        $marker = $directory . '/child.marker';
+        $fixture = __DIR__ . '/../fixtures/runtime-mutation-parent-death.php';
+        $process = proc_open(
+            [PHP_BINARY, $fixture, $lockFile, $marker, 'spawn-detached-descendant'],
+            [0 => ['file', '/dev/null', 'r'], 1 => ['file', '/dev/null', 'w'], 2 => ['file', '/dev/null', 'w']],
+            $pipes
+        );
+        vg_runtime_mutation_core_test(is_resource($process), 'Detached-descendant fixture did not start.');
+        $coordinatorPid = proc_get_status($process)['pid'];
+        $deadline = microtime(true) + 3.0;
+        while ((! is_file($marker . '.descendant-started') || ! is_file($marker . '.keeper')) && microtime(true) < $deadline) {
+            usleep(10000);
+        }
+        vg_runtime_mutation_core_test(is_file($marker . '.descendant-started'), 'Detached descendant did not start.');
+        vg_runtime_mutation_core_test(is_file($marker . '.keeper'), 'Database keeper process was not registered.');
+        posix_kill($coordinatorPid, SIGKILL);
+        proc_close($process);
+
+        $deadline = microtime(true) + 2.0;
+        while (! is_file($marker . '.late-write') && microtime(true) < $deadline) {
+            $hostLock = VgRuntimeMutationCore::acquireFilesystemLock($lockFile);
+            if (is_resource($hostLock)) {
+                fclose($hostLock);
+                break;
+            }
+            usleep(20000);
+        }
+        $hostLock = VgRuntimeMutationCore::acquireFilesystemLock($lockFile);
+        $databaseLock = VgRuntimeMutationCore::acquireFilesystemLock($databaseLockFile);
+        if (is_resource($hostLock)) {
+            fclose($hostLock);
+        }
+        if (is_resource($databaseLock)) {
+            fclose($databaseLock);
+        }
+        vg_runtime_mutation_core_test(is_file($marker . '.late-write'), 'Detached descendant did not perform its delayed write.');
+        vg_runtime_mutation_core_test($hostLock === false, 'Host lock was released before the detached descendant finished.');
+        vg_runtime_mutation_core_test($databaseLock === false, 'Database lock was released before the detached descendant finished.');
+
+        $hostAcquired = false;
+        $databaseAcquired = false;
+        $deadline = microtime(true) + 3.0;
+        while (microtime(true) < $deadline && (! $hostAcquired || ! $databaseAcquired)) {
+            if (! $hostAcquired) {
+                $handle = VgRuntimeMutationCore::acquireFilesystemLock($lockFile);
+                if (is_resource($handle)) {
+                    $hostAcquired = true;
+                    fclose($handle);
+                }
+            }
+            if (! $databaseAcquired) {
+                $handle = VgRuntimeMutationCore::acquireFilesystemLock($databaseLockFile);
+                if (is_resource($handle)) {
+                    $databaseAcquired = true;
+                    fclose($handle);
+                }
+            }
+            usleep(20000);
+        }
+        vg_runtime_mutation_core_test($hostAcquired && $databaseAcquired, 'Both locks did not release after the detached descendant exited.');
+    });
+});
+
+$test('unexpected supervisor death retains both locks until the detached writer exits', static function (): void {
+    vg_runtime_mutation_core_with_temp_dir(static function (string $directory): void {
+        $lockFile = $directory . '/target.lock';
+        $databaseLockFile = $lockFile . '.database';
+        $marker = $directory . '/child.marker';
+        $fixture = __DIR__ . '/../fixtures/runtime-mutation-parent-death.php';
+        $process = proc_open(
+            [PHP_BINARY, $fixture, $lockFile, $marker, 'spawn-detached-descendant'],
+            [0 => ['file', '/dev/null', 'r'], 1 => ['file', '/dev/null', 'w'], 2 => ['file', '/dev/null', 'w']],
+            $pipes
+        );
+        vg_runtime_mutation_core_test(is_resource($process), 'Detached-descendant failure fixture did not start.');
+        $coordinatorPid = (int) (proc_get_status($process)['pid'] ?? 0);
+        $keeperPid = 0;
+        $supervisorPid = 0;
+        try {
+            $deadline = microtime(true) + 3.0;
+            while ((! is_file($marker . '.descendant-started') || ! is_file($marker . '.keeper')) && microtime(true) < $deadline) {
+                usleep(10000);
+            }
+            vg_runtime_mutation_core_test(is_file($marker . '.descendant-started'), 'Detached descendant did not start.');
+            vg_runtime_mutation_core_test(is_file($marker . '.keeper'), 'Database keeper process was not registered.');
+            $keeperPid = (int) trim((string) file_get_contents($marker . '.keeper'));
+            $children = vg_runtime_mutation_core_direct_children($coordinatorPid);
+            foreach ($children as $childPid) {
+                $commandLine = @file_get_contents("/proc/{$childPid}/cmdline");
+                if ($childPid !== $keeperPid && is_string($commandLine) && str_contains($commandLine, 'runtime-mutation-exec.php')) {
+                    $supervisorPid = $childPid;
+                    break;
+                }
+            }
+            vg_runtime_mutation_core_test($keeperPid > 1 && $supervisorPid > 1, 'Could not identify the keeper and child supervisor processes.');
+
+            posix_kill($supervisorPid, SIGKILL);
+            usleep(100000);
+            posix_kill($coordinatorPid, SIGKILL);
+            proc_close($process);
+            $process = null;
+
+            $deadline = microtime(true) + 3.0;
+            while (! is_file($marker . '.late-write') && microtime(true) < $deadline) {
+                usleep(20000);
+            }
+            vg_runtime_mutation_core_test(is_file($marker . '.late-write'), 'Detached writer did not reach its delayed write.');
+            $hostLock = VgRuntimeMutationCore::acquireFilesystemLock($lockFile);
+            $databaseLock = VgRuntimeMutationCore::acquireFilesystemLock($databaseLockFile);
+            if (is_resource($hostLock)) {
+                fclose($hostLock);
+            }
+            if (is_resource($databaseLock)) {
+                fclose($databaseLock);
+            }
+            vg_runtime_mutation_core_test($hostLock === false, 'Host lock was released after supervisor death while the detached writer remained active.');
+            vg_runtime_mutation_core_test($databaseLock === false, 'Database lock was released after supervisor death while the detached writer remained active.');
+        } finally {
+            if (is_resource($process)) {
+                @posix_kill($coordinatorPid, SIGKILL);
+                proc_close($process);
+            }
+            if ($supervisorPid > 1) {
+                @posix_kill($supervisorPid, SIGKILL);
+            }
+            if ($keeperPid > 1) {
+                @posix_kill($keeperPid, SIGKILL);
+            }
+            $deadline = microtime(true) + 2.0;
+            while (! is_file($marker . '.late-write') && microtime(true) < $deadline) {
+                usleep(20000);
+            }
+        }
+    });
+});
+
+$test('SIGTERM cancels a detached descendant and waits for its exit before releasing locks', static function (): void {
+    vg_runtime_mutation_core_with_temp_dir(static function (string $directory): void {
+        $lockFile = $directory . '/target.lock';
+        $databaseLockFile = $lockFile . '.database';
+        $marker = $directory . '/child.marker';
+        $fixture = __DIR__ . '/../fixtures/runtime-mutation-parent-death.php';
+        $process = proc_open(
+            [PHP_BINARY, $fixture, $lockFile, $marker, 'spawn-detached-descendant'],
+            [0 => ['file', '/dev/null', 'r'], 1 => ['file', '/dev/null', 'w'], 2 => ['file', '/dev/null', 'w']],
+            $pipes
+        );
+        vg_runtime_mutation_core_test(is_resource($process), 'Detached-descendant cancellation fixture did not start.');
+        $coordinatorPid = (int) (proc_get_status($process)['pid'] ?? 0);
+        $startedAt = microtime(true);
+        $deadline = $startedAt + 3.0;
+        while ((! is_file($marker . '.descendant-started') || ! is_file($marker . '.keeper')) && microtime(true) < $deadline) {
+            usleep(10000);
+        }
+        vg_runtime_mutation_core_test(is_file($marker . '.descendant-started'), 'Detached descendant did not start.');
+        posix_kill($coordinatorPid, SIGTERM);
+        $status = proc_get_status($process);
+        $deadline = microtime(true) + 3.0;
+        while (($status['running'] ?? false) && microtime(true) < $deadline) {
+            usleep(20000);
+            $status = proc_get_status($process);
+        }
+        $elapsed = microtime(true) - $startedAt;
+        proc_close($process);
+
+        vg_runtime_mutation_core_test(! ($status['running'] ?? false), 'Coordinator did not finish bounded cancellation of the detached descendant.');
+        vg_runtime_mutation_core_test($elapsed < 2.8, 'Detached descendant outlived the cancellation deadline.');
+        vg_runtime_mutation_core_test(! is_file($marker . '.late-write'), 'Detached descendant wrote after cancellation.');
+        $hostLock = VgRuntimeMutationCore::acquireFilesystemLock($lockFile);
+        $databaseLock = VgRuntimeMutationCore::acquireFilesystemLock($databaseLockFile);
+        vg_runtime_mutation_core_test(is_resource($hostLock) && is_resource($databaseLock), 'Locks did not release after every detached descendant exited.');
+        fclose($hostLock);
+        fclose($databaseLock);
     });
 });
 
@@ -633,6 +1122,38 @@ $test('SIGTERM reaches child and host lock releases after child exit', static fu
     });
 });
 
+$test('coordinator signal preserves the child normal exit status', static function (): void {
+    vg_runtime_mutation_core_with_temp_dir(static function (string $directory): void {
+        $lockFile = $directory . '/target.lock';
+        $marker = $directory . '/child.marker';
+        $fixture = __DIR__ . '/../fixtures/runtime-mutation-parent-death.php';
+        $process = proc_open(
+            [PHP_BINARY, $fixture, $lockFile, $marker, 'signal-exit-code'],
+            [0 => ['file', '/dev/null', 'r'], 1 => ['file', '/dev/null', 'w'], 2 => ['file', '/dev/null', 'w']],
+            $pipes
+        );
+        vg_runtime_mutation_core_test(is_resource($process), 'Signal exit-code fixture did not start.');
+        $coordinatorPid = proc_get_status($process)['pid'];
+        $deadline = microtime(true) + 3.0;
+        while ((! is_file($marker) || trim((string) file_get_contents($marker)) !== 'started') && microtime(true) < $deadline) {
+            usleep(20000);
+        }
+        vg_runtime_mutation_core_test(is_file($marker) && trim((string) file_get_contents($marker)) === 'started', 'Signal exit-code child did not start.');
+        posix_kill($coordinatorPid, SIGTERM);
+        $deadline = microtime(true) + 4.0;
+        do {
+            $status = proc_get_status($process);
+            if (! ($status['running'] ?? false)) {
+                break;
+            }
+            usleep(20000);
+        } while (microtime(true) < $deadline);
+        vg_runtime_mutation_core_test(! ($status['running'] ?? false), 'Coordinator did not finish after SIGTERM.');
+        proc_close($process);
+        vg_runtime_mutation_core_test(trim((string) @file_get_contents($marker . '.exit')) === '23', 'Coordinator replaced the child normal exit code with a signal-derived code.');
+    });
+});
+
 $test('malformed WP database host is rejected before a database connection', static function (): void {
     vg_runtime_mutation_core_with_temp_dir(static function (string $directory): void {
         $binDirectory = $directory . '/bin';
@@ -655,11 +1176,13 @@ SH;
         file_put_contents($wpPath, $wpScript);
         chmod($wpPath, 0700);
         $target = vg_runtime_mutation_core_fixture_target();
+        $hostLock = VgRuntimeMutationCore::acquireFilesystemLock($directory . '/host.lock');
         try {
             VgRuntimeMutationDatabase::startKeeper(
                 $target,
                 $directory,
                 VgRuntimeMutationCore::advisoryLockName($target),
+                $hostLock,
                 null,
                 [
                     'PATH' => $binDirectory,
@@ -671,6 +1194,9 @@ SH;
             vg_runtime_mutation_core_test($exception->exitCode === 71, 'Malformed host returned the wrong exit code.');
             vg_runtime_mutation_core_test($exception->errorCode === 'INVALID_DB_HOST', 'Malformed host returned the wrong diagnostic.');
             vg_runtime_mutation_core_test(! str_contains($exception->getMessage(), 'secret-sentinel'), 'Database password reached the diagnostic.');
+        } finally {
+            flock($hostLock, LOCK_UN);
+            fclose($hostLock);
         }
         $reads = file($callLog, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
         vg_runtime_mutation_core_test($reads === [

@@ -333,8 +333,8 @@ $qa_failure = null;
 $cleanup_failures = [];
 $result = [];
 $service = $setup['service'];
+vg_runtime_mutation_assert_session('vgnova-local-10039');
 try {
-    vg_runtime_mutation_assert_session('vgnova-local-10039');
     $inserted = wp_insert_post(['post_type' => 'person', 'post_status' => 'publish', 'post_title' => $owner, 'post_name' => $person_slug, 'meta_input' => ['_vg_task_6a_qa_owner' => $owner]], true);
     if (is_wp_error($inserted)) {
         throw new RuntimeException('Could not create QA Person: ' . $inserted->get_error_message());
