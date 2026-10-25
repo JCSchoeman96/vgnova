@@ -73,6 +73,13 @@
             "purpose": "runtime-qa"
         },
         {
+            "path": "site-code/runtime-tests/fcm-self-featured-cli.php",
+            "classification": "mutating",
+            "session_guard_required": true,
+            "guard_function": "vg_runtime_mutation_assert_session",
+            "purpose": "runtime-qa"
+        },
+        {
             "path": "site-code/runtime-tests/fcm-self-featured-runtime.php",
             "classification": "mutating",
             "session_guard_required": true,
@@ -195,6 +202,10 @@
             "classification": "library"
         },
         {
+            "path": "site-code/voelgoed-platform-core/includes/Runtime/RuntimeMutationSession.php",
+            "classification": "library"
+        },
+        {
             "path": "site-code/voelgoed-platform-core/includes/Event/EventParticipationAdmin.php",
             "classification": "explicit_exemption",
             "reason": "Normal WordPress event editor callbacks remain outside administrative runtime coordination.",
@@ -274,10 +285,6 @@
         },
         {
             "path": "site-code/voelgoed-platform-core/includes/Product/ProductSourceEventBricks.php",
-            "classification": "library"
-        },
-        {
-            "path": "site-code/voelgoed-platform-core/includes/RuntimeMutationSession.php",
             "classification": "library"
         },
         {
@@ -560,13 +567,13 @@
     "external_mutators": [
         {
             "path": "site-code/runtime-tests/fcm-self-featured-integration.py",
-            "boundary": "Novamira execute-php requests from the local Python runner.",
+            "boundary": "Local WP-CLI eval-file child processes started by the local Python runner.",
             "actions": [
                 "create",
                 "cleanup"
             ],
-            "guard": "The embedded PHP payload validates the active session before its first write; run the Python process under vgnova-runtime-mutate.php.",
-            "reviewed_scope": "The snapshot and frontend-render requests are read-only. The local runner waits for each remote execute-php request before exiting."
+            "guard": "The WP-CLI entrypoint validates the active session and inherits descriptors 3 and 4 before loading the PHP action helper; run the Python process under vgnova-runtime-mutate.php.",
+            "reviewed_scope": "The snapshot and frontend-render requests are read-only. Mutating WP-CLI children inherit the filesystem lock and database-keeper lifetime descriptors, so they cannot continue after the local coordinator releases either lock."
         }
     ]
 }

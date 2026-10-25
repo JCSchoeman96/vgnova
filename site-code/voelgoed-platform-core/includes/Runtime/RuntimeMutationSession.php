@@ -47,6 +47,67 @@ function vg_runtime_mutation_session_connection_id(mixed $value): ?string
 }
 
 /**
+ * Confirm descriptor 3 refers to the validated lock file and shares its active flock.
+ */
+function vg_runtime_mutation_session_inherited_lock(string $lock_file): bool
+{
+    static $descriptor = null;
+
+    if (! is_resource($descriptor)) {
+        $descriptor = @fopen('php://fd/3', 'r+');
+    }
+    if (! is_resource($descriptor) || is_link($lock_file)) {
+        return false;
+    }
+
+    $descriptor_stat = @fstat($descriptor);
+    $path_stat = @lstat($lock_file);
+    if (! is_array($descriptor_stat)
+        || ! is_array($path_stat)
+        || ($path_stat['mode'] & 0170000) !== 0100000
+        || ($descriptor_stat['dev'] ?? null) !== ($path_stat['dev'] ?? null)
+        || ($descriptor_stat['ino'] ?? null) !== ($path_stat['ino'] ?? null)) {
+        return false;
+    }
+
+    return @flock($descriptor, LOCK_EX | LOCK_NB);
+}
+
+/**
+ * Validate lock path ownership, mode, and inode identity after opening it.
+ *
+ * @param resource $handle
+ */
+function vg_runtime_mutation_session_safe_lock_file(string $lock_file, $handle): bool
+{
+    if (is_link($lock_file)) {
+        return false;
+    }
+
+    $path_stat = @lstat($lock_file);
+    $handle_stat = @fstat($handle);
+    $directory = dirname($lock_file);
+    $directory_stat = @lstat($directory);
+    if (! is_array($path_stat) || ! is_array($handle_stat) || ! is_array($directory_stat)) {
+        return false;
+    }
+
+    if (! function_exists('posix_geteuid') || realpath($directory) !== rtrim($directory, '/')) {
+        return false;
+    }
+
+    $effective_uid = posix_geteuid();
+    return ($path_stat['mode'] & 0170000) === 0100000
+        && ($directory_stat['mode'] & 0170000) === 0040000
+        && ($path_stat['dev'] ?? null) === ($handle_stat['dev'] ?? null)
+        && ($path_stat['ino'] ?? null) === ($handle_stat['ino'] ?? null)
+        && ($path_stat['uid'] ?? null) === $effective_uid
+        && ($directory_stat['uid'] ?? null) === $effective_uid
+        && (($path_stat['mode'] & 0077) === 0)
+        && (($directory_stat['mode'] & 0077) === 0);
+}
+
+/**
  * Return a non-secret diagnostic report for the current administrative mutation session.
  *
  * The database lock owner callback receives the validated advisory-lock name and must
@@ -141,10 +202,15 @@ function vg_runtime_mutation_session_report(
     }
 
     if ($valid_lock_path) {
-        if (! is_file($lock_file) || ! is_readable($lock_file)) {
-            $errors[] = 'metadata_unreadable';
+        $metadata_handle = @fopen($lock_file, 'r');
+        if (! is_resource($metadata_handle) || ! vg_runtime_mutation_session_safe_lock_file($lock_file, $metadata_handle)) {
+            if (is_resource($metadata_handle)) {
+                fclose($metadata_handle);
+            }
+            $errors[] = 'lock_file_unsafe';
         } else {
-            $metadata_json = @file_get_contents($lock_file);
+            $metadata_json = stream_get_contents($metadata_handle);
+            fclose($metadata_handle);
             if (! is_string($metadata_json)) {
                 $errors[] = 'metadata_unreadable';
             } else {
@@ -190,8 +256,11 @@ function vg_runtime_mutation_session_report(
             }
         }
 
-        $probe_handle = @fopen($lock_file, 'r');
-        if (! is_resource($probe_handle)) {
+        $probe_handle = @fopen($lock_file, 'r+');
+        if (! is_resource($probe_handle) || ! vg_runtime_mutation_session_safe_lock_file($lock_file, $probe_handle)) {
+            if (is_resource($probe_handle)) {
+                fclose($probe_handle);
+            }
             $errors[] = 'filesystem_lock_unavailable';
         } else {
             $probe_acquired = @flock($probe_handle, LOCK_EX | LOCK_NB);
@@ -203,6 +272,9 @@ function vg_runtime_mutation_session_report(
                 }
             } else {
                 $filesystem_lock_held = true;
+                if (! vg_runtime_mutation_session_inherited_lock($lock_file)) {
+                    $errors[] = 'filesystem_lock_descriptor_unowned';
+                }
             }
             fclose($probe_handle);
         }

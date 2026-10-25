@@ -32,7 +32,7 @@ final class VgRuntimeMutationCore
     private const SAFE_ENVIRONMENT_KEYS = [
         'PATH', 'HOME', 'USER', 'LOGNAME', 'TMPDIR', 'TMP', 'TEMP', 'TZ',
         'LANG', 'LC_ALL', 'LC_CTYPE', 'XDG_CONFIG_HOME', 'XDG_STATE_HOME',
-        'WP_CLI_CONFIG_PATH', 'WP_CLI_PACKAGES_DIR',
+        'WP_CLI_CONFIG_PATH', 'WP_CLI_PACKAGES_DIR', 'VGNOVA_MUTATION_WP_ROOT',
     ];
 
     private const SESSION_ENVIRONMENT_KEYS = [
@@ -227,6 +227,17 @@ final class VgRuntimeMutationCore
         if (! is_dir($directory) && ! mkdir($directory, 0700, true) && ! is_dir($directory)) {
             throw new VgRuntimeMutationException(70, 'FILESYSTEM_LOCK_OPEN_FAILED', 'Filesystem lock directory could not be created.');
         }
+        $directoryIdentity = self::validateLockDirectory($directory);
+
+        if (file_exists($lockFile)) {
+            $pathStat = @lstat($lockFile);
+            if (! is_array($pathStat)
+                || ($pathStat['mode'] & 0170000) !== 0100000
+                || ($pathStat['uid'] ?? null) !== posix_geteuid()
+                || (($pathStat['mode'] & 0077) !== 0)) {
+                throw new VgRuntimeMutationException(70, 'FILESYSTEM_LOCK_OPEN_FAILED', 'Existing lock file ownership or permissions are unsafe.');
+            }
+        }
 
         $previousMask = umask(0077);
         try {
@@ -238,15 +249,21 @@ final class VgRuntimeMutationCore
         if (! is_resource($handle)) {
             throw new VgRuntimeMutationException(70, 'FILESYSTEM_LOCK_OPEN_FAILED', 'Filesystem lock file could not be opened.');
         }
-        if (is_link($lockFile)) {
+        if (! self::lockDirectoryMatches($directory, $directoryIdentity)
+            || ! self::lockPathMatchesHandle($lockFile, $handle)) {
             fclose($handle);
-            throw new VgRuntimeMutationException(70, 'FILESYSTEM_LOCK_OPEN_FAILED', 'Filesystem lock file must not be a symbolic link.');
+            throw new VgRuntimeMutationException(70, 'FILESYSTEM_LOCK_OPEN_FAILED', 'Filesystem lock path changed while it was opened.');
         }
 
-        @chmod($lockFile, 0600);
         if (! flock($handle, LOCK_EX | LOCK_NB)) {
             fclose($handle);
             return false;
+        }
+        if (! self::lockDirectoryMatches($directory, $directoryIdentity)
+            || ! self::lockPathMatchesHandle($lockFile, $handle)) {
+            flock($handle, LOCK_UN);
+            fclose($handle);
+            throw new VgRuntimeMutationException(70, 'FILESYSTEM_LOCK_OPEN_FAILED', 'Filesystem lock path changed during acquisition.');
         }
 
         return $handle;
@@ -366,7 +383,7 @@ final class VgRuntimeMutationCore
     {
         $environment = self::safeEnvironment($baseEnvironment);
         foreach (array_keys($environment) as $key) {
-            if (str_starts_with($key, 'VGNOVA_MUTATION_')) {
+            if (str_starts_with($key, 'VGNOVA_MUTATION_') && $key !== 'VGNOVA_MUTATION_WP_ROOT') {
                 unset($environment[$key]);
             }
         }
@@ -396,7 +413,8 @@ final class VgRuntimeMutationCore
     {
         $purpose = trim($purpose);
         if ($purpose === '' || strlen($purpose) > 160 || preg_match('/\A[\p{L}\p{N}\p{Zs}\p{P}]+\z/u', $purpose) !== 1
-            || preg_match('/\b(password|passwd|secret|token|api[_ -]?key|credential|mysql_pwd|database_url)\b\s*[:=]/i', $purpose) === 1
+            || preg_match('/\b(password|passwd|secret|token|api[_ -]?key|credential|mysql_pwd|database_url|salt)\b/i', $purpose) === 1
+            || preg_match('/\b[A-Za-z0-9_-]{32,}\b/', $purpose) === 1
             || preg_match('~https?://[^\s]*[?&](?:password|passwd|secret|token|api[_-]?key)=~i', $purpose) === 1) {
             throw new VgRuntimeMutationException(71, 'INVALID_PURPOSE', 'Purpose must be a short, safe human-readable reason.');
         }
@@ -884,6 +902,62 @@ final class VgRuntimeMutationCore
                 }
             }
         }
+    }
+
+    /** @return array{dev:int,ino:int,uid:int,mode:int} */
+    private static function validateLockDirectory(string $directory): array
+    {
+        if (is_link($directory) || ! function_exists('posix_geteuid')) {
+            throw new VgRuntimeMutationException(70, 'FILESYSTEM_LOCK_OPEN_FAILED', 'Filesystem lock directory cannot be verified safely.');
+        }
+        $stat = @lstat($directory);
+        if (! is_array($stat)
+            || ($stat['mode'] & 0170000) !== 0040000
+            || ($stat['uid'] ?? null) !== posix_geteuid()
+            || (($stat['mode'] & 0077) !== 0)
+            || realpath($directory) !== rtrim($directory, '/')) {
+            throw new VgRuntimeMutationException(70, 'FILESYSTEM_LOCK_OPEN_FAILED', 'Filesystem lock directory ownership or permissions are unsafe.');
+        }
+
+        return [
+            'dev' => (int) $stat['dev'],
+            'ino' => (int) $stat['ino'],
+            'uid' => (int) $stat['uid'],
+            'mode' => (int) $stat['mode'],
+        ];
+    }
+
+    /** @param array{dev:int,ino:int,uid:int,mode:int} $identity */
+    private static function lockDirectoryMatches(string $directory, array $identity): bool
+    {
+        if (is_link($directory) || realpath($directory) !== rtrim($directory, '/')) {
+            return false;
+        }
+        $stat = @lstat($directory);
+        return is_array($stat)
+            && ($stat['mode'] & 0170000) === 0040000
+            && ($stat['uid'] ?? null) === $identity['uid']
+            && (($stat['mode'] & 0077) === 0)
+            && ($stat['dev'] ?? null) === $identity['dev']
+            && ($stat['ino'] ?? null) === $identity['ino'];
+    }
+
+    /** @param resource $handle */
+    private static function lockPathMatchesHandle(string $lockFile, $handle): bool
+    {
+        if (is_link($lockFile)) {
+            return false;
+        }
+        $pathStat = @lstat($lockFile);
+        $handleStat = @fstat($handle);
+        if (! is_array($pathStat) || ! is_array($handleStat)) {
+            return false;
+        }
+        return ($pathStat['mode'] & 0170000) === 0100000
+            && ($pathStat['uid'] ?? null) === posix_geteuid()
+            && (($pathStat['mode'] & 0077) === 0)
+            && ($pathStat['dev'] ?? null) === ($handleStat['dev'] ?? null)
+            && ($pathStat['ino'] ?? null) === ($handleStat['ino'] ?? null);
     }
 
     /** @param resource $handle @return array<string,mixed>|null */

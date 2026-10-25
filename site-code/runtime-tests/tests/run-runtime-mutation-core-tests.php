@@ -119,6 +119,14 @@ $test('human-readable purpose is retained and credential-like purpose is rejecte
     vg_runtime_mutation_core_throws(71, static fn () => VgRuntimeMutationCore::validatePurpose('Run QA with api_key=private'), 'Credential-like purpose');
 });
 
+$test('purpose rejects credential phrases even without an equals sign', static function (): void {
+    vg_runtime_mutation_core_throws(
+        71,
+        static fn () => VgRuntimeMutationCore::validatePurpose('Review the password is hunter2'),
+        'Credential phrase'
+    );
+});
+
 foreach ([
     'localhost' => ['host' => 'localhost', 'port' => null, 'socket' => null],
     '127.0.0.1' => ['host' => '127.0.0.1', 'port' => null, 'socket' => null],
@@ -153,10 +161,35 @@ $test('first filesystem lock succeeds and second fails fast', static function ()
     });
 });
 
+$test('filesystem lock refuses a group-writable state directory', static function (): void {
+    vg_runtime_mutation_core_with_temp_dir(static function (string $directory): void {
+        chmod($directory, 0770);
+        vg_runtime_mutation_core_throws(
+            70,
+            static fn () => VgRuntimeMutationCore::acquireFilesystemLock($directory . '/target.lock'),
+            'Unsafe state directory'
+        );
+    });
+});
+
+$test('filesystem lock refuses an existing group-readable lock file', static function (): void {
+    vg_runtime_mutation_core_with_temp_dir(static function (string $directory): void {
+        $path = $directory . '/target.lock';
+        file_put_contents($path, '');
+        chmod($path, 0640);
+        vg_runtime_mutation_core_throws(
+            70,
+            static fn () => VgRuntimeMutationCore::acquireFilesystemLock($path),
+            'Unsafe existing lock file'
+        );
+    });
+});
+
 $test('stale metadata does not prevent real filesystem acquisition', static function (): void {
     vg_runtime_mutation_core_with_temp_dir(static function (string $directory): void {
         $path = $directory . '/target.lock';
         file_put_contents($path, '{"state":"active","session_id":"stale"}');
+        chmod($path, 0600);
         $handle = VgRuntimeMutationCore::acquireFilesystemLock($path);
         vg_runtime_mutation_core_test(is_resource($handle), 'Stale metadata blocked actual acquisition.');
         fclose($handle);
@@ -675,6 +708,22 @@ $test('database status reports an invalid root as an error state', static functi
     vg_runtime_mutation_core_test(
         $status === ['state' => 'error', 'owner_connection_id' => null, 'error_code' => 'INVALID_WORDPRESS_ROOT'],
         'Database status did not report an explicit error state.'
+    );
+});
+
+$test('database status passes only configuration and transport to the identity reader', static function (): void {
+    $source = file_get_contents(__DIR__ . '/../../runtime-tools/runtime-mutation-database.php');
+    vg_runtime_mutation_core_test(is_string($source), 'Database runtime source could not be read.');
+    $status_start = strpos($source, 'public static function statusLockOwner(');
+    $keeper_start = strpos($source, 'public static function keeperMain(');
+    vg_runtime_mutation_core_test(
+        is_int($status_start) && is_int($keeper_start) && $status_start < $keeper_start,
+        'Database status implementation could not be isolated.'
+    );
+    $status_source = substr($source, $status_start, $keeper_start - $status_start);
+    vg_runtime_mutation_core_test(
+        preg_match('/readTargetIdentity\(\s*\$database\s*,\s*\$configuration\s*,\s*\$transport\s*\)/', $status_source) === 1,
+        'The status path does not call the identity reader with its declared configuration and transport arguments.'
     );
 });
 

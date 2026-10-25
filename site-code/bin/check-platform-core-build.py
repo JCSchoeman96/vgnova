@@ -28,6 +28,7 @@ ROOT_PLUGIN = "voelgoed-platform-core"
 BUILDER_PATH = "site-code/bin/build-platform-core.py"
 PATCH_PATH = "site-code/voelgoed-platform-core/integration.patch"
 OVERLAY_PATHS = (
+    "site-code/voelgoed-platform-core/includes/Runtime",
     "site-code/voelgoed-platform-core/includes/Taxonomy",
     "site-code/voelgoed-platform-core/includes/Event",
     "site-code/voelgoed-platform-core/includes/Product",
@@ -1602,7 +1603,7 @@ def run_negative_cases(
     fixture = create_fixture(repo_root, commit, cases / "patch-fails")
     patch_file = fixture / PATCH_PATH
     patch = patch_file.read_text(encoding="utf-8")
-    patch = re.sub(r"@@ -25,0 \+26,20 @@", "@@ -25,0 +26,999 @@", patch, count=1)
+    patch = re.sub(r"@@ -25,0 \+26,21 @@", "@@ -25,0 +26,999 @@", patch, count=1)
     patch_file.write_text(patch, encoding="utf-8")
     commit_fixture_changes(fixture, "fixture: make integration patch fail")
     expect_build_failure(
@@ -1677,7 +1678,7 @@ def run_negative_cases(
         (
             index
             for index, line in enumerate(patch_lines)
-            if re.match(r"\+\s*'includes/(?:Taxonomy|Event|Product)/[^']+',$", line.rstrip("\n"))
+            if re.match(r"\+\s*'includes/(?:Runtime|Taxonomy|Event|Product)/[^']+',$", line.rstrip("\n"))
         ),
         None,
     )

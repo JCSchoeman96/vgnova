@@ -13,6 +13,7 @@ if (! is_resource($lockHandle)) {
 
 $databaseLockFile = $lockFile . '.database';
 $keeperCode = <<<'PHP'
+umask(0077);
 $handle = fopen($argv[1], 'c+');
 if ($handle === false || ! flock($handle, LOCK_EX | LOCK_NB)) {
     fwrite(STDERR, "database lock acquisition failed\n");

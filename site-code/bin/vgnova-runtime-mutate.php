@@ -171,8 +171,10 @@ try {
         static function (array $registeredTarget, array $observedIdentity) use ($resolvedRoot): void {
             VgRuntimeMutationCore::validateTargetIdentity($registeredTarget, $observedIdentity, $resolvedRoot);
         },
-        static function (array $proof, $lockHandle, $lifetimeHandle) use ($childArguments): int {
-            $environment = VgRuntimeMutationCore::childEnvironment(getenv() ?: [], $proof);
+        static function (array $proof, $lockHandle, $lifetimeHandle) use ($childArguments, $resolvedRoot): int {
+            $baseEnvironment = getenv() ?: [];
+            $baseEnvironment['VGNOVA_MUTATION_WP_ROOT'] = $resolvedRoot;
+            $environment = VgRuntimeMutationCore::childEnvironment($baseEnvironment, $proof);
             return VgRuntimeMutationCore::runChildCommand($childArguments, $environment, $lockHandle, $lifetimeHandle);
         },
         static function (string $requestedLockName) use (&$lease): void {

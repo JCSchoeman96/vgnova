@@ -2,8 +2,8 @@
 /**
  * Runtime actions for fcm-self-featured-integration.py.
  *
- * The Python runner sends this file's PHP body to Novamira execute-php, with
- * `$task4f_action`, `$task4f_slug`, and `$task4f_run_id` set for each call.
+ * fcm-self-featured-cli.php loads this helper through local WP-CLI eval-file,
+ * with `$task4f_action`, `$task4f_slug`, and `$task4f_run_id` set for each call.
  */
 
 if (! defined('ABSPATH')) {

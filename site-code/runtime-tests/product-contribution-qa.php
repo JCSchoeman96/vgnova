@@ -1308,6 +1308,7 @@ function vg_product_contribution_qa_owned_residue(array $context, string $token)
 
 function vg_product_contribution_qa_run(): array
 {
+    vg_runtime_mutation_assert_session('vgnova-local-10039');
     $run_id = gmdate('Ymd\THis\Z') . '-' . bin2hex(random_bytes(5));
     $token = VG_PRODUCT_CONTRIBUTION_QA_OWNER_LABEL . ' ' . $run_id;
     $context = [];

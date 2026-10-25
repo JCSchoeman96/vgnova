@@ -59,6 +59,23 @@ function vg_runtime_mutation_policy_tracked_php_files(string $repository_root): 
 /** @return list<string> */
 function vg_runtime_mutation_policy_detect_mutations(string $source): array
 {
+    $mutations = [];
+    foreach (vg_runtime_mutation_policy_mutation_calls($source) as $call) {
+        $mutations[] = $call['name'];
+    }
+    $unique = array_values(array_unique($mutations));
+    sort($unique);
+    return $unique;
+}
+
+/**
+ * Return statically recognized persistent writes and dynamic dispatch sites.
+ * This is a conservative token scan, not a complete PHP call graph.
+ *
+ * @return list<array{index:int,name:string}>
+ */
+function vg_runtime_mutation_policy_mutation_calls(string $source): array
+{
     $tokens = token_get_all($source);
     $mutations = [];
     $token_count = count($tokens);
@@ -71,9 +88,14 @@ function vg_runtime_mutation_policy_detect_mutations(string $source): array
             $short_name = strtolower(substr($normalized_name, strrpos($normalized_name, '\\') === false
                 ? 0
                 : strrpos($normalized_name, '\\') + 1));
-            if (in_array($short_name, VG_RUNTIME_MUTATION_POLICY_FUNCTIONS, true)
-                && vg_runtime_mutation_policy_next_significant_text($tokens, $index + 1) === '(') {
-                $mutations[] = $short_name;
+            $call_index = vg_runtime_mutation_policy_actual_call_index($tokens, $index, true);
+            if ($call_index !== null && in_array($short_name, VG_RUNTIME_MUTATION_POLICY_FUNCTIONS, true)) {
+                $mutations[] = ['index' => $index, 'name' => $short_name];
+            }
+            if ($call_index !== null && in_array($short_name, [
+                'call_user_func', 'call_user_func_array', 'forward_static_call', 'forward_static_call_array',
+            ], true)) {
+                $mutations[] = ['index' => $index, 'name' => 'dynamic-dispatch'];
             }
         }
 
@@ -94,7 +116,7 @@ function vg_runtime_mutation_policy_detect_mutations(string $source): array
             continue;
         }
         if ($method !== 'query') {
-            $mutations[] = 'wpdb.' . $method;
+            $mutations[] = ['index' => $method_index, 'name' => 'wpdb.' . $method];
             continue;
         }
 
@@ -103,16 +125,31 @@ function vg_runtime_mutation_policy_detect_mutations(string $source): array
             continue;
         }
         $query_source = vg_runtime_mutation_policy_call_source($tokens, $query_index);
-        if (preg_match_all('/\b(INSERT\s+INTO|UPDATE|DELETE\s+FROM|REPLACE\s+INTO|ALTER\s+TABLE|CREATE\s+TABLE|DROP\s+TABLE|TRUNCATE\s+TABLE)\b/i', $query_source, $matches)) {
+        if (preg_match_all('/\b(INSERT\s+INTO|UPDATE|DELETE\s+FROM|REPLACE\s+INTO|ALTER\s+TABLE|CREATE\s+(?:TEMPORARY\s+)?TABLE|DROP\s+TABLE|TRUNCATE\s+TABLE|RENAME\s+TABLE|GRANT|REVOKE|CALL|LOAD\s+DATA)\b/i', $query_source, $matches)) {
             foreach ($matches[1] as $verb) {
-                $mutations[] = 'wpdb.query:' . strtoupper(strtok($verb, " \t\n\r"));
+                $mutations[] = [
+                    'index' => $method_index,
+                    'name' => 'wpdb.query:' . strtoupper(strtok($verb, " \t\n\r")),
+                ];
             }
+        } elseif (! vg_runtime_mutation_policy_query_is_read_only_literal($tokens, $query_index)) {
+            $mutations[] = ['index' => $method_index, 'name' => 'wpdb.query:DYNAMIC'];
         }
     }
 
-    $unique = array_values(array_unique($mutations));
-    sort($unique);
-    return $unique;
+    usort($mutations, static fn (array $left, array $right): int => $left['index'] <=> $right['index']);
+    return $mutations;
+}
+
+/** @param list<mixed> $tokens */
+function vg_runtime_mutation_policy_query_is_read_only_literal(array $tokens, int $opening_parenthesis): bool
+{
+    $argument = vg_runtime_mutation_policy_call_source($tokens, $opening_parenthesis);
+    if (preg_match('/\A\(\s*([\'"`])\s*(SELECT|SHOW|DESCRIBE|EXPLAIN|WITH)\b/i', $argument) === 1) {
+        return true;
+    }
+
+    return false;
 }
 
 /** @param list<mixed> $tokens */
@@ -159,7 +196,57 @@ function vg_runtime_mutation_policy_call_source(array $tokens, int $opening_pare
     return implode('', $parts);
 }
 
-function vg_runtime_mutation_policy_has_call(string $source, string $function_name): bool
+/** @param list<mixed> $tokens */
+function vg_runtime_mutation_policy_actual_call_index(array $tokens, int $name_index, bool $allow_method_call = false): ?int
+{
+    $next_index = vg_runtime_mutation_policy_next_significant_index($tokens, $name_index + 1);
+    if ($next_index === null || $tokens[$next_index] !== '(') {
+        return null;
+    }
+
+    $previous_index = vg_runtime_mutation_policy_previous_significant_index($tokens, $name_index - 1);
+    $previous_token = $previous_index === null ? null : $tokens[$previous_index];
+    $previous_text = is_array($previous_token) ? $previous_token[1] : $previous_token;
+    if (is_array($previous_token) && $previous_token[0] === T_FUNCTION) {
+        return null;
+    }
+    if ($previous_text === '&') {
+        $before_reference = $previous_index === null
+            ? null
+            : vg_runtime_mutation_policy_previous_significant_index($tokens, $previous_index - 1);
+        if ($before_reference !== null && is_array($tokens[$before_reference]) && $tokens[$before_reference][0] === T_FUNCTION) {
+            return null;
+        }
+    }
+    if (! $allow_method_call && in_array($previous_text, ['->', '?->', '::'], true)) {
+        return null;
+    }
+
+    $first_argument = vg_runtime_mutation_policy_next_significant_index($tokens, $next_index + 1);
+    if ($first_argument !== null && is_array($tokens[$first_argument]) && $tokens[$first_argument][0] === T_ELLIPSIS) {
+        $after_ellipsis = vg_runtime_mutation_policy_next_significant_index($tokens, $first_argument + 1);
+        if ($after_ellipsis !== null && $tokens[$after_ellipsis] === ')') {
+            return null;
+        }
+    }
+
+    return $name_index;
+}
+
+/** @param list<mixed> $tokens */
+function vg_runtime_mutation_policy_previous_significant_index(array $tokens, int $start): ?int
+{
+    for ($index = $start; $index >= 0; $index--) {
+        $token = $tokens[$index];
+        if (is_array($token) && in_array($token[0], [T_WHITESPACE, T_COMMENT, T_DOC_COMMENT], true)) {
+            continue;
+        }
+        return $index;
+    }
+    return null;
+}
+
+function vg_runtime_mutation_policy_call_index(string $source, string $function_name, bool $allow_method_call = false): ?int
 {
     $expected = strtolower(ltrim($function_name, '\\'));
     $tokens = token_get_all($source);
@@ -173,21 +260,228 @@ function vg_runtime_mutation_policy_has_call(string $source, string $function_na
         if ($name !== $expected && $shortName !== $expected) {
             continue;
         }
-        $previousIndex = null;
-        for ($cursor = $index - 1; $cursor >= 0; $cursor--) {
-            $previous = $tokens[$cursor];
-            if (is_array($previous) && in_array($previous[0], [T_WHITESPACE, T_COMMENT, T_DOC_COMMENT], true)) {
-                continue;
-            }
-            $previousIndex = $cursor;
-            break;
+        if (vg_runtime_mutation_policy_actual_call_index($tokens, $index, $allow_method_call) !== null) {
+            return $index;
         }
-        $previousToken = $previousIndex === null ? null : $tokens[$previousIndex];
-        $previousText = is_array($previousToken) ? $previousToken[1] : $previousToken;
-        $isDeclaration = is_array($previousToken) && $previousToken[0] === T_FUNCTION;
-        $isMethod = in_array($previousText, ['->', '?->', '::'], true);
-        if (! $isDeclaration && ! $isMethod
-            && vg_runtime_mutation_policy_next_significant_text($tokens, $index + 1) === '(') {
+    }
+    return null;
+}
+
+/** @return list<int> */
+function vg_runtime_mutation_policy_call_indexes(string $source, string $function_name, bool $allow_method_call = false): array
+{
+    $expected = strtolower(ltrim($function_name, '\\'));
+    $tokens = token_get_all($source);
+    $indexes = [];
+    foreach ($tokens as $index => $token) {
+        if (! is_array($token) || ! in_array($token[0], [T_STRING, T_NAME_QUALIFIED, T_NAME_FULLY_QUALIFIED], true)) {
+            continue;
+        }
+        $name = strtolower(ltrim($token[1], '\\'));
+        $short_name = substr($name, strrpos($name, '\\') === false ? 0 : strrpos($name, '\\') + 1);
+        if (($name === $expected || $short_name === $expected)
+            && vg_runtime_mutation_policy_actual_call_index($tokens, $index, $allow_method_call) !== null) {
+            $indexes[] = $index;
+        }
+    }
+    return $indexes;
+}
+
+/** @return array{index:int,name:?string,parent_index:?int,parent_name:?string}|null */
+function vg_runtime_mutation_policy_enclosing_function(string $source, int $target_index): ?array
+{
+    $tokens = token_get_all($source);
+    $frames = [];
+    $pending_function = null;
+    $pending_function_declared = false;
+    for ($index = 0, $count = min(count($tokens), $target_index + 1); $index < $count; $index++) {
+        $token = $tokens[$index];
+        if (is_array($token) && $token[0] === T_FUNCTION) {
+            $pending_function_declared = true;
+            $name_index = vg_runtime_mutation_policy_next_significant_index($tokens, $index + 1);
+            if ($name_index !== null && is_array($tokens[$name_index]) && $tokens[$name_index][0] === T_STRING) {
+                $pending_function = ['index' => $index, 'name' => strtolower($tokens[$name_index][1])];
+            } else {
+                $pending_function = ['index' => $index, 'name' => null];
+            }
+        }
+
+        $text = is_array($token) ? $token[1] : $token;
+        if ($text === '{') {
+            $frames[] = $pending_function_declared ? $pending_function : null;
+            $pending_function = null;
+            $pending_function_declared = false;
+        } elseif ($text === '}') {
+            array_pop($frames);
+        }
+    }
+
+    $function_frames = array_values(array_filter($frames, 'is_array'));
+    if ($function_frames === []) {
+        return null;
+    }
+    $current = $function_frames[array_key_last($function_frames)];
+    $parent = count($function_frames) > 1 ? $function_frames[count($function_frames) - 2] : null;
+    return [
+        'index' => $current['index'],
+        'name' => $current['name'],
+        'parent_index' => is_array($parent) ? $parent['index'] : null,
+        'parent_name' => is_array($parent) && is_string($parent['name']) ? $parent['name'] : null,
+    ];
+}
+
+/** @return array{index:int,name:?string,parent_index:?int,parent_name:?string}|null */
+function vg_runtime_mutation_policy_function_context(string $source, int $function_index): ?array
+{
+    $tokens = token_get_all($source);
+    for ($index = $function_index + 1, $count = count($tokens); $index < $count; $index++) {
+        $token = $tokens[$index];
+        $text = is_array($token) ? $token[1] : $token;
+        if ($text === '{') {
+            return vg_runtime_mutation_policy_enclosing_function($source, $index);
+        }
+    }
+    return null;
+}
+
+/** @param array{index:int,name:?string,parent_index:?int,parent_name:?string}|null $context */
+function vg_runtime_mutation_policy_execution_index(string $source, int $token_index, ?array $context): ?int
+{
+    if ($context === null) {
+        return $token_index;
+    }
+    if (! is_string($context['name'])) {
+        return null;
+    }
+    return vg_runtime_mutation_policy_call_index($source, $context['name'], true);
+}
+
+/** @param list<int> $guard_indexes @param array<string,true> $visited */
+function vg_runtime_mutation_policy_position_is_guarded(
+    string $source,
+    array $guard_indexes,
+    int $position,
+    ?array $context,
+    array $visited = []
+): bool {
+    foreach ($guard_indexes as $guard_index) {
+        $guard_context = vg_runtime_mutation_policy_enclosing_function($source, $guard_index);
+        if ($guard_context === $context && $guard_index < $position) {
+            return true;
+        }
+        if ($context !== null
+            && $context['name'] === null
+            && $guard_index < $position
+            && (($context['parent_index'] === null && $guard_context === null)
+                || ($context['parent_index'] !== null
+                    && is_array($guard_context)
+                    && $guard_context['index'] === $context['parent_index']))) {
+            return true;
+        }
+        if ($context !== null && $context['name'] === null) {
+            if ($context['parent_index'] === null
+                && $guard_context === null
+                && $guard_index < $context['index']) {
+                return true;
+            }
+            if ($context['parent_index'] !== null) {
+                $parent_context = vg_runtime_mutation_policy_function_context($source, $context['parent_index']);
+                if ($parent_context !== null
+                    && $guard_context === $parent_context
+                    && $guard_index < $context['index']) {
+                    return true;
+                }
+            }
+        }
+        if ($context === null && is_array($guard_context) && is_string($guard_context['name'])) {
+            foreach (vg_runtime_mutation_policy_call_indexes($source, $guard_context['name'], true) as $guard_call) {
+                if (vg_runtime_mutation_policy_enclosing_function($source, $guard_call) === null && $guard_call < $position) {
+                    return true;
+                }
+            }
+        }
+    }
+
+    if ($context === null || ! is_string($context['name']) || isset($visited[$context['name']])) {
+        if ($context !== null && $context['name'] === null && $context['parent_index'] !== null) {
+            $parent_context = vg_runtime_mutation_policy_function_context($source, $context['parent_index']);
+            if ($parent_context !== null) {
+                return vg_runtime_mutation_policy_position_is_guarded(
+                    $source,
+                    $guard_indexes,
+                    $context['index'],
+                    $parent_context,
+                    $visited
+                );
+            }
+        }
+        return false;
+    }
+
+    $visited[$context['name']] = true;
+    $calls = vg_runtime_mutation_policy_call_indexes($source, $context['name'], true);
+    $callers = [];
+    foreach ($calls as $call_index) {
+        $caller_context = vg_runtime_mutation_policy_enclosing_function($source, $call_index);
+        if ($caller_context !== $context) {
+            $callers[] = [$call_index, $caller_context];
+        }
+    }
+    if ($callers === []) {
+        return false;
+    }
+
+    foreach ($callers as [$call_index, $caller_context]) {
+        if (! vg_runtime_mutation_policy_position_is_guarded(
+            $source,
+            $guard_indexes,
+            $call_index,
+            $caller_context,
+            $visited
+        )) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+/** @return list<string> */
+function vg_runtime_mutation_policy_declared_functions(string $source): array
+{
+    $tokens = token_get_all($source);
+    $functions = [];
+    for ($index = 0, $count = count($tokens); $index < $count; $index++) {
+        if (! is_array($tokens[$index]) || $tokens[$index][0] !== T_FUNCTION) {
+            continue;
+        }
+        $name_index = vg_runtime_mutation_policy_next_significant_index($tokens, $index + 1);
+        if ($name_index !== null && is_array($tokens[$name_index]) && $tokens[$name_index][0] === T_STRING) {
+            $functions[] = strtolower($tokens[$name_index][1]);
+        }
+    }
+    return array_values(array_unique($functions));
+}
+
+/** @param list<mixed> $tokens */
+function vg_runtime_mutation_policy_includes_path(array $tokens, string $relative_path): bool
+{
+    $expected_base = basename($relative_path);
+    $include_tokens = [T_INCLUDE, T_INCLUDE_ONCE, T_REQUIRE, T_REQUIRE_ONCE];
+    for ($index = 0, $count = count($tokens); $index < $count; $index++) {
+        if (! is_array($tokens[$index]) || ! in_array($tokens[$index][0], $include_tokens, true)) {
+            continue;
+        }
+        $expression = '';
+        for ($cursor = $index + 1; $cursor < $count; $cursor++) {
+            $token = $tokens[$cursor];
+            $text = is_array($token) ? $token[1] : $token;
+            if ($text === ';') {
+                break;
+            }
+            $expression .= $text;
+        }
+        if (str_contains($expression, $expected_base)) {
             return true;
         }
     }
@@ -316,10 +610,18 @@ function vg_runtime_mutation_policy_check(
             $errors[] = "{$path}: tracked PHP file could not be read.";
             continue;
         }
-        $mutations = vg_runtime_mutation_policy_detect_mutations($source);
-        if ($mutations === []) {
+        $mutation_calls = vg_runtime_mutation_policy_mutation_calls($source);
+        if ($mutation_calls === []) {
+            if (($entries_by_path[$path]['classification'] ?? null) === 'mutating') {
+                $entry = $entries_by_path[$path];
+                $guard = (string) ($entry['guard_function'] ?? '');
+                if (vg_runtime_mutation_policy_call_index($source, $guard) === null) {
+                    $errors[] = "{$path}: declared session guard is absent from source.";
+                }
+            }
             continue;
         }
+        $mutations = array_values(array_unique(array_column($mutation_calls, 'name')));
         $mutation_files++;
         $entry = $entries_by_path[$path] ?? null;
         $classification = is_array($entry) ? ($entry['classification'] ?? null) : null;
@@ -328,8 +630,22 @@ function vg_runtime_mutation_policy_check(
         }
         if ($classification === 'mutating') {
             $guard = (string) ($entry['guard_function'] ?? '');
-            if (! vg_runtime_mutation_policy_has_call($source, $guard)) {
+            $guard_indexes = vg_runtime_mutation_policy_call_indexes($source, $guard);
+            if ($guard_indexes === []) {
                 $errors[] = "{$path}: declared session guard is absent from source.";
+            } else {
+                foreach ($mutation_calls as $mutation_call) {
+                    $mutation_context = vg_runtime_mutation_policy_enclosing_function($source, $mutation_call['index']);
+                    if (! vg_runtime_mutation_policy_position_is_guarded(
+                        $source,
+                        $guard_indexes,
+                        $mutation_call['index'],
+                        $mutation_context
+                    )) {
+                        $errors[] = "{$path}: session guard is absent before a detected persistent write.";
+                        break;
+                    }
+                }
             }
             continue;
         }
@@ -347,8 +663,22 @@ function vg_runtime_mutation_policy_check(
                 }
                 $caller_source = @file_get_contents($repository_root . '/' . $caller);
                 $guard = (string) ($caller_entry['guard_function'] ?? '');
-                if (! is_string($caller_source) || ! vg_runtime_mutation_policy_has_call($caller_source, $guard)) {
+                if (! is_string($caller_source) || vg_runtime_mutation_policy_call_index($caller_source, $guard) === null) {
                     $errors[] = "{$path}: mutation caller lacks its declared session guard: {$caller}.";
+                    continue;
+                }
+                $library_functions = vg_runtime_mutation_policy_declared_functions($source);
+                $caller_tokens = token_get_all($caller_source);
+                $includes_library = vg_runtime_mutation_policy_includes_path($caller_tokens, $path);
+                $calls_library = false;
+                foreach ($library_functions as $library_function) {
+                    if (vg_runtime_mutation_policy_call_index($caller_source, $library_function) !== null) {
+                        $calls_library = true;
+                        break;
+                    }
+                }
+                if (! $includes_library || ! $calls_library) {
+                    $errors[] = "{$path}: mutation caller does not include and invoke this library: {$caller}.";
                 }
             }
             continue;

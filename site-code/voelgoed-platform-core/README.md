@@ -2,8 +2,9 @@
 
 This directory contains the canonical Platform Core domain modules in the
 `vgnova` repository. The tracked root plugin at `voelgoed-platform-core/` is
-the assembly base; this module owns the `content_topic`, Event Participation,
-Product People, and Product Contribution overlays. The tracked
+the assembly base; this module owns the runtime mutation session guard,
+`content_topic`, Event Participation, Product People, and Product Contribution
+overlays. The tracked
 `integration.patch` is an assembly input that adds their bootstrap includes
 and lifecycle registrations to a disposable build tree.
 

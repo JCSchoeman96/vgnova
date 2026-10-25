@@ -180,7 +180,7 @@ final class VgRuntimeMutationDatabase
             if (self::fetchSingleValue($database, 'SELECT DATABASE()') !== $configuration['DB_NAME']) {
                 throw new VgRuntimeMutationException(74, 'TARGET_IDENTITY_MISMATCH');
             }
-            $identity = self::readTargetIdentity($database, $target, $wpRoot, $configuration, $transport);
+            $identity = self::readTargetIdentity($database, $configuration, $transport);
             VgRuntimeMutationCore::validateTargetIdentity($target, $identity, $wpRoot);
             $owner = self::fetchPreparedValue($database, 'SELECT IS_USED_LOCK(?)', $lockName);
             if ($owner === null || $owner === false || $owner === '') {

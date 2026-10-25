@@ -2,6 +2,11 @@
 declare(strict_types=1);
 
 $library_file = dirname(__DIR__, 2) . '/runtime-tools/runtime-mutation-session.php';
+$canonical_guard_file = dirname(__DIR__, 2) . '/voelgoed-platform-core/includes/Runtime/RuntimeMutationSession.php';
+$core_file = dirname(__DIR__, 2) . '/runtime-tools/runtime-mutation-core.php';
+if (is_file($core_file)) {
+    require_once $core_file;
+}
 if (is_file($library_file)) {
     require_once $library_file;
 }
@@ -11,6 +16,18 @@ if (! function_exists('vg_runtime_mutation_session_report')
 ) {
     fwrite(STDERR, "FAIL Runtime mutation session APIs are available: the session guard implementation is missing.\n");
     fwrite(STDERR, "Runtime mutation session tests: 0/1 passed, 1 failed.\n");
+    exit(1);
+}
+
+$run_guard_source = file_get_contents($library_file);
+$canonical_guard_source = file_get_contents($canonical_guard_file);
+if (! is_string($run_guard_source)
+    || ! str_contains($run_guard_source, "require_once dirname(__DIR__) . '/voelgoed-platform-core/includes/Runtime/RuntimeMutationSession.php';")
+    || ! is_string($canonical_guard_source)
+    || ! str_contains($canonical_guard_source, 'function vg_runtime_mutation_session_report(')
+    || ! str_contains($canonical_guard_source, 'function vg_runtime_mutation_assert_session(')) {
+    fwrite(STDERR, "FAIL Runtime tools must load the canonical Platform Core session guard.");
+    fwrite(STDERR, "\nRuntime mutation session tests: 0/1 passed, 1 failed.\n");
     exit(1);
 }
 
@@ -46,7 +63,7 @@ function vg_runtime_mutation_test_fixture(array $metadata_overrides = []): array
         'database_connection_id' => 12345,
     ], $metadata_overrides);
     $encoded_metadata = json_encode($metadata, JSON_THROW_ON_ERROR);
-    if (file_put_contents($lock_file, $encoded_metadata) === false) {
+    if (file_put_contents($lock_file, $encoded_metadata) === false || ! chmod($lock_file, 0600)) {
         rmdir($directory);
         throw new RuntimeException('Could not write temporary mutation-session metadata.');
     }
@@ -91,52 +108,116 @@ function vg_runtime_mutation_test_cleanup_fixture(array $fixture): void
 
 function vg_runtime_mutation_test_start_lock_holder(string $lock_file): array
 {
-    $script = <<<'PHP'
-$handle = fopen($argv[1], 'r+');
-if ($handle === false || ! flock($handle, LOCK_EX | LOCK_NB)) {
-    fwrite(STDERR, "lock acquisition failed\n");
-    exit(2);
-}
-fwrite(STDOUT, "ready\n");
-fflush(STDOUT);
-fgets(STDIN);
-flock($handle, LOCK_UN);
-fclose($handle);
-PHP;
-    $descriptors = [
-        0 => ['pipe', 'r'],
-        1 => ['pipe', 'w'],
-        2 => ['pipe', 'w'],
-    ];
-    $process = proc_open([PHP_BINARY, '-r', $script, $lock_file], $descriptors, $pipes);
-    if (! is_resource($process)) {
-        throw new RuntimeException('Could not start the separate lock-holder process.');
+    $handle = VgRuntimeMutationCore::acquireFilesystemLock($lock_file);
+    if (! is_resource($handle)) {
+        throw new RuntimeException('The session test could not acquire its fixture lock.');
     }
 
-    $ready = fgets($pipes[1]);
-    if ($ready !== "ready\n") {
-        $error = stream_get_contents($pipes[2]);
-        fclose($pipes[0]);
-        fclose($pipes[1]);
-        fclose($pipes[2]);
-        proc_close($process);
-        throw new RuntimeException('The separate lock-holder process failed: ' . trim((string) $error));
-    }
-
-    return ['pipes' => $pipes, 'process' => $process];
+    return ['handle' => $handle];
 }
 
 function vg_runtime_mutation_test_stop_lock_holder(array $holder): void
 {
-    $pipes = $holder['pipes'];
-    fwrite($pipes[0], "release\n");
-    fclose($pipes[0]);
+    if (is_resource($holder['handle'] ?? null)) {
+        flock($holder['handle'], LOCK_UN);
+        fclose($holder['handle']);
+    }
+}
+
+/** @return array<string,mixed> */
+function vg_runtime_mutation_test_guard_result(
+    ?array $holder,
+    string $target,
+    ?array $environment,
+    ?callable $database_lock_owner,
+    bool $assert_api = false
+): array {
+    if (! is_resource($holder['handle'] ?? null)) {
+        if ($assert_api) {
+            try {
+                return ['threw' => false, 'report' => vg_runtime_mutation_assert_session($target, $environment, $database_lock_owner)];
+            } catch (Throwable $error) {
+                return ['threw' => true, 'exception' => $error->getMessage()];
+            }
+        }
+        return ['threw' => false, 'report' => vg_runtime_mutation_session_report($target, $environment, $database_lock_owner)];
+    }
+
+    $owner = ['present' => $database_lock_owner !== null, 'throws' => false, 'value' => null];
+    if ($database_lock_owner !== null) {
+        try {
+            $lock_name = is_array($environment)
+                ? (string) ($environment['VGNOVA_MUTATION_DB_LOCK'] ?? '')
+                : (string) (getenv('VGNOVA_MUTATION_DB_LOCK') ?: '');
+            $owner['value'] = $database_lock_owner($lock_name);
+        } catch (Throwable) {
+            $owner['throws'] = true;
+        }
+    }
+
+    $report_json = $environment === null ? 'null' : base64_encode(json_encode($environment, JSON_THROW_ON_ERROR));
+    $owner_json = base64_encode(json_encode($owner, JSON_THROW_ON_ERROR));
+    $script = <<<'PHP'
+require_once $argv[1];
+$environment = $argv[3] === 'null' ? null : json_decode(base64_decode($argv[3]), true, 32, JSON_THROW_ON_ERROR);
+$owner = json_decode(base64_decode($argv[4]), true, 32, JSON_THROW_ON_ERROR);
+$database_lock_owner = $owner['present'] ? static function (string $lock_name) use ($owner): mixed {
+    if ($owner['throws']) {
+        throw new RuntimeException('test callback failure');
+    }
+    return $owner['value'];
+} : null;
+try {
+    $report = $argv[5] === 'assert'
+        ? vg_runtime_mutation_assert_session($argv[2], $environment, $database_lock_owner)
+        : vg_runtime_mutation_session_report($argv[2], $environment, $database_lock_owner);
+    echo json_encode(['threw' => false, 'report' => $report], JSON_THROW_ON_ERROR);
+} catch (Throwable $error) {
+    echo json_encode(['threw' => true, 'exception' => $error->getMessage()], JSON_THROW_ON_ERROR);
+}
+PHP;
+    $base_environment = getenv();
+    $child_environment = is_array($base_environment) ? $base_environment : [];
+    if ($environment !== null) {
+        $child_environment = array_replace($child_environment, $environment);
+    }
+    $mode = $assert_api ? 'assert' : 'report';
+    $library = dirname(__DIR__, 2) . '/runtime-tools/runtime-mutation-session.php';
+    $process = proc_open(
+        [PHP_BINARY, '-r', $script, $library, $target, $report_json, $owner_json, $mode],
+        [
+            0 => ['file', '/dev/null', 'r'],
+            1 => ['pipe', 'w'],
+            2 => ['pipe', 'w'],
+            3 => $holder['handle'],
+        ],
+        $pipes,
+        null,
+        $child_environment
+    );
+    if (! is_resource($process)) {
+        throw new RuntimeException('The session guard child process did not start.');
+    }
+    $stdout = stream_get_contents($pipes[1]);
+    $stderr = stream_get_contents($pipes[2]);
     fclose($pipes[1]);
     fclose($pipes[2]);
-    $status = proc_close($holder['process']);
-    if ($status !== 0) {
-        throw new RuntimeException('The separate lock-holder process did not exit cleanly.');
+    $exit_code = proc_close($process);
+    if ($exit_code !== 0) {
+        throw new RuntimeException('The session guard child process failed: ' . trim((string) $stderr));
     }
+    $result = json_decode((string) $stdout, true, 32, JSON_THROW_ON_ERROR);
+    if (! is_array($result)) {
+        throw new RuntimeException('The session guard child returned an invalid result.');
+    }
+    return $result;
+}
+
+/** @return array<string,mixed> */
+function vg_runtime_mutation_test_report(?array $holder, string $target, ?array $environment, ?callable $owner): array
+{
+    $result = vg_runtime_mutation_test_guard_result($holder, $target, $environment, $owner);
+    return is_array($result['report'] ?? null) ? $result['report'] : [];
 }
 
 function vg_runtime_mutation_test_owner(array $environment): Closure
@@ -167,7 +248,7 @@ $run_case('valid report requires a real lock holder and matching database owner'
     $holder = null;
     try {
         $holder = vg_runtime_mutation_test_start_lock_holder($fixture['lock_file']);
-        $report = vg_runtime_mutation_session_report(
+        $report = vg_runtime_mutation_test_report($holder,
             $fixture['target'],
             $fixture['environment'],
             vg_runtime_mutation_test_owner($fixture['environment'])
@@ -199,8 +280,53 @@ $run_case('valid report requires a real lock holder and matching database owner'
             'The report did not return both database connection IDs.'
         );
         vg_runtime_mutation_test_assert($report['metadata_session_id'] === $fixture['session_id'], 'Metadata session ID was not reported.');
-        vg_runtime_mutation_test_assert($report['filesystem_lock_held'] === true, 'The separate process lock was not detected.');
+        vg_runtime_mutation_test_assert($report['filesystem_lock_held'] === true, 'The held lock was not detected.');
         vg_runtime_mutation_test_assert($report['errors'] === [], 'A valid session returned errors.');
+    } finally {
+        if ($holder !== null) {
+            vg_runtime_mutation_test_stop_lock_holder($holder);
+        }
+        vg_runtime_mutation_test_cleanup_fixture($fixture);
+    }
+});
+
+$run_case('copied session values without inherited lock descriptor are rejected', static function (): void {
+    $fixture = vg_runtime_mutation_test_fixture();
+    $holder = null;
+    try {
+        $holder = vg_runtime_mutation_test_start_lock_holder($fixture['lock_file']);
+        $script = <<<'PHP'
+require_once $argv[1];
+$environment = json_decode(base64_decode($argv[2]), true, 32, JSON_THROW_ON_ERROR);
+$report = vg_runtime_mutation_session_report(
+    $environment['VGNOVA_MUTATION_TARGET'],
+    $environment,
+    static fn (string $lock_name): string => $environment['VGNOVA_MUTATION_DB_CONNECTION_ID']
+);
+echo json_encode($report, JSON_THROW_ON_ERROR);
+PHP;
+        $environment = getenv();
+        $environment = is_array($environment) ? $environment : [];
+        $environment = array_replace($environment, $fixture['environment']);
+        $process = proc_open(
+            [PHP_BINARY, '-r', $script, dirname(__DIR__, 2) . '/runtime-tools/runtime-mutation-session.php', base64_encode(json_encode($fixture['environment'], JSON_THROW_ON_ERROR))],
+            [0 => ['file', '/dev/null', 'r'], 1 => ['pipe', 'w'], 2 => ['pipe', 'w'], 3 => ['file', '/dev/null', 'r+']],
+            $pipes,
+            null,
+            $environment
+        );
+        vg_runtime_mutation_test_assert(is_resource($process), 'The copied-proof process did not start.');
+        $stdout = stream_get_contents($pipes[1]);
+        $stderr = stream_get_contents($pipes[2]);
+        fclose($pipes[1]);
+        $exit_code = proc_close($process);
+        vg_runtime_mutation_test_assert($exit_code === 0, 'The copied-proof process failed: ' . trim((string) $stderr));
+        $report = json_decode((string) $stdout, true, 32, JSON_THROW_ON_ERROR);
+        vg_runtime_mutation_test_assert($report['valid'] === false, 'A process without the inherited lock descriptor reused copied session values.');
+        vg_runtime_mutation_test_assert(
+            in_array('filesystem_lock_descriptor_unowned', $report['errors'], true),
+            'The missing inherited lock descriptor was not reported.'
+        );
     } finally {
         if ($holder !== null) {
             vg_runtime_mutation_test_stop_lock_holder($holder);
@@ -214,7 +340,7 @@ $run_case('target must equal the expected target', static function (): void {
     $holder = null;
     try {
         $holder = vg_runtime_mutation_test_start_lock_holder($fixture['lock_file']);
-        $report = vg_runtime_mutation_session_report(
+        $report = vg_runtime_mutation_test_report($holder,
             'vgnova-other-target',
             $fixture['environment'],
             vg_runtime_mutation_test_owner($fixture['environment'])
@@ -236,7 +362,7 @@ $run_case('session ID must use the safe 32-character lowercase hexadecimal forma
         $holder = vg_runtime_mutation_test_start_lock_holder($fixture['lock_file']);
         $environment = $fixture['environment'];
         $environment['VGNOVA_MUTATION_SESSION_ID'] = '../unsafe';
-        $report = vg_runtime_mutation_session_report(
+        $report = vg_runtime_mutation_test_report($holder,
             $fixture['target'],
             $environment,
             vg_runtime_mutation_test_owner($environment)
@@ -258,7 +384,7 @@ $run_case('lock path must be named for the expected target', static function ():
         file_put_contents($wrong_lock_file, json_encode($fixture['metadata'], JSON_THROW_ON_ERROR));
         $environment = $fixture['environment'];
         $environment['VGNOVA_MUTATION_LOCK_FILE'] = $wrong_lock_file;
-        $report = vg_runtime_mutation_session_report(
+        $report = vg_runtime_mutation_test_report(null,
             $fixture['target'],
             $environment,
             vg_runtime_mutation_test_owner($environment)
@@ -279,7 +405,7 @@ $run_case('lock path must resolve under the configured VGNova state directory', 
         file_put_contents($wrong_lock_file, json_encode($fixture['metadata'], JSON_THROW_ON_ERROR));
         $environment = $fixture['environment'];
         $environment['VGNOVA_MUTATION_LOCK_FILE'] = $wrong_lock_file;
-        $report = vg_runtime_mutation_session_report(
+        $report = vg_runtime_mutation_test_report(null,
             $fixture['target'],
             $environment,
             vg_runtime_mutation_test_owner($environment)
@@ -305,7 +431,7 @@ $run_case('metadata requires schema version one, active state, matching target, 
         $holder = null;
         try {
             $holder = vg_runtime_mutation_test_start_lock_holder($fixture['lock_file']);
-            $report = vg_runtime_mutation_session_report(
+            $report = vg_runtime_mutation_test_report($holder,
                 $fixture['target'],
                 $fixture['environment'],
                 vg_runtime_mutation_test_owner($fixture['environment'])
@@ -327,7 +453,7 @@ $run_case('metadata requires schema version one, active state, matching target, 
 $run_case('an unlocked file fails the filesystem ownership probe', static function (): void {
     $fixture = vg_runtime_mutation_test_fixture();
     try {
-        $report = vg_runtime_mutation_session_report(
+        $report = vg_runtime_mutation_test_report(null,
             $fixture['target'],
             $fixture['environment'],
             vg_runtime_mutation_test_owner($fixture['environment'])
@@ -351,7 +477,7 @@ $run_case('database proof rejects missing, zero, and mismatched owners', static 
             ['54321', 'database_owner_mismatch'],
         ];
         foreach ($owner_results as [$owner_result, $expected_error]) {
-            $report = vg_runtime_mutation_session_report(
+            $report = vg_runtime_mutation_test_report($holder,
                 $fixture['target'],
                 $fixture['environment'],
                 static fn (string $lock_name): mixed => $owner_result
@@ -377,7 +503,7 @@ $run_case('database callback errors fail closed without exposing exception text 
         $holder = vg_runtime_mutation_test_start_lock_holder($fixture['lock_file']);
         $environment = $fixture['environment'];
         $environment['DB_PASSWORD'] = 'fixture-secret-must-not-appear';
-        $report = vg_runtime_mutation_session_report(
+        $report = vg_runtime_mutation_test_report($holder,
             $fixture['target'],
             $environment,
             static function (string $lock_name): never {
@@ -406,7 +532,7 @@ $run_case('malformed database connection IDs are not echoed', static function ()
         $holder = vg_runtime_mutation_test_start_lock_holder($fixture['lock_file']);
         $environment = $fixture['environment'];
         $environment['VGNOVA_MUTATION_DB_CONNECTION_ID'] = 'fixture-secret-must-not-appear';
-        $report = vg_runtime_mutation_session_report(
+        $report = vg_runtime_mutation_test_report($holder,
             $fixture['target'],
             $environment,
             static fn (string $lock_name): string => 'fixture-secret-must-not-appear'
@@ -435,7 +561,7 @@ $run_case('missing database owner callback outside WordPress fails closed', stat
     $holder = null;
     try {
         $holder = vg_runtime_mutation_test_start_lock_holder($fixture['lock_file']);
-        $report = vg_runtime_mutation_session_report($fixture['target'], $fixture['environment']);
+        $report = vg_runtime_mutation_test_report($holder, $fixture['target'], $fixture['environment'], null);
         vg_runtime_mutation_test_assert($report['valid'] === false, 'A session without database proof was accepted.');
         vg_runtime_mutation_test_assert(in_array('database_owner_unavailable', $report['errors'], true), 'Missing database proof was not reported.');
     } finally {
@@ -460,11 +586,12 @@ $run_case('null environment reads the five session values and returns no credent
             $_ENV[$name] = $fixture['environment'][$name];
             putenv($name . '=' . $fixture['environment'][$name]);
         }
-        $report = vg_runtime_mutation_session_report(
+        $result = vg_runtime_mutation_test_guard_result($holder,
             $fixture['target'],
             null,
             vg_runtime_mutation_test_owner($fixture['environment'])
         );
+        $report = $result['report'] ?? [];
         vg_runtime_mutation_test_assert($report['valid'] === true, 'The environment-backed active session was rejected.');
         vg_runtime_mutation_test_assert(! array_key_exists('DB_PASSWORD', $report), 'The report exposed a credential field.');
         vg_runtime_mutation_test_assert(
@@ -496,24 +623,24 @@ $run_case('assert API returns valid reports and throws RuntimeException for inva
     $holder = null;
     try {
         $holder = vg_runtime_mutation_test_start_lock_holder($fixture['lock_file']);
-        $report = vg_runtime_mutation_assert_session(
+        $result = vg_runtime_mutation_test_guard_result($holder,
             $fixture['target'],
             $fixture['environment'],
-            vg_runtime_mutation_test_owner($fixture['environment'])
+            vg_runtime_mutation_test_owner($fixture['environment']),
+            true
         );
+        $report = $result['report'] ?? [];
+        vg_runtime_mutation_test_assert(($result['threw'] ?? true) === false, 'The assert API rejected a valid session.');
         vg_runtime_mutation_test_assert($report['valid'] === true, 'The assert API did not return a valid report.');
 
-        $threw = false;
-        try {
-            vg_runtime_mutation_assert_session(
-                $fixture['target'],
-                $fixture['environment'],
-                static fn (string $lock_name): null => null
-            );
-        } catch (RuntimeException) {
-            $threw = true;
-        }
-        vg_runtime_mutation_test_assert($threw, 'The assert API did not throw RuntimeException for an invalid report.');
+        $invalid = vg_runtime_mutation_test_guard_result(
+            $holder,
+            $fixture['target'],
+            $fixture['environment'],
+            static fn (string $lock_name): null => null,
+            true
+        );
+        vg_runtime_mutation_test_assert(($invalid['threw'] ?? false) === true, 'The assert API did not throw RuntimeException for an invalid report.');
     } finally {
         if ($holder !== null) {
             vg_runtime_mutation_test_stop_lock_holder($holder);

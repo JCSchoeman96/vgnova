@@ -682,6 +682,7 @@ $cleanup_failures = [];
 $malformed_result = 'NOT_RUN';
 $acf_save_fired = null;
 $resolver = new ProductPeopleResolver();
+vg_runtime_mutation_assert_session('vgnova-local-10039');
 
 /** Run one named scenario; the first failure stops further scenarios and falls through to guarded cleanup. */
 $run = static function (string $id, string $label, callable $assertion) use (&$scenarios): void {
@@ -705,7 +706,6 @@ $set_source_event = static function (int $product_id, int $event_id) : void {
 };
 
 try {
-    vg_runtime_mutation_assert_session('vgnova-local-10039');
     // Create only owned records. Owner marker is recorded immediately after each ID is created.
     $event_id = wp_insert_post([
         'post_type' => 'tc_events',
