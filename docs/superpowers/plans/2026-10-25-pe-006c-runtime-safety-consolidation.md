@@ -138,24 +138,24 @@ const VG_PRODUCT_CONTRIBUTION_QA_PLATFORM_CORE_AUTHORITY = [
 
 **Files:** No new files beyond the tasks above.
 
-- [ ] Run `./voelgoed-platform-core/bin/check.sh`.
-- [ ] Run `./site-code/bin/check-source.sh`.
-- [ ] Run the setup, cleanup, and integrity runners explicitly, recording exact test totals.
-- [ ] Run `python3 -B site-code/bin/check-platform-core-build.py --ref HEAD` under CPython 3.14.4.
-- [ ] Run PHP lint, JSON parsing, Python AST checks, `bash -n`, ShellCheck, actionlint, and `git diff --check`.
-- [ ] Confirm the working tree diff changes no Platform Core source and contains no runtime/deployment operations.
+- [x] Run `./voelgoed-platform-core/bin/check.sh` (127 dashboard tests passed).
+- [x] Run `./site-code/bin/check-source.sh`.
+- [x] Run the setup, cleanup, and integrity runners explicitly: 5/5, 9/9, and 24/24 passed.
+- [x] Run `python3 -B site-code/bin/check-platform-core-build.py --ref HEAD` under CPython 3.14.4; exact-output and reproducibility checks passed.
+- [x] Run PHP lint, JSON parsing, Python AST checks, `bash -n`, ShellCheck, actionlint, and `git diff --check`.
+- [x] Confirm the working tree diff changes no Platform Core source and contains no runtime/deployment operations.
 
 ## Task 8: Independent review and PR handoff
 
 **Files:** Review only, then fix findings in this scope and rerun affected checks.
 
-- [ ] Obtain four independent read-only reviews against the exact branch head. Assign one review each to the integrity guard, QA safety/cleanup, manifest/provenance, and CI source-gate integration.
-- [ ] Resolve blocking and material findings. Recheck each affected runner and the full source gate after any fix.
-- [ ] Commit and push `chore/pe-006c-runtime-safety-consolidation` from the exact `7af938ac6f4422b1fa779b52444121e7a9293995` base.
-- [ ] Open one PR titled `test: harden Product Contribution runtime safety gate`. Link it to the task thread immediately. Leave it open and unmerged.
-- [ ] Require Dashboard checks, Canonical source checks, and VG Nova Platform Gate to pass on the exact PR head. Require artifact publishing to skip.
-- [ ] Inspect the Canonical source log for the setup, cleanup, and integrity runner summaries and the PE-005 reproducibility verifier.
-- [ ] Compare every PR #51-only code, test, and provenance item with the new PR. Report each as retained, superseded by stronger code, or historical-only. Do not close PR #51.
+- [x] Obtain four independent read-only reviews against the implementation head: integrity guard, QA safety/cleanup, manifest/provenance, and CI source-gate integration. All reported no findings after the symlink-path fix.
+- [x] Resolve the material trailing-slash symlink finding with a failing regression test, fix it, and rerun the integrity suite and full source gate.
+- [x] Commit and push `chore/pe-006c-runtime-safety-consolidation` from the exact `7af938ac6f4422b1fa779b52444121e7a9293995` base.
+- [x] Open PR #55 titled `test: harden Product Contribution runtime safety gate`, link it to the task thread, and leave it open and unmerged.
+- [x] Verify Dashboard checks, Canonical source checks, and VG Nova Platform Gate pass on the implementation head; artifact publishing skipped.
+- [x] Inspect the Canonical source log and confirm setup 5/5, cleanup 9/9, integrity 24/24, and PE-005 exact-output verification.
+- [x] Compare PR #51-only code, tests, and provenance with PR #55. All hardening is retained or superseded by PR #54/PR #55; the earlier Task 8C run remains historical-only. PR #51 stays open.
 
 ## Runtime safety boundary
 
