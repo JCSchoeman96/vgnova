@@ -19,7 +19,7 @@ if (PHP_SAPI !== 'cli'
 
 try {
     $libc = FFI::cdef(
-        'int prctl(int option, unsigned long arg2, unsigned long arg3, unsigned long arg4, unsigned long arg5);',
+        'int prctl(int option, unsigned long arg2, unsigned long arg3, unsigned long arg4, unsigned long arg5); int close(int fd);',
         'libc.so.6'
     );
     if ($libc->prctl(36, 1, 0, 0, 0) !== 0) { // PR_SET_CHILD_SUBREAPER
@@ -115,6 +115,12 @@ if ($targetPid === 0) {
     fclose($childGate[1]);
     if ($gate !== "go\n") {
         exit(70);
+    }
+
+    // The command keeps fd 3 to prove host-lock ownership. Close all control
+    // channels here so their lifetime cannot depend on shell redirection rules.
+    foreach ([4, 5, 6, 7] as $descriptor) {
+        $libc->close($descriptor);
     }
 
     $commandArguments = [

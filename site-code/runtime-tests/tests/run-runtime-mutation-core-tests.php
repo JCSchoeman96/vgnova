@@ -543,11 +543,14 @@ $test('child command does not inherit readiness or start-gate descriptors', stat
             $lock
         );
         $descriptors = json_decode((string) file_get_contents($capture), true, 8, JSON_THROW_ON_ERROR);
+        $coordinatorDescriptors = is_array($descriptors)
+            ? array_values(array_intersect($descriptors, [4, 5, 6, 7]))
+            : null;
         vg_runtime_mutation_core_test($status === 0, 'Descriptor probe child did not complete.');
         vg_runtime_mutation_core_test(is_array($descriptors) && in_array(3, $descriptors, true), 'Child did not inherit the host lock descriptor.');
         vg_runtime_mutation_core_test(
-            ! in_array(5, $descriptors, true) && ! in_array(6, $descriptors, true) && ! in_array(7, $descriptors, true),
-            'Child inherited a coordinator-only descriptor.'
+            $coordinatorDescriptors === [],
+            'Child inherited coordinator-only descriptors: ' . json_encode($coordinatorDescriptors, JSON_THROW_ON_ERROR)
         );
         flock($lock, LOCK_UN);
         fclose($lock);
