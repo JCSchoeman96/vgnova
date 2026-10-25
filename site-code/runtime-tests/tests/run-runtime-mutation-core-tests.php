@@ -917,9 +917,13 @@ $test('locks remain held for a detached descendant after its mutator exits', sta
         if (is_resource($databaseLock)) {
             fclose($databaseLock);
         }
-        vg_runtime_mutation_core_test(is_file($marker . '.late-write'), 'Detached descendant did not perform its delayed write.');
-        vg_runtime_mutation_core_test($hostLock === false, 'Host lock was released before the detached descendant finished.');
-        vg_runtime_mutation_core_test($databaseLock === false, 'Database lock was released before the detached descendant finished.');
+        $lateWritePerformed = is_file($marker . '.late-write');
+        $hostLockHeld = $hostLock === false;
+        $databaseLockHeld = $databaseLock === false;
+        file_put_contents($marker . '.descendant-release', 'release');
+        vg_runtime_mutation_core_test($lateWritePerformed, 'Detached descendant did not perform its delayed write.');
+        vg_runtime_mutation_core_test($hostLockHeld, 'Host lock was released before the detached descendant finished.');
+        vg_runtime_mutation_core_test($databaseLockHeld, 'Database lock was released before the detached descendant finished.');
 
         $hostAcquired = false;
         $databaseAcquired = false;
@@ -997,9 +1001,13 @@ $test('unexpected supervisor death retains both locks until the detached writer 
             if (is_resource($databaseLock)) {
                 fclose($databaseLock);
             }
-            vg_runtime_mutation_core_test($hostLock === false, 'Host lock was released after supervisor death while the detached writer remained active.');
-            vg_runtime_mutation_core_test($databaseLock === false, 'Database lock was released after supervisor death while the detached writer remained active.');
+            $hostLockHeld = $hostLock === false;
+            $databaseLockHeld = $databaseLock === false;
+            file_put_contents($marker . '.descendant-release', 'release');
+            vg_runtime_mutation_core_test($hostLockHeld, 'Host lock was released after supervisor death while the detached writer remained active.');
+            vg_runtime_mutation_core_test($databaseLockHeld, 'Database lock was released after supervisor death while the detached writer remained active.');
         } finally {
+            file_put_contents($marker . '.descendant-release', 'release');
             if (is_resource($process)) {
                 @posix_kill($coordinatorPid, SIGKILL);
                 proc_close($process);
@@ -1046,10 +1054,12 @@ $test('SIGTERM cancels a detached descendant and waits for its exit before relea
         }
         $elapsed = microtime(true) - $startedAt;
         proc_close($process);
+        $lateWriteOccurred = is_file($marker . '.late-write');
+        file_put_contents($marker . '.descendant-release', 'release');
 
         vg_runtime_mutation_core_test(! ($status['running'] ?? false), 'Coordinator did not finish bounded cancellation of the detached descendant.');
         vg_runtime_mutation_core_test($elapsed < 2.8, 'Detached descendant outlived the cancellation deadline.');
-        vg_runtime_mutation_core_test(! is_file($marker . '.late-write'), 'Detached descendant wrote after cancellation.');
+        vg_runtime_mutation_core_test(! $lateWriteOccurred, 'Detached descendant wrote after cancellation.');
         $hostLock = VgRuntimeMutationCore::acquireFilesystemLock($lockFile);
         $databaseLock = VgRuntimeMutationCore::acquireFilesystemLock($databaseLockFile);
         vg_runtime_mutation_core_test(is_resource($hostLock) && is_resource($databaseLock), 'Locks did not release after every detached descendant exited.');

@@ -162,9 +162,10 @@ if ($descendantPid === 0) {
     file_put_contents($argv[1] . '.descendant-started', 'started');
     pcntl_exec('/bin/bash', [
         '-c',
-        'exec 3>&- 4>&-; sleep 1.5; printf late > "$1"',
+        'exec 3>&- 4>&-; sleep 1.5; printf late > "$1"; for attempt in {1..500}; do if [ -e "$2" ]; then exit 0; fi; sleep 0.01; done; exit 95',
         'bash',
         $argv[1] . '.late-write',
+        $argv[1] . '.descendant-release',
     ], ['PATH' => (string) getenv('PATH')]);
     exit(94);
 }
