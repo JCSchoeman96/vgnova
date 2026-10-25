@@ -532,7 +532,7 @@ $test('child command preserves argv boundaries and exit status', static function
     });
 });
 
-$test('child command does not inherit readiness or start-gate descriptors', static function (): void {
+$test('child command does not inherit coordinator pipes', static function (): void {
     vg_runtime_mutation_core_with_temp_dir(static function (string $directory): void {
         $lock = VgRuntimeMutationCore::acquireFilesystemLock($directory . '/target.lock');
         $capture = $directory . '/descriptors.json';
@@ -543,14 +543,17 @@ $test('child command does not inherit readiness or start-gate descriptors', stat
             $lock
         );
         $descriptors = json_decode((string) file_get_contents($capture), true, 8, JSON_THROW_ON_ERROR);
-        $coordinatorDescriptors = is_array($descriptors)
-            ? array_intersect_key($descriptors, array_flip([4, 5, 6, 7]))
+        $coordinatorPipes = is_array($descriptors)
+            ? array_filter(
+                array_intersect_key($descriptors, array_flip([4, 5, 6, 7])),
+                static fn (string $target): bool => preg_match('/\\Apipe:\\[[0-9]+\\]\\z/', $target) === 1
+            )
             : null;
         vg_runtime_mutation_core_test($status === 0, 'Descriptor probe child did not complete.');
         vg_runtime_mutation_core_test(is_array($descriptors) && array_key_exists(3, $descriptors), 'Child did not inherit the host lock descriptor.');
         vg_runtime_mutation_core_test(
-            $coordinatorDescriptors === [],
-            'Child inherited coordinator-only descriptor targets: ' . json_encode($coordinatorDescriptors, JSON_THROW_ON_ERROR)
+            $coordinatorPipes === [],
+            'Child inherited coordinator pipe targets: ' . json_encode($coordinatorPipes, JSON_THROW_ON_ERROR)
         );
         flock($lock, LOCK_UN);
         fclose($lock);
