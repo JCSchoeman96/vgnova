@@ -536,7 +536,7 @@ $test('child command does not inherit readiness or start-gate descriptors', stat
     vg_runtime_mutation_core_with_temp_dir(static function (string $directory): void {
         $lock = VgRuntimeMutationCore::acquireFilesystemLock($directory . '/target.lock');
         $capture = $directory . '/descriptors.json';
-        $childCode = '$descriptors = []; foreach (range(3, 8) as $descriptor) { if (file_exists("/proc/self/fd/" . $descriptor)) { $descriptors[] = $descriptor; } } file_put_contents($argv[1], json_encode($descriptors, JSON_THROW_ON_ERROR));';
+        $childCode = '$descriptors = []; foreach (range(3, 8) as $descriptor) { $target = @readlink("/proc/self/fd/" . $descriptor); if (is_string($target)) { $descriptors[$descriptor] = $target; } } file_put_contents($argv[1], json_encode($descriptors, JSON_THROW_ON_ERROR));';
         $status = VgRuntimeMutationCore::runChildCommand(
             [PHP_BINARY, '-r', $childCode, $capture],
             ['PATH' => (string) getenv('PATH')],
@@ -544,13 +544,13 @@ $test('child command does not inherit readiness or start-gate descriptors', stat
         );
         $descriptors = json_decode((string) file_get_contents($capture), true, 8, JSON_THROW_ON_ERROR);
         $coordinatorDescriptors = is_array($descriptors)
-            ? array_values(array_intersect($descriptors, [4, 5, 6, 7]))
+            ? array_intersect_key($descriptors, array_flip([4, 5, 6, 7]))
             : null;
         vg_runtime_mutation_core_test($status === 0, 'Descriptor probe child did not complete.');
-        vg_runtime_mutation_core_test(is_array($descriptors) && in_array(3, $descriptors, true), 'Child did not inherit the host lock descriptor.');
+        vg_runtime_mutation_core_test(is_array($descriptors) && array_key_exists(3, $descriptors), 'Child did not inherit the host lock descriptor.');
         vg_runtime_mutation_core_test(
             $coordinatorDescriptors === [],
-            'Child inherited coordinator-only descriptors: ' . json_encode($coordinatorDescriptors, JSON_THROW_ON_ERROR)
+            'Child inherited coordinator-only descriptor targets: ' . json_encode($coordinatorDescriptors, JSON_THROW_ON_ERROR)
         );
         flock($lock, LOCK_UN);
         fclose($lock);
