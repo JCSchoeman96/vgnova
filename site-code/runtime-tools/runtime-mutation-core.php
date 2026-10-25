@@ -746,9 +746,17 @@ final class VgRuntimeMutationCore
             }
             if (is_resource($process)) {
                 if ($groupReady && is_int($childPid)) {
-                    @posix_kill(-$childPid, $signal);
-                    if (is_int($supervisorPid) && $supervisorPid > 1) {
-                        @posix_kill($supervisorPid, SIGTERM);
+                    if ($signal === SIGKILL) {
+                        @posix_kill(-$childPid, SIGKILL);
+                        if (is_int($supervisorPid) && $supervisorPid > 1) {
+                            @posix_kill($supervisorPid, SIGKILL);
+                        }
+                    } elseif (is_int($supervisorPid) && $supervisorPid > 1) {
+                        // The supervisor relays the first signal to all descendants,
+                        // including detached children, then reports the child's result.
+                        @posix_kill($supervisorPid, $signal);
+                    } else {
+                        @posix_kill(-$childPid, $signal);
                     }
                 } else {
                     @proc_terminate($process, $signal);
