@@ -159,7 +159,7 @@ require_once dirname(__DIR__) . '/product-contribution-qa.php';
 require_once dirname(__DIR__, 2) . '/voelgoed-platform-core/includes/Product/ProductContributionRepository.php';
 
 $passed = 0;
-$total = 8;
+$total = 9;
 $run_case = static function (string $name, callable $test) use (&$passed): void {
     try {
         $test();
@@ -272,6 +272,49 @@ $run_case('Product cleanup fails when a WooCommerce lookup row remains', static 
         return;
     }
     throw new RuntimeException('Cleanup accepted a remaining WooCommerce lookup row.');
+});
+
+$run_case('final cleanup audit reports lookup residue when the Product post is already absent', static function (): void {
+    vg_pc_qa_test_reset();
+    $token = '[QA][AUTOMATED] Product Contribution final-lookup-audit';
+    $GLOBALS['vg_pc_qa_test_lookup_tables'] = ['wp_wc_product_meta_lookup'];
+    $GLOBALS['vg_pc_qa_test_lookup_rows'] = ['wp_wc_product_meta_lookup' => [810 => ['row']]];
+    $context = [
+        'owned' => [
+            'product_contribution' => [],
+            'event_participation' => [],
+            'product' => [810 => ['id' => 810, 'type' => 'product', 'endpoints' => []]],
+            'person' => [],
+            'tc_events' => [],
+        ],
+        'preexisting_api_ids' => [],
+        'cleanup' => [
+            'errors' => [],
+            'woocommerce_lookup' => [],
+            'tickera' => ['deleted' => [], 'unexplained' => [], 'errors' => []],
+        ],
+    ];
+
+    vg_product_contribution_qa_cleanup($context, $token);
+    $final_audit = $context['cleanup']['woocommerce_lookup_final'] ?? [];
+    $has_lookup_residue = false;
+    foreach ($final_audit as $record) {
+        if (
+            ($record['product_id'] ?? null) === 810
+            && ($record['tables']['wc_product_meta_lookup']['rows'] ?? null) === 1
+        ) {
+            $has_lookup_residue = true;
+        }
+    }
+    $has_cleanup_error = false;
+    foreach ($context['cleanup']['errors'] as $error) {
+        if (str_contains($error['message'] ?? '', 'Final WooCommerce lookup residue remains for Product 810')) {
+            $has_cleanup_error = true;
+        }
+    }
+    if (! $has_lookup_residue || ! $has_cleanup_error) {
+        throw new RuntimeException('Final cleanup audit did not report exact lookup residue for the already-absent Product post.');
+    }
 });
 
 $run_case('finally cleanup runs after a runtime assertion throws', static function (): void {

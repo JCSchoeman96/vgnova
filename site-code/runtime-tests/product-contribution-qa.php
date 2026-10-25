@@ -25,16 +25,57 @@ if (! defined('ABSPATH') && ! defined('VG_PRODUCT_CONTRIBUTION_QA_LIBRARY_ONLY')
 const VG_PRODUCT_CONTRIBUTION_QA_OWNER_META = '_vg_task_8c_product_contribution_qa_owner';
 const VG_PRODUCT_CONTRIBUTION_QA_OWNER_LABEL = '[QA][AUTOMATED] Product Contribution';
 const VG_PRODUCT_CONTRIBUTION_QA_SOURCE_PATH = '/home/jcschoeman96/projects/current/vgnova/site-code/acf-json';
-const VG_PRODUCT_CONTRIBUTION_QA_EXPECTED_TREE_SHA256 = 'a2635dafeb1d82d481b6275526c3850263f549facac80293c810d2b0d93de760';
+const VG_PRODUCT_CONTRIBUTION_QA_PLATFORM_CORE_AUTHORITY = [
+    'artifact_name' => 'voelgoed-platform-core-7af938ac6f4422b1fa779b52444121e7a9293995',
+    'source_commit' => '7af938ac6f4422b1fa779b52444121e7a9293995',
+    'schema_version' => 3,
+    'file_count' => 54,
+    'tree_sha256' => '856a3e5978559bfb2572b4b1ff4b34df916743f9e72d6b18220ee64e98af5f56',
+    'archive_sha256' => '9d5fd288025703fe4f71ed1f3ee264cd3fc9c0b61cf74d137b40e941bc2e2243',
+    'manifest_sha256' => 'c87d339ebe83203a82a3f02b27de9854be9e360835da9893077af9c9c318c1ee',
+];
 const VG_PRODUCT_CONTRIBUTION_QA_EXPECTED_PRODUCT_IDS = [525, 527, 529, 531, 642, 765, 767, 768, 842, 844, 845, 846, 905, 908, 911, 914, 917, 920, 923, 1186];
 
 require_once __DIR__ . '/product-people-qa-side-effects.php';
+require_once __DIR__ . '/platform-core-runtime-integrity.php';
 
 function vg_product_contribution_qa_check(bool $condition, string $message): void
 {
     if (! $condition) {
         throw new RuntimeException($message);
     }
+}
+
+/** @param array<string, mixed> $report */
+function vg_product_contribution_qa_assert_platform_core_integrity(array $report): void
+{
+    if (($report['exact'] ?? false) !== true) {
+        throw new RuntimeException(
+            'Active Platform Core does not match the pinned PE-005 artifact: '
+            . json_encode($report, JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR)
+        );
+    }
+}
+
+/** @param array<string, mixed> $context @param array<string, mixed> $authority */
+function vg_product_contribution_qa_record_platform_core_integrity(
+    array &$context,
+    string $phase,
+    string $plugin_root,
+    string $manifest_path,
+    array $authority
+): void {
+    $report_key = match ($phase) {
+        'preflight' => 'platform_core_integrity',
+        'post_cleanup' => 'platform_core_integrity_post_cleanup',
+        default => throw new InvalidArgumentException('Unknown Platform Core integrity phase: ' . $phase),
+    };
+    $context[$report_key] = vg_product_contribution_qa_platform_core_integrity_report(
+        $plugin_root,
+        $manifest_path,
+        $authority
+    );
+    vg_product_contribution_qa_assert_platform_core_integrity($context[$report_key]);
 }
 
 function vg_product_contribution_qa_flush_person_endpoint_cache(int $contribution_id): void
@@ -1082,6 +1123,13 @@ function vg_product_contribution_qa_preflight(array &$context): void
 {
     $context['identity'] = vg_product_contribution_qa_runtime_identity();
     vg_product_contribution_qa_validate_identity($context['identity']);
+    vg_product_contribution_qa_record_platform_core_integrity(
+        $context,
+        'preflight',
+        $context['identity']['platform_core_path'],
+        __DIR__ . '/fixtures/voelgoed-platform-core-pe005.manifest.json',
+        VG_PRODUCT_CONTRIBUTION_QA_PLATFORM_CORE_AUTHORITY
+    );
     foreach ([
         ProductContributionRepository::POST_TYPE,
         ProductContributionRepository::PERSON_POST_TYPE,
@@ -1129,6 +1177,7 @@ function vg_product_contribution_qa_preflight(array &$context): void
     $context['cleanup'] = [
         'errors' => [],
         'woocommerce_lookup' => [],
+        'woocommerce_lookup_final' => [],
         'tickera' => ['deleted' => [], 'unexplained' => [], 'errors' => []],
     ];
 }
@@ -1168,6 +1217,32 @@ function vg_product_contribution_qa_cleanup(array &$context, string $token): voi
                 $context['cleanup']['woocommerce_lookup'][] = $lookup_evidence;
             }
             $product_errors[] = ['id' => (int) $id, 'type' => 'product', 'message' => $error->getMessage()];
+        }
+    }
+    $context['cleanup']['woocommerce_lookup_final'] = [];
+    foreach ($owned['product'] ?? [] as $id => $record) {
+        $product_id = (int) ($record['id'] ?? $id);
+        try {
+            $lookup_rows = vg_product_contribution_qa_woocommerce_lookup_rows($product_id);
+            $context['cleanup']['woocommerce_lookup_final'][] = [
+                'product_id' => $product_id,
+                'tables' => $lookup_rows,
+            ];
+            foreach ($lookup_rows as $table => $state) {
+                if ($state['table_exists'] && $state['rows'] !== 0) {
+                    $product_errors[] = [
+                        'id' => $product_id,
+                        'type' => 'product',
+                        'message' => 'Final WooCommerce lookup residue remains for Product ' . $product_id . ' in ' . $table . '.',
+                    ];
+                }
+            }
+        } catch (Throwable $error) {
+            $product_errors[] = [
+                'id' => $product_id,
+                'type' => 'product',
+                'message' => 'Final WooCommerce lookup audit failed for Product ' . $product_id . ': ' . $error->getMessage(),
+            ];
         }
     }
     $can_delete_people = $contribution_errors === [] && $participation_errors === [];
@@ -1500,6 +1575,17 @@ function vg_product_contribution_qa_run(): array
             $cleanup_errors[] = ['message' => 'Owned QA records or run-token residue remain after cleanup.', 'remaining' => $remaining];
         }
         try {
+            vg_product_contribution_qa_record_platform_core_integrity(
+                $context,
+                'post_cleanup',
+                $context['identity']['platform_core_path'],
+                __DIR__ . '/fixtures/voelgoed-platform-core-pe005.manifest.json',
+                VG_PRODUCT_CONTRIBUTION_QA_PLATFORM_CORE_AUTHORITY
+            );
+        } catch (Throwable $error) {
+            $cleanup_errors[] = ['phase' => 'post_cleanup_platform_core_integrity', 'message' => $error->getMessage()];
+        }
+        try {
             $context['protected_after'] = vg_product_contribution_qa_protected_snapshot();
             $context['persistent_post'] = vg_product_contribution_qa_persistent_state();
             vg_product_contribution_qa_check($context['protected_after'] === $context['protected_before'], 'Protected state fingerprints changed during runtime QA.');
@@ -1539,6 +1625,8 @@ function vg_product_contribution_qa_run(): array
         'run_id' => $run_id,
         'mutation_started' => $guard['mutation_started'],
         'runtime_identity' => $context['identity'] ?? null,
+        'platform_core_integrity' => $context['platform_core_integrity'] ?? null,
+        'platform_core_integrity_post_cleanup' => $context['platform_core_integrity_post_cleanup'] ?? null,
         'acf_schema_verified' => $context['acf_schema'] ?? false,
         'product_roles_verified' => $roles_verified,
         'owned_records_created' => $created_ids,

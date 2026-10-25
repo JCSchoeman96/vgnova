@@ -16,6 +16,9 @@ php site-code/editorial-dimensions/tests/run-editorial-dimensions-tests.php
 php site-code/runtime-tests/tests/run-event-consumer-6c-qa-tests.php
 php site-code/runtime-tests/tests/run-event-participation-qa-cleanup-tests.php
 php site-code/runtime-tests/tests/run-event-participation-qa-setup-tests.php
+php site-code/runtime-tests/tests/run-product-contribution-qa-setup-tests.php
+php site-code/runtime-tests/tests/run-product-contribution-qa-cleanup-tests.php
+php site-code/runtime-tests/tests/run-product-contribution-qa-platform-core-integrity-tests.php
 
 tracked_inventory="$(mktemp)"
 trap 'rm -f "$tracked_inventory"' EXIT
