@@ -27,6 +27,28 @@ This ledger indexes completed architectural and runtime tasks. Detailed reports 
 | Task 6C | Cut Event Single 774 participants over to canonical Event Participation and Person presentation | [PR #23](https://github.com/JCSchoeman96/vgnova/pull/23) | `35aabfca062cc3e7b73333a860a4e9387c9d9edb` | Template 774 participant subtree and Platform Core adapter updated; temporary QA data cleaned; helper mode retirement deferred | Complete | [Implementation evidence](EVENT_CONSUMER_6C_IMPLEMENTATION.md); [current state](POST_TASK_6C_CURRENT_STATE.md); [runtime manifest](EVENT_CONSUMER_6C_RUNTIME_MANIFEST.json); [design](../superpowers/specs/2026-10-18-event-consumer-cutover-design.md) |
 | Task 7A | Add the canonical Product People foundation (fields and read-only resolver) without consumer cutover | [PR #27](https://github.com/JCSchoeman96/vgnova/pull/27) | `e1fa2245506f3d0ab641742e9904b0848981c006` | Two Product classes and two Platform Core wiring lines deployed; field group registered; temporary QA data hard-deleted; Person and event_participation remain 0; no Product consumer migrated in Task 7A | Complete; merged; architecture review revision addressed | [Implementation](PRODUCT_PEOPLE_IMPLEMENTATION.md); [current state](POST_TASK_7A_CURRENT_STATE.md); [runtime manifest](PRODUCT_PEOPLE_7A_RUNTIME_MANIFEST.json); [spec](../superpowers/specs/2026-10-19-product-people-foundation-design.md); [plan](../superpowers/plans/2026-10-20-product-people-foundation-7a.md) |
 | Task 7B | Cut Product Single 124 Product People to canonical Person data and keep source Event presentation independent | [PR #29](https://github.com/JCSchoeman96/vgnova/pull/29) | `0b895029d001416fbfccd5e7dc2f9ef82bf981a3` | Template 124 updated; Product Person Card dc8611 added; source and runtime adapters match; guarded QA passed 30/30 behind a request-scoped Coming Soon bypass; cleanup returned counts and protected state to baseline | Complete; merged; Task 7C not started | [Implementation evidence](PRODUCT_SINGLE_124_7B_IMPLEMENTATION.md); [current state](POST_TASK_7B_CURRENT_STATE.md); [runtime manifest](PRODUCT_SINGLE_124_7B_RUNTIME_MANIFEST.json); [spec](../superpowers/specs/2026-10-20-product-single-124-consumer-cutover-design.md); [plan](../superpowers/plans/2026-10-20-product-single-124-consumer-cutover-7b.md) |
+| Product Contribution Tasks 1–8, plus Task 9 closeout | Implement the role-aware Product × Person relationship, move manual Product People authority, add the Person-side Product adapter, and record final architecture and current state | [PRs #36, #37, #38, #39, #41, #42, #47, #49, #52, #53, #54, #55](#product-contribution-merge-sequence) | See exact merge sequence below | Three Product Contribution ACF definitions persisted; four Product Roles persisted; Product Contribution, Person, and Event Participation QA fixtures returned to zero; manual Product People authority moved to Product Contribution; Event membership stayed with Event Participation; protected legacy state stayed unchanged | Tasks 1–8 merged; Task 9 documentation PR open and unmerged | [Implementation](PRODUCT_CONTRIBUTION_IMPLEMENTATION.md); [current state](POST_PRODUCT_CONTRIBUTION_CURRENT_STATE.md); [runtime manifest](PRODUCT_CONTRIBUTION_RUNTIME_MANIFEST_v1.0.0.json); [Legacy Register entry 18](LEGACY_DECOMMISSION_REGISTER.md#18-product-event-and-person-relationships) |
+
+## Product Contribution merge sequence
+
+These are Product Contribution programme PRs, not the earlier global task numbers.
+
+| PR | Change | Merge SHA |
+|---|---|---|
+| [#36](https://github.com/JCSchoeman96/vgnova/pull/36) | Schema and Product Role vocabulary | `b049f47876957c42fb40554645feab6799147221` |
+| [#37](https://github.com/JCSchoeman96/vgnova/pull/37) | Repository reads and pair locks | `10231ece9895deaa382a0d3af0a6d698fdff02e0` |
+| [#38](https://github.com/JCSchoeman96/vgnova/pull/38) | Service writes and admin validation | `1a00e118749d0bfe827aa81ce5b93a35fcead02d` |
+| [#39](https://github.com/JCSchoeman96/vgnova/pull/39) | Manual Product People authority cutover | `a9587abf0a64ebedf202562571ce55225377228f` |
+| [#41](https://github.com/JCSchoeman96/vgnova/pull/41) | Person-side Product Bricks adapter | `cd6ccd25336f94867cdd82ad08da73b3f3493abd` |
+| [#42](https://github.com/JCSchoeman96/vgnova/pull/42) | Platform Core integration wiring | `be713383b03c730bfdf4a17a80cfcbeadc8e44fc` |
+| [#47](https://github.com/JCSchoeman96/vgnova/pull/47) | Runtime provenance audit | `e27a55c33b0393273c363b8fdcbfb65d3d1671ea` |
+| [#49](https://github.com/JCSchoeman96/vgnova/pull/49) | Controlled Platform Core runtime normalization | `ea4dc65121db74f4b8dabfb1aa95d9afc17b1ed7` |
+| [#52](https://github.com/JCSchoeman96/vgnova/pull/52) | ACF query-var sentinel correction | `e1552bfc75dd68f6f0e3220f8e8b789ec8d7cc4a` |
+| [#53](https://github.com/JCSchoeman96/vgnova/pull/53) | ACF Local JSON synchronization metadata correction | `caaba61069eabe347a2a0e0949fce41106e76be0` |
+| [#54](https://github.com/JCSchoeman96/vgnova/pull/54) | Final Product Contribution runtime QA | `7af938ac6f4422b1fa779b52444121e7a9293995` |
+| [#55](https://github.com/JCSchoeman96/vgnova/pull/55) | PE-006C runtime safety consolidation and read-only current-state recheck | `85094bc24dae2a92c623bbd5d77cc9945f3c69ed` |
+
+Task 8 PR #54 merged with parent 1 `caaba61069eabe347a2a0e0949fce41106e76be0` and parent 2 `8386a0e44d65e6b625d8c10bd8ac13cc0a91c7f6`. Task 9 is documentation and verification only. Its PR is intentionally not recorded as merged here.
 
 ## Task 7A execution rulings
 
