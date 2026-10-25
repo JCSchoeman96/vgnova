@@ -3105,7 +3105,7 @@
     "localhost_10049_access": false,
     "task_9": "NOT_STARTED"
   },
-  "review_status": "OPEN_UNMERGED; FOLLOW_UP_EXACT_HEAD_REVIEW_PENDING",
+  "review_status": "TASK_8C_MERGED_BY_PR_54; PE_006C_SOURCE_REVIEW_PENDING",
   "overall_verdict": "PASS",
   "review_followup": {
     "reviewed_head": "11d75b892b250f9721a53ceb0ce3323d545482d7",
@@ -3118,5 +3118,198 @@
       "Malformed-endpoint filtering now restores the original owned Person endpoint in a finally boundary, before the outer exact-ownership cleanup; the regression forces assertion failure and verifies complete cleanup."
     ],
     "follow_up_exact_head_review": "PENDING"
+  },
+  "merged_commit": "7af938ac6f4422b1fa779b52444121e7a9293995",
+  "task8c_execution_provenance": {
+    "pull_request": 54,
+    "historical_execution_baseline": "caaba61069eabe347a2a0e0949fce41106e76be0",
+    "historical_pr_head": "8386a0e44d65e6b625d8c10bd8ac13cc0a91c7f6",
+    "merged_commit": "7af938ac6f4422b1fa779b52444121e7a9293995",
+    "targeted_acf_sync_keys": [
+      "post_type_product_contribution",
+      "post_type_event_participation"
+    ],
+    "product_role_setup_runs": 2,
+    "product_role_terms_created": 0,
+    "live_owned_qa_assertions": {
+      "passed": 16,
+      "result": "PASS"
+    },
+    "cleanup": "PASS",
+    "protected_state_comparison": "PASS",
+    "source_corrections": [
+      {
+        "pull_request": 52,
+        "change": "ACF JSON query_var false to the string sentinel none",
+        "runtime_contract": "WordPress registers both administrative CPT query_var values as boolean false"
+      },
+      {
+        "pull_request": 53,
+        "change": "ACF Local JSON modified metadata set to 1792865666 to make the corrected CPT definitions syncable",
+        "meaning": "ACF synchronization metadata, not a MySQL row write timestamp"
+      }
+    ]
+  },
+  "pe006c_reconciliation": {
+    "scope": "source_only",
+    "baseline_commit": "7af938ac6f4422b1fa779b52444121e7a9293995",
+    "historical_task8c_execution_replayed": false,
+    "live_qa_reruns": 0,
+    "published_artifact_authority": {
+      "workflow_run": 40167647912,
+      "artifact_id": 12588965615,
+      "artifact_name": "voelgoed-platform-core-7af938ac6f4422b1fa779b52444121e7a9293995",
+      "source_commit": "7af938ac6f4422b1fa779b52444121e7a9293995",
+      "schema_version": 3,
+      "file_count": 54,
+      "tree_sha256": "856a3e5978559bfb2572b4b1ff4b34df916743f9e72d6b18220ee64e98af5f56",
+      "archive_sha256": "9d5fd288025703fe4f71ed1f3ee264cd3fc9c0b61cf74d137b40e941bc2e2243",
+      "manifest_sha256": "c87d339ebe83203a82a3f02b27de9854be9e360835da9893077af9c9c318c1ee",
+      "github_transport_zip_sha256": "8129e43c2f72361ccac5bcdcc4c00f505f9ddef7b93a45d4ff22d143336744b4",
+      "transport_zip_digest_is_canonical_plugin_archive_digest": false
+    },
+    "runtime_artifact_parity": {
+      "verification_method": "Read-only PHP file and mode comparison against the downloaded published manifest",
+      "exact": true,
+      "file_count": 54,
+      "missing": 0,
+      "extra": 0,
+      "content_mismatches": 0,
+      "mode_mismatches": 0,
+      "symlinks": 0,
+      "unsupported_objects": 0,
+      "unreadable_files": 0,
+      "tree_sha256": "856a3e5978559bfb2572b4b1ff4b34df916743f9e72d6b18220ee64e98af5f56"
+    },
+    "deployment_decision": "SKIPPED_ALREADY_EXACT",
+    "historical_task8b_tree_hash": {
+      "sha256": "a2635dafeb1d82d481b6275526c3850263f549facac80293c810d2b0d93de760",
+      "algorithm": "SHA-256 over sorted relative-path + NUL + file SHA-256 + newline records",
+      "authority": "historical Task 8B evidence only"
+    },
+    "acf_database_provenance": {
+      "product_contribution": {
+        "database_id": 1476,
+        "post_type": "acf-post-type",
+        "post_name": "post_type_product_contribution",
+        "post_modified": "2026-10-24 18:28:45",
+        "post_modified_gmt": "2026-10-24 18:28:45",
+        "raw_post_content_sha256": "b9b072c924fe1dacaf4215f3a0667ba9640f488d3c2d5634569092658cc7930b",
+        "stored_query_var": "none",
+        "acf_local_json_modified": 1792865666
+      },
+      "event_participation": {
+        "database_id": 1261,
+        "post_type": "acf-post-type",
+        "post_name": "post_type_event_participation",
+        "post_modified": "2026-10-24 18:29:00",
+        "post_modified_gmt": "2026-10-24 18:29:00",
+        "raw_post_content_sha256": "7f0387c8baff0969a21ad714ef4fd2207125c09ed8b2e578f1e311d699662c49",
+        "stored_query_var": "none",
+        "acf_local_json_modified": 1792865666
+      },
+      "modified_field_explanation": "1792865666 is ACF Local JSON synchronization metadata, not the MySQL row write timestamp."
+    },
+    "current_runtime_state": {
+      "evidence_source": "PE-006A-R read-only library-only preflight",
+      "platform_core_active": true,
+      "wordpress_registered_query_var_false": {
+        "product_contribution": true,
+        "event_participation": true
+      },
+      "target_acf_definitions": 3,
+      "product_role_terms": [
+        "aanbieder",
+        "instrukteur",
+        "skepper",
+        "skrywer"
+      ],
+      "product_role_relationships": 0,
+      "product_contribution_posts": 0,
+      "person_posts": 0,
+      "event_participation_posts": 0,
+      "legacy_product_people_override_rows": {
+        "product_people_override": 0,
+        "_product_people_override": 0
+      },
+      "approved_20_product_ids": [
+        525,
+        527,
+        529,
+        531,
+        642,
+        765,
+        767,
+        768,
+        842,
+        844,
+        845,
+        846,
+        905,
+        908,
+        911,
+        914,
+        917,
+        920,
+        923,
+        1186
+      ],
+      "protected_fingerprints_readable": true,
+      "acf_sync_status": {
+        "post_type_product_contribution": "In sync",
+        "post_type_event_participation": "In sync",
+        "taxonomy_product_role": "In sync",
+        "group_vg_product_contribution_details": "In sync"
+      }
+    },
+    "runtime_writes": {
+      "acf_writes": 0,
+      "taxonomy_writes": 0,
+      "post_writes": 0,
+      "database_writes": 0,
+      "bricks_writes": 0,
+      "fluentsnippet_writes": 0,
+      "platform_core_deployments": 0,
+      "live_qa_reruns": 0
+    },
+    "branch": "chore/pe-006c-runtime-safety-consolidation",
+    "integrity_guard": {
+      "manifest_fixture": "site-code/runtime-tests/fixtures/voelgoed-platform-core-pe005.manifest.json",
+      "manifest_fixture_sha256": "c87d339ebe83203a82a3f02b27de9854be9e360835da9893077af9c9c318c1ee",
+      "pre_mutation_guard_added": true,
+      "post_cleanup_integrity_recheck_added": true,
+      "historical_task8b_hash_is_active_authority": false,
+      "root_symlink_trailing_slash_rejected": true,
+      "empty_and_filesystem_root_paths_rejected": true
+    },
+    "cleanup_hardening": {
+      "existing_per_product_lookup_checks_preserved": [
+        "wc_product_meta_lookup",
+        "wc_product_attributes_lookup when present"
+      ],
+      "final_aggregate_lookup_residue_audit_added": true,
+      "regression_case": "Lookup row remains after the owned Product post is already absent"
+    },
+    "source_safety_runners": {
+      "setup": {
+        "passed": 5,
+        "total": 5
+      },
+      "cleanup": {
+        "passed": 9,
+        "total": 9
+      },
+      "platform_core_integrity": {
+        "passed": 24,
+        "total": 24
+      },
+      "check_source_commands": [
+        "php site-code/runtime-tests/tests/run-product-contribution-qa-setup-tests.php",
+        "php site-code/runtime-tests/tests/run-product-contribution-qa-cleanup-tests.php",
+        "php site-code/runtime-tests/tests/run-product-contribution-qa-platform-core-integrity-tests.php"
+      ],
+      "live_mutating_harness_in_source_gate": false,
+      "full_source_gate": "PASS"
+    }
   }
 }

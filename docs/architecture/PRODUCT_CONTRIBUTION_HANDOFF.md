@@ -304,7 +304,7 @@ Task 8 must:
 - prove manual + event membership semantics, reverse reads, stale annotation behavior, role integrity, title/admin behavior, public filtering, and cleanup;
 - preserve protected legacy state;
 - create `site-code/runtime-tests/product-contribution-qa.php`;
-- create `docs/architecture/PRODUCT_CONTRIBUTION_RUNTIME_MANIFEST.json` from captured evidence;
+- create `docs/architecture/PRODUCT_CONTRIBUTION_RUNTIME_MANIFEST_v1.0.0.json` from captured evidence;
 - open its own PR/review unit as required by the current governance.
 
 ---

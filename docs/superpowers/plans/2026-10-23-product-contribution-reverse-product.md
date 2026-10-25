@@ -167,7 +167,7 @@ Create:
 docs/architecture/PRODUCT_CONTRIBUTION_PREFLIGHT.md
 docs/architecture/PRODUCT_CONTRIBUTION_IMPLEMENTATION.md
 docs/architecture/POST_PRODUCT_CONTRIBUTION_CURRENT_STATE.md
-docs/architecture/PRODUCT_CONTRIBUTION_RUNTIME_MANIFEST.json
+docs/architecture/PRODUCT_CONTRIBUTION_RUNTIME_MANIFEST_v1.0.0.json
 ```
 
 Modify only where current-state evidence changes:
@@ -992,7 +992,7 @@ git commit -m "chore: wire Product Contribution foundation"
 
 **Files:**
 - Create: `site-code/runtime-tests/product-contribution-qa.php`
-- Create: `docs/architecture/PRODUCT_CONTRIBUTION_RUNTIME_MANIFEST.json` after QA from captured machine-readable evidence.
+- Create: `docs/architecture/PRODUCT_CONTRIBUTION_RUNTIME_MANIFEST_v1.0.0.json` after QA from captured machine-readable evidence.
 
 **Interfaces:**
 - Consumes: fully green source branch and Task 1 protected-state snapshot.
@@ -1061,7 +1061,7 @@ Record runtime identity, source/runtime hashes, ACF sync keys, role vocabulary, 
 - [ ] **Step 14: Commit runtime QA source and manifest**
 
 ```bash
-git add site-code/runtime-tests/product-contribution-qa.php docs/architecture/PRODUCT_CONTRIBUTION_RUNTIME_MANIFEST.json
+git add site-code/runtime-tests/product-contribution-qa.php docs/architecture/PRODUCT_CONTRIBUTION_RUNTIME_MANIFEST_v1.0.0.json
 git commit -m "test: verify Product Contribution runtime"
 ```
 
