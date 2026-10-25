@@ -1,0 +1,572 @@
+{
+    "schema_version": 1,
+    "scope": "Every tracked PHP file. Runtime entry points, reusable libraries, normal application writers, and test support are classified separately.",
+    "entries": [
+        {
+            "path": "site-code/bin/check-runtime-mutation-policy.php",
+            "classification": "library"
+        },
+        {
+            "path": "site-code/bin/vgnova-runtime-mutate.php",
+            "classification": "library"
+        },
+        {
+            "path": "site-code/editorial-dimensions/seed-editorial-format-terms.php",
+            "classification": "mutating",
+            "session_guard_required": true,
+            "guard_function": "vg_runtime_mutation_assert_session",
+            "purpose": "seed"
+        },
+        {
+            "path": "site-code/editorial-dimensions/tests/run-editorial-dimensions-tests.php",
+            "classification": "test_only"
+        },
+        {
+            "path": "site-code/event-participation/tests/run-event-participation-foundation-tests.php",
+            "classification": "test_only"
+        },
+        {
+            "path": "site-code/person-foundation/seed-person-type-terms.php",
+            "classification": "mutating",
+            "session_guard_required": true,
+            "guard_function": "vg_runtime_mutation_assert_session",
+            "purpose": "seed"
+        },
+        {
+            "path": "site-code/person-foundation/tests/run-person-foundation-tests.php",
+            "classification": "test_only"
+        },
+        {
+            "path": "site-code/runtime-tests/event-consumer-6c-qa-ownership.php",
+            "classification": "library",
+            "mutation_callers": [
+                "site-code/runtime-tests/event-consumer-6c-qa.php"
+            ]
+        },
+        {
+            "path": "site-code/runtime-tests/event-consumer-6c-qa-rendering.php",
+            "classification": "library"
+        },
+        {
+            "path": "site-code/runtime-tests/event-consumer-6c-qa.php",
+            "classification": "mutating",
+            "session_guard_required": true,
+            "guard_function": "vg_runtime_mutation_assert_session",
+            "purpose": "runtime-qa"
+        },
+        {
+            "path": "site-code/runtime-tests/event-participation-qa-ownership.php",
+            "classification": "library",
+            "mutation_callers": [
+                "site-code/runtime-tests/event-participation-qa.php"
+            ]
+        },
+        {
+            "path": "site-code/runtime-tests/event-participation-qa-setup.php",
+            "classification": "library"
+        },
+        {
+            "path": "site-code/runtime-tests/event-participation-qa.php",
+            "classification": "mutating",
+            "session_guard_required": true,
+            "guard_function": "vg_runtime_mutation_assert_session",
+            "purpose": "runtime-qa"
+        },
+        {
+            "path": "site-code/runtime-tests/fcm-self-featured-runtime.php",
+            "classification": "mutating",
+            "session_guard_required": true,
+            "guard_function": "vg_runtime_mutation_assert_session",
+            "purpose": "runtime-qa"
+        },
+        {
+            "path": "site-code/runtime-tests/fixtures/runtime-mutation-parent-death.php",
+            "classification": "test_only"
+        },
+        {
+            "path": "site-code/runtime-tests/person-foundation-qa.php",
+            "classification": "mutating",
+            "session_guard_required": true,
+            "guard_function": "vg_runtime_mutation_assert_session",
+            "purpose": "runtime-qa"
+        },
+        {
+            "path": "site-code/runtime-tests/platform-core-runtime-integrity.php",
+            "classification": "read_only"
+        },
+        {
+            "path": "site-code/runtime-tests/product-contribution-qa.php",
+            "classification": "mutating",
+            "session_guard_required": true,
+            "guard_function": "vg_runtime_mutation_assert_session",
+            "purpose": "runtime-qa"
+        },
+        {
+            "path": "site-code/runtime-tests/product-people-qa-contributions.php",
+            "classification": "library",
+            "mutation_callers": [
+                "site-code/runtime-tests/product-people-qa.php",
+                "site-code/runtime-tests/product-single-124-qa.php"
+            ]
+        },
+        {
+            "path": "site-code/runtime-tests/product-people-qa-side-effects.php",
+            "classification": "library"
+        },
+        {
+            "path": "site-code/runtime-tests/product-people-qa.php",
+            "classification": "mutating",
+            "session_guard_required": true,
+            "guard_function": "vg_runtime_mutation_assert_session",
+            "purpose": "runtime-qa"
+        },
+        {
+            "path": "site-code/runtime-tests/product-single-124-qa-request.php",
+            "classification": "library"
+        },
+        {
+            "path": "site-code/runtime-tests/product-single-124-qa.php",
+            "classification": "mutating",
+            "session_guard_required": true,
+            "guard_function": "vg_runtime_mutation_assert_session",
+            "purpose": "runtime-qa"
+        },
+        {
+            "path": "site-code/runtime-tests/replace-fixture-template-previews.php",
+            "classification": "mutating",
+            "session_guard_required": true,
+            "guard_function": "vg_runtime_mutation_assert_session",
+            "purpose": "maintenance"
+        },
+        {
+            "path": "site-code/runtime-tests/tests/run-event-consumer-6c-qa-tests.php",
+            "classification": "test_only"
+        },
+        {
+            "path": "site-code/runtime-tests/tests/run-event-participation-qa-cleanup-tests.php",
+            "classification": "test_only"
+        },
+        {
+            "path": "site-code/runtime-tests/tests/run-event-participation-qa-setup-tests.php",
+            "classification": "test_only"
+        },
+        {
+            "path": "site-code/runtime-tests/tests/run-product-contribution-qa-cleanup-tests.php",
+            "classification": "test_only"
+        },
+        {
+            "path": "site-code/runtime-tests/tests/run-product-contribution-qa-platform-core-integrity-tests.php",
+            "classification": "test_only"
+        },
+        {
+            "path": "site-code/runtime-tests/tests/run-product-contribution-qa-setup-tests.php",
+            "classification": "test_only"
+        },
+        {
+            "path": "site-code/runtime-tests/tests/run-runtime-mutation-core-tests.php",
+            "classification": "test_only"
+        },
+        {
+            "path": "site-code/runtime-tests/tests/run-runtime-mutation-policy-tests.php",
+            "classification": "test_only"
+        },
+        {
+            "path": "site-code/runtime-tests/tests/run-runtime-mutation-session-tests.php",
+            "classification": "test_only"
+        },
+        {
+            "path": "site-code/runtime-tools/runtime-mutation-core.php",
+            "classification": "library"
+        },
+        {
+            "path": "site-code/runtime-tools/runtime-mutation-database.php",
+            "classification": "library"
+        },
+        {
+            "path": "site-code/runtime-tools/runtime-mutation-db-lock-keeper.php",
+            "classification": "library"
+        },
+        {
+            "path": "site-code/runtime-tools/runtime-mutation-exec.php",
+            "classification": "library"
+        },
+        {
+            "path": "site-code/runtime-tools/runtime-mutation-session.php",
+            "classification": "library"
+        },
+        {
+            "path": "site-code/voelgoed-platform-core/includes/Event/EventParticipationAdmin.php",
+            "classification": "explicit_exemption",
+            "reason": "Normal WordPress event editor callbacks remain outside administrative runtime coordination.",
+            "reviewed_scope": "ACF save and post update hooks that validate or synchronize Event Participation admin edits."
+        },
+        {
+            "path": "site-code/voelgoed-platform-core/includes/Event/EventParticipationBricks.php",
+            "classification": "library"
+        },
+        {
+            "path": "site-code/voelgoed-platform-core/includes/Event/EventParticipationPairLock.php",
+            "classification": "library"
+        },
+        {
+            "path": "site-code/voelgoed-platform-core/includes/Event/EventParticipationRepository.php",
+            "classification": "library"
+        },
+        {
+            "path": "site-code/voelgoed-platform-core/includes/Event/EventParticipationService.php",
+            "classification": "explicit_exemption",
+            "reason": "EventParticipationService is an ordinary application domain writer.",
+            "reviewed_scope": "Runtime service calls that create or retire one Event Participation under its existing pair lock."
+        },
+        {
+            "path": "site-code/voelgoed-platform-core/includes/Event/EventRoleSeeder.php",
+            "classification": "mutating",
+            "session_guard_required": true,
+            "guard_function": "vg_runtime_mutation_assert_session",
+            "purpose": "seed"
+        },
+        {
+            "path": "site-code/voelgoed-platform-core/includes/Product/PersonProductsBricks.php",
+            "classification": "library"
+        },
+        {
+            "path": "site-code/voelgoed-platform-core/includes/Product/ProductContributionAdmin.php",
+            "classification": "explicit_exemption",
+            "reason": "Normal WordPress product editor callbacks remain outside administrative runtime coordination.",
+            "reviewed_scope": "ACF save and post lifecycle hooks that validate or synchronize Product Contribution admin edits."
+        },
+        {
+            "path": "site-code/voelgoed-platform-core/includes/Product/ProductContributionPairLock.php",
+            "classification": "library"
+        },
+        {
+            "path": "site-code/voelgoed-platform-core/includes/Product/ProductContributionRepository.php",
+            "classification": "library"
+        },
+        {
+            "path": "site-code/voelgoed-platform-core/includes/Product/ProductContributionService.php",
+            "classification": "explicit_exemption",
+            "reason": "ProductContributionService is an ordinary application domain writer.",
+            "reviewed_scope": "Runtime service calls that create or retire one Product Contribution under its existing pair lock."
+        },
+        {
+            "path": "site-code/voelgoed-platform-core/includes/Product/ProductPeopleBricks.php",
+            "classification": "library"
+        },
+        {
+            "path": "site-code/voelgoed-platform-core/includes/Product/ProductPeopleFields.php",
+            "classification": "library"
+        },
+        {
+            "path": "site-code/voelgoed-platform-core/includes/Product/ProductPeopleResolver.php",
+            "classification": "library"
+        },
+        {
+            "path": "site-code/voelgoed-platform-core/includes/Product/ProductRoleSeeder.php",
+            "classification": "mutating",
+            "session_guard_required": true,
+            "guard_function": "vg_runtime_mutation_assert_session",
+            "purpose": "seed"
+        },
+        {
+            "path": "site-code/voelgoed-platform-core/includes/Product/ProductRoleVocabulary.php",
+            "classification": "library"
+        },
+        {
+            "path": "site-code/voelgoed-platform-core/includes/Product/ProductSourceEventBricks.php",
+            "classification": "library"
+        },
+        {
+            "path": "site-code/voelgoed-platform-core/includes/RuntimeMutationSession.php",
+            "classification": "library"
+        },
+        {
+            "path": "site-code/voelgoed-platform-core/includes/Taxonomy/ContentTopicMigration.php",
+            "classification": "mutating",
+            "session_guard_required": true,
+            "guard_function": "vg_runtime_mutation_assert_session",
+            "purpose": "migration"
+        },
+        {
+            "path": "site-code/voelgoed-platform-core/includes/Taxonomy/ContentTopicRoles.php",
+            "classification": "explicit_exemption",
+            "reason": "Normal WordPress content editor callbacks remain outside administrative runtime coordination.",
+            "reviewed_scope": "ACF save hooks that write editor-selected content_topic relationships and Primary Topic metadata."
+        },
+        {
+            "path": "site-code/voelgoed-platform-core/includes/Taxonomy/ContentTopicTaxonomy.php",
+            "classification": "mutating",
+            "session_guard_required": true,
+            "guard_function": "vg_runtime_mutation_assert_session",
+            "purpose": "seed"
+        },
+        {
+            "path": "site-code/voelgoed-platform-core/tests/ContentTopicMigrationTest.php",
+            "classification": "test_only"
+        },
+        {
+            "path": "site-code/voelgoed-platform-core/tests/ContentTopicRolesTest.php",
+            "classification": "test_only"
+        },
+        {
+            "path": "site-code/voelgoed-platform-core/tests/ContentTopicTaxonomyTest.php",
+            "classification": "test_only"
+        },
+        {
+            "path": "site-code/voelgoed-platform-core/tests/EventParticipationAdminTest.php",
+            "classification": "test_only"
+        },
+        {
+            "path": "site-code/voelgoed-platform-core/tests/EventParticipationBricksTest.php",
+            "classification": "test_only"
+        },
+        {
+            "path": "site-code/voelgoed-platform-core/tests/EventParticipationRepositoryTest.php",
+            "classification": "test_only"
+        },
+        {
+            "path": "site-code/voelgoed-platform-core/tests/EventParticipationSchemaTest.php",
+            "classification": "test_only"
+        },
+        {
+            "path": "site-code/voelgoed-platform-core/tests/EventParticipationServiceTest.php",
+            "classification": "test_only"
+        },
+        {
+            "path": "site-code/voelgoed-platform-core/tests/EventRoleSeederTest.php",
+            "classification": "test_only"
+        },
+        {
+            "path": "site-code/voelgoed-platform-core/tests/PersonProductsBricksTest.php",
+            "classification": "test_only"
+        },
+        {
+            "path": "site-code/voelgoed-platform-core/tests/ProductContributionAdminTest.php",
+            "classification": "test_only"
+        },
+        {
+            "path": "site-code/voelgoed-platform-core/tests/ProductContributionPairLockTest.php",
+            "classification": "test_only"
+        },
+        {
+            "path": "site-code/voelgoed-platform-core/tests/ProductContributionRepositoryTest.php",
+            "classification": "test_only"
+        },
+        {
+            "path": "site-code/voelgoed-platform-core/tests/ProductContributionSchemaTest.php",
+            "classification": "test_only"
+        },
+        {
+            "path": "site-code/voelgoed-platform-core/tests/ProductContributionServiceTest.php",
+            "classification": "test_only"
+        },
+        {
+            "path": "site-code/voelgoed-platform-core/tests/ProductPeopleBricksTest.php",
+            "classification": "test_only"
+        },
+        {
+            "path": "site-code/voelgoed-platform-core/tests/ProductPeopleFieldsTest.php",
+            "classification": "test_only"
+        },
+        {
+            "path": "site-code/voelgoed-platform-core/tests/ProductPeopleIntegrationTest.php",
+            "classification": "test_only"
+        },
+        {
+            "path": "site-code/voelgoed-platform-core/tests/ProductPeopleQaSideEffectsTest.php",
+            "classification": "test_only"
+        },
+        {
+            "path": "site-code/voelgoed-platform-core/tests/ProductPeopleResolverTest.php",
+            "classification": "test_only"
+        },
+        {
+            "path": "site-code/voelgoed-platform-core/tests/ProductRoleSeederTest.php",
+            "classification": "test_only"
+        },
+        {
+            "path": "site-code/voelgoed-platform-core/tests/ProductRoleVocabularyTest.php",
+            "classification": "test_only"
+        },
+        {
+            "path": "site-code/voelgoed-platform-core/tests/ProductSingle124QaRequestTest.php",
+            "classification": "test_only"
+        },
+        {
+            "path": "site-code/voelgoed-platform-core/tests/ProductSourceEventBricksTest.php",
+            "classification": "test_only"
+        },
+        {
+            "path": "site-code/voelgoed-platform-core/tests/bootstrap.php",
+            "classification": "test_only"
+        },
+        {
+            "path": "site-code/voelgoed-platform-core/tests/run-content-topic-tests.php",
+            "classification": "test_only"
+        },
+        {
+            "path": "site-code/voelgoed-platform-core/tests/run-event-participation-bricks-tests.php",
+            "classification": "test_only"
+        },
+        {
+            "path": "site-code/voelgoed-platform-core/tests/run-event-participation-tests.php",
+            "classification": "test_only"
+        },
+        {
+            "path": "site-code/voelgoed-platform-core/tests/run-event-role-seeder-tests.php",
+            "classification": "test_only"
+        },
+        {
+            "path": "site-code/voelgoed-platform-core/tests/run-product-contribution-tests.php",
+            "classification": "test_only"
+        },
+        {
+            "path": "site-code/voelgoed-platform-core/tests/run-product-people-tests.php",
+            "classification": "test_only"
+        },
+        {
+            "path": "voelgoed-platform-core/includes/Bricks/DashboardDynamicData.php",
+            "classification": "library"
+        },
+        {
+            "path": "voelgoed-platform-core/includes/Bricks/DashboardQueryProvider.php",
+            "classification": "library"
+        },
+        {
+            "path": "voelgoed-platform-core/includes/Config/AfrikaansLabels.php",
+            "classification": "library"
+        },
+        {
+            "path": "voelgoed-platform-core/includes/Contracts/DashboardAction.php",
+            "classification": "library"
+        },
+        {
+            "path": "voelgoed-platform-core/includes/Contracts/DashboardCard.php",
+            "classification": "library"
+        },
+        {
+            "path": "voelgoed-platform-core/includes/Contracts/DashboardServiceInterface.php",
+            "classification": "library"
+        },
+        {
+            "path": "voelgoed-platform-core/includes/Dashboard/AccessGuard.php",
+            "classification": "library"
+        },
+        {
+            "path": "voelgoed-platform-core/includes/Dashboard/DashboardContext.php",
+            "classification": "library"
+        },
+        {
+            "path": "voelgoed-platform-core/includes/Dashboard/DashboardRegistry.php",
+            "classification": "library"
+        },
+        {
+            "path": "voelgoed-platform-core/includes/Dashboard/DashboardRoutes.php",
+            "classification": "library"
+        },
+        {
+            "path": "voelgoed-platform-core/includes/Dashboard/Navigation.php",
+            "classification": "library"
+        },
+        {
+            "path": "voelgoed-platform-core/includes/Performance/CachePolicy.php",
+            "classification": "library"
+        },
+        {
+            "path": "voelgoed-platform-core/includes/Plugin.php",
+            "classification": "library"
+        },
+        {
+            "path": "voelgoed-platform-core/includes/Services/CommerceService.php",
+            "classification": "library"
+        },
+        {
+            "path": "voelgoed-platform-core/includes/Services/LearningService.php",
+            "classification": "library"
+        },
+        {
+            "path": "voelgoed-platform-core/includes/Services/MemberAreaService.php",
+            "classification": "library"
+        },
+        {
+            "path": "voelgoed-platform-core/includes/Services/MembershipService.php",
+            "classification": "library"
+        },
+        {
+            "path": "voelgoed-platform-core/includes/Services/SubscriptionService.php",
+            "classification": "library"
+        },
+        {
+            "path": "voelgoed-platform-core/includes/Services/TicketService.php",
+            "classification": "library"
+        },
+        {
+            "path": "voelgoed-platform-core/tests/bootstrap.php",
+            "classification": "test_only"
+        },
+        {
+            "path": "voelgoed-platform-core/tests/contracts/DashboardCardTest.php",
+            "classification": "test_only"
+        },
+        {
+            "path": "voelgoed-platform-core/tests/dashboard/AccessGuardTest.php",
+            "classification": "test_only"
+        },
+        {
+            "path": "voelgoed-platform-core/tests/dashboard/DashboardRoutesTest.php",
+            "classification": "test_only"
+        },
+        {
+            "path": "voelgoed-platform-core/tests/dashboard/NavigationTest.php",
+            "classification": "test_only"
+        },
+        {
+            "path": "voelgoed-platform-core/tests/performance/CachePolicyTest.php",
+            "classification": "test_only"
+        },
+        {
+            "path": "voelgoed-platform-core/tests/run-dashboard-tests.php",
+            "classification": "test_only"
+        },
+        {
+            "path": "voelgoed-platform-core/tests/services/CommerceServiceTest.php",
+            "classification": "test_only"
+        },
+        {
+            "path": "voelgoed-platform-core/tests/services/LearningServiceTest.php",
+            "classification": "test_only"
+        },
+        {
+            "path": "voelgoed-platform-core/tests/services/MemberAreaServiceTest.php",
+            "classification": "test_only"
+        },
+        {
+            "path": "voelgoed-platform-core/tests/services/MembershipServiceTest.php",
+            "classification": "test_only"
+        },
+        {
+            "path": "voelgoed-platform-core/tests/services/SubscriptionServiceTest.php",
+            "classification": "test_only"
+        },
+        {
+            "path": "voelgoed-platform-core/tests/services/TicketServiceTest.php",
+            "classification": "test_only"
+        },
+        {
+            "path": "voelgoed-platform-core/voelgoed-platform-core.php",
+            "classification": "library"
+        }
+    ],
+    "external_mutators": [
+        {
+            "path": "site-code/runtime-tests/fcm-self-featured-integration.py",
+            "boundary": "Novamira execute-php requests from the local Python runner.",
+            "actions": [
+                "create",
+                "cleanup"
+            ],
+            "guard": "The embedded PHP payload validates the active session before its first write; run the Python process under vgnova-runtime-mutate.php.",
+            "reviewed_scope": "The snapshot and frontend-render requests are read-only. The local runner waits for each remote execute-php request before exiting."
+        }
+    ]
+}

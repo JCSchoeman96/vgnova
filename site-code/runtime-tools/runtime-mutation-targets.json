@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "targets": [
+    {
+      "id": "vgnova-local-10039",
+      "home": "http://localhost:10039",
+      "site": "http://localhost:10039",
+      "database_name": "local",
+      "database_host": "localhost",
+      "platform_core_entrypoint": "wp-content/plugins/voelgoed-platform-core/voelgoed-platform-core.php"
+    }
+  ]
+}

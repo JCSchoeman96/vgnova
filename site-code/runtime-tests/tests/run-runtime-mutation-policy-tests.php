@@ -1,0 +1,213 @@
+<?php
+declare(strict_types=1);
+
+require_once __DIR__ . '/../../bin/check-runtime-mutation-policy.php';
+
+function vg_runtime_mutation_policy_test(bool $condition, string $message): void
+{
+    if (! $condition) {
+        throw new RuntimeException($message);
+    }
+}
+
+function vg_runtime_mutation_policy_with_temp_root(callable $callback): void
+{
+    $root = sys_get_temp_dir() . '/vg-pe007-policy-' . bin2hex(random_bytes(6));
+    if (! mkdir($root, 0700, true) && ! is_dir($root)) {
+        throw new RuntimeException('Could not create the policy fixture directory.');
+    }
+    try {
+        $callback($root);
+    } finally {
+        foreach (new RecursiveIteratorIterator(
+            new RecursiveDirectoryIterator($root, FilesystemIterator::SKIP_DOTS),
+            RecursiveIteratorIterator::CHILD_FIRST
+        ) as $entry) {
+            $entry->isDir() ? rmdir($entry->getPathname()) : unlink($entry->getPathname());
+        }
+        rmdir($root);
+    }
+}
+
+function vg_runtime_mutation_policy_inventory(array $entries): string
+{
+    return json_encode(['schema_version' => 1, 'entries' => $entries], JSON_THROW_ON_ERROR | JSON_PRETTY_PRINT);
+}
+
+function vg_runtime_mutation_policy_entry(string $path, string $classification, array $extra = []): array
+{
+    return array_replace(['path' => $path, 'classification' => $classification], $extra);
+}
+
+$tests = 0;
+$test = static function (string $name, callable $callback) use (&$tests): void {
+    $callback();
+    $tests++;
+    echo "PASS {$name}\n";
+};
+
+$test('unguarded mutator is rejected', static function (): void {
+    vg_runtime_mutation_policy_with_temp_root(static function (string $root): void {
+        file_put_contents($root . '/mutator.php', '<?php wp_insert_post([]);');
+        $inventoryPath = $root . '/inventory.json';
+        file_put_contents($inventoryPath, vg_runtime_mutation_policy_inventory([
+            vg_runtime_mutation_policy_entry('mutator.php', 'library'),
+        ]));
+        $result = vg_runtime_mutation_policy_check($root, $inventoryPath, ['mutator.php']);
+        vg_runtime_mutation_policy_test(! $result['valid'], 'An unguarded mutator passed policy.');
+        vg_runtime_mutation_policy_test(str_contains(implode("\n", $result['errors']), 'mutator.php'), 'Policy omitted the offending path.');
+    });
+});
+
+$test('guarded mutator is accepted', static function (): void {
+    vg_runtime_mutation_policy_with_temp_root(static function (string $root): void {
+        file_put_contents($root . '/mutator.php', '<?php vg_runtime_mutation_assert_session("vgnova-local-10039"); wp_insert_post([]);');
+        $inventoryPath = $root . '/inventory.json';
+        file_put_contents($inventoryPath, vg_runtime_mutation_policy_inventory([
+            vg_runtime_mutation_policy_entry('mutator.php', 'mutating', [
+                'session_guard_required' => true,
+                'guard_function' => 'vg_runtime_mutation_assert_session',
+                'purpose' => 'runtime-qa',
+            ]),
+        ]));
+        $result = vg_runtime_mutation_policy_check($root, $inventoryPath, ['mutator.php']);
+        vg_runtime_mutation_policy_test($result['valid'], implode("\n", $result['errors']));
+    });
+});
+
+$test('read-only and test-only files may contain inspected or stubbed APIs', static function (): void {
+    vg_runtime_mutation_policy_with_temp_root(static function (string $root): void {
+        file_put_contents($root . '/reader.php', '<?php $posts = get_posts([]);');
+        file_put_contents($root . '/stub.php', '<?php function wp_insert_post(array $post): int { return 1; }');
+        $inventoryPath = $root . '/inventory.json';
+        file_put_contents($inventoryPath, vg_runtime_mutation_policy_inventory([
+            vg_runtime_mutation_policy_entry('reader.php', 'read_only'),
+            vg_runtime_mutation_policy_entry('stub.php', 'test_only'),
+        ]));
+        $result = vg_runtime_mutation_policy_check($root, $inventoryPath, ['reader.php', 'stub.php']);
+        vg_runtime_mutation_policy_test($result['valid'], implode("\n", $result['errors']));
+    });
+});
+
+$test('explicit exemption requires reason and reviewed scope', static function (): void {
+    vg_runtime_mutation_policy_with_temp_root(static function (string $root): void {
+        file_put_contents($root . '/domain.php', '<?php wp_insert_post([]);');
+        $inventoryPath = $root . '/inventory.json';
+        file_put_contents($inventoryPath, vg_runtime_mutation_policy_inventory([
+            vg_runtime_mutation_policy_entry('domain.php', 'explicit_exemption', [
+                'reason' => 'Normal application writes stay outside administrative coordination.',
+                'reviewed_scope' => 'WordPress request lifecycle for the domain service.',
+            ]),
+        ]));
+        $result = vg_runtime_mutation_policy_check($root, $inventoryPath, ['domain.php']);
+        vg_runtime_mutation_policy_test($result['valid'], implode("\n", $result['errors']));
+    });
+});
+
+$test('explicit exemption without a reviewed scope is rejected', static function (): void {
+    vg_runtime_mutation_policy_with_temp_root(static function (string $root): void {
+        file_put_contents($root . '/domain.php', '<?php wp_insert_post([]);');
+        $inventoryPath = $root . '/inventory.json';
+        file_put_contents($inventoryPath, vg_runtime_mutation_policy_inventory([
+            vg_runtime_mutation_policy_entry('domain.php', 'explicit_exemption', [
+                'reason' => 'Normal application writes stay outside administrative coordination.',
+            ]),
+        ]));
+        $result = vg_runtime_mutation_policy_check($root, $inventoryPath, ['domain.php']);
+        vg_runtime_mutation_policy_test(! $result['valid'], 'An incomplete exemption passed policy.');
+    });
+});
+
+$test('missing inventory file is rejected', static function (): void {
+    vg_runtime_mutation_policy_with_temp_root(static function (string $root): void {
+        $inventoryPath = $root . '/inventory.json';
+        file_put_contents($inventoryPath, vg_runtime_mutation_policy_inventory([
+            vg_runtime_mutation_policy_entry('missing.php', 'library'),
+        ]));
+        $result = vg_runtime_mutation_policy_check($root, $inventoryPath, ['missing.php']);
+        vg_runtime_mutation_policy_test(! $result['valid'], 'Missing inventory file passed policy.');
+    });
+});
+
+$test('duplicate inventory path is rejected', static function (): void {
+    vg_runtime_mutation_policy_with_temp_root(static function (string $root): void {
+        file_put_contents($root . '/reader.php', '<?php');
+        $inventoryPath = $root . '/inventory.json';
+        file_put_contents($inventoryPath, vg_runtime_mutation_policy_inventory([
+            vg_runtime_mutation_policy_entry('reader.php', 'library'),
+            vg_runtime_mutation_policy_entry('reader.php', 'read_only'),
+        ]));
+        $result = vg_runtime_mutation_policy_check($root, $inventoryPath, ['reader.php']);
+        vg_runtime_mutation_policy_test(! $result['valid'], 'Duplicate path passed policy.');
+    });
+});
+
+$test('unknown classification is rejected', static function (): void {
+    vg_runtime_mutation_policy_with_temp_root(static function (string $root): void {
+        file_put_contents($root . '/reader.php', '<?php');
+        $inventoryPath = $root . '/inventory.json';
+        file_put_contents($inventoryPath, vg_runtime_mutation_policy_inventory([
+            vg_runtime_mutation_policy_entry('reader.php', 'ignored'),
+        ]));
+        $result = vg_runtime_mutation_policy_check($root, $inventoryPath, ['reader.php']);
+        vg_runtime_mutation_policy_test(! $result['valid'], 'Unknown classification passed policy.');
+    });
+});
+
+$test('declared guard absent is rejected', static function (): void {
+    vg_runtime_mutation_policy_with_temp_root(static function (string $root): void {
+        file_put_contents($root . '/mutator.php', "<?php // vg_runtime_mutation_assert_session('vgnova-local-10039');\n\$fake = 'vg_runtime_mutation_assert_session(\\\"vgnova-local-10039\\\")';\nfunction vg_runtime_mutation_assert_session(string \$target): void {}\nwp_update_post([]);");
+        $inventoryPath = $root . '/inventory.json';
+        file_put_contents($inventoryPath, vg_runtime_mutation_policy_inventory([
+            vg_runtime_mutation_policy_entry('mutator.php', 'mutating', [
+                'session_guard_required' => true,
+                'guard_function' => 'vg_runtime_mutation_assert_session',
+                'purpose' => 'runtime-qa',
+            ]),
+        ]));
+        $result = vg_runtime_mutation_policy_check($root, $inventoryPath, ['mutator.php']);
+        vg_runtime_mutation_policy_test(! $result['valid'], 'Missing declared guard passed policy.');
+    });
+});
+
+$test('wpdb INSERT UPDATE and DELETE statements are detected', static function (): void {
+    $source = <<<'PHP'
+<?php
+$wpdb->query('INSERT INTO wp_posts (post_title) VALUES ("x")');
+$wpdb->query("UPDATE wp_posts SET post_status = 'draft'");
+$wpdb->query('DELETE FROM wp_posts WHERE ID = 1');
+PHP;
+    $calls = vg_runtime_mutation_policy_detect_mutations($source);
+    foreach (['wpdb.query:INSERT', 'wpdb.query:UPDATE', 'wpdb.query:DELETE'] as $expected) {
+        vg_runtime_mutation_policy_test(in_array($expected, $calls, true), 'Missing detection for ' . $expected . '.');
+    }
+});
+
+$test('wpdb CRUD methods and Bricks and ACF write calls are detected', static function (): void {
+    $source = <<<'PHP'
+<?php
+$wpdb->insert('wp_posts', []);
+$wpdb->update('wp_posts', [], []);
+$wpdb->delete('wp_posts', []);
+$wpdb->replace('wp_posts', []);
+\Bricks\Helpers::set_template_settings(1, []);
+update_field('field', 'value', 1);
+PHP;
+    $calls = vg_runtime_mutation_policy_detect_mutations($source);
+    foreach ([
+        'wpdb.insert', 'wpdb.update', 'wpdb.delete', 'wpdb.replace',
+        'set_template_settings', 'update_field',
+    ] as $expected) {
+        vg_runtime_mutation_policy_test(in_array($expected, $calls, true), 'Missing detection for ' . $expected . '.');
+    }
+});
+
+$test('WordPress post taxonomy and option writes are detected', static function (): void {
+    $source = '<?php wp_delete_post(1); wp_set_object_terms(1, [], "topic"); update_option("x", 1);';
+    $calls = vg_runtime_mutation_policy_detect_mutations($source);
+    foreach (['wp_delete_post', 'wp_set_object_terms', 'update_option'] as $expected) {
+        vg_runtime_mutation_policy_test(in_array($expected, $calls, true), 'Missing detection for ' . $expected . '.');
+    }
+});
+
+echo "{$tests} runtime mutation policy tests passed.\n";

@@ -113,6 +113,7 @@ function vg_seed_editorial_format_terms(): array
 
 if (defined('WP_CLI') && WP_CLI && ! defined('VG_EDITORIAL_DIMENSIONS_TESTING')) {
     try {
+        vg_runtime_mutation_assert_session('vgnova-local-10039');
         $result = vg_seed_editorial_format_terms();
         \WP_CLI::success(sprintf(
             'Editorial format terms created: %s. Already present: %s.',

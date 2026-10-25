@@ -125,6 +125,7 @@ function vg_seed_person_type_terms(): array
 
 if (defined('WP_CLI') && WP_CLI && ! defined('VG_PERSON_FOUNDATION_TESTING')) {
     try {
+        vg_runtime_mutation_assert_session('vgnova-local-10039');
         $result = vg_seed_person_type_terms();
         \WP_CLI::success(sprintf(
             'Person type terms created: %s. Already present: %s.',

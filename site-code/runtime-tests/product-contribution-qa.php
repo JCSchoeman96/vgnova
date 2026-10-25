@@ -1123,6 +1123,7 @@ function vg_product_contribution_qa_preflight(array &$context): void
 {
     $context['identity'] = vg_product_contribution_qa_runtime_identity();
     vg_product_contribution_qa_validate_identity($context['identity']);
+    vg_runtime_mutation_assert_session('vgnova-local-10039');
     vg_product_contribution_qa_record_platform_core_integrity(
         $context,
         'preflight',

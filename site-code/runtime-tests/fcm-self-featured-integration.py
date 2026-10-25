@@ -3,7 +3,11 @@
 
 From the repository root:
 
-    python3 site-code/runtime-tests/fcm-self-featured-integration.py
+    php site-code/bin/vgnova-runtime-mutate.php \
+      --target=vgnova-local-10039 \
+      --wp-root="/absolute/wordpress/root" \
+      --purpose="Run the Self featured-content integration" \
+      -- python3 site-code/runtime-tests/fcm-self-featured-integration.py
 
 The test is deliberately pinned to Novamira profile `vgnova` and the verified
 local site at http://localhost:10039/. It creates one published QA post per
@@ -13,8 +17,10 @@ block before comparing runtime counts and protected values to the baseline.
 
 from __future__ import annotations
 
+import base64
 import html
 import json
+import os
 import re
 import signal
 import subprocess
@@ -32,6 +38,14 @@ from typing import Any
 
 ROOT = Path(__file__).resolve().parents[2]
 RUNTIME_HELPER = Path(__file__).with_name("fcm-self-featured-runtime.php")
+SESSION_GUARD = ROOT / "site-code" / "runtime-tools" / "runtime-mutation-session.php"
+MUTATION_SESSION_KEYS = (
+    "VGNOVA_MUTATION_SESSION_ID",
+    "VGNOVA_MUTATION_TARGET",
+    "VGNOVA_MUTATION_DB_LOCK",
+    "VGNOVA_MUTATION_DB_CONNECTION_ID",
+    "VGNOVA_MUTATION_LOCK_FILE",
+)
 EXPECTED_SITE = "http://localhost:10039/"
 EXPECTED_QA_TITLE = "[QA][AUTOMATED] Self Featured Content Integration"
 EXPECTED_CONTENT_CATEGORY_TREE = {"terms": 13, "roots": 8}
@@ -99,6 +113,21 @@ def invoke_runtime(action: str, *, slug: str = "", run_id: str = "") -> dict[str
         php.append(f"$task4f_slug = {php_literal(slug)};")
     if run_id:
         php.append(f"$task4f_run_id = {php_literal(run_id)};")
+    if action in {"create", "cleanup"}:
+        proof = {key: os.environ.get(key, "") for key in MUTATION_SESSION_KEYS}
+        if any(not value for value in proof.values()):
+            fail("Create and cleanup actions require an active VGNova mutation session.")
+        encoded_proof = base64.b64encode(json.dumps(proof, separators=(",", ":")).encode("utf-8")).decode("ascii")
+        php.append(
+            "$task4f_mutation_environment = json_decode(base64_decode('"
+            + encoded_proof
+            + "'), true, 512, JSON_THROW_ON_ERROR);"
+        )
+        guard_source = SESSION_GUARD.read_text(encoding="utf-8")
+        if not guard_source.startswith("<?php"):
+            fail("The runtime mutation session guard has no PHP opening tag.")
+        guard_body = guard_source[len("<?php") :].replace("declare(strict_types=1);", "", 1)
+        php.append(guard_body)
     php.append(source[len("<?php") :])
 
     request = json.dumps({"code": "\n".join(php)}, ensure_ascii=False)

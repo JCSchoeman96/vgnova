@@ -1,6 +1,15 @@
 <?php
 declare(strict_types=1);
 
+if (! function_exists('vg_runtime_mutation_assert_session')) {
+    /** @return array{valid:bool,target:string} */
+    function vg_runtime_mutation_assert_session(string $expected_target, ?array $environment = null, ?callable $database_lock_owner = null): array
+    {
+        $GLOBALS['vgpc_test_mutation_session_calls'][] = $expected_target;
+        return ['valid' => true, 'target' => $expected_target];
+    }
+}
+
 if (! class_exists('WP_Error')) {
     class WP_Error
     {

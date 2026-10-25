@@ -705,6 +705,7 @@ $set_source_event = static function (int $product_id, int $event_id) : void {
 };
 
 try {
+    vg_runtime_mutation_assert_session('vgnova-local-10039');
     // Create only owned records. Owner marker is recorded immediately after each ID is created.
     $event_id = wp_insert_post([
         'post_type' => 'tc_events',

@@ -171,6 +171,8 @@ final class ContentTopicMigration
             return new \WP_Error('vgpc_topic_migration_unowned_relationships', 'Canonical topic relationships already exist without a matching migration record. No relationships were written.');
         }
 
+        \vg_runtime_mutation_assert_session('vgnova-local-10039');
+
         $created = [];
         $started_at = gmdate('c');
         foreach ($plan['expected_topics'] as $row) {
@@ -267,6 +269,8 @@ final class ContentTopicMigration
             }
         }
 
+        \vg_runtime_mutation_assert_session('vgnova-local-10039');
+
         $removed = [];
         foreach ($record['created_relationships'] as $row) {
             $result = wp_remove_object_terms((int) $row['object_id'], (int) $row['term_id'], self::TARGET_TAXONOMY);
@@ -343,6 +347,8 @@ final class ContentTopicMigration
         if (is_wp_error($record_verification)) {
             return new \WP_Error('vgpc_topic_migration_retire_relationship_drift', 'The seven recorded Task 2 relationships are not intact; retirement stopped without changes.');
         }
+
+        \vg_runtime_mutation_assert_session('vgnova-local-10039');
 
         $lifecycle = [
             'status' => 'retired',
