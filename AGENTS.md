@@ -317,11 +317,11 @@ $bio = get_field('medewerker_kort_bio', get_the_ID());
 
 Never perform an administrative mutation against a VGNova runtime without an active repository-owned mutation session.
 
-For the Local VGNova runtime, use `site-code/bin/vgnova-runtime-mutate.php`. The mutation coordinator requires both the host filesystem lock and the target MariaDB advisory lock before a child mutation command may run.
+For the Local VGNova runtime, use `site-code/bin/vgnova-runtime-mutate.php`. The mutation coordinator requires the host filesystem lock and both target MariaDB advisory locks, held by independent keepers, before a child mutation command may run.
 
 Do not bypass, steal, or manually clear these locks. Read-only inspection remains lock-free unless a task explicitly requires a no-writer observation window.
 
-See `docs/architecture/VGNOVA_RUNTIME_MUTATION_COORDINATION_v1.0.0.md`.
+See `docs/architecture/VGNOVA_RUNTIME_MUTATION_COORDINATION_v1.1.0.md`.
 
 ## What Agents Must NOT Do
 

@@ -83,26 +83,33 @@ try {
     $repositoryRoot = dirname(__DIR__, 2);
     $stateDirectory = VgRuntimeMutationCore::stateDirectory(null, [$resolvedRoot, $repositoryRoot]);
     $lockFile = $stateDirectory . '/' . $target['id'] . '.lock';
-    $lockName = VgRuntimeMutationCore::advisoryLockName($target);
+    $lockNames = VgRuntimeMutationCore::advisoryLockNames($target);
     if (($options['status'] ?? false) === true) {
         if (is_array($options['command']) || isset($options['purpose'])) {
             throw new VgRuntimeMutationException(71, 'INVALID_STATUS_ARGUMENTS', 'Status does not accept a mutation command or purpose.');
         }
         $filesystem = VgRuntimeMutationCore::probeFilesystemLock($lockFile);
-        $databaseStatus = VgRuntimeMutationDatabase::statusLockOwner($target, $resolvedRoot, $lockName, $socketOverride);
+        $databaseStatuses = VgRuntimeMutationDatabase::statusLockOwners($target, $resolvedRoot, $lockNames, $socketOverride);
+        $databaseLocks = [];
+        foreach (['a', 'b'] as $slot) {
+            $databaseStatus = $databaseStatuses[$slot] ?? ['state' => 'error', 'owner_connection_id' => null, 'error_code' => 'DATABASE_STATUS_FAILED'];
+            $databaseLocks[$slot] = [
+                'name' => $lockNames[$slot],
+                'state' => $databaseStatus['state'],
+                'held' => match ($databaseStatus['state']) {
+                    'held' => true,
+                    'free' => false,
+                    default => null,
+                },
+                'owner_connection_id' => $databaseStatus['owner_connection_id'],
+                'error_code' => $databaseStatus['error_code'],
+            ];
+        }
         $response = [
             'target' => $target['id'],
             'lock_file' => $lockFile,
             'filesystem_lock_held' => $filesystem['held'],
-            'database_lock_name' => $lockName,
-            'database_lock_state' => $databaseStatus['state'],
-            'database_lock_held' => match ($databaseStatus['state']) {
-                'held' => true,
-                'free' => false,
-                default => null,
-            },
-            'database_lock_owner_connection_id' => $databaseStatus['owner_connection_id'],
-            'database_lock_error_code' => $databaseStatus['error_code'],
+            'database_locks' => $databaseLocks,
             'metadata' => is_array($filesystem['metadata'])
                 ? vg_runtime_mutation_cli_safe_metadata($filesystem['metadata'])
                 : null,
@@ -149,22 +156,22 @@ try {
             'repository_commit' => $revision,
             'working_directory' => getcwd() ?: '',
         ],
-        static function (string $requestedLockName, $hostLockHandle) use (&$lease, $target, $resolvedRoot, $socketOverride): array {
-            $lease = VgRuntimeMutationDatabase::startKeeper($target, $resolvedRoot, $requestedLockName, $hostLockHandle, $socketOverride);
+        static function (array $requestedLockNames, $hostLockHandle) use (&$lease, $target, $resolvedRoot, $socketOverride): array {
+            $lease = VgRuntimeMutationDatabase::startKeepers($target, $resolvedRoot, $requestedLockNames, $hostLockHandle, $socketOverride);
             return $lease;
         },
         static function (array $registeredTarget, array $observedIdentity) use ($resolvedRoot): void {
             VgRuntimeMutationCore::validateTargetIdentity($registeredTarget, $observedIdentity, $resolvedRoot);
         },
-        static function (array $proof, $lockHandle, $lifetimeHandle, $registrationHandle) use ($childArguments, $resolvedRoot): int {
+        static function (array $proof, $lockHandle, array $lifetimeHandles, array $registrationHandles) use ($childArguments, $resolvedRoot): int {
             $baseEnvironment = getenv() ?: [];
             $baseEnvironment['VGNOVA_MUTATION_WP_ROOT'] = $resolvedRoot;
             $environment = VgRuntimeMutationCore::childEnvironment($baseEnvironment, $proof);
-            return VgRuntimeMutationCore::runChildCommand($childArguments, $environment, $lockHandle, $lifetimeHandle, $registrationHandle);
+            return VgRuntimeMutationCore::runChildCommand($childArguments, $environment, $lockHandle, $lifetimeHandles, $registrationHandles);
         },
-        static function (string $requestedLockName) use (&$lease): void {
+        static function (array $requestedLockNames) use (&$lease): void {
             if (is_array($lease)) {
-                VgRuntimeMutationDatabase::releaseKeeper($lease);
+                VgRuntimeMutationDatabase::releaseKeepers($lease, $requestedLockNames);
                 $lease = null;
             }
         }

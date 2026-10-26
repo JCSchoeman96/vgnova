@@ -16,7 +16,7 @@ final class VgRuntimeMutationException extends RuntimeException
 final class VgRuntimeMutationCore
 {
     public const REGISTRY_SCHEMA_VERSION = 1;
-    public const METADATA_SCHEMA_VERSION = 1;
+    public const METADATA_SCHEMA_VERSION = 2;
     public const TARGET_ID = 'vgnova-local-10039';
 
     private const FORBIDDEN_OPTIONS = [
@@ -39,8 +39,10 @@ final class VgRuntimeMutationCore
     private const SESSION_ENVIRONMENT_KEYS = [
         'VGNOVA_MUTATION_SESSION_ID',
         'VGNOVA_MUTATION_TARGET',
-        'VGNOVA_MUTATION_DB_LOCK',
-        'VGNOVA_MUTATION_DB_CONNECTION_ID',
+        'VGNOVA_MUTATION_DB_LOCK_A',
+        'VGNOVA_MUTATION_DB_CONNECTION_ID_A',
+        'VGNOVA_MUTATION_DB_LOCK_B',
+        'VGNOVA_MUTATION_DB_CONNECTION_ID_B',
         'VGNOVA_MUTATION_LOCK_FILE',
     ];
 
@@ -94,7 +96,8 @@ final class VgRuntimeMutationCore
     }
 
     /** @param array<string,mixed> $target */
-    public static function advisoryLockName(array $target): string
+    /** @return array{a:string,b:string} */
+    public static function advisoryLockNames(array $target): array
     {
         self::validateTarget($target);
         $identity = implode("\n", [
@@ -104,7 +107,11 @@ final class VgRuntimeMutationCore
             (string) $target['site'],
         ]);
 
-        return 'vgnova.mutation.' . substr(hash('sha256', $identity), 0, 40);
+        $digest = substr(hash('sha256', $identity), 0, 40);
+        return [
+            'a' => 'vgnova.mutation.a.' . $digest,
+            'b' => 'vgnova.mutation.b.' . $digest,
+        ];
     }
 
     /** @param array<string,string>|null $environment */
@@ -359,8 +366,10 @@ final class VgRuntimeMutationCore
             'command_summary' => $summary,
             'state' => 'starting',
             'session_id' => null,
-            'database_lock_name' => null,
-            'database_connection_id' => null,
+            'database_locks' => [
+                'a' => ['name' => null, 'connection_id' => null],
+                'b' => ['name' => null, 'connection_id' => null],
+            ],
             'released_at_utc' => null,
             'child_exit_code' => null,
         ];
@@ -373,7 +382,7 @@ final class VgRuntimeMutationCore
         foreach ([
             'schema_version', 'target', 'purpose', 'pid', 'hostname', 'started_at_utc',
             'repository_commit', 'working_directory', 'command_summary', 'state',
-            'session_id', 'database_lock_name', 'database_connection_id',
+            'session_id', 'database_locks',
             'released_at_utc', 'child_exit_code',
         ] as $key) {
             if (! array_key_exists($key, $metadata)) {
@@ -395,6 +404,25 @@ final class VgRuntimeMutationCore
                 $value = 'command unavailable';
             }
             $safe[$key] = $value;
+        }
+
+        if (is_array($metadata['database_locks'] ?? null)) {
+            $safe['database_locks'] = [];
+            foreach (['a', 'b'] as $slot) {
+                $lock = $metadata['database_locks'][$slot] ?? null;
+                if (! is_array($lock)) {
+                    continue;
+                }
+                $name = $lock['name'] ?? null;
+                $connectionId = $lock['connection_id'] ?? null;
+                if ($name !== null && (! is_string($name) || preg_match('/\\Avgnova\\.mutation\\.' . $slot . '\\.[a-f0-9]{40}\\z/', $name) !== 1)) {
+                    $name = null;
+                }
+                if ($connectionId !== null && (! is_int($connectionId) || $connectionId < 1)) {
+                    $connectionId = null;
+                }
+                $safe['database_locks'][$slot] = ['name' => $name, 'connection_id' => $connectionId];
+            }
         }
 
         return $safe;
@@ -425,8 +453,12 @@ final class VgRuntimeMutationCore
 
         $environment['VGNOVA_MUTATION_SESSION_ID'] = (string) ($proof['session_id'] ?? '');
         $environment['VGNOVA_MUTATION_TARGET'] = (string) ($proof['target'] ?? '');
-        $environment['VGNOVA_MUTATION_DB_LOCK'] = (string) ($proof['db_lock_name'] ?? '');
-        $environment['VGNOVA_MUTATION_DB_CONNECTION_ID'] = (string) ($proof['db_connection_id'] ?? '');
+        foreach (['a', 'b'] as $slot) {
+            $lock = is_array($proof['db_locks'][$slot] ?? null) ? $proof['db_locks'][$slot] : [];
+            $suffix = strtoupper($slot);
+            $environment['VGNOVA_MUTATION_DB_LOCK_' . $suffix] = (string) ($lock['name'] ?? '');
+            $environment['VGNOVA_MUTATION_DB_CONNECTION_ID_' . $suffix] = (string) ($lock['connection_id'] ?? '');
+        }
         $environment['VGNOVA_MUTATION_LOCK_FILE'] = (string) ($proof['lock_file'] ?? '');
         return $environment;
     }
@@ -536,14 +568,14 @@ final class VgRuntimeMutationCore
     }
 
     /**
-     * Acquires the host lock, then starts the separate database lock keeper, validates identity, runs the child, and releases in reverse order.
+     * Acquires the host lock, starts the independent A/B keepers, validates identity, runs the child, and releases in reverse order.
      *
      * @param array<string,mixed> $target
      * @param array<string,mixed> $metadataInput
-     * @param callable(string,resource):array{result:mixed,connection_id:mixed,lifetime_handle?:resource,registration_handle?:resource,identity?:array<string,mixed>} $databaseAcquire
+     * @param callable(array{a:string,b:string},resource):array<string,mixed> $databaseAcquire
      * @param callable(array<string,mixed>,array<string,mixed>):void $identityValidator
-     * @param callable(array<string,mixed>,resource,resource|null,resource|null):int $childRunner
-     * @param callable(string):void $databaseRelease
+     * @param callable(array<string,mixed>,resource,array<string,resource>,array<string,resource>):int $childRunner
+     * @param callable(array{a:string,b:string}):void $databaseRelease
      * @param null|callable(array<string,mixed>):void $metadataObserver
      */
     public static function withSession(
@@ -562,7 +594,7 @@ final class VgRuntimeMutationCore
             throw new VgRuntimeMutationException(72, 'FILESYSTEM_LOCK_CONTENTION', 'Another local mutation session holds the filesystem lock.');
         }
 
-        $lockName = self::advisoryLockName($target);
+        $lockNames = self::advisoryLockNames($target);
         $databaseAcquired = false;
         $sessionId = null;
         $childExitCode = null;
@@ -590,15 +622,24 @@ final class VgRuntimeMutationCore
         };
 
         try {
-            $databaseResult = $databaseAcquire($lockName, $lockHandle);
-            if (! is_array($databaseResult) || ! array_key_exists('result', $databaseResult)) {
+            $databaseResult = $databaseAcquire($lockNames, $lockHandle);
+            if (! is_array($databaseResult) || ! is_array($databaseResult['locks'] ?? null)) {
                 throw new VgRuntimeMutationException(70, 'DATABASE_LOCK_FAILED', 'Database lock acquisition failed.');
             }
-            self::interpretGetLockResult($databaseResult['result']);
             $databaseAcquired = true;
-            $connectionId = $databaseResult['connection_id'] ?? null;
-            if (! is_scalar($connectionId) || (int) $connectionId < 1) {
-                throw new VgRuntimeMutationException(70, 'DATABASE_LOCK_FAILED', 'Database connection identity is unavailable.');
+            $proofLocks = [];
+            $metadataLocks = [];
+            foreach (['a', 'b'] as $slot) {
+                $lock = $databaseResult['locks'][$slot] ?? null;
+                if (! is_array($lock) || ($lock['name'] ?? null) !== $lockNames[$slot]) {
+                    throw new VgRuntimeMutationException(70, 'DATABASE_LOCK_KEEPER_PROTOCOL_FAILED', 'Database keeper returned an invalid lock identity.');
+                }
+                $connectionId = $lock['connection_id'] ?? null;
+                if (! is_scalar($connectionId) || (int) $connectionId < 1) {
+                    throw new VgRuntimeMutationException(70, 'DATABASE_LOCK_FAILED', 'Database connection identity is unavailable.');
+                }
+                $proofLocks[$slot] = ['name' => $lockNames[$slot], 'connection_id' => (int) $connectionId];
+                $metadataLocks[$slot] = ['name' => $lockNames[$slot], 'connection_id' => (int) $connectionId];
             }
 
             $observedIdentity = is_array($databaseResult['identity'] ?? null) ? $databaseResult['identity'] : [];
@@ -607,21 +648,17 @@ final class VgRuntimeMutationCore
             $proof = [
                 'session_id' => $sessionId,
                 'target' => $target['id'],
-                'db_lock_name' => $lockName,
-                'db_connection_id' => (int) $connectionId,
+                'db_locks' => $proofLocks,
                 'lock_file' => $lockFile,
             ];
-            $writeState('active', [
-                'database_lock_name' => $lockName,
-                'database_connection_id' => (int) $connectionId,
-            ]);
-            $lifetimeHandle = is_resource($databaseResult['lifetime_handle'] ?? null)
-                ? $databaseResult['lifetime_handle']
-                : null;
-            $registrationHandle = is_resource($databaseResult['registration_handle'] ?? null)
-                ? $databaseResult['registration_handle']
-                : null;
-            $childResult = $childRunner($proof, $lockHandle, $lifetimeHandle, $registrationHandle);
+            $writeState('active', ['database_locks' => $metadataLocks]);
+            $lifetimeHandles = is_array($databaseResult['lifetime_handles'] ?? null)
+                ? $databaseResult['lifetime_handles']
+                : [];
+            $registrationHandles = is_array($databaseResult['registration_handles'] ?? null)
+                ? $databaseResult['registration_handles']
+                : [];
+            $childResult = $childRunner($proof, $lockHandle, $lifetimeHandles, $registrationHandles);
             if (! is_int($childResult) || $childResult < 0 || $childResult > 255) {
                 throw new VgRuntimeMutationException(70, 'INVALID_CHILD_EXIT_CODE', 'Child process returned an invalid exit code.');
             }
@@ -631,7 +668,7 @@ final class VgRuntimeMutationCore
         } finally {
             if ($databaseAcquired) {
                 try {
-                    $databaseRelease($lockName);
+                    $databaseRelease($lockNames);
                 } catch (Throwable $exception) {
                     $cleanupFailure = $exception instanceof VgRuntimeMutationException
                         ? $exception
@@ -642,8 +679,10 @@ final class VgRuntimeMutationCore
 
             try {
                 $writeState($cleanupFailure === null ? 'released' : 'cleanup_failed', [
-                    'database_lock_name' => $databaseAcquired ? $lockName : null,
-                    'database_connection_id' => null,
+                    'database_locks' => [
+                        'a' => ['name' => $databaseAcquired ? $lockNames['a'] : null, 'connection_id' => null],
+                        'b' => ['name' => $databaseAcquired ? $lockNames['b'] : null, 'connection_id' => null],
+                    ],
                     'cleanup_error_code' => $cleanupFailure instanceof VgRuntimeMutationException
                         ? $cleanupFailure->errorCode
                         : null,
@@ -700,22 +739,31 @@ final class VgRuntimeMutationCore
     }
 
     /**
-     * Starts a child in a process group with exact argv boundaries. Descriptor 3 carries the flock;
-     * descriptor 4 carries the database keeper's child-lifetime pipe. Descriptor 6 gates exec until
-     * the keeper has registered the child's process group.
+     * Start a child behind the supervisor gate. The target inherits only descriptor 3.
+     * The supervisor owns keeper lifetime descriptors 4 and 5, readiness 6, start gate 7,
+     * and status 8.
      *
      * @param list<string> $arguments
      * @param array<string,string> $environment
      * @param resource $lockHandle
-     * @param resource|null $lifetimeHandle
-     * @param resource|null $registrationHandle
+     * @param array{a:resource,b:resource} $lifetimeHandles
+     * @param array{a:resource,b:resource} $registrationHandles
      */
-    public static function runChildCommand(array $arguments, array $environment, $lockHandle, $lifetimeHandle = null, $registrationHandle = null): int
+    public static function runChildCommand(array $arguments, array $environment, $lockHandle, array $lifetimeHandles = [], array $registrationHandles = []): int
     {
-        if (PHP_SAPI !== 'cli' || $arguments === [] || ! array_is_list($arguments) || ! is_resource($lockHandle)
-            || ($lifetimeHandle !== null && ! is_resource($lifetimeHandle))
-            || ($registrationHandle !== null && ! is_resource($registrationHandle))) {
+        if (PHP_SAPI !== 'cli' || $arguments === [] || ! array_is_list($arguments) || ! is_resource($lockHandle)) {
             throw new VgRuntimeMutationException(70, 'CHILD_START_FAILED', 'Child process configuration is invalid.');
+        }
+        $hasKeeperPair = $lifetimeHandles !== [] || $registrationHandles !== [];
+        if ($hasKeeperPair && (array_keys($lifetimeHandles) !== ['a', 'b'] || array_keys($registrationHandles) !== ['a', 'b'])) {
+            throw new VgRuntimeMutationException(70, 'CHILD_START_FAILED', 'Both database keeper channels are required.');
+        }
+        foreach ([$lifetimeHandles, $registrationHandles] as $handles) {
+            foreach ($handles as $handle) {
+                if (! is_resource($handle)) {
+                    throw new VgRuntimeMutationException(70, 'CHILD_START_FAILED', 'Database keeper channel is invalid.');
+                }
+            }
         }
         foreach ($arguments as $argument) {
             if (! is_string($argument)) {
@@ -775,12 +823,13 @@ final class VgRuntimeMutationCore
                 1 => STDOUT,
                 2 => STDERR,
                 3 => $lockHandle,
-                5 => ['pipe', 'w'],
-                6 => ['pipe', 'r'],
-                7 => ['pipe', 'w'],
+                6 => ['pipe', 'w'],
+                7 => ['pipe', 'r'],
+                8 => ['pipe', 'w'],
             ];
-            if (is_resource($lifetimeHandle)) {
-                $descriptors[4] = $lifetimeHandle;
+            if ($hasKeeperPair) {
+                $descriptors[4] = $lifetimeHandles['a'];
+                $descriptors[5] = $lifetimeHandles['b'];
             }
             $runner = __DIR__ . '/runtime-mutation-exec.php';
             $childEnvironment = self::safeEnvironment($environment);
@@ -790,12 +839,12 @@ final class VgRuntimeMutationCore
                 }
             }
             $runnerArguments = [PHP_BINARY, $runner];
-            if (is_resource($lifetimeHandle)) {
+            if ($hasKeeperPair) {
                 $runnerArguments[] = '--completion-channel';
             }
             $processCommand = self::descriptorSafeCommand(
                 [...$runnerArguments, ...$arguments],
-                is_resource($lifetimeHandle) ? [3, 4, 5, 6, 7] : [3, 5, 6, 7]
+                $hasKeeperPair ? [3, 4, 5, 6, 7, 8] : [3, 6, 7, 8]
             );
             $process = @proc_open($processCommand, $descriptors, $pipes, null, $childEnvironment);
             if (! is_resource($process)) {
@@ -804,17 +853,17 @@ final class VgRuntimeMutationCore
 
             $status = proc_get_status($process);
             $supervisorPid = is_int($status['pid'] ?? null) ? $status['pid'] : null;
-            if (is_resource($lifetimeHandle)) {
-                fclose($lifetimeHandle);
+            if (is_resource($lifetimeHandles['b'] ?? null)) {
+                fclose($lifetimeHandles['b']);
             }
             $ready = false;
-            if (isset($pipes[5]) && is_resource($pipes[5])) {
-                stream_set_blocking($pipes[5], false);
+            if (isset($pipes[6]) && is_resource($pipes[6])) {
+                stream_set_blocking($pipes[6], false);
                 $readyBuffer = '';
                 $readyDeadline = microtime(true) + 5.0;
                 while (microtime(true) < $readyDeadline) {
                     $readinessPoll = self::pollChildReadiness(
-                        $pipes[5],
+                        $pipes[6],
                         static fn (): bool => $signalState['signal'] !== null
                     );
                     if ($readinessPoll['state'] === 'interrupted') {
@@ -843,10 +892,10 @@ final class VgRuntimeMutationCore
                     }
                 }
             }
-            if (isset($pipes[5]) && is_resource($pipes[5])) {
-                fclose($pipes[5]);
+            if (isset($pipes[6]) && is_resource($pipes[6])) {
+                fclose($pipes[6]);
             }
-            unset($pipes[5]);
+            unset($pipes[6]);
             if (! is_string($ready)
                 || preg_match('/\\Aready:([1-9][0-9]{0,9})\\n\\z/', $ready, $readyMatches) !== 1
                 || ! is_int($supervisorPid)
@@ -855,18 +904,18 @@ final class VgRuntimeMutationCore
             }
             $childPid = (int) $readyMatches[1];
             $groupReady = true;
-            if (is_resource($registrationHandle)) {
+            foreach ($registrationHandles as $registrationHandle) {
                 $registration = (int) $supervisorPid . "\n";
                 if (fwrite($registrationHandle, $registration) !== strlen($registration) || ! fflush($registrationHandle)) {
                     throw new VgRuntimeMutationException(70, 'DATABASE_LOCK_KEEPER_PROTOCOL_FAILED', 'Child process group could not be registered with the database lock keeper.');
                 }
                 fclose($registrationHandle);
             }
-            if (! isset($pipes[6]) || ! is_resource($pipes[6]) || fwrite($pipes[6], "go\n") !== 3 || ! fflush($pipes[6])) {
+            if (! isset($pipes[7]) || ! is_resource($pipes[7]) || fwrite($pipes[7], "go\n") !== 3 || ! fflush($pipes[7])) {
                 throw new VgRuntimeMutationException(70, 'CHILD_START_FAILED', 'Child command could not pass its start gate.');
             }
-            fclose($pipes[6]);
-            unset($pipes[6]);
+            fclose($pipes[7]);
+            unset($pipes[7]);
             if ($signalState['signal'] !== null) {
                 @posix_kill(-$childPid, $signalState['signal']);
                 if (is_int($supervisorPid) && $supervisorPid > 1) {
@@ -896,13 +945,13 @@ final class VgRuntimeMutationCore
                 usleep(50000);
             }
 
-            $statusLine = isset($pipes[7]) && is_resource($pipes[7])
-                ? stream_get_contents($pipes[7], 256)
+            $statusLine = isset($pipes[8]) && is_resource($pipes[8])
+                ? stream_get_contents($pipes[8], 256)
                 : false;
-            if (isset($pipes[7]) && is_resource($pipes[7])) {
-                fclose($pipes[7]);
+            if (isset($pipes[8]) && is_resource($pipes[8])) {
+                fclose($pipes[8]);
             }
-            unset($pipes[7]);
+            unset($pipes[8]);
             if (is_string($statusLine)) {
                 try {
                     $childStatus = json_decode(trim($statusLine), true, 8, JSON_THROW_ON_ERROR);
@@ -961,6 +1010,11 @@ final class VgRuntimeMutationCore
             }
             throw new VgRuntimeMutationException(70, 'CHILD_WAIT_FAILED', 'The coordinator could not wait for the child process.');
         } finally {
+            foreach ($registrationHandles as $handle) {
+                if (is_resource($handle)) {
+                    fclose($handle);
+                }
+            }
             foreach ($pipes as $pipe) {
                 if (is_resource($pipe)) {
                     fclose($pipe);

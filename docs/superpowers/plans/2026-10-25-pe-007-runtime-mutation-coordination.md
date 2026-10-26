@@ -4,11 +4,11 @@
 
 **Goal:** Prevent concurrent repository-owned administrative mutations against one VGNova runtime by requiring a validated filesystem lock and MariaDB advisory lock before mutation begins.
 
-**Architecture:** A repository-owned mutation coordinator owns a host `flock()` and starts a dedicated MariaDB lock keeper as a separate process. A Linux PHP FFI subreaper supervises the target command and all descendants, including detached descendants, while the keeper retains the advisory lock until the supervisor exits. Repository-owned mutating runtime harnesses independently validate session proof before their first write. Source CI inventories and tests the policy without connecting to the Local WordPress runtime.
+**Architecture:** Current pre-merge design is PE-007A v1.1.0: the coordinator owns a host `flock()` and starts two independent MariaDB lock keepers on separate connections. A Linux PHP FFI subreaper supervises the target command and descendants while either surviving keeper preserves cross-host exclusion after one coordination-process failure. Repository-owned mutating runtime harnesses independently validate both lock proofs before their first write. Source CI inventories and tests the policy without connecting to the Local WordPress runtime.
 
 **Tech Stack:** PHP 8.5, MariaDB advisory locks, WP-CLI, Bash, GitHub Actions.
 
-**Spec:** `docs/architecture/VGNOVA_RUNTIME_MUTATION_COORDINATION_v1.0.0.md`
+**Current spec:** `docs/architecture/VGNOVA_RUNTIME_MUTATION_COORDINATION_v1.1.0.md` · **Historical decision:** `docs/architecture/VGNOVA_RUNTIME_MUTATION_COORDINATION_v1.0.0.md` (superseded before merge)
 
 ## Guardrails
 
@@ -18,6 +18,23 @@
 - Keep secrets out of argv, metadata, logs, status output, and the exported session environment.
 - Do not modify branch rulesets or create a force, steal, unlock, or bypass path.
 - Review subprocess lifetime and child descriptor inheritance before adding the final process implementation.
+
+## PE-007A architecture amendment — 2026-10-26
+
+The independent review of exact PR #57 head `b489fa60b468761ed1a4fae296e056367c03f40c` found two blockers: one keeper owned the only MariaDB lock, so its death removed cross-host exclusion; the FCM Python runner required internal FD4 even though the supervisor correctly withholds coordinator descriptors. v1.0.0 remains unchanged as historical design evidence apart from its explicit superseded status. Its original RED/GREEN record describes the single-keeper implementation and is not evidence for the amended guarantee.
+
+- [ ] Replace the single MariaDB lock with canonical A/B lock names derived from the same target identity; acquire in A then B order and release B then A.
+- [ ] Run two independently killable keeper processes on separate MariaDB connections. Verify target identity and both lock owners only after both keepers acquire; abort both keepers if partial startup or verification fails.
+- [ ] Update active metadata, status, child environment, and Platform Core session guard to carry and independently verify both lock names and connection IDs. Remove singular aliases.
+- [ ] Document the v1.1 guarantee: any one coordinator, supervisor, keeper A, or keeper B may die without allowing an overlapping cross-host mutation while a child could still write. Do not claim tolerance of simultaneous loss of every independent lock holder.
+- [ ] Replace FCM's FD3/FD4 requirement with FD3 plus session environment and `pass_fds=(3,)`; retain the supervisor's descriptor boundary.
+- [ ] Add RED-before-fix process tests for A/B keeper death with an independent-host lock context, coordinator/supervisor death, partial A-acquired/B-failed cleanup, dual session-proof failures, and a real source-safe FCM child through `runChildCommand()`.
+- [ ] Keep the FCM runner protected in the full mutating-entrypoint inventory; do not change ordinary application-domain writer exemptions without separate justification.
+- [ ] Audit credentials in argv, metadata, logs/status, and session environment; each count must remain zero.
+- [ ] Run all PE-007 core, session, static-policy, inventory, Product Contribution, Platform Core reproducibility, dashboard, PHP/Python/shell/tool lint, and diff checks requested by PE-007A.
+- [ ] Update the existing PR #57 branch only; inspect exact-head GitHub results and the canonical source log. Do not merge.
+
+The PE-007A RED evidence is recorded in the new tests: the independent-host contender acquired the old single-lock boundary after keeper death, and the actual coordinator child failed in FCM when it attempted to use absent FD4. These failures were observed before the corresponding production changes.
 
 ## Tasks
 

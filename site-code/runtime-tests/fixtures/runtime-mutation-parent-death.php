@@ -11,9 +11,8 @@ if (! is_resource($lockHandle)) {
     exit(72);
 }
 
-$databaseLockFile = $lockFile . '.database';
+$databaseLockFiles = ['a' => $lockFile . '.database-a', 'b' => $lockFile . '.database-b'];
 $keeperCode = <<<'PHP'
-require $argv[2];
 umask(0077);
 $handle = fopen($argv[1], 'c+');
 if ($handle === false || ! flock($handle, LOCK_EX | LOCK_NB)) {
@@ -56,36 +55,40 @@ while (! feof(STDIN)) {
 flock($handle, LOCK_UN);
 fclose($handle);
 PHP;
-$keeperCommand = VgRuntimeMutationCore::descriptorSafeCommand(
-    [PHP_BINARY, '-r', $keeperCode, $databaseLockFile, __DIR__ . '/../../runtime-tools/runtime-mutation-core.php'],
-    [3, 4]
-);
-$keeper = proc_open($keeperCommand, [
-    0 => ['pipe', 'r'],
-    1 => ['pipe', 'w'],
-    2 => ['pipe', 'w'],
-    3 => $lockHandle,
-    4 => ['pipe', 'r'],
-], $keeperPipes);
-if (! is_resource($keeper)) {
-    flock($lockHandle, LOCK_UN);
-    fclose($lockHandle);
-    exit(70);
+$keepers = [];
+$lifetimeHandles = [];
+$registrationHandles = [];
+foreach (['a', 'b'] as $slot) {
+    $keeperCommand = VgRuntimeMutationCore::descriptorSafeCommand(
+        [PHP_BINARY, '-r', $keeperCode, $databaseLockFiles[$slot], $markerFile, $slot],
+        [3, 4]
+    );
+    $keeper = proc_open($keeperCommand, [
+        0 => ['pipe', 'r'],
+        1 => ['pipe', 'w'],
+        2 => ['pipe', 'w'],
+        3 => $lockHandle,
+        4 => ['pipe', 'r'],
+    ], $keeperPipes);
+    if (! is_resource($keeper)) {
+        exit(70);
+    }
+    $ready = fgets($keeperPipes[1]);
+    if ($ready !== "ready\n") {
+        @proc_terminate($keeper, SIGKILL);
+        fclose($keeperPipes[0]);
+        fclose($keeperPipes[1]);
+        fclose($keeperPipes[2]);
+        fclose($keeperPipes[4]);
+        proc_close($keeper);
+        exit(70);
+    }
+    $keeperStatus = proc_get_status($keeper);
+    file_put_contents($markerFile . '.keeper.' . $slot, (string) ($keeperStatus['pid'] ?? 0));
+    $keepers[$slot] = ['process' => $keeper, 'pipes' => $keeperPipes];
+    $lifetimeHandles[$slot] = $keeperPipes[0];
+    $registrationHandles[$slot] = $keeperPipes[4];
 }
-
-$ready = fgets($keeperPipes[1]);
-if ($ready !== "ready\n") {
-    fclose($keeperPipes[0]);
-    fclose($keeperPipes[1]);
-    fclose($keeperPipes[2]);
-    fclose($keeperPipes[4]);
-    proc_close($keeper);
-    flock($lockHandle, LOCK_UN);
-    fclose($lockHandle);
-    exit(70);
-}
-$keeperStatus = proc_get_status($keeper);
-file_put_contents($markerFile . '.keeper', (string) ($keeperStatus['pid'] ?? 0));
 
 if ($mode === 'signal') {
     $childCode = <<<'PHP'
@@ -186,24 +189,35 @@ $exitCode = VgRuntimeMutationCore::runChildCommand(
     $childArguments,
     ['PATH' => (string) getenv('PATH')],
     $lockHandle,
-    $keeperPipes[0],
-    $keeperPipes[4]
+    $lifetimeHandles,
+    $registrationHandles
 );
 file_put_contents($markerFile . '.exit', (string) $exitCode);
 
-if (is_resource($keeperPipes[0])) {
-    fclose($keeperPipes[0]);
-}
-$keeperStatusCode = proc_close($keeper);
-if (is_resource($keeperPipes[1])) {
+$keepersReleased = true;
+foreach (['b', 'a'] as $slot) {
+    $keeper = $keepers[$slot]['process'];
+    $keeperPipes = $keepers[$slot]['pipes'];
+    if (is_resource($keeperPipes[0])) {
+        fclose($keeperPipes[0]);
+    }
+    if (is_resource($keeperPipes[4])) {
+        fclose($keeperPipes[4]);
+    }
+    $releaseResponse = stream_get_contents($keeperPipes[1]);
     fclose($keeperPipes[1]);
-}
-if (is_resource($keeperPipes[2])) {
     fclose($keeperPipes[2]);
-}
-if (is_resource($keeperPipes[4])) {
-    fclose($keeperPipes[4]);
+    $keeperStatusCode = proc_close($keeper);
+    if (! is_file($markerFile . '.keeper-' . $slot . '-killed')) {
+        try {
+            $response = json_decode(trim((string) $releaseResponse), true, 8, JSON_THROW_ON_ERROR);
+        } catch (JsonException) {
+            $response = null;
+        }
+        $keepersReleased = $keepersReleased && $keeperStatusCode === 0
+            && is_array($response) && ($response['released'] ?? false) === true;
+    }
 }
 flock($lockHandle, LOCK_UN);
 fclose($lockHandle);
-exit($keeperStatusCode === 0 ? $exitCode : 70);
+exit($keepersReleased ? $exitCode : 70);

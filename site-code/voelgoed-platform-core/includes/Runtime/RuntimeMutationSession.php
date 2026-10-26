@@ -48,7 +48,7 @@ function vg_runtime_mutation_session_connection_id(mixed $value): ?string
     return $normalized === '' ? null : $normalized;
 }
 
-function vg_runtime_mutation_session_canonical_lock_name(string $target): ?string
+function vg_runtime_mutation_session_canonical_lock_names(string $target): ?array
 {
     global $wpdb;
     $database_name = defined('DB_NAME') ? constant('DB_NAME') : (is_object($wpdb) ? ($wpdb->dbname ?? null) : null);
@@ -64,12 +64,16 @@ function vg_runtime_mutation_session_canonical_lock_name(string $target): ?strin
         }
     }
 
-    return 'vgnova.mutation.' . substr(hash('sha256', implode("\n", [
+    $digest = substr(hash('sha256', implode("\n", [
         $target,
         $identity['database_name'],
         $identity['home'],
         $identity['site'],
     ])), 0, 40);
+    return [
+        'a' => 'vgnova.mutation.a.' . $digest,
+        'b' => 'vgnova.mutation.b.' . $digest,
+    ];
 }
 
 /**
@@ -147,18 +151,26 @@ function vg_runtime_mutation_session_report(
     $target = vg_runtime_mutation_session_environment_value($environment, 'VGNOVA_MUTATION_TARGET');
     $session_id = vg_runtime_mutation_session_environment_value($environment, 'VGNOVA_MUTATION_SESSION_ID');
     $lock_file = vg_runtime_mutation_session_environment_value($environment, 'VGNOVA_MUTATION_LOCK_FILE');
-    $database_lock_name = vg_runtime_mutation_session_environment_value($environment, 'VGNOVA_MUTATION_DB_LOCK');
-    $expected_connection_id = vg_runtime_mutation_session_environment_value(
-        $environment,
-        'VGNOVA_MUTATION_DB_CONNECTION_ID'
-    );
+    $database_lock_names = [];
+    $expected_connection_ids = [];
+    foreach (['a', 'b'] as $slot) {
+        $suffix = strtoupper($slot);
+        $database_lock_names[$slot] = vg_runtime_mutation_session_environment_value(
+            $environment,
+            'VGNOVA_MUTATION_DB_LOCK_' . $suffix
+        );
+        $expected_connection_ids[$slot] = vg_runtime_mutation_session_environment_value(
+            $environment,
+            'VGNOVA_MUTATION_DB_CONNECTION_ID_' . $suffix
+        );
+    }
 
     $errors = [];
     $metadata_session_id = null;
-    $observed_connection_id = null;
+    $observed_connection_ids = ['a' => null, 'b' => null];
     $filesystem_lock_held = false;
-    $canonical_lock_name = vg_runtime_mutation_session_canonical_lock_name($expected_target);
-    if ($canonical_lock_name === null) {
+    $canonical_lock_names = vg_runtime_mutation_session_canonical_lock_names($expected_target);
+    if ($canonical_lock_names === null) {
         $errors[] = 'database_identity_unavailable';
     }
 
@@ -213,22 +225,23 @@ function vg_runtime_mutation_session_report(
         }
     }
 
-    if ($database_lock_name === null || $database_lock_name === '') {
-        $errors[] = 'database_lock_name_missing';
-    } elseif (preg_match('/\Avgnova\.mutation\.[a-f0-9]{40}\z/', $database_lock_name) !== 1) {
-        $errors[] = 'invalid_database_lock_name';
-    }
-
-    $expected_connection_id_normalized = vg_runtime_mutation_session_connection_id($expected_connection_id);
-    if ($expected_connection_id_normalized === null) {
-        $errors[] = 'database_connection_id_invalid';
-    }
-    $reported_expected_connection_id = null;
-    if (
-        $expected_connection_id !== null
-        && preg_match('/\A[0-9]+\z/', $expected_connection_id) === 1
-    ) {
-        $reported_expected_connection_id = $expected_connection_id;
+    $expected_connection_ids_normalized = [];
+    $reported_expected_connection_ids = [];
+    foreach (['a', 'b'] as $slot) {
+        $lockName = $database_lock_names[$slot];
+        $connectionId = $expected_connection_ids[$slot];
+        if ($lockName === null || $lockName === '') {
+            $errors[] = 'database_lock_' . $slot . '_name_missing';
+        } elseif (preg_match('/\Avgnova\.mutation\.' . $slot . '\.[a-f0-9]{40}\z/', $lockName) !== 1) {
+            $errors[] = 'invalid_database_lock_' . $slot . '_name';
+        }
+        $expected_connection_ids_normalized[$slot] = vg_runtime_mutation_session_connection_id($connectionId);
+        if ($expected_connection_ids_normalized[$slot] === null) {
+            $errors[] = 'database_connection_id_' . $slot . '_invalid';
+        }
+        $reported_expected_connection_ids[$slot] = $connectionId !== null && preg_match('/\A[0-9]+\z/', $connectionId) === 1
+            ? $connectionId
+            : null;
     }
 
     if ($valid_lock_path) {
@@ -258,7 +271,7 @@ function vg_runtime_mutation_session_report(
                         $metadata_session_id = $metadata_session_value;
                     }
 
-                    if (($metadata['schema_version'] ?? null) !== 1) {
+                    if (($metadata['schema_version'] ?? null) !== 2) {
                         $errors[] = 'metadata_schema_invalid';
                     }
                     if (($metadata['state'] ?? null) !== 'active') {
@@ -270,17 +283,23 @@ function vg_runtime_mutation_session_report(
                     if ($session_id === null || $metadata_session_id !== $session_id) {
                         $errors[] = 'metadata_session_mismatch';
                     }
-                    if (($metadata['database_lock_name'] ?? null) !== $database_lock_name) {
-                        $errors[] = 'metadata_database_lock_mismatch';
-                    }
-                    $metadata_connection_id = vg_runtime_mutation_session_connection_id(
-                        $metadata['database_connection_id'] ?? null
-                    );
-                    if (
-                        $expected_connection_id_normalized === null
-                        || $metadata_connection_id !== $expected_connection_id_normalized
-                    ) {
-                        $errors[] = 'metadata_database_connection_mismatch';
+                    $metadataLocks = $metadata['database_locks'] ?? null;
+                    foreach (['a', 'b'] as $slot) {
+                        $metadataLock = is_array($metadataLocks) && is_array($metadataLocks[$slot] ?? null)
+                            ? $metadataLocks[$slot]
+                            : [];
+                        if (($metadataLock['name'] ?? null) !== $database_lock_names[$slot]) {
+                            $errors[] = 'metadata_database_lock_' . $slot . '_mismatch';
+                        }
+                        $metadataConnectionId = vg_runtime_mutation_session_connection_id(
+                            $metadataLock['connection_id'] ?? null
+                        );
+                        if (
+                            $expected_connection_ids_normalized[$slot] === null
+                            || $metadataConnectionId !== $expected_connection_ids_normalized[$slot]
+                        ) {
+                            $errors[] = 'metadata_database_connection_' . $slot . '_mismatch';
+                        }
                     }
                 }
             }
@@ -312,14 +331,23 @@ function vg_runtime_mutation_session_report(
         $errors[] = 'filesystem_lock_unavailable';
     }
 
-    if ($database_lock_name === null || preg_match('/\Avgnova\.mutation\.[a-f0-9]{40}\z/', $database_lock_name) !== 1) {
-        $errors[] = 'database_owner_unavailable';
-    } elseif ($canonical_lock_name === null || ! hash_equals($canonical_lock_name, $database_lock_name)) {
-        $errors[] = 'database_lock_name_not_canonical';
-    } else {
+    foreach (['a', 'b'] as $slot) {
+        $lockName = $database_lock_names[$slot];
+        $namePattern = '/\Avgnova\.mutation\.' . $slot . '\.[a-f0-9]{40}\z/';
+        if ($lockName === null || preg_match($namePattern, $lockName) !== 1) {
+            $errors[] = 'database_owner_' . $slot . '_unavailable';
+            continue;
+        }
+        if ($canonical_lock_names === null || ! hash_equals($canonical_lock_names[$slot], $lockName)) {
+            $errors[] = 'database_lock_' . $slot . '_name_not_canonical';
+            continue;
+        }
+
+        $observed = null;
+        $queryFailed = false;
         try {
             if ($database_lock_owner !== null) {
-                $observed_connection_id = $database_lock_owner($database_lock_name);
+                $observed = $database_lock_owner($lockName);
             } else {
                 $wpdb = $GLOBALS['wpdb'] ?? null;
                 if (
@@ -327,47 +355,42 @@ function vg_runtime_mutation_session_report(
                     || ! is_callable([$wpdb, 'prepare'])
                     || ! is_callable([$wpdb, 'get_var'])
                 ) {
-                    $errors[] = 'database_owner_unavailable';
+                    $errors[] = 'database_owner_' . $slot . '_unavailable';
+                    $queryFailed = true;
                 } else {
-                    $query = $wpdb->prepare('SELECT IS_USED_LOCK(%s)', $database_lock_name);
+                    $query = $wpdb->prepare('SELECT IS_USED_LOCK(%s)', $lockName);
                     if (! is_string($query) || $query === '') {
-                        $errors[] = 'database_owner_query_error';
+                        $errors[] = 'database_owner_' . $slot . '_query_error';
+                        $queryFailed = true;
                     } else {
-                        $observed_connection_id = $wpdb->get_var($query);
+                        $observed = $wpdb->get_var($query);
                     }
                 }
             }
         } catch (Throwable) {
-            $errors[] = 'database_owner_error';
-            $observed_connection_id = null;
+            $errors[] = 'database_owner_' . $slot . '_error';
+            $queryFailed = true;
         }
 
-        $reported_observed_connection_id = null;
-        if (is_int($observed_connection_id)) {
-            $reported_observed_connection_id = $observed_connection_id;
+        if ($queryFailed) {
+            continue;
+        }
+        $reportedObserved = null;
+        if (is_int($observed)) {
+            $reportedObserved = $observed;
+        } elseif (is_string($observed) && preg_match('/\A[0-9]+\z/', $observed) === 1) {
+            $reportedObserved = $observed;
+        }
+        $observedNormalized = vg_runtime_mutation_session_connection_id($observed);
+        if ($observedNormalized === null) {
+            $errors[] = 'database_owner_' . $slot . '_missing';
         } elseif (
-            is_string($observed_connection_id)
-            && preg_match('/\A[0-9]+\z/', $observed_connection_id) === 1
+            $expected_connection_ids_normalized[$slot] !== null
+            && $observedNormalized !== $expected_connection_ids_normalized[$slot]
         ) {
-            $reported_observed_connection_id = $observed_connection_id;
+            $errors[] = 'database_owner_' . $slot . '_mismatch';
         }
-        $observed_connection_id_normalized = vg_runtime_mutation_session_connection_id($observed_connection_id);
-
-        if (
-            ! in_array('database_owner_unavailable', $errors, true)
-            && ! in_array('database_owner_query_error', $errors, true)
-            && ! in_array('database_owner_error', $errors, true)
-        ) {
-            if ($observed_connection_id_normalized === null) {
-                $errors[] = 'database_owner_missing';
-            } elseif (
-                $expected_connection_id_normalized !== null
-                && $observed_connection_id_normalized !== $expected_connection_id_normalized
-            ) {
-                $errors[] = 'database_owner_mismatch';
-            }
-        }
-        $observed_connection_id = $reported_observed_connection_id;
+        $observed_connection_ids[$slot] = $reportedObserved;
     }
 
     $report = [
@@ -375,9 +398,18 @@ function vg_runtime_mutation_session_report(
         'target' => $target,
         'session_id' => $session_id,
         'lock_file' => $lock_file,
-        'database_lock_name' => $database_lock_name,
-        'expected_database_connection_id' => $reported_expected_connection_id,
-        'observed_database_connection_id' => $observed_connection_id,
+        'database_locks' => [
+            'a' => [
+                'name' => $database_lock_names['a'],
+                'expected_connection_id' => $reported_expected_connection_ids['a'],
+                'observed_connection_id' => $observed_connection_ids['a'],
+            ],
+            'b' => [
+                'name' => $database_lock_names['b'],
+                'expected_connection_id' => $reported_expected_connection_ids['b'],
+                'observed_connection_id' => $observed_connection_ids['b'],
+            ],
+        ],
         'metadata_session_id' => $metadata_session_id,
         'filesystem_lock_held' => $filesystem_lock_held,
         'errors' => $errors,

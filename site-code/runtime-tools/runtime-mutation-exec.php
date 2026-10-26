@@ -73,12 +73,12 @@ if (! str_contains($executable, DIRECTORY_SEPARATOR)) {
     }
 }
 
-$startGate = @fopen('php://fd/6', 'r');
+$startGate = @fopen('php://fd/7', 'r');
 if (! is_resource($startGate)) {
     fwrite(STDERR, "Runtime mutation start gate is unavailable.\n");
     exit(70);
 }
-$statusOutput = @fopen('php://fd/7', 'w');
+$statusOutput = @fopen('php://fd/8', 'w');
 if (! is_resource($statusOutput)) {
     fclose($startGate);
     fwrite(STDERR, "Runtime mutation child status channel is unavailable.\n");
@@ -117,15 +117,15 @@ if ($targetPid === 0) {
         exit(70);
     }
 
-    // The command keeps fd 3 to prove host-lock ownership. Close all control
-    // channels here so their lifetime cannot depend on shell redirection rules.
-    foreach ([4, 5, 6, 7] as $descriptor) {
+    // The command keeps fd 3 to prove host-lock ownership. Close both keeper
+    // channels and every supervisor control descriptor before exec.
+    foreach ([4, 5, 6, 7, 8] as $descriptor) {
         $libc->close($descriptor);
     }
 
     $commandArguments = [
         '-c',
-        'exec 4>&- 5>&- 6>&- 7>&-; exec "$@"',
+        'exec 4>&- 5>&- 6>&- 7>&- 8>&-; exec "$@"',
         'vgnova-runtime-command',
         $executable,
         ...array_slice($arguments, 1),
@@ -136,7 +136,7 @@ if ($targetPid === 0) {
 }
 
 fclose($childGate[1]);
-$ready = @fopen('php://fd/5', 'w');
+$ready = @fopen('php://fd/6', 'w');
 $readyLine = 'ready:' . $targetPid . "\n";
 if (! is_resource($ready)
     || fwrite($ready, $readyLine) !== strlen($readyLine)
@@ -269,11 +269,17 @@ if (! $completionVerified) {
 fwrite($statusOutput, json_encode($status, JSON_THROW_ON_ERROR) . "\n");
 fflush($statusOutput);
 fclose($statusOutput);
-$completion = $completionChannel && $completionVerified ? @fopen('php://fd/4', 'w') : false;
-if (is_resource($completion)) {
+$completion = $completionChannel && $completionVerified ? [
+    @fopen('php://fd/4', 'w'),
+    @fopen('php://fd/5', 'w'),
+] : [];
+foreach ($completion as $completionHandle) {
+    if (! is_resource($completionHandle)) {
+        continue;
+    }
     $completionLine = 'VGNOVA_RUNTIME_MUTATION_SUPERVISOR_COMPLETE_V1:' . $supervisorPid . "\n";
-    @fwrite($completion, $completionLine);
-    @fflush($completion);
-    fclose($completion);
+    @fwrite($completionHandle, $completionLine);
+    @fflush($completionHandle);
+    fclose($completionHandle);
 }
 exit($supervisorExitCode);

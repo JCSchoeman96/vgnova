@@ -10,8 +10,8 @@ From the repository root:
       -- python3 site-code/runtime-tests/fcm-self-featured-integration.py
 
 The test is pinned to the verified local site at http://localhost:10039/ and
-uses local WP-CLI so each write process can inherit the coordinator's lock and
-database-keeper lifetime descriptors. It creates one published QA post per
+uses local WP-CLI so each write process can inherit the coordinator's host-lock
+descriptor and session environment. It creates one published QA post per
 run, requests the normal public permalink, and removes the post in a `finally`
 block before comparing runtime counts and protected values to the baseline.
 """
@@ -41,8 +41,10 @@ CLI_WRAPPER = Path(__file__).with_name("fcm-self-featured-cli.php")
 MUTATION_SESSION_KEYS = (
     "VGNOVA_MUTATION_SESSION_ID",
     "VGNOVA_MUTATION_TARGET",
-    "VGNOVA_MUTATION_DB_LOCK",
-    "VGNOVA_MUTATION_DB_CONNECTION_ID",
+    "VGNOVA_MUTATION_DB_LOCK_A",
+    "VGNOVA_MUTATION_DB_CONNECTION_ID_A",
+    "VGNOVA_MUTATION_DB_LOCK_B",
+    "VGNOVA_MUTATION_DB_CONNECTION_ID_B",
     "VGNOVA_MUTATION_LOCK_FILE",
 )
 EXPECTED_SITE = "http://localhost:10039/"
@@ -95,9 +97,8 @@ def invoke_runtime(action: str, *, slug: str = "", run_id: str = "") -> dict[str
         fail("The local WordPress root is unavailable; run this tool under vgnova-runtime-mutate.php.")
     try:
         os.fstat(3)
-        os.fstat(4)
     except OSError:
-        fail("The coordinator lock descriptors are unavailable; run this tool under vgnova-runtime-mutate.php.")
+        fail("The coordinator host-lock descriptor is unavailable; run this tool under vgnova-runtime-mutate.php.")
 
     if action in {"create", "cleanup"}:
         proof = {key: os.environ.get(key, "") for key in MUTATION_SESSION_KEYS}
@@ -121,7 +122,7 @@ def invoke_runtime(action: str, *, slug: str = "", run_id: str = "") -> dict[str
             ],
             cwd=ROOT,
             env=child_environment,
-            pass_fds=(3, 4),
+            pass_fds=(3,),
             text=True,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
@@ -129,7 +130,7 @@ def invoke_runtime(action: str, *, slug: str = "", run_id: str = "") -> dict[str
             timeout=120,
         )
     except (OSError, ValueError) as error:
-        fail(f"Could not start local WP-CLI with the coordinator lock descriptors: {error}")
+        fail(f"Could not start local WP-CLI with the coordinator host-lock descriptor: {error}")
     if completed.returncode != 0:
         fail(f"Local WP-CLI eval-file exited {completed.returncode}: {completed.stderr[-2000:]} {completed.stdout[-2000:]}")
     try:

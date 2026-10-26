@@ -2,7 +2,7 @@
 
 ## Status
 
-Approved architecture; implemented in the PE-007 branch and awaiting independent pull request review.
+Superseded before merge by [v1.1.0](VGNOVA_RUNTIME_MUTATION_COORDINATION_v1.1.0.md) on 2026-10-26 after independent review found that a single database-lock keeper could lose cross-host exclusion if its connection ended unexpectedly. This file remains the historical v1.0.0 design record. Its single-keeper model was implemented on PE-007 PR #57 but was not merged.
 
 ## Purpose and scope
 

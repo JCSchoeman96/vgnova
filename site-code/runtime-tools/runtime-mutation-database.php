@@ -6,16 +6,16 @@ require_once __DIR__ . '/runtime-mutation-core.php';
 final class VgRuntimeMutationDatabase
 {
     /**
-     * Start a separate process that owns the database advisory lock until its lifetime pipe reaches EOF.
+     * Start two independent keeper processes, each with its own database connection and lock.
      *
      * @param array<string,mixed> $target
      * @param resource $hostLockHandle
      * @return array<string,mixed>
      */
-    public static function startKeeper(
+    public static function startKeepers(
         array $target,
         string $wpRoot,
-        string $lockName,
+        array $lockNames,
         $hostLockHandle,
         ?string $socketOverride = null,
         ?array $environment = null
@@ -26,7 +26,64 @@ final class VgRuntimeMutationDatabase
         if (! VgRuntimeMutationCore::isAbsolutePathForDatabase($wpRoot) || ! is_dir($wpRoot)) {
             throw new VgRuntimeMutationException(71, 'INVALID_WORDPRESS_ROOT', 'WordPress root must be an existing absolute path.');
         }
-        if ($lockName !== VgRuntimeMutationCore::advisoryLockName($target)) {
+        if ($lockNames !== VgRuntimeMutationCore::advisoryLockNames($target)) {
+            throw new VgRuntimeMutationException(71, 'INVALID_DATABASE_LOCK_NAME', 'Database lock name does not match the registered target.');
+        }
+
+        $keepers = [];
+        $identity = null;
+        try {
+            foreach (['a', 'b'] as $slot) {
+                $keepers[$slot] = self::startKeeper(
+                    $target,
+                    $wpRoot,
+                    $lockNames[$slot],
+                    $slot,
+                    $hostLockHandle,
+                    $socketOverride,
+                    $environment
+                );
+            }
+            $identity = self::validateAcquiredPair($target, $wpRoot, $lockNames, $keepers, $socketOverride);
+        } catch (Throwable $error) {
+            foreach (['b', 'a'] as $slot) {
+                if (isset($keepers[$slot])) {
+                    self::abortKeeper($keepers[$slot]);
+                }
+            }
+            throw $error;
+        }
+
+        return [
+            'locks' => [
+                'a' => ['name' => $lockNames['a'], 'connection_id' => $keepers['a']['connection_id']],
+                'b' => ['name' => $lockNames['b'], 'connection_id' => $keepers['b']['connection_id']],
+            ],
+            'identity' => is_array($identity) ? $identity : [],
+            'lifetime_handles' => [
+                'a' => $keepers['a']['lifetime_handle'],
+                'b' => $keepers['b']['lifetime_handle'],
+            ],
+            'registration_handles' => [
+                'a' => $keepers['a']['registration_handle'],
+                'b' => $keepers['b']['registration_handle'],
+            ],
+            'keepers' => $keepers,
+        ];
+    }
+
+    /** @return array<string,mixed> */
+    private static function startKeeper(
+        array $target,
+        string $wpRoot,
+        string $lockName,
+        string $slot,
+        $hostLockHandle,
+        ?string $socketOverride,
+        ?array $environment
+    ): array {
+        if (! in_array($slot, ['a', 'b'], true)
+            || $lockName !== VgRuntimeMutationCore::advisoryLockNames($target)[$slot]) {
             throw new VgRuntimeMutationException(71, 'INVALID_DATABASE_LOCK_NAME', 'Database lock name does not match the registered target.');
         }
 
@@ -36,6 +93,7 @@ final class VgRuntimeMutationDatabase
             $helper,
             '--target=' . $target['id'],
             '--wp-root=' . $wpRoot,
+            '--lock-slot=' . $slot,
             '--lock-name=' . $lockName,
             '--db-socket=' . ($socketOverride ?? ''),
         ];
@@ -88,8 +146,8 @@ final class VgRuntimeMutationDatabase
         }
 
         $connectionId = $ready['connection_id'] ?? null;
-        $identity = $ready['identity'] ?? null;
-        if (! is_scalar($connectionId) || (int) $connectionId < 1 || ! is_array($identity)) {
+        if (! is_scalar($connectionId) || (int) $connectionId < 1
+            || ($ready['slot'] ?? null) !== $slot || ($ready['lock_name'] ?? null) !== $lockName) {
             @proc_terminate($process, SIGKILL);
             fclose($pipes[0]);
             fclose($pipes[1]);
@@ -99,9 +157,9 @@ final class VgRuntimeMutationDatabase
         }
 
         return [
-            'result' => 1,
+            'slot' => $slot,
+            'lock_name' => $lockName,
             'connection_id' => (int) $connectionId,
-            'identity' => $identity,
             'lifetime_handle' => $pipes[0],
             'registration_handle' => $pipes[4],
             'keeper_process' => $process,
@@ -109,20 +167,99 @@ final class VgRuntimeMutationDatabase
         ];
     }
 
-    /** @param array<string,mixed> $lease */
-    public static function releaseKeeper(array $lease): void
-    {
-        $registrationHandle = $lease['registration_handle'] ?? null;
-        if (is_resource($registrationHandle)) {
-            fclose($registrationHandle);
+    /**
+     * Verify the registered target and both lock owners only after both keepers have acquired.
+     * This short-lived connection owns neither advisory lock.
+     *
+     * @param array<string,mixed> $target
+     * @param array{a:string,b:string} $lockNames
+     * @param array{a:array<string,mixed>,b:array<string,mixed>} $keepers
+     * @return array<string,mixed>
+     */
+    private static function validateAcquiredPair(
+        array $target,
+        string $wpRoot,
+        array $lockNames,
+        array $keepers,
+        ?string $socketOverride
+    ): array {
+        $configuration = self::readWordPressConfiguration($wpRoot);
+        $transport = VgRuntimeMutationCore::parseDbHost($configuration['DB_HOST'], $socketOverride);
+        $database = self::connectDatabase($configuration, $transport);
+        try {
+            if (self::fetchSingleValue($database, 'SELECT DATABASE()') !== $configuration['DB_NAME']) {
+                throw new VgRuntimeMutationException(74, 'TARGET_IDENTITY_MISMATCH');
+            }
+            $identity = self::readTargetIdentity($database, $configuration, $transport);
+            VgRuntimeMutationCore::validateTargetIdentity($target, $identity, $wpRoot);
+            foreach (['a', 'b'] as $slot) {
+                $owner = self::fetchPreparedValue($database, 'SELECT IS_USED_LOCK(?)', $lockNames[$slot]);
+                if (! is_scalar($owner) || (string) $owner !== (string) $keepers[$slot]['connection_id']) {
+                    throw new VgRuntimeMutationException(70, 'DATABASE_LOCK_KEEPER_PROTOCOL_FAILED');
+                }
+            }
+            return $identity;
+        } finally {
+            $database->close();
         }
-        $lifetimeHandle = $lease['lifetime_handle'] ?? null;
-        if (is_resource($lifetimeHandle)) {
-            fclose($lifetimeHandle);
-        }
+    }
 
-        $process = $lease['keeper_process'] ?? null;
-        $stdout = $lease['keeper_stdout'] ?? null;
+    /** @param array<string,mixed> $lease @param array{a:string,b:string} $lockNames */
+    public static function releaseKeepers(array $lease, array $lockNames): void
+    {
+        if (($lease['locks']['a']['name'] ?? null) !== $lockNames['a']
+            || ($lease['locks']['b']['name'] ?? null) !== $lockNames['b']) {
+            throw new VgRuntimeMutationException(70, 'DATABASE_LOCK_KEEPER_RELEASE_FAILED', 'Database keeper lease does not match the target lock identities.');
+        }
+        foreach (['b', 'a'] as $slot) {
+            $keeper = $lease['keepers'][$slot] ?? null;
+            if (! is_array($keeper)) {
+                throw new VgRuntimeMutationException(70, 'DATABASE_LOCK_KEEPER_RELEASE_FAILED', 'Database keeper lease is incomplete.');
+            }
+            self::releaseKeeper($keeper);
+        }
+    }
+
+    /** @param array<string,mixed> $keeper */
+    private static function abortKeeper(array $keeper): void
+    {
+        foreach (['registration_handle', 'lifetime_handle'] as $key) {
+            if (is_resource($keeper[$key] ?? null)) {
+                fclose($keeper[$key]);
+            }
+        }
+        $process = $keeper['keeper_process'] ?? null;
+        if (is_resource($process)) {
+            $deadline = microtime(true) + 3.0;
+            do {
+                $status = proc_get_status($process);
+                if (! ($status['running'] ?? false)) {
+                    break;
+                }
+                usleep(20000);
+            } while (microtime(true) < $deadline);
+            if (($status['running'] ?? false)) {
+                @proc_terminate($process, SIGKILL);
+            }
+            proc_close($process);
+        }
+        foreach (['keeper_stdout'] as $key) {
+            if (is_resource($keeper[$key] ?? null)) {
+                fclose($keeper[$key]);
+            }
+        }
+    }
+
+    /** @param array<string,mixed> $keeper */
+    private static function releaseKeeper(array $keeper): void
+    {
+        foreach (['registration_handle', 'lifetime_handle'] as $key) {
+            if (is_resource($keeper[$key] ?? null)) {
+                fclose($keeper[$key]);
+            }
+        }
+        $process = $keeper['keeper_process'] ?? null;
+        $stdout = $keeper['keeper_stdout'] ?? null;
         if (! is_resource($process)) {
             throw new VgRuntimeMutationException(70, 'DATABASE_LOCK_KEEPER_RELEASE_FAILED', 'Database lock keeper process handle is unavailable.');
         }
@@ -136,12 +273,11 @@ final class VgRuntimeMutationDatabase
             }
             usleep(50000);
         } while (microtime(true) < $deadline);
-
         if (is_array($status) && ($status['running'] ?? false)) {
             throw new VgRuntimeMutationException(
                 70,
                 'DATABASE_LOCK_KEEPER_RELEASE_TIMEOUT',
-                'Database lock keeper continues to hold the host and database locks while a child process remains live.',
+                'A database lock keeper continues to hold its lock while a child process may remain live.',
                 true
             );
         }
@@ -174,17 +310,17 @@ final class VgRuntimeMutationDatabase
      *
      * @param array<string,mixed> $target
      */
-    public static function statusLockOwner(
+    public static function statusLockOwners(
         array $target,
         string $wpRoot,
-        string $lockName,
+        array $lockNames,
         ?string $socketOverride = null
     ): array {
         if (! VgRuntimeMutationCore::isAbsolutePathForDatabase($wpRoot) || ! is_dir($wpRoot)) {
-            return ['state' => 'error', 'owner_connection_id' => null, 'error_code' => 'INVALID_WORDPRESS_ROOT'];
+            return ['a' => ['state' => 'error', 'owner_connection_id' => null, 'error_code' => 'INVALID_WORDPRESS_ROOT'], 'b' => ['state' => 'error', 'owner_connection_id' => null, 'error_code' => 'INVALID_WORDPRESS_ROOT']];
         }
-        if ($lockName !== VgRuntimeMutationCore::advisoryLockName($target)) {
-            return ['state' => 'error', 'owner_connection_id' => null, 'error_code' => 'INVALID_DATABASE_LOCK_NAME'];
+        if ($lockNames !== VgRuntimeMutationCore::advisoryLockNames($target)) {
+            return ['a' => ['state' => 'error', 'owner_connection_id' => null, 'error_code' => 'INVALID_DATABASE_LOCK_NAME'], 'b' => ['state' => 'error', 'owner_connection_id' => null, 'error_code' => 'INVALID_DATABASE_LOCK_NAME']];
         }
         $database = null;
         try {
@@ -196,18 +332,24 @@ final class VgRuntimeMutationDatabase
             }
             $identity = self::readTargetIdentity($database, $configuration, $transport);
             VgRuntimeMutationCore::validateTargetIdentity($target, $identity, $wpRoot);
-            $owner = self::fetchPreparedValue($database, 'SELECT IS_USED_LOCK(?)', $lockName);
-            if ($owner === null || $owner === false || $owner === '') {
-                return ['state' => 'free', 'owner_connection_id' => null, 'error_code' => null];
+            $owners = [];
+            foreach (['a', 'b'] as $slot) {
+                $owner = self::fetchPreparedValue($database, 'SELECT IS_USED_LOCK(?)', $lockNames[$slot]);
+                if ($owner === null || $owner === false || $owner === '') {
+                    $owners[$slot] = ['state' => 'free', 'owner_connection_id' => null, 'error_code' => null];
+                    continue;
+                }
+                if ((! is_int($owner) && ! is_string($owner)) || ! ctype_digit((string) $owner) || (int) $owner < 1) {
+                    $owners[$slot] = ['state' => 'error', 'owner_connection_id' => null, 'error_code' => 'DATABASE_LOCK_OWNER_QUERY_FAILED'];
+                    continue;
+                }
+                $owners[$slot] = ['state' => 'held', 'owner_connection_id' => (int) $owner, 'error_code' => null];
             }
-            if ((! is_int($owner) && ! is_string($owner)) || ! ctype_digit((string) $owner) || (int) $owner < 1) {
-                throw new VgRuntimeMutationException(70, 'DATABASE_LOCK_OWNER_QUERY_FAILED');
-            }
-            return ['state' => 'held', 'owner_connection_id' => (int) $owner, 'error_code' => null];
+            return $owners;
         } catch (VgRuntimeMutationException $exception) {
-            return ['state' => 'error', 'owner_connection_id' => null, 'error_code' => $exception->errorCode];
+            return ['a' => ['state' => 'error', 'owner_connection_id' => null, 'error_code' => $exception->errorCode], 'b' => ['state' => 'error', 'owner_connection_id' => null, 'error_code' => $exception->errorCode]];
         } catch (Throwable) {
-            return ['state' => 'error', 'owner_connection_id' => null, 'error_code' => 'DATABASE_STATUS_FAILED'];
+            return ['a' => ['state' => 'error', 'owner_connection_id' => null, 'error_code' => 'DATABASE_STATUS_FAILED'], 'b' => ['state' => 'error', 'owner_connection_id' => null, 'error_code' => 'DATABASE_STATUS_FAILED']];
         } finally {
             if ($database instanceof mysqli) {
                 $database->close();
@@ -225,21 +367,22 @@ final class VgRuntimeMutationDatabase
                 return 71;
             }
             if (array_key_exists($matches[1], $options)
-                || ! in_array($matches[1], ['target', 'wp-root', 'lock-name', 'db-socket'], true)) {
+                || ! in_array($matches[1], ['target', 'wp-root', 'lock-slot', 'lock-name', 'db-socket'], true)) {
                 self::writeKeeperResponse(['ok' => false, 'exit_code' => 71, 'error_code' => 'INVALID_KEEPER_ARGUMENTS']);
                 return 71;
             }
             $options[$matches[1]] = $matches[2];
         }
-        if (! isset($options['target'], $options['wp-root'], $options['lock-name'])
+        if (! isset($options['target'], $options['wp-root'], $options['lock-slot'], $options['lock-name'])
             || ! array_key_exists('db-socket', $options)
-            || count($options) !== 4) {
+            || count($options) !== 5) {
             self::writeKeeperResponse(['ok' => false, 'exit_code' => 71, 'error_code' => 'INVALID_KEEPER_ARGUMENTS']);
             return 71;
         }
 
         $targetId = $options['target'];
         $wpRoot = $options['wp-root'];
+        $slot = $options['lock-slot'];
         $lockName = $options['lock-name'];
         $socketOverride = ($options['db-socket'] ?? '') !== '' ? $options['db-socket'] : null;
         $database = null;
@@ -248,7 +391,8 @@ final class VgRuntimeMutationDatabase
         try {
             $registry = VgRuntimeMutationCore::loadTargetRegistry(__DIR__ . '/runtime-mutation-targets.json');
             $target = VgRuntimeMutationCore::resolveTarget($registry, $targetId);
-            if ($lockName !== VgRuntimeMutationCore::advisoryLockName($target)) {
+            $lockNames = VgRuntimeMutationCore::advisoryLockNames($target);
+            if (! in_array($slot, ['a', 'b'], true) || $lockName !== $lockNames[$slot]) {
                 throw new VgRuntimeMutationException(71, 'INVALID_DATABASE_LOCK_NAME');
             }
             if (! VgRuntimeMutationCore::isAbsolutePathForDatabase($wpRoot) || ! is_dir($wpRoot)) {
@@ -274,13 +418,11 @@ final class VgRuntimeMutationDatabase
                 throw new VgRuntimeMutationException(70, 'DATABASE_CONNECTION_ID_UNAVAILABLE');
             }
 
-            $identity = self::readTargetIdentity($database, $configuration, $transport);
-            VgRuntimeMutationCore::validateTargetIdentity($target, $identity, $wpRoot);
-
             self::writeKeeperResponse([
                 'ok' => true,
+                'slot' => $slot,
+                'lock_name' => $lockName,
                 'connection_id' => (int) $connectionId,
-                'identity' => $identity,
             ]);
             $responseSent = true;
             $supervisorPid = self::readProcessGroupRegistration();

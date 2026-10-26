@@ -32,8 +32,10 @@ if (in_array($task4f_action, ['create', 'cleanup'], true)) {
     foreach ([
         'VGNOVA_MUTATION_SESSION_ID',
         'VGNOVA_MUTATION_TARGET',
-        'VGNOVA_MUTATION_DB_LOCK',
-        'VGNOVA_MUTATION_DB_CONNECTION_ID',
+        'VGNOVA_MUTATION_DB_LOCK_A',
+        'VGNOVA_MUTATION_DB_CONNECTION_ID_A',
+        'VGNOVA_MUTATION_DB_LOCK_B',
+        'VGNOVA_MUTATION_DB_CONNECTION_ID_B',
         'VGNOVA_MUTATION_LOCK_FILE',
     ] as $name) {
         $value = getenv($name);
@@ -44,7 +46,7 @@ if (in_array($task4f_action, ['create', 'cleanup'], true)) {
     }
     $GLOBALS['task4f_mutation_environment'] = $mutation_environment;
 
-    // This local WP-CLI process inherits descriptors 3 and 4 from the coordinator.
+    // This local WP-CLI process inherits only descriptor 3 and the session proof.
     vg_runtime_mutation_assert_session('vgnova-local-10039', $mutation_environment);
 }
 

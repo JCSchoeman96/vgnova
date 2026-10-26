@@ -58,12 +58,16 @@ function vg_runtime_mutation_test_fixture(array $metadata_overrides = []): array
         'home' => 'http://localhost:10039',
         'site' => 'http://localhost:10039',
     ];
-    $lock_name = 'vgnova.mutation.' . substr(hash('sha256', implode("\n", [
+    $digest = substr(hash('sha256', implode("\n", [
         $target,
         $identity['database_name'],
         $identity['home'],
         $identity['site'],
     ])), 0, 40);
+    $lock_names = [
+        'a' => 'vgnova.mutation.a.' . $digest,
+        'b' => 'vgnova.mutation.b.' . $digest,
+    ];
     $session_id = str_repeat('a', 32);
     $directory = sys_get_temp_dir() . '/vg-runtime-mutation-' . bin2hex(random_bytes(8));
     if (! mkdir($directory, 0700, true)) {
@@ -78,12 +82,14 @@ function vg_runtime_mutation_test_fixture(array $metadata_overrides = []): array
     }
     $lock_file = $state_directory . '/' . $target . '.lock';
     $metadata = array_merge([
-        'schema_version' => 1,
+        'schema_version' => 2,
         'state' => 'active',
         'target' => $target,
         'session_id' => $session_id,
-        'database_lock_name' => $lock_name,
-        'database_connection_id' => 12345,
+        'database_locks' => [
+            'a' => ['name' => $lock_names['a'], 'connection_id' => 12345],
+            'b' => ['name' => $lock_names['b'], 'connection_id' => 12346],
+        ],
     ], $metadata_overrides);
     $encoded_metadata = json_encode($metadata, JSON_THROW_ON_ERROR);
     if (file_put_contents($lock_file, $encoded_metadata) === false || ! chmod($lock_file, 0600)) {
@@ -94,8 +100,10 @@ function vg_runtime_mutation_test_fixture(array $metadata_overrides = []): array
     $environment = [
         'VGNOVA_MUTATION_SESSION_ID' => $session_id,
         'VGNOVA_MUTATION_TARGET' => $target,
-        'VGNOVA_MUTATION_DB_LOCK' => $lock_name,
-        'VGNOVA_MUTATION_DB_CONNECTION_ID' => '12345',
+        'VGNOVA_MUTATION_DB_LOCK_A' => $lock_names['a'],
+        'VGNOVA_MUTATION_DB_CONNECTION_ID_A' => '12345',
+        'VGNOVA_MUTATION_DB_LOCK_B' => $lock_names['b'],
+        'VGNOVA_MUTATION_DB_CONNECTION_ID_B' => '12346',
         'VGNOVA_MUTATION_LOCK_FILE' => $lock_file,
         'XDG_STATE_HOME' => $state_home,
     ];
@@ -167,15 +175,20 @@ function vg_runtime_mutation_test_guard_result(
         return ['threw' => false, 'report' => vg_runtime_mutation_session_report($target, $environment, $database_lock_owner)];
     }
 
-    $owner = ['present' => $database_lock_owner !== null, 'throws' => false, 'value' => null];
+    $owner = ['present' => $database_lock_owner !== null, 'throws' => [], 'values' => []];
     if ($database_lock_owner !== null) {
-        try {
+        foreach (['a', 'b'] as $slot) {
+            $suffix = strtoupper($slot);
             $lock_name = is_array($environment)
-                ? (string) ($environment['VGNOVA_MUTATION_DB_LOCK'] ?? '')
-                : (string) (getenv('VGNOVA_MUTATION_DB_LOCK') ?: '');
-            $owner['value'] = $database_lock_owner($lock_name);
-        } catch (Throwable) {
-            $owner['throws'] = true;
+                ? (string) ($environment['VGNOVA_MUTATION_DB_LOCK_' . $suffix] ?? '')
+                : (string) (getenv('VGNOVA_MUTATION_DB_LOCK_' . $suffix) ?: '');
+            try {
+                $owner['values'][$slot] = $database_lock_owner($lock_name);
+                $owner['throws'][$slot] = false;
+            } catch (Throwable) {
+                $owner['throws'][$slot] = true;
+                $owner['values'][$slot] = null;
+            }
         }
     }
 
@@ -190,10 +203,11 @@ require_once $argv[1];
 $environment = $argv[3] === 'null' ? null : json_decode(base64_decode($argv[3]), true, 32, JSON_THROW_ON_ERROR);
 $owner = json_decode(base64_decode($argv[4]), true, 32, JSON_THROW_ON_ERROR);
 $database_lock_owner = $owner['present'] ? static function (string $lock_name) use ($owner): mixed {
-    if ($owner['throws']) {
+    $slot = str_contains($lock_name, '.a.') ? 'a' : 'b';
+    if ($owner['throws'][$slot] ?? false) {
         throw new RuntimeException('test callback failure');
     }
-    return $owner['value'];
+    return $owner['values'][$slot] ?? null;
 } : null;
 try {
     $report = $argv[5] === 'assert'
@@ -251,10 +265,16 @@ function vg_runtime_mutation_test_report(?array $holder, string $target, ?array 
 function vg_runtime_mutation_test_owner(array $environment): Closure
 {
     return static function (string $lock_name) use ($environment): string {
-        if ($lock_name !== $environment['VGNOVA_MUTATION_DB_LOCK']) {
+        foreach (['a', 'b'] as $slot) {
+            $suffix = strtoupper($slot);
+            if ($lock_name === $environment['VGNOVA_MUTATION_DB_LOCK_' . $suffix]) {
+                return $environment['VGNOVA_MUTATION_DB_CONNECTION_ID_' . $suffix];
+            }
+        }
+        if ($lock_name === '') {
             throw new RuntimeException('The session guard queried an unexpected database lock.');
         }
-        return $environment['VGNOVA_MUTATION_DB_CONNECTION_ID'];
+        throw new RuntimeException('The session guard queried an unexpected database lock.');
     };
 }
 
@@ -338,9 +358,7 @@ $run_case('valid report requires a real lock holder and matching database owner'
             'target',
             'session_id',
             'lock_file',
-            'database_lock_name',
-            'expected_database_connection_id',
-            'observed_database_connection_id',
+            'database_locks',
             'metadata_session_id',
             'filesystem_lock_held',
             'errors',
@@ -351,13 +369,17 @@ $run_case('valid report requires a real lock holder and matching database owner'
         vg_runtime_mutation_test_assert($report['session_id'] === $fixture['session_id'], 'The report returned the wrong session ID.');
         vg_runtime_mutation_test_assert($report['lock_file'] === $fixture['lock_file'], 'The report returned the wrong lock path.');
         vg_runtime_mutation_test_assert(
-            $report['database_lock_name'] === $fixture['environment']['VGNOVA_MUTATION_DB_LOCK'],
-            'The report returned the wrong database lock name.'
-        );
-        vg_runtime_mutation_test_assert(
-            $report['expected_database_connection_id'] === '12345'
-                && $report['observed_database_connection_id'] === '12345',
-            'The report did not return both database connection IDs.'
+            $report['database_locks']['a'] === [
+                'name' => $fixture['environment']['VGNOVA_MUTATION_DB_LOCK_A'],
+                'expected_connection_id' => '12345',
+                'observed_connection_id' => '12345',
+            ]
+                && $report['database_locks']['b'] === [
+                    'name' => $fixture['environment']['VGNOVA_MUTATION_DB_LOCK_B'],
+                    'expected_connection_id' => '12346',
+                    'observed_connection_id' => '12346',
+                ],
+            'The report did not independently return both lock names and owners.'
         );
         vg_runtime_mutation_test_assert($report['metadata_session_id'] === $fixture['session_id'], 'Metadata session ID was not reported.');
         vg_runtime_mutation_test_assert($report['filesystem_lock_held'] === true, 'The held lock was not detected.');
@@ -385,7 +407,9 @@ $environment = json_decode(base64_decode($argv[2]), true, 32, JSON_THROW_ON_ERRO
 $report = vg_runtime_mutation_session_report(
     $environment['VGNOVA_MUTATION_TARGET'],
     $environment,
-    static fn (string $lock_name): string => $environment['VGNOVA_MUTATION_DB_CONNECTION_ID']
+    static fn (string $lock_name): string => str_contains($lock_name, '.a.')
+        ? $environment['VGNOVA_MUTATION_DB_CONNECTION_ID_A']
+        : $environment['VGNOVA_MUTATION_DB_CONNECTION_ID_B']
 );
 echo json_encode($report, JSON_THROW_ON_ERROR);
 PHP;
@@ -424,12 +448,12 @@ $run_case('a validly shaped but unrelated advisory lock name is rejected', stati
     $holder = null;
     try {
         $holder = vg_runtime_mutation_test_start_lock_holder($fixture['lock_file']);
-        $unrelated_lock = 'vgnova.mutation.' . str_repeat('c', 40);
+        $unrelated_lock = 'vgnova.mutation.a.' . str_repeat('c', 40);
         $metadata = $fixture['metadata'];
-        $metadata['database_lock_name'] = $unrelated_lock;
+        $metadata['database_locks']['a']['name'] = $unrelated_lock;
         file_put_contents($fixture['lock_file'], json_encode($metadata, JSON_THROW_ON_ERROR));
         $environment = $fixture['environment'];
-        $environment['VGNOVA_MUTATION_DB_LOCK'] = $unrelated_lock;
+        $environment['VGNOVA_MUTATION_DB_LOCK_A'] = $unrelated_lock;
         $report = vg_runtime_mutation_test_report(
             $holder,
             $fixture['target'],
@@ -438,7 +462,7 @@ $run_case('a validly shaped but unrelated advisory lock name is rejected', stati
         );
         vg_runtime_mutation_test_assert($report['valid'] === false, 'An unrelated advisory lock was accepted as session proof.');
         vg_runtime_mutation_test_assert(
-            in_array('database_lock_name_not_canonical', $report['errors'], true),
+            in_array('database_lock_a_name_not_canonical', $report['errors'], true),
             'The unrelated advisory lock was not rejected against runtime identity.'
         );
     } finally {
@@ -446,6 +470,36 @@ $run_case('a validly shaped but unrelated advisory lock name is rejected', stati
             vg_runtime_mutation_test_stop_lock_holder($holder);
         }
         vg_runtime_mutation_test_cleanup_fixture($fixture);
+    }
+});
+
+$run_case('each database lock name is required independently', static function (): void {
+    foreach (['a', 'b'] as $slot) {
+        $fixture = vg_runtime_mutation_test_fixture();
+        $holder = null;
+        try {
+            $holder = vg_runtime_mutation_test_start_lock_holder($fixture['lock_file']);
+            $environment = $fixture['environment'];
+            $suffix = strtoupper($slot);
+            $environment['VGNOVA_MUTATION_DB_LOCK_' . $suffix] = '';
+            $report = vg_runtime_mutation_test_report(
+                $holder,
+                $fixture['target'],
+                $environment,
+                vg_runtime_mutation_test_owner($environment)
+            );
+            vg_runtime_mutation_test_assert($report['valid'] === false, 'A session missing lock ' . $slot . ' was accepted.');
+            vg_runtime_mutation_test_assert(
+                in_array('database_lock_' . $slot . '_name_missing', $report['errors'], true)
+                    && in_array('database_owner_' . $slot . '_unavailable', $report['errors'], true),
+                'Missing lock ' . $slot . ' did not fail its own proof checks.'
+            );
+        } finally {
+            if ($holder !== null) {
+                vg_runtime_mutation_test_stop_lock_holder($holder);
+            }
+            vg_runtime_mutation_test_cleanup_fixture($fixture);
+        }
     }
 });
 
@@ -531,14 +585,14 @@ $run_case('lock path must resolve under the configured VGNova state directory', 
     }
 });
 
-$run_case('metadata requires schema version one, active state, matching target, and matching session', static function (): void {
+$run_case('metadata requires schema version two, active state, matching target, and matching session', static function (): void {
     $invalid_metadata = [
-        [['schema_version' => 2], 'metadata_schema_invalid'],
+        [['schema_version' => 1], 'metadata_schema_invalid'],
         [['state' => 'released'], 'metadata_state_invalid'],
         [['target' => 'another-target'], 'metadata_target_mismatch'],
         [['session_id' => str_repeat('c', 32)], 'metadata_session_mismatch'],
-        [['database_lock_name' => 'vgnova.mutation.' . str_repeat('c', 40)], 'metadata_database_lock_mismatch'],
-        [['database_connection_id' => 54321], 'metadata_database_connection_mismatch'],
+        [['database_locks' => ['a' => ['name' => 'vgnova.mutation.a.' . str_repeat('c', 40), 'connection_id' => 12345], 'b' => ['name' => 'vgnova.mutation.b.' . str_repeat('b', 40), 'connection_id' => 12346]]], 'metadata_database_lock_a_mismatch'],
+        [['database_locks' => ['a' => ['name' => 'vgnova.mutation.a.' . str_repeat('a', 40), 'connection_id' => 54321], 'b' => ['name' => 'vgnova.mutation.b.' . str_repeat('b', 40), 'connection_id' => 12346]]], 'metadata_database_connection_a_mismatch'],
     ];
     foreach ($invalid_metadata as [$overrides, $expected_error]) {
         $fixture = vg_runtime_mutation_test_fixture($overrides);
@@ -554,6 +608,35 @@ $run_case('metadata requires schema version one, active state, matching target, 
             vg_runtime_mutation_test_assert(
                 in_array($expected_error, $report['errors'], true),
                 'The metadata failure was not reported as ' . $expected_error . '.'
+            );
+        } finally {
+            if ($holder !== null) {
+                vg_runtime_mutation_test_stop_lock_holder($holder);
+            }
+            vg_runtime_mutation_test_cleanup_fixture($fixture);
+        }
+    }
+});
+
+$run_case('metadata validates each database lock owner independently', static function (): void {
+    foreach (['a', 'b'] as $slot) {
+        $fixture = vg_runtime_mutation_test_fixture();
+        $holder = null;
+        try {
+            $holder = vg_runtime_mutation_test_start_lock_holder($fixture['lock_file']);
+            $metadata = $fixture['metadata'];
+            $metadata['database_locks'][$slot]['connection_id'] = $slot === 'a' ? 54321 : 54322;
+            file_put_contents($fixture['lock_file'], json_encode($metadata, JSON_THROW_ON_ERROR));
+            $report = vg_runtime_mutation_test_report(
+                $holder,
+                $fixture['target'],
+                $fixture['environment'],
+                vg_runtime_mutation_test_owner($fixture['environment'])
+            );
+            vg_runtime_mutation_test_assert($report['valid'] === false, 'Metadata with a wrong lock ' . $slot . ' owner was accepted.');
+            vg_runtime_mutation_test_assert(
+                in_array('metadata_database_connection_' . $slot . '_mismatch', $report['errors'], true),
+                'Metadata mismatch for lock ' . $slot . ' was not reported independently.'
             );
         } finally {
             if ($holder !== null) {
@@ -586,9 +669,9 @@ $run_case('database proof rejects missing, zero, and mismatched owners', static 
     try {
         $holder = vg_runtime_mutation_test_start_lock_holder($fixture['lock_file']);
         $owner_results = [
-            [null, 'database_owner_missing'],
-            [0, 'database_owner_missing'],
-            ['54321', 'database_owner_mismatch'],
+            [null, 'database_owner_a_missing'],
+            [0, 'database_owner_a_missing'],
+            ['54321', 'database_owner_a_mismatch'],
         ];
         foreach ($owner_results as [$owner_result, $expected_error]) {
             $report = vg_runtime_mutation_test_report($holder,
@@ -610,6 +693,49 @@ $run_case('database proof rejects missing, zero, and mismatched owners', static 
     }
 });
 
+$run_case('each database lock owner is checked independently', static function (): void {
+    foreach (['a', 'b'] as $failedSlot) {
+        $fixture = vg_runtime_mutation_test_fixture();
+        $holder = null;
+        try {
+            $holder = vg_runtime_mutation_test_start_lock_holder($fixture['lock_file']);
+            $environment = $fixture['environment'];
+            $report = vg_runtime_mutation_test_report(
+                $holder,
+                $fixture['target'],
+                $environment,
+                static function (string $lockName) use ($environment, $failedSlot): string {
+                    foreach (['a', 'b'] as $slot) {
+                        $suffix = strtoupper($slot);
+                        if ($lockName === $environment['VGNOVA_MUTATION_DB_LOCK_' . $suffix]) {
+                            return $slot === $failedSlot
+                                ? '99999'
+                                : $environment['VGNOVA_MUTATION_DB_CONNECTION_ID_' . $suffix];
+                        }
+                    }
+                    throw new RuntimeException('Unexpected lock name.');
+                }
+            );
+            vg_runtime_mutation_test_assert($report['valid'] === false, 'A wrong owner for lock ' . $failedSlot . ' was accepted.');
+            vg_runtime_mutation_test_assert(
+                in_array('database_owner_' . $failedSlot . '_mismatch', $report['errors'], true),
+                'The wrong owner for lock ' . $failedSlot . ' was not rejected.'
+            );
+            $otherSlot = $failedSlot === 'a' ? 'b' : 'a';
+            vg_runtime_mutation_test_assert(
+                $report['database_locks'][$otherSlot]['observed_connection_id']
+                    === $environment['VGNOVA_MUTATION_DB_CONNECTION_ID_' . strtoupper($otherSlot)],
+                'Lock ' . $otherSlot . ' was not independently checked after lock ' . $failedSlot . ' failed.'
+            );
+        } finally {
+            if ($holder !== null) {
+                vg_runtime_mutation_test_stop_lock_holder($holder);
+            }
+            vg_runtime_mutation_test_cleanup_fixture($fixture);
+        }
+    }
+});
+
 $run_case('database callback errors fail closed without exposing exception text or credentials', static function (): void {
     $fixture = vg_runtime_mutation_test_fixture();
     $holder = null;
@@ -626,7 +752,11 @@ $run_case('database callback errors fail closed without exposing exception text 
         );
         $encoded_report = json_encode($report, JSON_THROW_ON_ERROR);
         vg_runtime_mutation_test_assert($report['valid'] === false, 'A database callback error was accepted.');
-        vg_runtime_mutation_test_assert(in_array('database_owner_error', $report['errors'], true), 'Database callback error was not reported.');
+        vg_runtime_mutation_test_assert(
+            in_array('database_owner_a_error', $report['errors'], true)
+                && in_array('database_owner_b_error', $report['errors'], true),
+            'Database callback errors were not reported independently for both locks.'
+        );
         vg_runtime_mutation_test_assert(
             ! str_contains($encoded_report, 'fixture-secret-must-not-appear'),
             'The report exposed a credential or callback exception message.'
@@ -645,7 +775,7 @@ $run_case('malformed database connection IDs are not echoed', static function ()
     try {
         $holder = vg_runtime_mutation_test_start_lock_holder($fixture['lock_file']);
         $environment = $fixture['environment'];
-        $environment['VGNOVA_MUTATION_DB_CONNECTION_ID'] = 'fixture-secret-must-not-appear';
+        $environment['VGNOVA_MUTATION_DB_CONNECTION_ID_A'] = 'fixture-secret-must-not-appear';
         $report = vg_runtime_mutation_test_report($holder,
             $fixture['target'],
             $environment,
@@ -654,8 +784,8 @@ $run_case('malformed database connection IDs are not echoed', static function ()
         $encoded_report = json_encode($report, JSON_THROW_ON_ERROR);
         vg_runtime_mutation_test_assert($report['valid'] === false, 'Malformed database connection IDs were accepted.');
         vg_runtime_mutation_test_assert(
-            $report['expected_database_connection_id'] === null
-                && $report['observed_database_connection_id'] === null,
+            $report['database_locks']['a']['expected_connection_id'] === null
+                && $report['database_locks']['a']['observed_connection_id'] === null,
             'Malformed database connection ID values were returned.'
         );
         vg_runtime_mutation_test_assert(
@@ -677,7 +807,11 @@ $run_case('missing database owner callback outside WordPress fails closed', stat
         $holder = vg_runtime_mutation_test_start_lock_holder($fixture['lock_file']);
         $report = vg_runtime_mutation_test_report($holder, $fixture['target'], $fixture['environment'], null);
         vg_runtime_mutation_test_assert($report['valid'] === false, 'A session without database proof was accepted.');
-        vg_runtime_mutation_test_assert(in_array('database_owner_unavailable', $report['errors'], true), 'Missing database proof was not reported.');
+        vg_runtime_mutation_test_assert(
+            in_array('database_owner_a_unavailable', $report['errors'], true)
+                && in_array('database_owner_b_unavailable', $report['errors'], true),
+            'Missing database proof was not reported for both locks.'
+        );
     } finally {
         if ($holder !== null) {
             vg_runtime_mutation_test_stop_lock_holder($holder);
@@ -686,7 +820,7 @@ $run_case('missing database owner callback outside WordPress fails closed', stat
     }
 });
 
-$run_case('null environment reads the five session values and returns no credentials', static function (): void {
+$run_case('null environment reads dual-lock session proof and returns no credentials', static function (): void {
     $fixture = vg_runtime_mutation_test_fixture();
     $holder = null;
     $names = array_keys($fixture['environment']);

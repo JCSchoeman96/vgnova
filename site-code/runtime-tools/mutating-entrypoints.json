@@ -91,6 +91,10 @@
             "classification": "test_only"
         },
         {
+            "path": "site-code/runtime-tests/fixtures/fcm-descriptor-coordinator.php",
+            "classification": "test_only"
+        },
+        {
             "path": "site-code/runtime-tests/person-foundation-qa.php",
             "classification": "mutating",
             "session_guard_required": true,
@@ -572,8 +576,8 @@
                 "create",
                 "cleanup"
             ],
-            "guard": "The WP-CLI entrypoint validates the active session and inherits descriptors 3 and 4 before loading the PHP action helper; run the Python process under vgnova-runtime-mutate.php.",
-            "reviewed_scope": "The snapshot and frontend-render requests are read-only. Mutating WP-CLI children inherit the filesystem lock and database-keeper lifetime descriptors, so they cannot continue after the local coordinator releases either lock."
+            "guard": "The WP-CLI entrypoint validates both active MariaDB lock owners and the host flock before loading the PHP action helper; run the Python process under vgnova-runtime-mutate.php. The Python target and nested WP-CLI inherit FD3 and session environment only.",
+            "reviewed_scope": "The snapshot and frontend-render requests are read-only. Mutating WP-CLI children inherit the filesystem-lock descriptor and dual-lock session environment; Platform Core independently verifies both MariaDB lock owners."
         }
     ]
 }
