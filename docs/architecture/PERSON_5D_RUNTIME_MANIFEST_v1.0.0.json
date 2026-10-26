@@ -159,7 +159,16 @@
         }
       ],
       "content_topic_terms": [],
-      "postmeta_keys": []
+      "postmeta_keys": [
+        "_masteriyo_has_content"
+      ],
+      "system_metadata": {
+        "_masteriyo_has_content": {
+          "value": "0",
+          "meaning": "Masteriyo system flag indicating no Masteriyo content is present.",
+          "origin": "Automatic WordPress plugin metadata, not copied from the legacy profile and not editorial content."
+        }
+      }
     },
     "copied_content": [],
     "copied_relationships": [],
@@ -330,6 +339,14 @@
         410,
         419
       ]
+    },
+    {
+      "kind": "plugin_system_metadata",
+      "operation": "automatic_update_post_meta",
+      "post_id": 1705,
+      "meta_key": "_masteriyo_has_content",
+      "meta_value": "0",
+      "meaning": "Masteriyo housekeeping flag; no Masteriyo content is present."
     }
   ],
   "source_verification": {

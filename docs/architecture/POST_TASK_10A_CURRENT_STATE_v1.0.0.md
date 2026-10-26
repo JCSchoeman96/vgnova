@@ -9,7 +9,7 @@
 
 One canonical Person now exists: Lynette Beer, Person ID 1705, slug `lynette-beer`, status `publish`. The canonical `person_type` vocabulary is exactly `Mentor / mentor` (term 410) and `Kenner / kenner` (term 419). Lynette has exactly those two native taxonomy relationships.
 
-The Person intentionally has no editorial content yet: featured image absent; excerpt and content empty; professional title, credentials, company, and website empty; no `content_topic` assignment. The staging photo, bio, excerpt, content, `Spreker` title, profile status, and legacy taxonomy assignments were not copied.
+The Person intentionally has no editorial content yet: featured image absent; excerpt and content empty; professional title, credentials, company, and website empty; no `content_topic` assignment. Its only postmeta is the Masteriyo housekeeping marker `_masteriyo_has_content=0`, which records that the post contains no Masteriyo content. The staging photo, bio, excerpt, content, `Spreker` title, profile status, and legacy taxonomy assignments were not copied.
 
 ## Legacy profiles and relationships
 

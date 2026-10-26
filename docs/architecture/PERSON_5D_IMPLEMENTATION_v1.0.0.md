@@ -34,7 +34,7 @@ database: local@localhost
 
 The initial state had zero canonical Persons, zero Event Participations, zero Product Contributions, the `Mentor / mentor` term (ID 410), no `Kenner / kenner` term, and no Person Type relationships. The guarded seeder created `Kenner` term ID 419. Its exact rerun created no term. The guarded migration created Person ID 1705 for source profile 753 and skipped the four `DO_NOT_MIGRATE` rows.
 
-The final Person is published as `Lynette Beer` / `lynette-beer`, with empty content and excerpt, no featured image, all optional Person ACF fields empty, no `content_topic`, and exactly native taxonomy relationships to Mentor (410) and Kenner (419). Event Participation and Product Contribution counts remained zero.
+The final Person is published as `Lynette Beer` / `lynette-beer`, with empty content and excerpt, no featured image, all optional Person ACF fields empty, no `content_topic`, and exactly native taxonomy relationships to Mentor (410) and Kenner (419). Its only postmeta is the Masteriyo system marker `_masteriyo_has_content=0`, indicating that it contains no Masteriyo content; it is not migrated editorial content. Event Participation and Product Contribution counts remained zero.
 
 All five legacy profile snapshots and the known Event/Product relationship values matched before and after migration. No legacy profile, event, product, or relationship changed. The exact runtime writes and route checks are recorded in the [runtime manifest](PERSON_5D_RUNTIME_MANIFEST_v1.0.0.json).
 
