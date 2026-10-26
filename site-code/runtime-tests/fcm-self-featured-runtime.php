@@ -2,8 +2,8 @@
 /**
  * Runtime actions for fcm-self-featured-integration.py.
  *
- * The Python runner sends this file's PHP body to Novamira execute-php, with
- * `$task4f_action`, `$task4f_slug`, and `$task4f_run_id` set for each call.
+ * fcm-self-featured-cli.php loads this helper through local WP-CLI eval-file,
+ * with `$task4f_action`, `$task4f_slug`, and `$task4f_run_id` set for each call.
  */
 
 if (! defined('ABSPATH')) {
@@ -15,6 +15,16 @@ function vg_task4f_assert_local_runtime(): void
     if (home_url('/') !== 'http://localhost:10039/') {
         throw new RuntimeException('Refusing to run outside http://localhost:10039/.');
     }
+}
+
+function vg_task4f_assert_mutation_session(): void
+{
+    $environment = $GLOBALS['task4f_mutation_environment'] ?? null;
+    if (! is_array($environment)) {
+        throw new RuntimeException('Create and cleanup actions require an active VGNova mutation session.');
+    }
+
+    vg_runtime_mutation_assert_session('vgnova-local-10039', $environment);
 }
 
 function vg_task4f_taxonomy_stats(string $taxonomy): array
@@ -218,6 +228,8 @@ try {
             throw new RuntimeException('The current featured_self option does not resolve to a published supported object.');
         }
 
+        vg_task4f_assert_mutation_session();
+
         $post_id = wp_insert_post([
             'post_type' => 'post',
             'post_status' => 'publish',
@@ -311,6 +323,7 @@ try {
             if ($post->post_title !== '[QA][AUTOMATED] Self Featured Content Integration' || $owner_marker !== $run_id) {
                 throw new RuntimeException('The matching post does not carry this run token; cleanup refused.');
             }
+            vg_task4f_assert_mutation_session();
             $deleted_id = (int) $post->ID;
             if (! wp_delete_post($deleted_id, true)) {
                 throw new RuntimeException('WordPress did not delete the temporary QA post.');
@@ -338,8 +351,13 @@ try {
 } catch (Throwable $error) {
     $cleanup_error = null;
     if ($task4f_action === 'create' && $task4f_created_post_id && get_post($task4f_created_post_id)) {
-        if (! wp_delete_post($task4f_created_post_id, true) || get_post($task4f_created_post_id)) {
-            $cleanup_error = ' Emergency cleanup of the temporary post failed.';
+        try {
+            vg_task4f_assert_mutation_session();
+            if (! wp_delete_post($task4f_created_post_id, true) || get_post($task4f_created_post_id)) {
+                $cleanup_error = ' Emergency cleanup of the temporary post failed.';
+            }
+        } catch (Throwable) {
+            $cleanup_error = ' Emergency cleanup of the temporary post was refused because the mutation session was no longer valid.';
         }
     }
     $task4f_result = [

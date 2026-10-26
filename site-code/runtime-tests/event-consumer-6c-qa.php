@@ -529,6 +529,7 @@ function vg_event_consumer_6c_qa_phase_setup(string $run_token): never
     $manifest = null;
     $failure = null;
     $cleanup_failures = [];
+    vg_runtime_mutation_assert_session('vgnova-local-10039');
     try {
         $event_snapshot = vg_event_consumer_6c_qa_read_json(VG_EVENT_CONSUMER_6C_QA_EVENT_FILE);
         $persistent_baseline = vg_event_consumer_6c_qa_preflight($event_snapshot);
@@ -618,6 +619,7 @@ function vg_event_consumer_6c_qa_phase_cleanup(string $run_token): never
     $path = vg_event_consumer_6c_qa_manifest_path($run_token);
     try {
         $manifest = vg_event_consumer_6c_qa_load_manifest($run_token);
+        vg_runtime_mutation_assert_session('vgnova-local-10039');
         $failures = vg_event_consumer_6c_qa_cleanup_owned_records(
             $manifest['owned_participations'] ?? [],
             $manifest['owned_persons'] ?? [],

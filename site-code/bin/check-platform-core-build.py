@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import ast
 import gzip
 import hashlib
 import importlib.util
@@ -27,11 +28,16 @@ from typing import Any
 ROOT_PLUGIN = "voelgoed-platform-core"
 BUILDER_PATH = "site-code/bin/build-platform-core.py"
 PATCH_PATH = "site-code/voelgoed-platform-core/integration.patch"
-OVERLAY_PATHS = (
+CANONICAL_OVERLAY_PATHS = (
+    "site-code/voelgoed-platform-core/includes/Runtime",
     "site-code/voelgoed-platform-core/includes/Taxonomy",
     "site-code/voelgoed-platform-core/includes/Event",
     "site-code/voelgoed-platform-core/includes/Product",
 )
+RUNTIME_GUARD_SOURCE_PATH = f"{CANONICAL_OVERLAY_PATHS[0]}/RuntimeMutationSession.php"
+RUNTIME_GUARD_PLUGIN_PATH = "includes/Runtime/RuntimeMutationSession.php"
+OVERLAY_PATHS = CANONICAL_OVERLAY_PATHS
+CANONICAL_LIFECYCLE_OVERLAY_MODULES = ("Taxonomy", "Event", "Product")
 FIXTURE_PATHS = (ROOT_PLUGIN, *OVERLAY_PATHS, PATCH_PATH, BUILDER_PATH)
 ARCHIVE_NAME = "voelgoed-platform-core.tar.gz"
 MANIFEST_NAME = "voelgoed-platform-core.manifest.json"
@@ -63,6 +69,67 @@ CRC32_TABLE = build_crc32_table()
 
 class CheckFailure(RuntimeError):
     """A reproducibility or negative-fixture assertion failed."""
+
+
+def require_canonical_overlay_paths(paths: object, *, context: str) -> None:
+    if not isinstance(paths, (tuple, list)) or tuple(paths) != CANONICAL_OVERLAY_PATHS:
+        raise CheckFailure(
+            f"{context} overlay paths differ from the exact ordered four-overlay contract."
+        )
+
+
+def committed_python_constant(
+    repo_root: Path,
+    commit: str,
+    source_path: str,
+    name: str,
+) -> object:
+    source = command(["git", "show", f"{commit}:{source_path}"], cwd=repo_root).stdout
+    try:
+        module = ast.parse(source.decode("utf-8", "strict"), filename=source_path)
+    except (UnicodeDecodeError, SyntaxError) as error:
+        raise CheckFailure(f"Committed source is not valid Python: {source_path}: {error}") from error
+
+    matches = []
+    for statement in module.body:
+        if isinstance(statement, ast.Assign) and any(
+            isinstance(target, ast.Name) and target.id == name for target in statement.targets
+        ):
+            matches.append(statement.value)
+        elif isinstance(statement, ast.AnnAssign) and isinstance(statement.target, ast.Name) and statement.target.id == name:
+            matches.append(statement.value)
+    if len(matches) != 1 or matches[0] is None:
+        raise CheckFailure(f"Committed builder must define {name} exactly once: {source_path}")
+    try:
+        return ast.literal_eval(matches[0])
+    except (ValueError, TypeError) as error:
+        raise CheckFailure(f"Committed builder {name} must be a literal tuple: {source_path}") from error
+
+
+def run_overlay_contract_guard_case(repo_root: Path, commit: str) -> None:
+    require_canonical_overlay_paths(OVERLAY_PATHS, context="Verifier")
+
+    try:
+        require_canonical_overlay_paths(OVERLAY_PATHS[1:], context="Negative fixture")
+    except CheckFailure:
+        pass
+    else:
+        raise CheckFailure("The overlay contract guard accepted a set missing Runtime.")
+
+    builder_paths = committed_python_constant(repo_root, commit, BUILDER_PATH, "OVERLAY_PATHS")
+    require_canonical_overlay_paths(builder_paths, context="Committed builder")
+    lifecycle_modules = committed_python_constant(
+        repo_root,
+        commit,
+        BUILDER_PATH,
+        "LIFECYCLE_OVERLAY_MODULES",
+    )
+    if lifecycle_modules != CANONICAL_LIFECYCLE_OVERLAY_MODULES:
+        raise CheckFailure(
+            "Committed builder lifecycle modules must remain Taxonomy, Event, and Product; Runtime is a dependency overlay."
+        )
+    print("PASS source contract: builder and verifier use Runtime, Taxonomy, Event, Product in canonical order")
+    print("PASS source contract: Runtime overlay remains outside lifecycle component discovery")
 
 
 def command(
@@ -655,6 +722,66 @@ def verify_existing_output(
     if actual_inventory != expected_inventory:
         raise CheckFailure("Archive inventory differs from the assembled source tree at the requested Git commit.")
     return manifest
+
+
+def verify_runtime_overlay_proof(
+    *,
+    repo_root: Path,
+    commit: str,
+    archive_path: Path,
+    manifest: dict[str, Any],
+    temporary_root: Path,
+) -> None:
+    source_bytes = command(
+        ["git", "show", f"{commit}:{RUNTIME_GUARD_SOURCE_PATH}"],
+        cwd=repo_root,
+    ).stdout
+    source_sha256 = sha256(source_bytes)
+    manifest_matches = [
+        record for record in manifest["files"] if record["path"] == RUNTIME_GUARD_PLUGIN_PATH
+    ]
+    if len(manifest_matches) != 1 or manifest_matches[0]["sha256"] != source_sha256:
+        raise CheckFailure(
+            "RuntimeMutationSession.php must appear exactly once in the manifest with bytes from the resolved commit."
+        )
+
+    archive_records = verify_archive(archive_path, manifest)
+    archive_matches = [record for record in archive_records if record["path"] == RUNTIME_GUARD_PLUGIN_PATH]
+    if len(archive_matches) != 1 or archive_matches[0]["sha256"] != source_sha256:
+        raise CheckFailure(
+            "RuntimeMutationSession.php must appear exactly once in the verified archive with bytes from the resolved commit."
+        )
+
+    with tarfile.open(archive_path, mode="r:gz") as archive:
+        guard_info = archive.getmember(f"{ROOT_PLUGIN}/{RUNTIME_GUARD_PLUGIN_PATH}")
+        guard_stream = archive.extractfile(guard_info)
+        entrypoint_stream = archive.extractfile(f"{ROOT_PLUGIN}/voelgoed-platform-core.php")
+        plugin_stream = archive.extractfile(f"{ROOT_PLUGIN}/includes/Plugin.php")
+        if guard_stream is None or entrypoint_stream is None or plugin_stream is None:
+            raise CheckFailure("Runtime overlay proof is missing an assembled bootstrap member.")
+        guard_bytes = guard_stream.read()
+        entrypoint = entrypoint_stream.read().decode("utf-8", "strict")
+        plugin_class = plugin_stream.read().decode("utf-8", "strict")
+
+    if guard_bytes != source_bytes:
+        raise CheckFailure("RuntimeMutationSession.php archive bytes differ from the resolved Git blob.")
+    include_literal = "'includes/Runtime/RuntimeMutationSession.php'"
+    if entrypoint.count(include_literal) != 1 or "plugins_loaded" not in entrypoint:
+        raise CheckFailure("RuntimeMutationSession.php must be included exactly once before lifecycle dispatch.")
+    if entrypoint.index(include_literal) > entrypoint.index("plugins_loaded"):
+        raise CheckFailure("RuntimeMutationSession.php must load before Platform Core lifecycle dispatch.")
+    if "RuntimeMutationSession" in plugin_class:
+        raise CheckFailure("RuntimeMutationSession.php must remain a dependency overlay, not a lifecycle component.")
+
+    lint_path = temporary_root / "RuntimeMutationSession.php"
+    lint_path.write_bytes(guard_bytes)
+    lint = command(["php", "-l", str(lint_path)], cwd=repo_root)
+    if b"No syntax errors detected" not in lint.stdout:
+        raise CheckFailure("PHP lint did not confirm RuntimeMutationSession.php syntax.")
+    print(
+        "PASS runtime overlay: RuntimeMutationSession.php is source-bound, included once, "
+        "manifested, archived, tree-verified, and PHP-linted"
+    )
 
 
 def create_fixture(repo_root: Path, commit: str, destination: Path) -> Path:
@@ -1602,7 +1729,7 @@ def run_negative_cases(
     fixture = create_fixture(repo_root, commit, cases / "patch-fails")
     patch_file = fixture / PATCH_PATH
     patch = patch_file.read_text(encoding="utf-8")
-    patch = re.sub(r"@@ -25,0 \+26,20 @@", "@@ -25,0 +26,999 @@", patch, count=1)
+    patch = re.sub(r"@@ -25,0 \+26,21 @@", "@@ -25,0 +26,999 @@", patch, count=1)
     patch_file.write_text(patch, encoding="utf-8")
     commit_fixture_changes(fixture, "fixture: make integration patch fail")
     expect_build_failure(
@@ -1677,7 +1804,7 @@ def run_negative_cases(
         (
             index
             for index, line in enumerate(patch_lines)
-            if re.match(r"\+\s*'includes/(?:Taxonomy|Event|Product)/[^']+',$", line.rstrip("\n"))
+            if re.match(r"\+\s*'includes/(?:Runtime|Taxonomy|Event|Product)/[^']+',$", line.rstrip("\n"))
         ),
         None,
     )
@@ -2491,6 +2618,8 @@ def main() -> int:
     commit = resolve_commit(repo_root, args.ref)
     print(f"source_commit={commit}")
 
+    run_overlay_contract_guard_case(repo_root, commit)
+
     if args.verify_output is not None:
         output = Path(args.verify_output)
         if not output.is_absolute():
@@ -2561,6 +2690,15 @@ def main() -> int:
         manifest_b = json.loads(manifest_path_b.read_text(encoding="utf-8"))
         validate_manifest(manifest_a, repo_root=repo_root, commit=commit, requested_ref=args.ref)
         validate_manifest(manifest_b, repo_root=repo_root, commit=commit, requested_ref=args.ref)
+        require_canonical_overlay_paths(
+            manifest_a.get("overlay_source_paths"),
+            context="Build A manifest",
+        )
+        require_canonical_overlay_paths(
+            manifest_b.get("overlay_source_paths"),
+            context="Build B manifest",
+        )
+        print("PASS manifest contract: generated manifests report the exact ordered four-overlay paths")
         if manifest_a != manifest_b:
             raise CheckFailure("Build A and B manifest semantic content differs.")
         if archive_path_a.read_bytes() != archive_path_b.read_bytes():
@@ -2585,6 +2723,20 @@ def main() -> int:
             commit=commit,
             requested_ref=args.ref,
             expected_inventory=expected_inventory,
+        )
+        verify_runtime_overlay_proof(
+            repo_root=repo_root,
+            commit=commit,
+            archive_path=archive_path_a,
+            manifest=manifest_a,
+            temporary_root=temporary_root,
+        )
+        verify_runtime_overlay_proof(
+            repo_root=repo_root,
+            commit=commit,
+            archive_path=archive_path_b,
+            manifest=manifest_b,
+            temporary_root=temporary_root,
         )
         run_exact_output_verification_cases(
             repo_root=repo_root,

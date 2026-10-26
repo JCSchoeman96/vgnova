@@ -280,6 +280,7 @@ $qa_failure = null;
 $cleanup_failure = null;
 $qa_result = [];
 
+vg_runtime_mutation_assert_session('vgnova-local-10039');
 try {
     $person_id = wp_insert_post([
         'post_type' => 'person',

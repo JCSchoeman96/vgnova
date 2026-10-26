@@ -2,10 +2,13 @@
 
 This directory contains the canonical Platform Core domain modules in the
 `vgnova` repository. The tracked root plugin at `voelgoed-platform-core/` is
-the assembly base; this module owns the `content_topic`, Event Participation,
-Product People, and Product Contribution overlays. The tracked
-`integration.patch` is an assembly input that adds their bootstrap includes
-and lifecycle registrations to a disposable build tree.
+the assembly base; this module owns the runtime mutation session guard,
+`content_topic`, Event Participation, Product People, and Product Contribution
+overlays. The tracked
+`integration.patch` is an assembly input that adds the four overlay includes
+and the Taxonomy, Event, and Product lifecycle registrations to a disposable
+build tree. Runtime supplies a bootstrap dependency and has no lifecycle
+registration.
 
 Build the plugin from an exact committed revision with:
 
@@ -19,7 +22,7 @@ stored-DEFLATE encoders define the archive bytes; host `tarfile` and zlib are
 used only to inspect the result. The verifier checks the existing output
 against the exact Git commit, manifest, patch, and assembled source inventory
 without rebuilding those files. See
-`docs/architecture/PLATFORM_CORE_ASSEMBLY_CONTRACT_v1.2.0.md` for the format
+`docs/architecture/PLATFORM_CORE_ASSEMBLY_CONTRACT_v1.3.0.md` for the format
 and provenance contract.
 
 The build writes `voelgoed-platform-core.tar.gz` and its provenance manifest.

@@ -1,6 +1,6 @@
 # Platform Core assembly contract v1.2.0
 
-**Status:** PE-005A remediation contract, pending PR review; supersedes v1.1.0 and v1.0.0
+**Status:** Superseded before merge by v1.3.0 because PE-007 introduced the canonical Runtime overlay required to ship the mutation-session guard. The three-overlay contract below is preserved as historical evidence.
 **Scope:** Source-to-artifact assembly only. Runtime deployment remains a separate task.
 
 ## Purpose

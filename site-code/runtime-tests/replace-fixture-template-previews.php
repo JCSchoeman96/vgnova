@@ -134,6 +134,8 @@ try {
             continue;
         }
 
+        vg_runtime_mutation_assert_session('vgnova-local-10039');
+
         $settings = \Bricks\Helpers::get_template_settings((int) $template_id);
         unset($settings['templatePreviewPostId']);
         \Bricks\Helpers::set_template_settings((int) $template_id, $settings);

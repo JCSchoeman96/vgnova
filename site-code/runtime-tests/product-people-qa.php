@@ -682,6 +682,7 @@ $cleanup_failures = [];
 $malformed_result = 'NOT_RUN';
 $acf_save_fired = null;
 $resolver = new ProductPeopleResolver();
+vg_runtime_mutation_assert_session('vgnova-local-10039');
 
 /** Run one named scenario; the first failure stops further scenarios and falls through to guarded cleanup. */
 $run = static function (string $id, string $label, callable $assertion) use (&$scenarios): void {

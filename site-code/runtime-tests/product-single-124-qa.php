@@ -1233,6 +1233,8 @@ if ($preflight_only) {
     return;
 }
 
+vg_runtime_mutation_assert_session('vgnova-local-10039');
+
 $pre_api_ids = array_map('intval', array_column($before['api_keys'], 'id'));
 $owned = ['product' => 0, 'events' => [], 'persons' => [], 'participations' => [], 'contributions' => []];
 $GLOBALS['vg_product_single_124_qa_people_state'] = ['owner' => $owner, 'owned' => &$owned];

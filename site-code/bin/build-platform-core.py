@@ -28,10 +28,13 @@ PLUGIN_CLASS_PATH = f"{ROOT_PATH}/includes/Plugin.php"
 PATCH_PATH = "site-code/voelgoed-platform-core/integration.patch"
 BUILDER_PATH = "site-code/bin/build-platform-core.py"
 OVERLAY_PATHS = (
+    "site-code/voelgoed-platform-core/includes/Runtime",
     "site-code/voelgoed-platform-core/includes/Taxonomy",
     "site-code/voelgoed-platform-core/includes/Event",
     "site-code/voelgoed-platform-core/includes/Product",
 )
+# Runtime is a bootstrap dependency overlay, not a lifecycle component namespace.
+LIFECYCLE_OVERLAY_MODULES = ("Taxonomy", "Event", "Product")
 ARCHIVE_NAME = "voelgoed-platform-core.tar.gz"
 MANIFEST_NAME = "voelgoed-platform-core.manifest.json"
 SUPPORTED_FILE_MODES = {"100644": 0o644, "100755": 0o755}
@@ -308,7 +311,7 @@ def clean_bootstrap_guard(
     plugin_class: str,
     module_classes: set[str],
 ) -> None:
-    if re.search(r"['\"]includes/(?:Taxonomy|Event|Product)/[^'\"]+\.php['\"]", entrypoint):
+    if re.search(r"['\"]includes/(?:Runtime|Taxonomy|Event|Product)/[^'\"]+\.php['\"]", entrypoint):
         fail("Root bootstrap is already integrated: it contains an overlay include path.")
     if re.search(r"^\s*use\s+Voelgoed\\PlatformCore\\(?:Taxonomy|Event|Product)\\", plugin_class, re.M):
         fail("Root bootstrap is already integrated: includes/Plugin.php imports an overlay class.")
@@ -1704,7 +1707,7 @@ def assemble(
         modes[runtime_path] = source_item.mode
 
     overlay_classes: set[str] = set()
-    for module_name in ("Taxonomy", "Event", "Product"):
+    for module_name in LIFECYCLE_OVERLAY_MODULES:
         overlay_classes.update(php_classes(plugin_root / "includes" / module_name))
     clean_bootstrap_guard(
         text_file(plugin_root / "voelgoed-platform-core.php", "root plugin entrypoint"),

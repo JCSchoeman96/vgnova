@@ -139,6 +139,8 @@ final class ContentTopicTaxonomy
             return $preflight;
         }
 
+        \vg_runtime_mutation_assert_session('vgnova-local-10039');
+
         $created_terms = 0;
         foreach (self::TERMS as $definition) {
             if (get_term_by('slug', $definition['slug'], self::TAXONOMY)) {

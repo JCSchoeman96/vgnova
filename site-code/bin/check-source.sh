@@ -19,6 +19,11 @@ php site-code/runtime-tests/tests/run-event-participation-qa-setup-tests.php
 php site-code/runtime-tests/tests/run-product-contribution-qa-setup-tests.php
 php site-code/runtime-tests/tests/run-product-contribution-qa-cleanup-tests.php
 php site-code/runtime-tests/tests/run-product-contribution-qa-platform-core-integrity-tests.php
+php site-code/runtime-tests/tests/run-runtime-mutation-core-tests.php
+php site-code/runtime-tests/tests/run-runtime-mutation-session-tests.php
+php site-code/runtime-tests/tests/run-runtime-mutation-policy-tests.php
+python3 site-code/runtime-tests/tests/test_fcm_self_featured_integration.py
+php site-code/bin/check-runtime-mutation-policy.php
 
 tracked_inventory="$(mktemp)"
 trap 'rm -f "$tracked_inventory"' EXIT

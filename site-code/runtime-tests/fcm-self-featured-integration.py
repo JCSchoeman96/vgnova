@@ -3,10 +3,15 @@
 
 From the repository root:
 
-    python3 site-code/runtime-tests/fcm-self-featured-integration.py
+    php site-code/bin/vgnova-runtime-mutate.php \
+      --target=vgnova-local-10039 \
+      --wp-root="/absolute/wordpress/root" \
+      --purpose="Run the Self featured-content integration" \
+      -- python3 site-code/runtime-tests/fcm-self-featured-integration.py
 
-The test is deliberately pinned to Novamira profile `vgnova` and the verified
-local site at http://localhost:10039/. It creates one published QA post per
+The test is pinned to the verified local site at http://localhost:10039/ and
+uses local WP-CLI so each write process can inherit the coordinator's host-lock
+descriptor and session environment. It creates one published QA post per
 run, requests the normal public permalink, and removes the post in a `finally`
 block before comparing runtime counts and protected values to the baseline.
 """
@@ -15,6 +20,7 @@ from __future__ import annotations
 
 import html
 import json
+import os
 import re
 import signal
 import subprocess
@@ -31,7 +37,16 @@ from typing import Any
 
 
 ROOT = Path(__file__).resolve().parents[2]
-RUNTIME_HELPER = Path(__file__).with_name("fcm-self-featured-runtime.php")
+CLI_WRAPPER = Path(__file__).with_name("fcm-self-featured-cli.php")
+MUTATION_SESSION_KEYS = (
+    "VGNOVA_MUTATION_SESSION_ID",
+    "VGNOVA_MUTATION_TARGET",
+    "VGNOVA_MUTATION_DB_LOCK_A",
+    "VGNOVA_MUTATION_DB_CONNECTION_ID_A",
+    "VGNOVA_MUTATION_DB_LOCK_B",
+    "VGNOVA_MUTATION_DB_CONNECTION_ID_B",
+    "VGNOVA_MUTATION_LOCK_FILE",
+)
 EXPECTED_SITE = "http://localhost:10039/"
 EXPECTED_QA_TITLE = "[QA][AUTOMATED] Self Featured Content Integration"
 EXPECTED_CONTENT_CATEGORY_TREE = {"terms": 13, "roots": 8}
@@ -68,71 +83,60 @@ def fail(message: str) -> None:
     raise RuntimeError(message)
 
 
-def php_literal(value: str) -> str:
-    # These supplied values are fixed action names, UUIDs, and UUID-derived
-    # slugs. Restrict them before placing them in a PHP single-quoted literal.
-    if not re.fullmatch(r"[a-z0-9_-]+", value):
-        fail("Refusing an unsafe PHP action or run identifier.")
-    return "'" + value + "'"
-
-
-def decode_novamira_output(output: str) -> dict[str, Any]:
-    decoder = json.JSONDecoder()
-    for index, char in enumerate(output):
-        if char != "{":
-            continue
-        try:
-            wrapper, _ = decoder.raw_decode(output[index:])
-        except json.JSONDecodeError:
-            continue
-        if isinstance(wrapper, dict) and "success" in wrapper:
-            return wrapper
-    fail("Novamira returned no decodable execute-php result. Output: " + output[-2000:])
-
-
 def invoke_runtime(action: str, *, slug: str = "", run_id: str = "") -> dict[str, Any]:
-    source = RUNTIME_HELPER.read_text(encoding="utf-8")
-    if not source.startswith("<?php"):
-        fail("The runtime PHP helper has no PHP opening tag.")
-    php = [f"$task4f_action = {php_literal(action)};"]
-    if slug:
-        php.append(f"$task4f_slug = {php_literal(slug)};")
-    if run_id:
-        php.append(f"$task4f_run_id = {php_literal(run_id)};")
-    php.append(source[len("<?php") :])
+    if action not in {"snapshot", "create", "cleanup"}:
+        fail("Refusing an unsupported WordPress runtime action.")
+    if action in {"create", "cleanup"} and (
+        not re.fullmatch(r"qa-automated-self-featured-integration-[a-f0-9-]{20,64}", slug)
+        or not re.fullmatch(r"[a-f0-9]{32}", run_id)
+    ):
+        fail("Create and cleanup actions require the exact QA slug and run identifier.")
 
-    request = json.dumps({"code": "\n".join(php)}, ensure_ascii=False)
-    completed = subprocess.run(
-        [
-            "novamira",
-            "--site",
-            "vgnova",
-            "--yes",
-            "run",
-            "novamira/execute-php",
-            "--input",
-            "-",
-            "--fresh",
-        ],
-        cwd=ROOT,
-        input=request,
-        text=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        check=False,
-        timeout=120,
-    )
-    if completed.returncode != 0:
-        fail(f"Novamira execute-php exited {completed.returncode}: {completed.stdout[-2000:]}")
-
-    wrapper = decode_novamira_output(completed.stdout)
-    if not wrapper.get("success") or wrapper.get("errors"):
-        fail("Novamira execute-php failed: " + json.dumps(wrapper, ensure_ascii=False))
-    raw_result = wrapper.get("output", "")
+    wp_root = os.environ.get("VGNOVA_MUTATION_WP_ROOT", "")
+    if not wp_root or not Path(wp_root).is_absolute():
+        fail("The local WordPress root is unavailable; run this tool under vgnova-runtime-mutate.php.")
     try:
-        result = json.loads(raw_result)
+        os.fstat(3)
+    except OSError:
+        fail("The coordinator host-lock descriptor is unavailable; run this tool under vgnova-runtime-mutate.php.")
+
+    if action in {"create", "cleanup"}:
+        proof = {key: os.environ.get(key, "") for key in MUTATION_SESSION_KEYS}
+        if any(not value for value in proof.values()):
+            fail("Create and cleanup actions require an active VGNova mutation session.")
+
+    child_environment = os.environ.copy()
+    child_environment.update({
+        "VGNOVA_FCM_ACTION": action,
+        "VGNOVA_FCM_SLUG": slug,
+        "VGNOVA_FCM_RUN_ID": run_id,
+    })
+    try:
+        completed = subprocess.run(
+            [
+                "wp",
+                f"--path={wp_root}",
+                "--quiet",
+                "eval-file",
+                str(CLI_WRAPPER),
+            ],
+            cwd=ROOT,
+            env=child_environment,
+            pass_fds=(3,),
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=False,
+            timeout=120,
+        )
+    except (OSError, ValueError) as error:
+        fail(f"Could not start local WP-CLI with the coordinator host-lock descriptor: {error}")
+    if completed.returncode != 0:
+        fail(f"Local WP-CLI eval-file exited {completed.returncode}: {completed.stderr[-2000:]} {completed.stdout[-2000:]}")
+    try:
+        result = json.loads(completed.stdout)
     except (json.JSONDecodeError, TypeError):
-        fail("The WordPress helper returned invalid JSON: " + repr(raw_result))
+        fail("The WordPress helper returned invalid JSON: " + repr(completed.stdout))
     if not isinstance(result, dict) or not result.get("ok"):
         fail("The WordPress runtime action failed: " + json.dumps(result, ensure_ascii=False))
     return result

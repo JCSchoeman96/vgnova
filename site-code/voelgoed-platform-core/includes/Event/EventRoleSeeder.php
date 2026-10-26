@@ -94,6 +94,8 @@ final class EventRoleSeeder
             ));
         }
 
+        \vg_runtime_mutation_assert_session('vgnova-local-10039');
+
         $created = [];
         $created_term_ids = [];
         $existing = [];
