@@ -8,7 +8,7 @@
 
 **Source baseline:** `c1d2af80a71b477e0eb859d3f74ea3741eab9b71`
 
-Task 10A / Person 5D has now run on the local staging runtime: owner-approved Person ID 1705 exists for Lynette Beer, and the Person Type vocabulary is Mentor plus Kenner. The branch is unmerged, with PR creation and independent review pending. The Task 5B implementation findings below remain historical evidence; see the [versioned Task 10A architecture](PERSON_MIGRATION_ARCHITECTURE_v1.1.0.md), [owner decisions](PERSON_PROFILE_OWNER_DECISIONS_v1.0.0.md), and [runtime manifest](PERSON_5D_RUNTIME_MANIFEST_v1.0.0.json) for current state.
+Task 10A / Person 5D has now run on the local staging runtime: owner-approved Person ID 1705 exists for Lynette Beer, and the Person Type vocabulary is Mentor plus Kenner. PR #58 is open and unmerged; independent review is pending. The Task 5B implementation findings below remain historical evidence; see the [versioned Task 10A architecture](PERSON_MIGRATION_ARCHITECTURE_v1.1.0.md), [owner decisions](PERSON_PROFILE_OWNER_DECISIONS_v1.0.0.md), and [runtime manifest](PERSON_5D_RUNTIME_MANIFEST_v1.0.0.json) for current state.
 
 ## Ownership
 

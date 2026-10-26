@@ -101,11 +101,11 @@ Create or modify only these files unless a verified source dependency requires a
 
 ## Task 9: Open an unmerged review PR
 
-- [ ] Push `feat/person-5d-lynette-migration` and open a PR against `main` with the exact execution baseline, five owner decisions, source changes, runtime writes/IDs, route results, fresh source counts, protected-state result, unchanged legacy edges/profiles/templates/snippets/Platform Core, and no redirects.
+- [x] Push `feat/person-5d-lynette-migration` and open PR #58 against `main` with the exact execution baseline, five owner decisions, source changes, runtime writes/IDs, route results, fresh source counts, protected-state result, unchanged legacy edges/profiles/templates/snippets/Platform Core, and no redirects.
 - [ ] Register the PR with the T3 thread immediately after creation, confirm it remains open and unmerged, request an independent code/programme review, and stop before merge or Task 10B.
 
 ## Plan self-review
 
 - The owner-approved scope is preserved: identity and two durable Person Types only. Content, relationships, consumers, deletion, redirects, and Platform Core deployment remain outside the migration.
 - Task 5C remains historical and correct for the evidence available at that time. New owner authority is recorded as a later decision.
-- The earlier access blocker is resolved. VGNova Novamira MCP positively identified the expected `:10039` runtime; local WP-CLI used the Local MySQL socket override. The guarded seed created only Kenner term 419, the exact rerun created nothing, and the migration created only Person 1705 for source 753. No post-insert failure occurred; cleanup remained available for the exact owned ID and is covered by failure-injection tests. Runtime protected-state checks passed. The branch remains unmerged; PR creation and independent review are pending.
+- The earlier access blocker is resolved. VGNova Novamira MCP positively identified the expected `:10039` runtime; local WP-CLI used the Local MySQL socket override. The guarded seed created only Kenner term 419, the exact rerun created nothing, and the migration created only Person 1705 for source 753. No post-insert failure occurred; cleanup remained available for the exact owned ID and is covered by failure-injection tests. Runtime protected-state checks passed. PR #58 is open and unmerged; independent review is pending.
