@@ -10,13 +10,14 @@
 ```text
 BILLING_AUTHORITY=WOO_SUBSCRIPTIONS
 MEMBERSHIP_AUTHORITY=PMPRO
-COURSE_MEMBER_PRICE_AUTHORITY=NONE_PROVEN
+COURSE_MEMBER_PRICE_AUTHORITY=WOOCOMMERCE_BASE_PRICE_PLUS_MEMBER_PERKS_BENEFIT
+COURSE_MEMBER_PRICE_GATE=CONFIGURATION_REQUIRED
 MEMBERSHIP_COMMERCE_GATE=BLOCKED
 MEMBERSHIP_SOURCE_RUNTIME_CONFLICT=NO
 RUNTIME_PROOF_REQUIRES_MUTATION=YES
 ```
 
-The approved product and technical spec v0.2.0 §11 assigns recurring billing to WooCommerce Subscriptions, access state to PMPro, and member benefits to Voelgoed Member Perks. The first two authorities have matching current configuration. The final edge to an authoritative Course Woo price or benefit is not present in current runtime data or proven by an existing Course integration. No test order, membership, enrolment, product, perk, option, or flag was created or changed.
+The approved product and technical spec v0.2.0 §11 assigns Course/access to Masteriyo, Woo Product/base price/cart/checkout/order to WooCommerce, active membership state to PMPro, and member benefits/discounts to Voelgoed Member Perks. Masteriyo has a native Course↔Woo Product mapping. The pinned Member Perks source resolves active PMPro tiers, evaluates matching Woo Product perks, selects one deterministically, and calculates the cart price from Woo's base price. This establishes the Course member-price authority chain. Current Courses are not linked to Woo Products, no approved tier-specific Course benefit is configured, and `woo_discounts` is false. No test order, membership, enrolment, product, perk, option, or flag was created or changed.
 
 ## Evidence authority and freshness
 
@@ -71,22 +72,25 @@ The source `TicketPerkService::claim_ticket()` fails closed when `ticket_claims`
 
 ### Product discounts
 
-The Member Perks source supports Woo product and product-category targets. `WooApplicablePerkResolver::resolve_for_cart_item()` resolves those target types against the active PMPro profile; `WooDiscountEngine` applies a selected rule during `woocommerce_before_calculate_totals`; `WooPriceCalculator` supports free, percentage, fixed, and fixed-member-price results. The `woo_discounts` flag is false, so `WooContextGuard` prevents execution. `allow_initial_subscription_product_discounts` is also false, and `WooSubscriptionPolicy` fails closed for subscription products unless that flag is enabled.
+At the pinned Member Perks revision `972a279be7a753594888e974132562e1cc099e24`, `WooApplicablePerkResolver::resolve_for_cart_item()` matches Woo Product and product-category targets, reads the user's active PMPro profile, and compiles audience-matched rules. `PerkAudienceEvaluator::evaluate()` returns matched programme and level keys. `WooBestPerkSelector::select()` ranks by lower numeric priority, higher discount amount, lower target-specificity rank, then lower perk ID. Competing rules therefore resolve deterministically. `WooPriceCalculator::get_authoritative_base_price()` reads the Woo Product regular or sale price, then calculates free, percentage, fixed, or fixed-member-price results. `WooDiscountEngine::apply_discounts()` applies the selected result to the cart Product during `woocommerce_before_calculate_totals`. This source path can calculate a member cart price for a linked Course Woo Product. The `woo_discounts` flag is false, so `WooContextGuard` prevents execution. `allow_initial_subscription_product_discounts` is also false, and `WooSubscriptionPolicy` fails closed for subscription products unless that flag is enabled.
 
 The active PMPro WooCommerce add-on also contains its own per-level Woo price filters and accepts global level discounts or per-product `_level_{id}_price` values. For Vriendinne levels 15–17, the current global discount options are absent, and the runtime has no `_level_15_price`, `_level_16_price`, or `_level_17_price` overrides on the current Woo product inventory. Its `pmpro_pmprowoo_discounts_on_subscriptions` option is absent, which the add-on treats as off. This is a separate source capability, but no current Vriendinne discount value was found there. A later implementation plan must preserve the approved spec's Member Perks benefit authority and avoid configuring two price owners.
 
 ### Course claims are not Course pricing
 
-`CoursePerkService::claim_course()` implements a separate claim-and-enrol path. It fails closed when `course_claims` is false, validates a `masteriyo_course` target, and delegates access grant to the Course access service. Source supports `claim_and_enrol`, `display_only`, and `manual_admin` modes. This path grants or displays course access; it does not set a Woo cart price. All five published Masteriyo Courses currently have `wc_integration.linked_product_id=0` and `product_create=false`. No Course↔Woo Product mapping exists in the current runtime.
+`CoursePerkService::claim_course()` implements a separate claim-and-enrol path. It fails closed when `course_claims` is false, validates a `masteriyo_course` target, and delegates access grant to the Course access service. Source supports `claim_and_enrol`, `display_only`, and `manual_admin` modes. This path grants or displays Course access; it does not set a Woo cart price. All five published Masteriyo Courses currently have `wc_integration.linked_product_id=0` and `product_create=false`. Masteriyo's native Course↔Woo mapping is supported in source but absent from current runtime data.
 
-Member Perks' current Woo discount target resolver handles `woo_product` and `woo_product_category`; its Course target support is for claims, not course-linked Woo pricing. The existing PMPro Woo add-on can price a Woo Product from PMPro state, but no Course Woo Product exists to receive that path. The supplied source and runtime evidence do not identify the authoritative way to bind Course commercial identity, member benefit, and Woo price.
+Member Perks' Woo discount resolver handles `woo_product` and `woo_product_category` targets. When Masteriyo's native mapping links a Course to its Woo Product, the Woo cart item provides the target used by this resolver. Woo retains the base-price authority; Member Perks applies the eligible tier benefit. The approved spec therefore does not need a new price owner or a second pricing implementation.
 
 ```text
-COURSE_MEMBER_PRICE_AUTHORITY=NONE_PROVEN
-COURSE_MEMBER_PRICE_GATE=ARCHITECTURE_DECISION_REQUIRED
+COURSE_MEMBER_PRICE_AUTHORITY=WOOCOMMERCE_BASE_PRICE_PLUS_MEMBER_PERKS_BENEFIT
+COURSE_MEMBER_PRICE_GATE=CONFIGURATION_REQUIRED
+COURSE_MEMBER_PRICE_PRESENTATION=NOT_PROVEN
 ```
 
-This audit does not infer that a Course is priced because a future Woo Product could be created or because Member Perks has Course access perks and an enrolment claim service.
+The authority chain is source-proven, not configured or runtime-proven for a Course. The current Local Courses have no linked Woo Product; no owner-approved Brons/Silwer/Goud Course benefits, Product targets, audiences, or priorities are proven; `woo_discounts` is false; and no member Course price was evaluated. Do not infer a current Course price from the existence of the supported chain or from Course access perks.
+
+Future authorized work must choose the Woo Product for the representative Course, decide Brons/Silwer/Goud benefit values and perk targets/audiences/priorities, authorize controlled enabling of `woo_discounts`, define the exact non-member and member price presentation, and verify the configured result through cart and checkout. These are configuration, product, presentation, and runtime proof tasks, not an unresolved price-authority decision.
 
 ## Presentation and state refresh
 
@@ -94,7 +98,7 @@ Existing code paths:
 
 - Member Perks resolves active membership profiles and programme/level eligibility server-side.
 - Member Perks adjusts eligible Woo cart items at cart-total calculation time when its discount gate and configuration allow it.
-- `WooPriceDisplay::append_member_hint()` can append the generic text "Member benefit may apply in cart." It does not resolve or display an exact tier price, savings amount, or Course price. The current feature flag is off.
+- `WooPriceDisplay::append_member_hint()` can append the generic text "Member benefit may apply in cart." It does not resolve or display an exact tier price, savings amount, or Course price. The current feature flag is off, so exact non-member/member presentation remains unproven.
 - Woo Blocks cart data has `member_price` and `discount_amount` fields, but the Woo Blocks compatibility flag is off.
 - Member Perks' Bricks integration supplies perk-hub query/action data; no Course-specific tier-price or savings dynamic tag was found.
 
@@ -109,17 +113,19 @@ Later implementation planning must define when membership status is re-read afte
 | Woo Subscription → successful billing state | Woo Subscriptions parent products 905/908/911 are draft; six published variations define monthly/yearly recurring amounts. No matching subscription order items were returned. A real successful order was not created. | Runtime proven for product configuration; order path not proven | `GAP` |
 | Successful billing state → PMPro active tier | Active PMPro Woo add-on maps each parent to the corresponding level, grants on completed order, and has a subscription activation hook. PMPro rows exist, but no Woo order lineage was proven. | Source and runtime configuration proven; end-to-end transition not proven | `GAP` |
 | PMPro active tier → Member Perks eligibility | Current PMPro level IDs map to enabled programme/level keys; the resolver reads PMPro active levels; the audience evaluator applies programme/level rules. Ten published Course access perks and two published Product perks exist in Local staging, but no member account was evaluated. | Source plus runtime configuration proven | `PASS` for eligibility mapping only |
-| Member Perks eligibility → authoritative Course Woo price/benefit | Ten published Course records describe free Course access, not Woo prices. Course claims and Woo discounts are off; published Courses have no linked Woo Product; Vriendinne PMPro Woo price options and product overrides are absent. | Source and runtime prove the current gap | `ARCHITECTURE_DECISION_REQUIRED` |
+| Member Perks eligibility → Course Woo member price | Masteriyo's native Course↔Woo mapping, Woo's base-price authority, PMPro active-tier resolution, Member Perks audience matching, deterministic best-perk selection, and Woo cart-price calculation form a supported chain. | Source chain proven at pinned Member Perks commit `972a279be7a753594888e974132562e1cc099e24` and current Masteriyo integration source. Current Local has no Course Product link, no approved Course perk values/configuration, and `woo_discounts=false`; exact page-price presentation and end-to-end cart/checkout are not proven. | `CONFIGURATION_REQUIRED`; runtime proof not complete |
 
 ```text
 WOO_SUBSCRIPTION_TO_SUCCESSFUL_BILLING_STATE=GAP
 SUCCESSFUL_BILLING_TO_PMPRO_ACTIVE_TIER=GAP
 PMPRO_ACTIVE_TIER_TO_MEMBER_PERKS_ELIGIBILITY=PASS
-MEMBER_PERKS_ELIGIBILITY_TO_COURSE_WOO_PRICE_BENEFIT=ARCHITECTURE_DECISION_REQUIRED
+MEMBER_PERKS_ELIGIBILITY_TO_COURSE_WOO_PRICE_BENEFIT=CONFIGURATION_REQUIRED
+COURSE_MEMBER_PRICE_AUTHORITY=WOOCOMMERCE_BASE_PRICE_PLUS_MEMBER_PERKS_BENEFIT
+COURSE_MEMBER_PRICE_GATE=CONFIGURATION_REQUIRED
 MEMBERSHIP_COMMERCE_GATE=BLOCKED
 ```
 
-The `PASS` on PMPro→Member Perks is limited to the authoritative eligibility mapping and resolver. It does not mean a current Course benefit is enabled or that any person has been verified against a paid subscription.
+The `PASS` on PMPro→Member Perks is limited to the authoritative eligibility mapping and resolver. It does not mean a current Course benefit is configured or that any person has been verified against a paid subscription. The price authority chain is defined, but the Course mapping, tier benefits, presentation, and runtime proof remain open.
 
 ## Deferred proof and mutation boundary
 
@@ -137,6 +143,8 @@ Proving Woo purchase, paid state, Subscription activation, PMPro tier grant, Mem
 - Member Perks flags and feature behavior: `voelgoed-member-perks/includes/Config/SettingsRepository.php::feature_flags()`, `Config/AcfConfigProvider.php::get_option_value()`, and `voelgoed-member-perks/README.md` §§ Feature Flags, WooCommerce Discount Workflow, Masteriyo Course Workflow.
 - Eligibility authority: `Membership/MembershipProfileResolver.php::get_user_membership_profile()`, `Membership/ProgrammeMappingRepository.php::load()`, `Membership/EligibilityChecker.php`, and `Perks/PerkAudienceEvaluator.php::evaluate()`.
 - Product pricing: `Woo/WooApplicablePerkResolver.php::resolve_for_cart_item()`, `Woo/WooDiscountEngine.php::register_hooks()` / `apply_discounts()`, `Woo/WooContextGuard.php::can_apply_discounts()`, `Woo/WooSubscriptionPolicy.php::allows_cart_item()`, and `Woo/WooPriceCalculator.php`.
+- Deterministic selection and price basis: `Woo/WooBestPerkSelector.php::select()` / `is_better()` and `Woo/WooPriceCalculator.php::get_authoritative_base_price()` at pinned Member Perks commit `972a279be7a753594888e974132562e1cc099e24`.
+- Native Course/Woo mapping: installed Masteriyo 3.4.3 `WcIntegrationAddon::link_wc_product()` stores `_wc_product_id` on the Course and `_masteriyo_course_id` on the Woo Product; see `VS1_COURSE_FULFILMENT_EMAIL_GATE_v1.0.0.md` for the current Local source/runtime evidence.
 - Course claim behavior: `Masteriyo/CoursePerkService.php::claim_course()`.
 - Ticket claim behavior: `Tickera/TicketPerkService.php::claim_ticket()` and `Tickera/TicketAccessPolicy.php`.
 - Current PMPro Woo integration runtime source: `/home/jcschoeman96/Local Sites/voelgoed-novamira/app/public/wp-content/plugins/pmpro-woocommerce/pmpro-woocommerce.php`, including `pmprowoo_init()`, `pmprowoo_add_membership_from_order()`, `pmprowoo_activated_subscription()`, `pmprowoo_get_membership_price()`, and `pmprowoo_process_product_meta()`.

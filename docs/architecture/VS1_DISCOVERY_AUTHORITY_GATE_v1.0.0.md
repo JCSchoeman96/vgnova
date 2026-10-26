@@ -15,7 +15,7 @@ DISCOVERY_GATE=BLOCKED
 TOPIC_TO_ARTICLE_AUTHORITY=content_topic
 TOPIC_TO_ARTICLE_RUNTIME=GAP
 ARTICLE_TO_PERSON_AUTHORITY=NONE_PROVEN
-ARTICLE_TO_PERSON_GATE=GAP
+ARTICLE_TO_PERSON_GATE=ARCHITECTURE_DECISION_REQUIRED
 MENTOR_CLASSIFICATION_REUSE=PASS
 PERSON_TO_PRODUCT_AUTHORITY=Product Contribution
 PERSON_TO_PRODUCT_GATE=GAP
@@ -28,7 +28,7 @@ PERSON_PROGRAMME_DEPENDENCY=YES
 SOURCE_RUNTIME_CONFLICT=YES
 ```
 
-The first hard architecture stop is Person → Course. No Course authority can be inferred from Product Contribution, a featured Course, shared topics, or a Woo Product. The full gate is blocked independently by missing Home → Topic and Topic → Article runtime paths, no canonical Article → Person authority, no Person Event/Product rows, and current Platform Core source/runtime drift.
+Article → Person and Person → Course are hard architecture stops under spec §60. No Article → Person or Person → Course authority is proven. Person → Course must not be inferred from Product Contribution, a featured Course, shared Topics, or a Woo Product. The full gate is also blocked by missing Home → Topic and Topic → Article runtime paths, no Person Event/Product rows, and current Platform Core source/runtime drift.
 
 ## Edge-by-edge authority table
 
@@ -36,7 +36,7 @@ The first hard architecture stop is Person → Course. No Course authority can b
 |---|---|---|---|
 | Home → Topic | `content_topic` is the canonical taxonomy. `ContentTopicTaxonomy::register_taxonomy()` exposes public terms and nav-menu support. No source-controlled Home → Topic relationship or route is defined by that taxonomy registration. | `show_on_front=posts`, `page_on_front=0`; `wp_get_nav_menus()` returned no WordPress menus. Bricks Header template `77` is custom navigation and its current settings show no canonical `content_topic` term/link. | `GAP` |
 | Topic → Article | `ContentTopicTaxonomy::OBJECT_TYPES` includes `post`; direct Article membership is the `content_topic` relationship. It is distinct from legacy `content_category`. | Seven root terms exist, but all have zero Article assignments. Published Article `375` has no `content_topic` or `content_category`. No published Bricks template condition references `content_topic` or its `/onderwerp/` archive. No Topic page currently has a qualifying Article from this data. | `GAP` |
-| Article → Person | No canonical relationship field or service is present in tracked Article ACF definitions or Platform Core source. The spec names the expected simple role vocabulary—`primary_author`, `additional_authors`, `expert_contributors`, `reviewed_by`—but does not make those runtime fields. | The active `Content — Article` ACF group has only `article_lede` and `article_read_time`; `Editorial Classification` has taxonomy fields only; `Partner Display Override` points to `vennoot`. Article 375's `post_author` is WordPress user ID `1`, not a canonical Person relationship. No Article → Person row is proven. | `GAP` |
+| Article → Person | No canonical relationship field or service is present in tracked Article ACF definitions or Platform Core source. The spec names the expected simple role vocabulary—`primary_author`, `additional_authors`, `expert_contributors`, `reviewed_by`—but does not make those runtime fields. | The active `Content — Article` ACF group has only `article_lede` and `article_read_time`; `Editorial Classification` has taxonomy fields only; `Partner Display Override` points to `vennoot`. Article 375's `post_author` is WordPress user ID `1`, not a canonical Person relationship. No Article → Person row is proven. | `ARCHITECTURE_DECISION_REQUIRED` |
 | Person → Course | No canonical Person ↔ Course relationship field, service, or approved participation model was found in tracked source. `LearningService` projects access from Masteriyo and does not associate a Course with a Person. Product Contribution is a separate Product × Person relationship. | Masteriyo Course model is `Masteriyo\Models\Course`, exposing `get_author_id()` / `set_author_id()`; published Course `532` has WordPress author user ID `1`, and no matching Person/Instructor/Product relationship keys were found in its post meta. No canonical Person → Course rows exist. | `ARCHITECTURE_DECISION_REQUIRED` |
 | Person → Event | ACF Event Participation endpoint fields are `event_participation_event` → `tc_events` and `event_participation_person` → `person`; Platform Core `EventParticipationRepository::events_for_person()` resolves published rows. | Event Participation count is zero. Lynette has no canonical Event edge. | `GAP` |
 | Person → Product | ACF Product Contribution fields are `product_contribution_product` → `product` and `product_contribution_person` → `person`; `ProductContributionRepository::products_for_person()` returns published Products. `PersonProductsBricks` adapts that repository only when the exact `vg-person-products-query` / `vg-person-products-section` markers are used. | Product Contribution count is zero. Runtime `PersonProductsBricks.php` matches its source hash, but no published canonical Person Bricks template consumes those markers. Templates `772` and `773` remain legacy `medewerker` templates. | `GAP` |
@@ -81,7 +81,7 @@ The VS1 spec's role names are requirements to compare against, not proof of exis
 
 Current runtime Article field group `group_vg_content_article` (`Content — Article`) contains only `field_article_lede` (`article_lede`, textarea) and `field_article_read_time` (`article_read_time`, number). The other active Article groups are `group_vg_editorial_classification` (`editorial_format`, `editorial_collection`) and `group_partner_display_override` (`manual_vennoot` to `vennoot`, `hide_vennoot_blok`). The `group_vg_content_topic_roles` PHP group does not provide an Article → Person edge. The repository's tracked `site-code/acf-json/` has no Article Person relationship field definition.
 
-This is a relationship gap, not authorization to create a rich participation entity. Any future implementation must use a separately approved simple relationship design that defines field names, cardinality, roles, validation, and consumer/reverse-query behavior.
+Spec §60 explicitly names Article ↔ Person as an architecture escalation when no approved authority can represent the required relationship. A separate decision must define the simple relationship model, fields and roles, cardinality, validation, ownership, and forward and reverse consumers. Do not invent a rich participation entity unless requirements prove the simple model insufficient.
 
 ## Person identity and Mentor classification
 
@@ -147,7 +147,7 @@ EXACT_DEPENDENCY=Task 10B must separately design and execute canonical Person co
 |---|---|---|
 | `content_topic` is the canonical taxonomy and attaches to Article and Person | Source `ContentTopicTaxonomy::OBJECT_TYPES`; `ContentTopicRoles::get_entity_policy()`; selected VGNova runtime `get_taxonomy('content_topic')->object_type` | `BOTH`; current source and current Local runtime. Current runtime relationship counts are 0. |
 | Seven root terms and selected Nuwe Jy children have no Article assignments | Runtime term IDs/slugs/counts; direct query of Article 375 taxonomies | `RUNTIME PROVEN`; current Local staging; Article provenance is unknown. |
-| No Article → Person ACF relationship is present | Runtime ACF schemas for `group_vg_content_article`, `group_vg_editorial_classification`, `group_partner_display_override`; tracked `site-code/acf-json/` search; WordPress `post_author` runtime value | `BOTH`; current runtime schema and current source inventory. |
+| No Article → Person ACF relationship is present | Runtime ACF schemas for `group_vg_content_article`, `group_vg_editorial_classification`, `group_partner_display_override`; tracked `site-code/acf-json/` search; WordPress `post_author` runtime value. Spec §60 requires an architecture decision when no approved authority can represent this required edge. | `BOTH` for the current absence; authority and approved design `NOT PROVEN`; gate `ARCHITECTURE_DECISION_REQUIRED`. |
 | Mentor classification uses `person_type` | Source ACF definitions in `site-code/acf-json/taxonomy_person_type.json`, `group_vg_person_details.json`; runtime terms and Lynette's two assignments | `BOTH`; current and owner-authorized identity data from merged PR #58. |
 | Person → Product authority exists but no production Person consumer or rows are proven | `ProductContributionRepository::products_for_person()`, `PersonProductsBricks`; runtime hash and zero rows; Bricks template inventory | `BOTH` for model/adapter presence; current; no representative relationship data. |
 | Person → Event authority exists but no rows are present | `EventParticipationRepository::events_for_person()` and ACF endpoint fields; runtime count zero | `BOTH` for schema/model; current; no representative relationship data. |
@@ -161,7 +161,7 @@ HOME_TO_TOPIC_GATE=GAP
 TOPIC_TO_ARTICLE_AUTHORITY=content_topic
 TOPIC_TO_ARTICLE_RUNTIME=GAP
 ARTICLE_TO_PERSON_AUTHORITY=NONE_PROVEN
-ARTICLE_TO_PERSON_GATE=GAP
+ARTICLE_TO_PERSON_GATE=ARCHITECTURE_DECISION_REQUIRED
 PERSON_TO_COURSE_AUTHORITY=NONE_PROVEN
 PERSON_TO_COURSE_GATE=ARCHITECTURE_DECISION_REQUIRED
 PERSON_TO_EVENT_AUTHORITY=Event Participation

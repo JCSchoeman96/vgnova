@@ -9,6 +9,8 @@
 
 ```text
 COURSE_PURCHASE_TO_ENROLMENT=GAP
+COURSE_MEMBER_PRICE_AUTHORITY=WOOCOMMERCE_BASE_PRICE_PLUS_MEMBER_PERKS_BENEFIT
+COURSE_MEMBER_PRICE_GATE=CONFIGURATION_REQUIRED
 COURSE_FULFILMENT_GATE=BLOCKED
 EMAIL_GATE=GAP
 RUNTIME_PROOF_REQUIRES_MUTATION=YES
@@ -62,7 +64,7 @@ The active Masteriyo source file is `/home/jcschoeman96/Local Sites/voelgoed-nov
 
 The integration reuses the first UserCourse returned for a Course and user. Its lookup is not keyed by Woo order ID and the inspected code has no separate order idempotency lock. On a repeated callback or a later purchase by the same user, it may reuse that record and replace its `_wc_order_id` with the current order. This is source-proven behaviour, not a current duplicate-enrolment finding. Reconciliation would need to compare Woo order items with Masteriyo UserCourse records and their `_wc_order_id` metadata. No automated repair or reconciliation job was identified in this integration path.
 
-The supported code path is therefore present, but runtime configuration and data do not connect any published Course to a Woo Product. No paid order or active purchase-created enrolment exists as evidence for the VS1 path. The Task 4 audit separately found the Member Perks `course_claims` flag off and no established Course Woo price authority. A Course perk claim is not a Woo purchase fulfilment path.
+The supported code path is therefore present, but runtime configuration and data do not connect any published Course to a Woo Product. No paid order or active purchase-created enrolment exists as evidence for the VS1 path. The Task 4 audit establishes the price authority chain as Masteriyo's native Course↔Woo mapping, WooCommerce base price, PMPro active tier, and Member Perks benefit calculation. That chain is not configured for a Course: `woo_discounts` is off and no Course/Product perk is approved. The separate Member Perks `course_claims` flag is also off, but a Course perk claim is not a Woo purchase fulfilment path.
 
 ```text
 COURSE_PURCHASE_TO_ENROLMENT=GAP

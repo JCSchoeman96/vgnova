@@ -59,7 +59,7 @@ Classification: `OWNER_AUTHORIZED` for identity and Mentor/Kenner classification
 
 Current runtime has five published Masteriyo Courses: IDs `532`, `534`, `536`, `538`, and `540`. Draft ID `438` has no slug and is not a candidate. The five published records have no confirmed editorial authorization. Runtime inspection finds no `content_topic` assignment or canonical Person/Instructor relationship for these Courses.
 
-All five published Courses have Masteriyo `_wc_product_id=0`; Masteriyo course-list output also reports no linked Woo Product for each. The Course fulfilment and Membership Commerce gates separately record that no paid Course-to-Woo mapping or authoritative Course member-price benefit is proven. The Person-to-Course gate is `ARCHITECTURE_DECISION_REQUIRED` because no canonical Person ↔ Course authority exists in the inspected source or runtime contracts.
+All five published Courses have Masteriyo `_wc_product_id=0`; Masteriyo course-list output also reports no linked Woo Product for each. The approved authority chain is Masteriyo's native Course↔Woo mapping, WooCommerce base price, PMPro active tier, and Member Perks benefit calculation. That chain is source-proven, but no Course/Product mapping or approved tier benefit is configured, `woo_discounts` is off, and exact price presentation and cart/checkout proof are absent. `COURSE_MEMBER_PRICE_GATE=CONFIGURATION_REQUIRED`. The separate Person-to-Course gate is `ARCHITECTURE_DECISION_REQUIRED` because no canonical Person ↔ Course authority exists in the inspected source or runtime contracts.
 
 Classification: published Courses are unverified staging content, not `REAL_EDITORIAL` or `OWNER_AUTHORIZED` candidates. No Course is selected as the Golden Journey Course.
 
@@ -87,9 +87,9 @@ The future matrix needs a non-member plus Brons, Silwer, and Goud personas. This
 |---|---|---|
 | Home → Topic | `content_topic` is canonical, but no current Home Topic destination is proven by the discovery gate. | `GAP` |
 | Topic → Article | Canonical taxonomy authority exists; all candidate Nuwe Jy terms have zero assignments, and post 375 is ineligible. | `GAP` |
-| Article → Person | No canonical Article-to-Person field/service or row is proven. WordPress `post_author` is not a Person relationship. | `GAP` |
+| Article → Person | No canonical Article-to-Person field/service or row is proven. WordPress `post_author` is not a Person relationship. Spec §60 requires a separate architecture decision when no approved authority can represent this edge. | `ARCHITECTURE_DECISION_REQUIRED` |
 | Person → Course | No canonical authority is proven. Product Contribution, shared Topic, Masteriyo author user, and Woo Product must not be used as substitutes. | `ARCHITECTURE_DECISION_REQUIRED` |
-| Course → paid Woo purchase | All five published Courses have no linked Woo Product; no paid Course offer or authoritative member price is proven. | `GAP` / `ARCHITECTURE_DECISION_REQUIRED` |
+| Course → paid Woo purchase | All five published Courses have no linked Woo Product and no paid order. The Course member-price authority is defined, but Product/benefit configuration and runtime proof are absent. | `GAP` / `CONFIGURATION_REQUIRED` |
 | Person → Event | Event Participation authority exists in source, but there are zero canonical rows. The PR #58 QA edges are prohibited. | `GAP` |
 | Person → Product | Product Contribution authority exists in source, but there are zero canonical rows. The PR #58 QA edges are prohibited. | `GAP` |
 
@@ -106,11 +106,15 @@ EXACT_DEPENDENCY=Task 10B must separately design and execute the canonical Perso
 
 ## Data decision
 
-The minimum dataset in spec section 47 cannot be assembled from current authorized records. There are no verified real editorial Articles or Course, no complete Topic-to-Article and Article-to-Person path, no Person-to-Course authority, no paid Course commercial mapping, no canonical Event/Product person edges, and no certified QA personas. Creating or editing data to fill these gaps is outside this read-only preflight and requires a later explicit authorization.
+The minimum dataset in spec section 47 cannot be assembled from current authorized records. There are no verified real editorial Articles or Course, no complete Topic-to-Article or Article-to-Person path, no approved Article-to-Person or Person-to-Course authority, no Course-to-Woo mapping or configured Course member benefit, no canonical Event/Product person edges, and no certified QA personas. Creating or editing data to fill these gaps is outside this read-only preflight and requires a later explicit authorization.
 
 ```text
 REPRESENTATIVE_DATA_GATE=BLOCKED
+ARTICLE_TO_PERSON_AUTHORITY=NONE_PROVEN
+ARTICLE_TO_PERSON_GATE=ARCHITECTURE_DECISION_REQUIRED
 PERSON_TO_COURSE_GATE=ARCHITECTURE_DECISION_REQUIRED
+COURSE_MEMBER_PRICE_AUTHORITY=WOOCOMMERCE_BASE_PRICE_PLUS_MEMBER_PERKS_BENEFIT
+COURSE_MEMBER_PRICE_GATE=CONFIGURATION_REQUIRED
 REPRESENTATIVE_DATA_CREATION_REQUIRES_AUTHORIZATION=YES
 RUNTIME_PROOF_REQUIRES_MUTATION=YES
 WORDPRESS_BUSINESS_MUTATIONS=0

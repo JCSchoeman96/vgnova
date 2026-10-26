@@ -17,7 +17,11 @@ SOURCE_RUNTIME_PARITY=DRIFT
 SOURCE_RUNTIME_CONFLICT=YES
 FCM_RULING=ADAPT
 DISCOVERY_GATE=BLOCKED
+ARTICLE_TO_PERSON_AUTHORITY=NONE_PROVEN
+ARTICLE_TO_PERSON_GATE=ARCHITECTURE_DECISION_REQUIRED
 PERSON_TO_COURSE_GATE=ARCHITECTURE_DECISION_REQUIRED
+COURSE_MEMBER_PRICE_AUTHORITY=WOOCOMMERCE_BASE_PRICE_PLUS_MEMBER_PERKS_BENEFIT
+COURSE_MEMBER_PRICE_GATE=CONFIGURATION_REQUIRED
 MEMBERSHIP_COMMERCE_GATE=BLOCKED
 COURSE_FULFILMENT_GATE=BLOCKED
 EMAIL_GATE=GAP
@@ -29,7 +33,7 @@ PRODUCTION_IMPLEMENTATION_AUTHORIZED=NO
 VS1_MASTER_GATE=BLOCKED
 ```
 
-The authorities and current system boundaries are identified, but the Golden Journey cannot be planned without inventing a Person-to-Course relationship and representative data. The Course member-price authority is also undecided. No production implementation plan is authorized by this gate. This result does not say that the journey is implemented.
+The Golden Journey cannot be planned until the Article-to-Person and Person-to-Course architecture decisions are resolved and suitable representative data is approved. The Course member-price authority chain is identified, but its Product mapping, tier benefits, presentation, and runtime proof are missing. No production implementation plan is authorized by this gate. This result does not say that the journey is implemented.
 
 ## Evidence baseline
 
@@ -40,7 +44,7 @@ The committed evidence set is:
 | 1 | `VS1_CURRENT_REALITY_AUDIT_v1.0.0.md` | Fresh baseline and Local runtime verified; Platform Core source/runtime parity is `DRIFT`; current canonical relationship data is sparse. |
 | 2 | `VS1_FCM_PREFLIGHT_v1.0.0.md` | `FCM_RULING=ADAPT`; reuse existing FCM and adapt its legacy selector to canonical Topics in a later scoped plan. |
 | 3 | `VS1_DISCOVERY_AUTHORITY_GATE_v1.0.0.md` | Discovery gate blocked; Person → Course has no proven authority. |
-| 4 | `VS1_MEMBERSHIP_COMMERCE_GATE_v1.0.0.md` | Woo Subscriptions owns billing, PMPro owns access, Member Perks owns benefits; Course price/benefit authority is undecided. |
+| 4 | `VS1_MEMBERSHIP_COMMERCE_GATE_v1.0.0.md` | Woo Subscriptions owns billing, PMPro owns active membership state, and Member Perks owns benefits. Course member-price authority is defined; Product/benefit configuration and runtime proof remain open. |
 | 5 | `VS1_COURSE_FULFILMENT_EMAIL_GATE_v1.0.0.md` | Current Course purchase-to-enrolment and one-email outcomes are not proven. |
 | 6 | `VS1_DISCOVERY_SERVICES_GATE_v1.0.0.md` | Native search is reusable with an adapted Bricks surface; analytics and cache-state evidence have gaps; no ranking input exists. |
 | 7 | `VS1_REPRESENTATIVE_DATA_CONTRACT_v1.0.0.md` | No eligible representative Journey dataset exists; data gate is blocked. |
@@ -53,14 +57,14 @@ The Local runtime is staging evidence. It is not treated as production-like. Tas
 |---|---|---|---|---|---|
 | Home → Topic | `content_topic` is the canonical semantic taxonomy. `ContentTopicTaxonomy` does not define Home navigation. Existing FCM is an Article offer surface, not a Home Topic route. | Current Home is posts (`show_on_front=posts`, no static front page); runtime Header 77 has custom navigation with no canonical Topic links. `RUNTIME PROVEN`; current Local. | No approved Home → Topic consumer. | Information architecture, Bricks, Platform Core | `GAP`, shared blocker |
 | Topic → Article | `content_topic` is the canonical Article classification authority. The runtime FCM resolver still selects by legacy `content_category`. | Nuwe Jy root 349 and child terms have zero assigned-object counts; the only published post, 375, has no Topic assignment. `BOTH`; current source and Local runtime. | No qualifying Article is reachable from a canonical Topic. | Editorial owner, Platform Core, Bricks | `GAP`, shared blocker |
-| Article → Person | No canonical Article-to-Person ACF field, service, or relationship row is proven. WordPress `post_author` is a user ID, not a Person. | Article 375 has author user 1 and no canonical Person edge. Runtime Article ACF groups expose no Person relationship. `BOTH`; current source/schema and Local. | Approved Article → Person role/cardinality and editorial data are absent. | Editorial/data architecture; coordinate with Person programme | `GAP`, shared blocker |
+| Article → Person | No canonical Article-to-Person ACF field, service, or relationship row is proven. WordPress `post_author` is a user ID, not a Person. Spec §60 names this edge for architecture escalation when no approved authority exists. | Article 375 has author user 1 and no canonical Person edge. Runtime Article ACF groups expose no Person relationship. `BOTH`; current source/schema and Local. | A separate decision must define the simple relationship model, fields and roles, cardinality, validation, owner, and forward/reverse consumers. | Editorial/data architecture; coordinate with Person programme | `ARCHITECTURE_DECISION_REQUIRED`, shared blocker |
 | Person → Course | No canonical Person ↔ Course field, service, participation model, or consumer exists in inspected source/runtime. | Person 1705 and published Courses 532–540 have no such relationship. Masteriyo author is a WordPress user. `BOTH`; current source and Local. | No authority may be inferred from author, Topic, Product Contribution, FCM target, or Woo mapping. | Platform/data architecture with Person programme | `ARCHITECTURE_DECISION_REQUIRED`, hard stop |
-| Course → membership benefit | Woo Subscriptions owns recurring billing, PMPro owns active membership state, and Member Perks owns benefit eligibility. No Course-specific authoritative Woo price/benefit path is established. | All five published Courses have no linked Woo Product. `woo_discounts`, `course_claims`, and Woo Blocks compatibility are off; no Course benefit was evaluated for a member. `BOTH`; current source/configuration and Local. | Decide how a Course maps to a selling Product and a tier-specific benefit/price. | Member Perks, WooCommerce, PMPro, Masteriyo, product architecture | `ARCHITECTURE_DECISION_REQUIRED` |
+| Course → member price | Masteriyo's native Course↔Woo mapping links the selling Product; WooCommerce owns its base price, PMPro owns active tier state, and Member Perks evaluates and calculates the tier benefit. Pinned Member Perks source includes product-target matching, audience evaluation, deterministic best-perk selection, and cart price calculation. | Masteriyo mapping source is present, but every published Course has `_wc_product_id=0`. No approved Course perk configuration exists; `woo_discounts=false`; exact Course-page price presentation and end-to-end cart/checkout are not proven. Authority chain `SOURCE PROVEN`; missing Local configuration `RUNTIME PROVEN`; end-to-end result `NOT PROVEN`. | Choose the selling Product, Brons/Silwer/Goud values, perk targets/audiences/priorities, controlled flag activation, exact member/non-member presentation, and a later cart/checkout proof. | Masteriyo, WooCommerce, PMPro, Member Perks, membership product and UX owners | `CONFIGURATION_REQUIRED`; runtime proof not complete |
 | Membership CTA → membership selection | No global FCM or approved membership CTA/selection implementation is present. Direct PMPro signup is disabled. | Vriendinne subscription parents 905, 908, and 911 are drafts; a current public comparison/quick-entry path was not proven. `RUNTIME PROVEN`; current Local configuration. | Quick entry and full comparison flow have no approved Journey surface. | Membership product and UX owners | `GAP` |
 | Membership purchase → PMPro active | PMPro Woo integration maps Vriendinne products to PMPro levels and grants on Woo `completed`; Woo Subscriptions owns recurring billing. | Mapping values agree in current configuration, but parents are drafts, no matching order lineage exists, and active PMPro rows do not prove a purchase. `BOTH` for mapping; end-to-end `NOT PROVEN`. | Controlled paid order and subscription transition have not been tested. | Woo Subscriptions, PMPro Woo integration, PMPro | `GAP`; proof requires mutation |
 | PMPro active → Member Perks benefit | Member Perks resolves active PMPro levels through programme mapping and audience rules. | Brons/Silwer/Goud map to PMPro 15/16/17. The resolver/eligibility mapping is source/runtime proven, but no user was evaluated in this gate and no Course price benefit is active. | Eligibility mapping passes only; this does not prove a Course benefit or tier price. | Member Perks and PMPro | `PARTIAL`; eligibility mapping `PASS`, Journey edge `GAP` |
 | Membership success → original Course | The approved spec requires a single persisted intent and validated return. No Journey intent repository/service or return implementation is present. | No purchase/return transition was run. FCM does not provide intent storage. `SOURCE PROVEN` for inspected source; runtime transition `NOT PROVEN`. | Intent lifecycle, validation, cancellation, and return behavior remain undesigned and untested. | Platform Core and commerce/security architecture | `GAP` |
-| Course → Woo purchase | Masteriyo supports Course/Woo mappings, but the Course offer needs a supported Woo item and authoritative price. | `_wc_product_id=0` for every published Course and no Woo Product points to a Course. No Course order exists. `BOTH`; current runtime and integration source. | No paid Course checkout surface. | Masteriyo and WooCommerce product owner | `GAP`, blocked by Course price decision |
+| Course → Woo purchase | Masteriyo supports native Course/Woo mappings, and Woo owns Product price and checkout. | `_wc_product_id=0` for every published Course and no Woo Product points to a Course. No Course order exists. `BOTH`; current runtime and integration source. | No selling Product is linked or paid Course order path proven. | Masteriyo and WooCommerce product owner | `GAP`; configuration and mutation proof required |
 | Woo paid → Masteriyo access | Installed Masteriyo integration reacts to Woo order events and activates access on `completed`; Woo Product metadata must identify a Course. | No Course Product link or order exists. UserCourse access after a real purchase was not tested. `BOTH` for supported source path and missing links; result `NOT PROVEN`. | Paid status, order-to-enrolment lineage, idempotency, and access need a controlled proof. | WooCommerce and Masteriyo | `GAP`; proof requires mutation |
 | Access → Thank-you Start Course | Published Thank You template 128 exists; Masteriyo can redirect after its order path. | Template 128 has no Course or Start Course CTA marker and no My Voelgoed CTA. No purchase-created enrolment was available to exercise it. `RUNTIME PROVEN`; current Local template, path `NOT PROVEN`. | Thank-you action contract and access-aware destination are missing. | WooCommerce, Masteriyo, Bricks | `GAP` |
 | Access → My Voelgoed Learning | Platform Core `LearningService`, access guard, and dashboard summary project Masteriyo state. Current dashboard scope is recorded as complete. | Page 1160 exists at `/my-voelgoed/learning/`; anonymous request redirects to login with private/no-store headers. Historical QA exercised controlled enrollments. New purchase-to-dashboard state is not proven. `BOTH` for dashboard slice; historical QA for authenticated state. | Dashboard availability passes within its approved scope; purchase-created access and cache transition remain unproven. | Platform Core and Masteriyo | `PARTIAL`; journey transition `GAP` |
@@ -89,10 +93,10 @@ The approved spec section 61 has 33 production-blocking criteria. The main Journ
 |---|---|---|---|
 | 1: approve representative data | Task 7 has no suitable Article/Person/Course set; Event/Product representatives and isolated QA personas are not certified. | Plan A and Plan E, after data provenance decisions | `BLOCKED`; no data creation authorized |
 | 2–5: Home, Topic, Article, Person, Course discovery chain | See first four rows of the production matrix. Person → Course requires a separate authority decision. | Plan A — Discovery Chain | `BLOCKED` |
-| 6–10: Course offer, membership presentation/entry/comparison, persistent original intent | No paid Course offer, accurate tier price, membership CTA selection route, or intent implementation is proven. | Plans B and C | `GAP`; plans not authorized |
+| 6–10: Course offer, membership presentation/entry/comparison, persistent original intent | No linked Course Product, configured tier benefit or exact price presentation, membership CTA selection route, or intent implementation is proven. The price authority chain is defined. | Plans B and C | `GAP` / `CONFIGURATION_REQUIRED`; plans not authorized |
 | 11–12: one active intent and No Thanks dismissal | No intent lifecycle or dismissal behavior is implemented or runtime-proven. | Plan B — Vriendinne Context + Persistent Journey Intent | `NOT PROVEN` |
-| 13–16: membership purchase, PMPro activation, Member Perks tier, validated return | Current mapping is known; end-to-end purchase and return are not proven, and Course benefit authority is undecided. | Plans B and C | `GAP` / `ARCHITECTURE_DECISION_REQUIRED` |
-| 17–18: truthful success message and exact tier-specific Course price | No Course tier price exists; current Course benefit authority is not proven. | Plan C, then Plan D email work | `ARCHITECTURE_DECISION_REQUIRED` |
+| 13–16: membership purchase, PMPro activation, Member Perks tier, validated return | Current tier mapping is known; end-to-end purchase and return are not proven. Course member-price authority is defined, but no Course benefit is configured. | Plans B and C | `GAP` / `CONFIGURATION_REQUIRED` |
+| 17–18: truthful success message and exact tier-specific Course price | No Course tier price or exact member-price presentation is configured. Woo base price and Member Perks benefit are the approved authorities. | Plan C, then Plan D email work | `CONFIGURATION_REQUIRED`; runtime proof not complete |
 | 19–23: non-member purchase, checkout, Masteriyo access, Thank You actions, dashboard state | No Course Product link/order; Thank You lacks Course actions; dashboard exists but new purchase state is unproven. | Plan D — Course Fulfilment + Transactional Communication | `GAP`; dashboard surface only is `PARTIAL` |
 | 24: useful deduplicated transaction email | Multiple enabled customer messages may overlap; delivery, order-status timing, and suppression are not tested. | Plan D | `GAP`; no email changes authorized |
 | 25: analytics can observe the key funnel | No GA4/GTM/dataLayer or VS1 event convention is proven. | Plan E — Cross-Cutting Hardening | `GAP` |
@@ -119,10 +123,20 @@ Reuse the existing FCM option/target validation and Article component if later w
 
 Every current `ARCHITECTURE_DECISION_REQUIRED` item is listed here:
 
-1. `PERSON_TO_COURSE_GATE=ARCHITECTURE_DECISION_REQUIRED`: define a canonical Person ↔ Course authority, relationship owner, cardinality/roles, forward and reverse consumers, and validation. Do not infer it from Masteriyo authors, Topics, Product Contribution, FCM, or a Woo Product.
-2. `COURSE_MEMBER_PRICE_GATE=ARCHITECTURE_DECISION_REQUIRED`: define the authoritative Course selling item and the authoritative tier-specific Course benefit/price path across WooCommerce, PMPro, Member Perks, and Masteriyo. Do not enable flags or copy prices to make a test pass.
+1. `ARTICLE_TO_PERSON_GATE=ARCHITECTURE_DECISION_REQUIRED`: define the approved simple Article ↔ Person relationship model, fields and roles, cardinality, validation, owner, and forward/reverse consumers. Do not invent a rich participation entity unless requirements prove the simple model insufficient.
+2. `PERSON_TO_COURSE_GATE=ARCHITECTURE_DECISION_REQUIRED`: define a canonical Person ↔ Course authority, relationship owner, cardinality/roles, forward and reverse consumers, and validation. Do not infer it from Masteriyo authors, Topics, Product Contribution, FCM, or a Woo Product.
 
-Article → Person has `ARTICLE_TO_PERSON_AUTHORITY=NONE_PROVEN` and remains a data-model gap. It needs an approved relationship design before the journey can use it. This Master Gate does not silently promote it to a current authority.
+Article → Person has `ARTICLE_TO_PERSON_AUTHORITY=NONE_PROVEN`; spec §60 makes the missing approved relationship an architecture decision. The Course member-price path does not require an architecture decision. Its configuration and proof requirements are listed separately below.
+
+## Course member-price configuration and proof
+
+```text
+COURSE_MEMBER_PRICE_AUTHORITY=WOOCOMMERCE_BASE_PRICE_PLUS_MEMBER_PERKS_BENEFIT
+COURSE_MEMBER_PRICE_GATE=CONFIGURATION_REQUIRED
+COURSE_MEMBER_PRICE_PRESENTATION=NOT_PROVEN
+```
+
+Future authorized work must choose the representative Course's Woo selling Product, set the Brons/Silwer/Goud benefit values and eligible perk targets/audiences/priorities, authorize enabling `woo_discounts`, define the exact non-member and member price presentation, and verify the result in cart and checkout. The current source chain supports this ownership model, but no Course/Product mapping, approved Course benefit, enabled price calculation, exact Course-page display, or end-to-end runtime proof exists. Do not enable flags or create Product/perk data in this preflight.
 
 ## Person programme coordination
 
@@ -158,9 +172,9 @@ These are the boundaries from the approved preflight plan, not approved work ord
 
 | Proposed plan | Scope | Prerequisite | Authorization now |
 |---|---|---|---|
-| Plan A — VS1 Discovery Chain | Home → Topic → Article → Person → Course; bounded FCM adaptation | Person → Course decision, Article → Person design, representative editorial data, and Task 10B coordination | `NOT AUTHORIZED` |
+| Plan A — VS1 Discovery Chain | Home → Topic → Article → Person → Course; bounded FCM adaptation | Article → Person and Person → Course decisions, representative editorial data, and Task 10B coordination | `NOT AUTHORIZED` |
 | Plan B — Vriendinne Context + Persistent Journey Intent | Course entry, one-intent lifecycle, validated return and dismissal | Approved Course/Person data, security contract, and membership selection route | `NOT AUTHORIZED` |
-| Plan C — Membership Activation + Tier-Aware Course Commerce | Woo Subscription → PMPro → Member Perks → Course offer/purchase | Course price/benefit decision and controlled billing proof | `NOT AUTHORIZED` |
+| Plan C — Membership Activation + Tier-Aware Course Commerce | Woo Subscription → PMPro → Member Perks → Course offer/purchase | Course Product/benefit configuration, exact price presentation, and controlled billing proof | `NOT AUTHORIZED` |
 | Plan D — Course Fulfilment + Transactional Communication | Woo paid → Masteriyo → Thank You → My Voelgoed → deduplicated email | Course/Product mapping, controlled order/access proof, and email ownership decision | `NOT AUTHORIZED` |
 | Plan E — Event/Product Regressions + Cross-Cutting Hardening | Event/Product regressions, analytics, SEO, responsive, accessibility, cache, security | Approved real records, analytics contract, production-like cache access, and specialist coordination | `NOT AUTHORIZED` |
 
@@ -185,6 +199,6 @@ ENROLMENTS_CREATED=0
 PLATFORM_CORE_DEPLOYMENTS=0
 ```
 
-The final verdict is blocked because the representative data is unsuitable, Person → Course authority is unresolved, Course member pricing has no authority, the discovery and commerce/fulfilment paths have gaps, and analytics/cache transition proof is incomplete. A later implementation planning decision requires those blockers to be resolved or explicitly bounded by a new approved architecture and data contract.
+The final verdict is blocked because representative data is unsuitable, Article → Person and Person → Course architecture decisions remain open, Course Product/benefit configuration and runtime proof are incomplete, and discovery, commerce/fulfilment, analytics, and cache evidence still have gaps. A later implementation planning decision requires those blockers to be resolved or explicitly bounded by approved architecture and data contracts.
 
 VS1_MASTER_GATE=BLOCKED
