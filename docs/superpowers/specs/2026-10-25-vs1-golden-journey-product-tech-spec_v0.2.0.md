@@ -1,11 +1,11 @@
 # VG Nova VS1 — Golden Journey Product + Technical Specification
 
-**Version:** 0.2.0  
-**Status:** LOCKED BASELINE — PRODUCT + TECHNICAL SCOPE  
-**Date:** 2026-10-25  
-**Project:** Voelgoed Nova (`vgnova`)  
-**Primary focus:** Vertical Slice 1 — Golden Journey / Journey Delivery  
-**Supersedes:** VS1 product + technical specification v0.1.0 where this document is more specific  
+**Version:** 0.2.0<br>
+**Status:** LOCKED BASELINE — PRODUCT + TECHNICAL SCOPE<br>
+**Date:** 2026-10-25<br>
+**Project:** Voelgoed Nova (`vgnova`)<br>
+**Primary focus:** Vertical Slice 1 — Golden Journey / Journey Delivery<br>
+**Supersedes:** VS1 product + technical specification v0.1.0 where this document is more specific<br>
 **Implementation status:** NOT YET AUTHORIZED — preflight and implementation planning still required
 
 ---
@@ -503,7 +503,7 @@ The maximum must be derived from currently valid configured tiers.
 
 For an existing member:
 
-> **Your Silwer Vriendinne price: R___**  
+> **Your Silwer Vriendinne price: R___**<br>
 > **You save R___.**
 
 The actual tier-specific values are resolved live.
