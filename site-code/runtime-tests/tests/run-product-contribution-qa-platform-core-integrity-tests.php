@@ -146,7 +146,7 @@ function vg_pc_integrity_test_report(array $fixture, ?callable $read_file = null
 }
 
 $passed = 0;
-$total = 27;
+$total = 28;
 $run_case = static function (string $name, callable $test) use (&$passed): void {
     try {
         $test();
@@ -233,7 +233,7 @@ $run_case('published manifest fixture is pinned to the downloaded artifact bytes
     $path = dirname(__DIR__) . '/fixtures/voelgoed-platform-core-pe005.manifest.json';
     $bytes = file_get_contents($path);
     vg_pc_integrity_test_assert(is_string($bytes), 'Published manifest fixture could not be read');
-    vg_pc_integrity_test_assert(hash('sha256', $bytes) === 'b728e69d1488a28601982bfb5e84b4104b11cab5f6c9ae1dcd2a38192ef696a7', 'Published manifest fixture digest differs');
+    vg_pc_integrity_test_assert(hash('sha256', $bytes) === '7cd38e758babddf495e484013d9345750af6f39689bc428f67d89a814949a932', 'Published manifest fixture digest differs');
     $manifest = json_decode($bytes, true, 512, JSON_THROW_ON_ERROR);
     $runtime_guard_paths = array_values(array_filter(
         array_column($manifest['files'], 'path'),
@@ -241,9 +241,10 @@ $run_case('published manifest fixture is pinned to the downloaded artifact bytes
     ));
     vg_pc_integrity_test_assert(
         $manifest['schema_version'] === 3
-            && $manifest['source_commit'] === '50ee4bee1ae1405522df7b67634b8935d4e9d9ed'
-            && $manifest['source_ref_requested'] === '50ee4bee1ae1405522df7b67634b8935d4e9d9ed'
+            && $manifest['source_commit'] === 'de90ff061c20b164c127aa97e845e3f192429543'
+            && $manifest['source_ref_requested'] === 'de90ff061c20b164c127aa97e845e3f192429543'
             && $manifest['file_count'] === 55
+            && count($manifest['files']) === 55
             && $manifest['tree_sha256'] === '5816b80ac4355782523aa4baa82bd9e55dd87326f15972f287ff1afa7567482a'
             && $manifest['archive_sha256'] === '22d998019e3fe3d93d675250a26eba5be3dbc248badd9be4d7507fbdf9cffdb9'
             && $runtime_guard_paths === ['includes/Runtime/RuntimeMutationSession.php'],
@@ -251,15 +252,50 @@ $run_case('published manifest fixture is pinned to the downloaded artifact bytes
     );
     vg_pc_integrity_test_assert(
         VG_PRODUCT_CONTRIBUTION_QA_PLATFORM_CORE_AUTHORITY === [
-            'artifact_name' => 'voelgoed-platform-core-50ee4bee1ae1405522df7b67634b8935d4e9d9ed',
-            'source_commit' => '50ee4bee1ae1405522df7b67634b8935d4e9d9ed',
+            'artifact_name' => 'voelgoed-platform-core-de90ff061c20b164c127aa97e845e3f192429543',
+            'source_commit' => 'de90ff061c20b164c127aa97e845e3f192429543',
             'schema_version' => 3,
             'file_count' => 55,
             'tree_sha256' => '5816b80ac4355782523aa4baa82bd9e55dd87326f15972f287ff1afa7567482a',
             'archive_sha256' => '22d998019e3fe3d93d675250a26eba5be3dbc248badd9be4d7507fbdf9cffdb9',
-            'manifest_sha256' => 'b728e69d1488a28601982bfb5e84b4104b11cab5f6c9ae1dcd2a38192ef696a7',
+            'manifest_sha256' => '7cd38e758babddf495e484013d9345750af6f39689bc428f67d89a814949a932',
         ],
         'Product Contribution QA authority constant differs from the published artifact'
+    );
+});
+
+$run_case('50ee and de90ff published manifests differ only by release provenance', static function (): void {
+    $fixture_dir = dirname(__DIR__) . '/fixtures';
+    $historical_bytes = file_get_contents($fixture_dir . '/voelgoed-platform-core-pe008-50ee.manifest.json');
+    $active_bytes = file_get_contents($fixture_dir . '/voelgoed-platform-core-pe005.manifest.json');
+    vg_pc_integrity_test_assert(is_string($historical_bytes) && is_string($active_bytes), 'Both published manifest fixtures must be readable');
+    vg_pc_integrity_test_assert(
+        hash('sha256', $historical_bytes) === 'b728e69d1488a28601982bfb5e84b4104b11cab5f6c9ae1dcd2a38192ef696a7'
+            && hash('sha256', $active_bytes) === '7cd38e758babddf495e484013d9345750af6f39689bc428f67d89a814949a932',
+        'The historical and current fixtures must retain their exact published bytes'
+    );
+    $historical = json_decode($historical_bytes, true, 512, JSON_THROW_ON_ERROR);
+    $active = json_decode($active_bytes, true, 512, JSON_THROW_ON_ERROR);
+    $changed_fields = [];
+    foreach (array_unique(array_merge(array_keys($historical), array_keys($active))) as $key) {
+        if (($historical[$key] ?? null) !== ($active[$key] ?? null)) {
+            $changed_fields[] = $key;
+        }
+    }
+    sort($changed_fields);
+    vg_pc_integrity_test_assert(
+        $changed_fields === ['source_commit', 'source_ref_requested']
+            && $historical['source_commit'] === '50ee4bee1ae1405522df7b67634b8935d4e9d9ed'
+            && $historical['source_ref_requested'] === '50ee4bee1ae1405522df7b67634b8935d4e9d9ed'
+            && $active['source_commit'] === 'de90ff061c20b164c127aa97e845e3f192429543'
+            && $active['source_ref_requested'] === 'de90ff061c20b164c127aa97e845e3f192429543'
+            && $historical['schema_version'] === $active['schema_version']
+            && $historical['file_count'] === $active['file_count']
+            && $historical['files'] === $active['files']
+            && $historical['tree_sha256'] === $active['tree_sha256']
+            && $historical['archive_sha256'] === $active['archive_sha256']
+            && hash('sha256', $historical_bytes) !== hash('sha256', $active_bytes),
+        'The two exact-main publications must preserve identical artifact bytes while recording distinct source provenance'
     );
 });
 
@@ -297,7 +333,7 @@ $run_case('previous 54-file authority rejects the exact published 55-file manife
         vg_pc_integrity_test_assert(
             $report['exact'] === false
                 && $report['expected_file_count'] === 54
-                && $report['observed_manifest_sha256'] === 'b728e69d1488a28601982bfb5e84b4104b11cab5f6c9ae1dcd2a38192ef696a7'
+                && $report['observed_manifest_sha256'] === '7cd38e758babddf495e484013d9345750af6f39689bc428f67d89a814949a932'
                 && in_array('Pinned Platform Core manifest SHA-256 differs from the expected artifact manifest.', $report['manifest_errors'], true),
             'Previous 54-file authority accepted the exact published 55-file manifest',
             $report

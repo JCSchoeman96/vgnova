@@ -420,7 +420,7 @@ function vg_pe008_production(): never
     $old_path = dirname(__DIR__) . '/runtime-tests/fixtures/voelgoed-platform-core-pe008-old.manifest.json';
     $new_path = dirname(__DIR__) . '/runtime-tests/fixtures/voelgoed-platform-core-pe005.manifest.json';
     $old = vg_pe008_manifest_authority($old_path, ['source_commit' => '7af938ac6f4422b1fa779b52444121e7a9293995', 'file_count' => 54, 'tree_sha256' => '856a3e5978559bfb2572b4b1ff4b34df916743f9e72d6b18220ee64e98af5f56', 'archive_sha256' => '9d5fd288025703fe4f71ed1f3ee264cd3fc9c0b61cf74d137b40e941bc2e2243', 'manifest_sha256' => 'c87d339ebe83203a82a3f02b27de9854be9e360835da9893077af9c9c318c1ee']);
-    $new = vg_pe008_manifest_authority($new_path, ['source_commit' => '50ee4bee1ae1405522df7b67634b8935d4e9d9ed', 'file_count' => 55, 'tree_sha256' => '5816b80ac4355782523aa4baa82bd9e55dd87326f15972f287ff1afa7567482a', 'archive_sha256' => '22d998019e3fe3d93d675250a26eba5be3dbc248badd9be4d7507fbdf9cffdb9', 'manifest_sha256' => 'b728e69d1488a28601982bfb5e84b4104b11cab5f6c9ae1dcd2a38192ef696a7']);
+    $new = vg_pe008_manifest_authority($new_path, ['source_commit' => 'de90ff061c20b164c127aa97e845e3f192429543', 'file_count' => 55, 'tree_sha256' => '5816b80ac4355782523aa4baa82bd9e55dd87326f15972f287ff1afa7567482a', 'archive_sha256' => '22d998019e3fe3d93d675250a26eba5be3dbc248badd9be4d7507fbdf9cffdb9', 'manifest_sha256' => '7cd38e758babddf495e484013d9345750af6f39689bc428f67d89a814949a932']);
     $base_environment = getenv() ?: [];
     $wp_cli = vg_pe008_find_wp_cli($base_environment);
     $command_library = dirname(__DIR__) . '/runtime-tools/pe008-wp-cli-session-guard.php';

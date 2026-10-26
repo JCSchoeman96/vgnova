@@ -358,7 +358,7 @@
   },
   "root_source_path": "voelgoed-platform-core",
   "schema_version": 3,
-  "source_commit": "50ee4bee1ae1405522df7b67634b8935d4e9d9ed",
-  "source_ref_requested": "50ee4bee1ae1405522df7b67634b8935d4e9d9ed",
+  "source_commit": "de90ff061c20b164c127aa97e845e3f192429543",
+  "source_ref_requested": "de90ff061c20b164c127aa97e845e3f192429543",
   "tree_sha256": "5816b80ac4355782523aa4baa82bd9e55dd87326f15972f287ff1afa7567482a"
 }

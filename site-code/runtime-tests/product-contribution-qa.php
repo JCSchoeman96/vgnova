@@ -26,13 +26,13 @@ const VG_PRODUCT_CONTRIBUTION_QA_OWNER_META = '_vg_task_8c_product_contribution_
 const VG_PRODUCT_CONTRIBUTION_QA_OWNER_LABEL = '[QA][AUTOMATED] Product Contribution';
 const VG_PRODUCT_CONTRIBUTION_QA_SOURCE_PATH = '/home/jcschoeman96/projects/current/vgnova/site-code/acf-json';
 const VG_PRODUCT_CONTRIBUTION_QA_PLATFORM_CORE_AUTHORITY = [
-    'artifact_name' => 'voelgoed-platform-core-50ee4bee1ae1405522df7b67634b8935d4e9d9ed',
-    'source_commit' => '50ee4bee1ae1405522df7b67634b8935d4e9d9ed',
+    'artifact_name' => 'voelgoed-platform-core-de90ff061c20b164c127aa97e845e3f192429543',
+    'source_commit' => 'de90ff061c20b164c127aa97e845e3f192429543',
     'schema_version' => 3,
     'file_count' => 55,
     'tree_sha256' => '5816b80ac4355782523aa4baa82bd9e55dd87326f15972f287ff1afa7567482a',
     'archive_sha256' => '22d998019e3fe3d93d675250a26eba5be3dbc248badd9be4d7507fbdf9cffdb9',
-    'manifest_sha256' => 'b728e69d1488a28601982bfb5e84b4104b11cab5f6c9ae1dcd2a38192ef696a7',
+    'manifest_sha256' => '7cd38e758babddf495e484013d9345750af6f39689bc428f67d89a814949a932',
 ];
 const VG_PRODUCT_CONTRIBUTION_QA_EXPECTED_PRODUCT_IDS = [525, 527, 529, 531, 642, 765, 767, 768, 842, 844, 845, 846, 905, 908, 911, 914, 917, 920, 923, 1186];
 

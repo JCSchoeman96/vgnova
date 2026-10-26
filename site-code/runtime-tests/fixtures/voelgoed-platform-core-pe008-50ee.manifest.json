@@ -1,0 +1,364 @@
+{
+  "archive_sha256": "22d998019e3fe3d93d675250a26eba5be3dbc248badd9be4d7507fbdf9cffdb9",
+  "artifact_name": "voelgoed-platform-core.tar.gz",
+  "build_toolchain": {
+    "archive_encoder_version": "vgpc-gzip-stored-v1",
+    "archive_format": "tar-ustar+gzip",
+    "python_implementation": "CPython",
+    "python_version": "3.14.4",
+    "tar_serialization": "vgpc-ustar-utf8-v1",
+    "zlib_encoding": "not-used"
+  },
+  "builder_path": "site-code/bin/build-platform-core.py",
+  "builder_sha256": "c7778739de05cb7a95f7fcc29ec42291f470abae6dfd463b6180c4e46ae06066",
+  "file_count": 55,
+  "files": [
+    {
+      "mode": "100755",
+      "path": "bin/check.sh",
+      "sha256": "fa75e33b86dc16a8b9ad180319703aaa70376623ac50d1751c2181fe8de8c32f",
+      "size": 2816
+    },
+    {
+      "mode": "100644",
+      "path": "includes/Bricks/DashboardDynamicData.php",
+      "sha256": "78b5e8889dfba308cbe359736c19e3e1da78718df1ff169dfc56c4512e6b3c8f",
+      "size": 13294
+    },
+    {
+      "mode": "100644",
+      "path": "includes/Bricks/DashboardQueryProvider.php",
+      "sha256": "19e488cf222605aeb78337910feac2a7d388173ae2723705946b01ebe8d817ba",
+      "size": 14434
+    },
+    {
+      "mode": "100644",
+      "path": "includes/Config/AfrikaansLabels.php",
+      "sha256": "85ff7693c406d420d8f83f44772a41e0d0c5651daa8de5d9b589351837a6fc36",
+      "size": 2316
+    },
+    {
+      "mode": "100644",
+      "path": "includes/Contracts/DashboardAction.php",
+      "sha256": "a1a6469f6aaf21a3324ccfd22870dad34ec6e9cb0e3f5203857be311fb0d2905",
+      "size": 4177
+    },
+    {
+      "mode": "100644",
+      "path": "includes/Contracts/DashboardCard.php",
+      "sha256": "bed4565c9883328129b4f2dcccb66655fbceae37a97c74af9ed8c227cef73cec",
+      "size": 4123
+    },
+    {
+      "mode": "100644",
+      "path": "includes/Contracts/DashboardServiceInterface.php",
+      "sha256": "fec05df907a648931a90ec2a25d1c68061eec7a80a224afdb40805c56dc17702",
+      "size": 302
+    },
+    {
+      "mode": "100644",
+      "path": "includes/Dashboard/AccessGuard.php",
+      "sha256": "77b55994203e269643ec4101e95ba06c42fc5aa286310813127312d43e1f64ab",
+      "size": 8246
+    },
+    {
+      "mode": "100644",
+      "path": "includes/Dashboard/DashboardContext.php",
+      "sha256": "572534a6a72aa7bb415f376d66fb0597a9d80e57369d609fef8fa0fd20ccae67",
+      "size": 3796
+    },
+    {
+      "mode": "100644",
+      "path": "includes/Dashboard/DashboardRegistry.php",
+      "sha256": "afe5a0e0d35cf02151493459742c86eae6ce435188603c0b330c4723df850e88",
+      "size": 10866
+    },
+    {
+      "mode": "100644",
+      "path": "includes/Dashboard/DashboardRoutes.php",
+      "sha256": "42bf035569292175272216a6d5f1d6d0bdf3fbd2bb8975e15835bc05c6fb8d87",
+      "size": 2275
+    },
+    {
+      "mode": "100644",
+      "path": "includes/Dashboard/Navigation.php",
+      "sha256": "a8f945933987854a30cf85a57816fc3760d1b78d15028bf95b7d249f73d97050",
+      "size": 6512
+    },
+    {
+      "mode": "100644",
+      "path": "includes/Event/EventParticipationAdmin.php",
+      "sha256": "bbdbea299e6712f84d574ea5d5a25c517f2917920d36858f6bf8bf92b5e3b9f9",
+      "size": 10816
+    },
+    {
+      "mode": "100644",
+      "path": "includes/Event/EventParticipationBricks.php",
+      "sha256": "1adee948ecb9a53f762e7f9de62bf721e1bc46c9f8d4e3f093f9fd26a9c87c63",
+      "size": 4865
+    },
+    {
+      "mode": "100644",
+      "path": "includes/Event/EventParticipationPairLock.php",
+      "sha256": "95107d2db6c3e713c6685cd0c13aa7fe4764f89b7ac37596843e436f74e9c49c",
+      "size": 4298
+    },
+    {
+      "mode": "100644",
+      "path": "includes/Event/EventParticipationRepository.php",
+      "sha256": "4de51c154b4863546570245cddc91124b2eabb8a6ee166bddfe98c5c4728baff",
+      "size": 14214
+    },
+    {
+      "mode": "100644",
+      "path": "includes/Event/EventParticipationService.php",
+      "sha256": "4075158d9a6ab4b4079f5722bb9a2736190eb779dfd2ae1282e9c9bf74362600",
+      "size": 9725
+    },
+    {
+      "mode": "100644",
+      "path": "includes/Event/EventRoleSeeder.php",
+      "sha256": "a8128e06fc35db286265e381aca886b381a124b89d4752391a0067f1f6c46923",
+      "size": 8772
+    },
+    {
+      "mode": "100644",
+      "path": "includes/Performance/CachePolicy.php",
+      "sha256": "48de79acd06ce3a9b28596ec5324c1ea7d5217c0b90d10b7f3260b8154826057",
+      "size": 7172
+    },
+    {
+      "mode": "100644",
+      "path": "includes/Plugin.php",
+      "sha256": "054b373bc4512cadf7f4e9700347867dc90ca359527770b0ecf3a3a825512625",
+      "size": 4156
+    },
+    {
+      "mode": "100644",
+      "path": "includes/Product/PersonProductsBricks.php",
+      "sha256": "a7460a1e21d4318a9d3997e52ad9e0d804a155798b1b7992e786b4cb976170e5",
+      "size": 5708
+    },
+    {
+      "mode": "100644",
+      "path": "includes/Product/ProductContributionAdmin.php",
+      "sha256": "435a270647db590a6f9ccfc2f57e8817dd9f55a03d44c115d847746ab6484074",
+      "size": 27954
+    },
+    {
+      "mode": "100644",
+      "path": "includes/Product/ProductContributionPairLock.php",
+      "sha256": "3da0944a49525f7b041c7738cd6cb789fb3a524d88e6bfb31fb2ba85b498a31f",
+      "size": 4547
+    },
+    {
+      "mode": "100644",
+      "path": "includes/Product/ProductContributionRepository.php",
+      "sha256": "db8d394d63a1265cfae9fef61bcfa8abe049da375199d647845f69391a5a0af6",
+      "size": 25790
+    },
+    {
+      "mode": "100644",
+      "path": "includes/Product/ProductContributionService.php",
+      "sha256": "6db9978174b2320bea3efa6ccade1e50db21cd0c6e16e4d279b3208a315d248e",
+      "size": 17377
+    },
+    {
+      "mode": "100644",
+      "path": "includes/Product/ProductPeopleBricks.php",
+      "sha256": "001967451c55ef4911427a53f0b72a3457ff925298450fc6a4517ff123d18ca7",
+      "size": 4499
+    },
+    {
+      "mode": "100644",
+      "path": "includes/Product/ProductPeopleFields.php",
+      "sha256": "373ce7592f6f79603fefc95b2c37978d94fef01d106bc8f6e28995c8146ba762",
+      "size": 2367
+    },
+    {
+      "mode": "100644",
+      "path": "includes/Product/ProductPeopleResolver.php",
+      "sha256": "27181a44aca8e6a701f367d11497596f74c16ca13b2eb592cf0caf8923c9ff23",
+      "size": 1301
+    },
+    {
+      "mode": "100644",
+      "path": "includes/Product/ProductRoleSeeder.php",
+      "sha256": "b55daac10bc3e1219a20af90001b575726a4112d2dd170e4bc7ed5cbd08e4dd6",
+      "size": 8656
+    },
+    {
+      "mode": "100644",
+      "path": "includes/Product/ProductRoleVocabulary.php",
+      "sha256": "fc27c8007876eb6ffea5ed2f1509bf349f88b6acd20e742cb2b507e5e07d3bd9",
+      "size": 1180
+    },
+    {
+      "mode": "100644",
+      "path": "includes/Product/ProductSourceEventBricks.php",
+      "sha256": "9781aac4f6594d0626539f0f7fc488b863b3fe0af4a9e8b34e3604fed1467697",
+      "size": 4205
+    },
+    {
+      "mode": "100644",
+      "path": "includes/Runtime/RuntimeMutationSession.php",
+      "sha256": "87229e6961420f885b42aec0713cbf8a4c7b13838db76b1f9cb5c82c19f1ac86",
+      "size": 16720
+    },
+    {
+      "mode": "100644",
+      "path": "includes/Services/CommerceService.php",
+      "sha256": "c3fc99ef8f3b224e5921ff708080c680342504a2bbdab5c8572da5ea5703e9e9",
+      "size": 13828
+    },
+    {
+      "mode": "100644",
+      "path": "includes/Services/LearningService.php",
+      "sha256": "b7156f25406f15e8caf8a250961742a2f6514ce68762d609092b3d06d20f0338",
+      "size": 34709
+    },
+    {
+      "mode": "100644",
+      "path": "includes/Services/MemberAreaService.php",
+      "sha256": "9a5bf000eacb1d6eda74a24c1a0dcb86bfaf044dc128e69e0be7a21e7e0e495d",
+      "size": 9335
+    },
+    {
+      "mode": "100644",
+      "path": "includes/Services/MembershipService.php",
+      "sha256": "5355ecdfa921a4b7da306f6384649c7387d1c5fbd58be6425d209820c9a04fe6",
+      "size": 13154
+    },
+    {
+      "mode": "100644",
+      "path": "includes/Services/SubscriptionService.php",
+      "sha256": "70cfa98752f37c60045ef3ca2fc10ff50992e826d0e8a792116eb96c08098f4f",
+      "size": 16835
+    },
+    {
+      "mode": "100644",
+      "path": "includes/Services/TicketService.php",
+      "sha256": "ddde203376c45859763cfe6f2aaf500cc5bf228f5606c1aaef9707cfc9f19318",
+      "size": 35903
+    },
+    {
+      "mode": "100644",
+      "path": "includes/Taxonomy/ContentTopicMigration.php",
+      "sha256": "31040fd077c4a8efe05cafd11e6767bdc983897ad4ff60c3d1ec15a2f97bd44b",
+      "size": 41617
+    },
+    {
+      "mode": "100644",
+      "path": "includes/Taxonomy/ContentTopicRoles.php",
+      "sha256": "9241fbaef68ac5318fda72e5daf2c71a5e147d9a3ff30ca97066480de45b6512",
+      "size": 26630
+    },
+    {
+      "mode": "100644",
+      "path": "includes/Taxonomy/ContentTopicTaxonomy.php",
+      "sha256": "c46bdd598f1add571323c0c499e00b63d19f03eb828560d5ae3e3d4645c2c659",
+      "size": 15994
+    },
+    {
+      "mode": "100644",
+      "path": "tests/bootstrap.php",
+      "sha256": "05d60994d10bcd70443f4f8ce17203fcd2d2f1cf947b5344f9c3ce606f1f7acf",
+      "size": 7832
+    },
+    {
+      "mode": "100644",
+      "path": "tests/contracts/DashboardCardTest.php",
+      "sha256": "e624d61733e763e4e8c69edac7b346f71fe4926dc0f4e6fa3fdf68cfd93d8b03",
+      "size": 6992
+    },
+    {
+      "mode": "100644",
+      "path": "tests/dashboard/AccessGuardTest.php",
+      "sha256": "69151d928c2c9deacc13881c50891283bd8371fab0d7dc228cc561580c470150",
+      "size": 4466
+    },
+    {
+      "mode": "100644",
+      "path": "tests/dashboard/DashboardRoutesTest.php",
+      "sha256": "44b32e7f36591313e41516817ed85f48d90f2d14eeef400dabe02cfa816dd0b1",
+      "size": 3093
+    },
+    {
+      "mode": "100644",
+      "path": "tests/dashboard/NavigationTest.php",
+      "sha256": "8edf44b916c8c8a217836b007dace0d8684b4c314f4a64d91cbae60beec934de",
+      "size": 9037
+    },
+    {
+      "mode": "100644",
+      "path": "tests/performance/CachePolicyTest.php",
+      "sha256": "b813031aa173cdc61b4429843eb7cedcb4b303f3a6b43510275c3990d4f8da7d",
+      "size": 24739
+    },
+    {
+      "mode": "100644",
+      "path": "tests/run-dashboard-tests.php",
+      "sha256": "ebea06cb804228bc8bed7e6a6824a01ac4eb0215bc71d1a145e6eef0b7a386d4",
+      "size": 1706
+    },
+    {
+      "mode": "100644",
+      "path": "tests/services/CommerceServiceTest.php",
+      "sha256": "c1f982c6f6ac420aa7bf50dd3cd37d4907aba0ef921ec6356370a6b01c7aa4a8",
+      "size": 13823
+    },
+    {
+      "mode": "100644",
+      "path": "tests/services/LearningServiceTest.php",
+      "sha256": "78a37f8778517cf0971e0d1f8a3aae4b94ac44beaf9fbb45b7b0f7bf5cc0eabb",
+      "size": 17805
+    },
+    {
+      "mode": "100644",
+      "path": "tests/services/MemberAreaServiceTest.php",
+      "sha256": "a4abd9c23fb4a379245fb328173c8b374a958e81c7f18985e4aac9fbf49e168d",
+      "size": 8466
+    },
+    {
+      "mode": "100644",
+      "path": "tests/services/MembershipServiceTest.php",
+      "sha256": "7e94ee415395ef4b67bfafd796bd32d2b07b566e41f46b3627164d8943a4e7cb",
+      "size": 11750
+    },
+    {
+      "mode": "100644",
+      "path": "tests/services/SubscriptionServiceTest.php",
+      "sha256": "4721c3ebab6aa91bebf0dd034adab729e7cdcafc0e85d39bb2c4c9ade19407ad",
+      "size": 14730
+    },
+    {
+      "mode": "100644",
+      "path": "tests/services/TicketServiceTest.php",
+      "sha256": "7cf6e81c7680574cc4a8466497191cc27c24b715d8dc8246e2c4882f91793cf4",
+      "size": 22594
+    },
+    {
+      "mode": "100644",
+      "path": "voelgoed-platform-core.php",
+      "sha256": "366966c61606c7e6c99a8116ed7a37a41f842e337658b6a8bfe35ade1e15fe78",
+      "size": 2759
+    }
+  ],
+  "integration_patch_path": "site-code/voelgoed-platform-core/integration.patch",
+  "integration_patch_sha256": "cfe32be32718dbd0c1a061648939ebda1053e08bc24dc9163e13ae5581f9e907",
+  "overlay_source_paths": [
+    "site-code/voelgoed-platform-core/includes/Runtime",
+    "site-code/voelgoed-platform-core/includes/Taxonomy",
+    "site-code/voelgoed-platform-core/includes/Event",
+    "site-code/voelgoed-platform-core/includes/Product"
+  ],
+  "php_contract": {
+    "ci": "8.5",
+    "minimum": "8.5"
+  },
+  "root_source_path": "voelgoed-platform-core",
+  "schema_version": 3,
+  "source_commit": "50ee4bee1ae1405522df7b67634b8935d4e9d9ed",
+  "source_ref_requested": "50ee4bee1ae1405522df7b67634b8935d4e9d9ed",
+  "tree_sha256": "5816b80ac4355782523aa4baa82bd9e55dd87326f15972f287ff1afa7567482a"
+}
