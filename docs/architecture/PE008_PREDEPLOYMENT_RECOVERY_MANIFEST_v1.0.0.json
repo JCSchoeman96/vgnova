@@ -1,7 +1,7 @@
 {
   "schema": "vgnova.pe008-predeployment-recovery-manifest",
   "version": "1.0.0",
-  "status": "SOURCE_ONLY_DRAFT_PR_REVIEW_PENDING",
+  "status": "SOURCE_ONLY_PE008V_REVIEW_PENDING",
   "deployment_authorized": false,
   "source_baseline": {
     "artifact_source_main": "de90ff061c20b164c127aa97e845e3f192429543",
@@ -121,7 +121,7 @@
     "product_contribution_posts": 0,
     "event_participation_posts": 0,
     "product_contribution_qa_owner_rows": 0,
-    "last_inspected_during": "PE-008R; PE-008T performed no runtime inspection",
+    "last_inspected_during": "PE-008U rechecked the active plugin tree and coordinator after its blocked attempt; the protected database snapshot remains from PE-008R; PE-008V performed no runtime access",
     "pe008t_runtime_mutation": "none",
     "deployment_authorized": false
   },
@@ -356,5 +356,102 @@
     },
     "runtime_access": "No Local runtime inspection, mutation-session acquisition, WP-CLI command, or persistent write occurred during PE-008T.",
     "pr_checks": "Must pass on final exact PE-008T head before independent review."
+  },
+  "pe008u": {
+    "status": "BLOCKED_PRE_GUARD_PRODUCTION_WIRING",
+    "reviewed_tooling_head": "9d6d3f123217f31edf449c4a80288de59b5c8170",
+    "base_sha": "de90ff061c20b164c127aa97e845e3f192429543",
+    "authorized_artifact_id": "12659772564",
+    "coordinator": {
+      "launched": true,
+      "target": "vgnova-local-10039",
+      "session_acquired": true,
+      "session_id": "f306cb4da79628f1be1aeb21f9b263a5",
+      "helper_launched": true,
+      "guard_callback_entered": true,
+      "wp_cli_guard_subprocess_started": false,
+      "child_exit_code": 1,
+      "host_lock_after": "free",
+      "database_lock_a_after": "free",
+      "database_lock_b_after": "free"
+    },
+    "failure": {
+      "classification": "BLOCKED_PRE_GUARD_PRODUCTION_WIRING",
+      "reason": "Production guard closure read $base_environment without capturing it; the subprocess wrapper received null instead of array.",
+      "failed_tree_reservation_created": false,
+      "active_to_backup_rename": false,
+      "stage_to_active_rename": false
+    },
+    "runtime_after_attempt": {
+      "active_classification": "OLD_AUTHORITY_EXACT",
+      "active_file_count": 54,
+      "active_tree_sha256": "856a3e5978559bfb2572b4b1ff4b34df916743f9e72d6b18220ee64e98af5f56",
+      "active_missing": 0,
+      "active_extra": 0,
+      "active_content_mismatch": 0,
+      "active_mode_mismatch": 0,
+      "active_symlinks": 0,
+      "active_unsupported": 0,
+      "stage_path": "/home/jcschoeman96/Local Sites/voelgoed-novamira/app/voelgoed-platform-core.pe008-stage-20261026T194240Z",
+      "stage_file_count": 55,
+      "stage_tree_sha256": "5816b80ac4355782523aa4baa82bd9e55dd87326f15972f287ff1afa7567482a",
+      "stage_exact": true,
+      "backup_path": "/home/jcschoeman96/Local Sites/voelgoed-novamira/app/voelgoed-platform-core.pe008-backup-20261026T194240Z",
+      "backup_exists": false
+    },
+    "mutation_counts": {
+      "platform_core_deployments": 0,
+      "persistent_wordpress_writes": 0,
+      "successful_live_qa_runs": 0,
+      "aborted_pre_mutation_qa_invocations": 1,
+      "blocked_pre_guard_deployment_attempts": 1
+    },
+    "authorization_for_current_head": false
+  },
+  "pe008v": {
+    "status": "SOURCE_ONLY_REMEDIATION",
+    "failing_head": "9d6d3f123217f31edf449c4a80288de59b5c8170",
+    "origin_main_at_start": "de90ff061c20b164c127aa97e845e3f192429543",
+    "source_changes": [
+      "capture the existing $base_environment snapshot in the production guard closure",
+      "add a production-wiring regression for lexical captures",
+      "record the blocked PE-008U attempt"
+    ],
+    "tdd": {
+      "red": "The production-wiring regression failed with production guard does not capture base_environment; the other 33 PE-008 bootstrap cases passed.",
+      "green": "The PE-008 bootstrap suite passed 34/34 after adding the existing environment snapshot to the guard capture list."
+    },
+    "sibling_callback_audit": {
+      "guard": "All outer variables are captured after the fix; expected is a parameter and report/socket/command values are local.",
+      "verify": "old/new manifests and authorities are captured; path/which are parameters and authority/manifest/report are local.",
+      "smoke": "target/wp_cli/base_environment/smoke_library are captured; root/require_guard are parameters and plugin/socket/command values are local.",
+      "rename": "The static arrow callback uses only its a/b parameters; no outer variables are used.",
+      "other_uncaptured_dependencies": false
+    },
+    "source_verification": {
+      "check_source": "PASS",
+      "platform_core_check": "PASS",
+      "product_contribution_integrity": "28/28 PASS",
+      "pe008_protected_state": "PASS",
+      "pe008_bootstrap": "34/34 PASS",
+      "runtime_mutation_core": "74 PASS",
+      "runtime_mutation_session": "19/19 PASS",
+      "runtime_mutation_policy": "32/32 PASS",
+      "static_mutation_policy": "133 tracked PHP files; 34 mutation API files; PASS",
+      "fcm_integration": "3/3 PASS",
+      "platform_core_dashboard": "127/127 PASS",
+      "php_lint": "PASS",
+      "json_validation": "PASS",
+      "python_syntax_ast": "PASS",
+      "bash_syntax": "PASS",
+      "shellcheck": "PASS",
+      "actionlint": "PASS with actionlint 1.7.12",
+      "git_diff_check": "PASS",
+      "canonical_tree_and_archive": "55 files; tree 5816b80ac4355782523aa4baa82bd9e55dd87326f15972f287ff1afa7567482a; archive 22d998019e3fe3d93d675250a26eba5be3dbc248badd9be4d7507fbdf9cffdb9",
+      "live_product_contribution_qa": "NOT RUN"
+    },
+    "runtime_access": "None. PE-008V did not inspect the Local runtime, access the stage, acquire a mutation session, run live QA, or write WordPress data.",
+    "deployment_authorized": false,
+    "live_product_contribution_qa": "NOT RUN"
   }
 }

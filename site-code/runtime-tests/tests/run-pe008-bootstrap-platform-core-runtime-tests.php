@@ -16,6 +16,32 @@ function pe008_test_assert(bool $condition, string $message): void
     }
 }
 
+/** @return array{captures:list<string>,unbound:list<string>} */
+function pe008_test_production_closure_bindings(string $source, string $name): array
+{
+    $production_start = strpos($source, 'function vg_pe008_production(): never');
+    pe008_test_assert($production_start !== false, 'production entrypoint is missing');
+    $production = substr($source, $production_start);
+    $pattern = '/\$' . preg_quote($name, '/') . '\s*=\s*static function\s*\((?<parameters>[^)]*)\)\s*use\s*\((?<captures>[^)]*)\)\s*:\s*(?:bool|array)\s*\{(?<body>.*?)^\s{4}\};/ms';
+    pe008_test_assert(preg_match($pattern, $production, $matches) === 1, 'production ' . $name . ' closure could not be inspected');
+
+    $variables = static function (string $text): array {
+        preg_match_all('/\$([A-Za-z_][A-Za-z0-9_]*)/', $text, $found);
+        $names = array_values(array_unique($found[1]));
+        sort($names, SORT_STRING);
+        return $names;
+    };
+    $parameters = $variables($matches['parameters']);
+    $captures = $variables($matches['captures']);
+    $body_variables = $variables($matches['body']);
+    preg_match_all('/\$([A-Za-z_][A-Za-z0-9_]*)\s*(?:\?\?=|(?<![=!<>])=(?!=)|\+=|-=|\+\+|--)/', $matches['body'], $assignments);
+    $locals = array_values(array_unique($assignments[1]));
+    $unbound = array_values(array_diff($body_variables, $parameters, $captures, $locals, ['GLOBALS', 'this']));
+    sort($unbound, SORT_STRING);
+
+    return ['captures' => $captures, 'unbound' => $unbound];
+}
+
 function pe008_test_remove(string $path): void
 {
     $stat = @lstat($path);
@@ -239,6 +265,17 @@ $cases = [
         pe008_test_assert(str_contains($source, 'mysqli.default_socket') && str_contains($source, 'pdo_mysql.default_socket'), 'fresh smoke does not pass parent socket settings');
         pe008_test_assert(str_contains($source, 'descriptorSafeCommand') && str_contains($source, '[3]'), 'guard child does not close internal descriptors while passing FD3');
         pe008_test_assert(str_contains($source, 'proc_close('), 'guard child termination is not awaited before returning');
+    },
+    'production guard and smoke capture every outer dependency' => static function (): void {
+        $source = file_get_contents($GLOBALS['pe008_helper_path']);
+        pe008_test_assert(is_string($source), 'helper source unreadable');
+        $guard = pe008_test_production_closure_bindings($source, 'guard');
+        pe008_test_assert(in_array('base_environment', $guard['captures'], true), 'production guard does not capture base_environment');
+        pe008_test_assert($guard['unbound'] === [], 'production guard has uncaptured dependencies: ' . implode(', ', $guard['unbound']));
+
+        $smoke = pe008_test_production_closure_bindings($source, 'smoke');
+        pe008_test_assert(in_array('base_environment', $smoke['captures'], true), 'production smoke does not capture base_environment');
+        pe008_test_assert($smoke['unbound'] === [], 'production smoke has uncaptured dependencies: ' . implode(', ', $smoke['unbound']));
     },
     'WP-CLI command builder carries default and explicit DB transport without credentials' => static function (): void {
         pe008_test_assert(function_exists('vg_pe008_wp_cli_command') && function_exists('vg_pe008_guard_command') && function_exists('vg_pe008_smoke_command'), 'isolated WP-CLI command builders are missing');

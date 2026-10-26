@@ -425,7 +425,7 @@ function vg_pe008_production(): never
     $wp_cli = vg_pe008_find_wp_cli($base_environment);
     $command_library = dirname(__DIR__) . '/runtime-tools/pe008-wp-cli-session-guard.php';
     $smoke_library = dirname(__DIR__) . '/runtime-tools/pe008-wp-cli-runtime-smoke.php';
-    $guard = static function (string $expected) use ($active, $stage, $old, $old_path, $new, $new_path, $wordpress_root, $wp_cli, $command_library): bool {
+    $guard = static function (string $expected) use ($active, $stage, $old, $old_path, $new, $new_path, $wordpress_root, $wp_cli, $command_library, $base_environment): bool {
         if ($expected !== 'vgnova-local-10039') { throw new RuntimeException('Wrong target.'); }
         $active_report = vg_product_contribution_qa_platform_core_integrity_report($active, $old_path, $old);
         $stage_report = vg_product_contribution_qa_platform_core_integrity_report($stage, $new_path, $new);

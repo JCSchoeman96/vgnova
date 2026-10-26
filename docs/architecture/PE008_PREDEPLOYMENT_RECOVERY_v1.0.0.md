@@ -1,6 +1,6 @@
 # PE-008 predeployment recovery v1.0.0
 
-**Status:** Source-only remediation prepared for draft-PR review. PE-008 runtime deployment remains blocked. No Platform Core deployment has occurred.
+**Status:** PE-008V source-only remediation is prepared for draft-PR review. Runtime deployment remains blocked. No Platform Core deployment has occurred.
 
 ## Baseline and artifact authority
 
@@ -171,3 +171,46 @@ The authority regression ran RED before source constants or manifest bytes chang
 The PE-008T source gates passed: `check-source.sh`, `voelgoed-platform-core/bin/check.sh`, Product Contribution integrity 28/28, PE-008 protected-state, PE-008 bootstrap 33/33, mutation core 74, mutation session 19/19, mutation policy 32, static policy across 133 tracked PHP files, and FCM 3/3. The dashboard suite passed 127/127. PHP lint, JSON validation, Python AST, Bash syntax, ShellCheck, `actionlint` 1.7.12 through mise, the canonical artifact checks, and final `git diff --check` passed.
 
 PE-008T performed no Local WordPress inspection, deployment, mutation-session acquisition, live QA invocation, or persistent write. Its runtime mutation counts are zero. The earlier aborted pre-mutation QA invocation remains recorded as one. The exact PE-008T GitHub check result is reported with the final draft PR head; deployment remains blocked.
+
+## PE-008U blocked pre-guard deployment attempt
+
+The authorized PE-008U execution used reviewed tooling head `9d6d3f123217f31edf449c4a80288de59b5c8170`, current main `de90ff061c20b164c127aa97e845e3f192429543`, and artifact `12659772564`. The PE-007 coordinator launched the helper and acquired a mutation session for `vgnova-local-10039`. The production guard callback ran after it rechecked the active and staged trees.
+
+The callback referenced `$base_environment` for the Local socket override and subprocess environment, but its `use (...)` list omitted that variable. PHP reported an undefined variable, then raised a `TypeError` because `vg_pe008_run_subprocess()` received `null` where it requires an array. The callback returned no successful guard result, and the WP-CLI guard child never started. The helper returned `BLOCKED`; the coordinator recorded child exit code `1` and released the session.
+
+| PE-008U action or state | Result |
+| --- | --- |
+| Coordinator launched | Yes |
+| PE-007 session acquired | Yes; session `f306cb4da79628f1be1aeb21f9b263a5` |
+| Deployment helper launched | Yes |
+| Production guard callback entered | Yes |
+| WP-CLI guard subprocess started | No |
+| Failed-tree reservation created | No |
+| Active-to-backup rename | No |
+| Stage-to-active rename | No |
+| Platform Core deployment | 0 |
+| Persistent WordPress writes | 0 |
+| Successful live Product Contribution QA runs | 0 |
+
+The read-only post-failure check classified the active plugin as `OLD_AUTHORITY_EXACT`: 54 files, tree `856a3e5978559bfb2572b4b1ff4b34df916743f9e72d6b18220ee64e98af5f56`, with zero missing files, extra files, content mismatches, mode mismatches, symlinks, or unsupported objects. The fresh stage at `/home/jcschoeman96/Local Sites/voelgoed-novamira/app/voelgoed-platform-core.pe008-stage-20261026T194240Z` exactly matched the authorized 55-file artifact, tree `5816b80ac4355782523aa4baa82bd9e55dd87326f15972f287ff1afa7567482a`. The backup destination remained absent. After the helper exited, the host lock and both database locks were free.
+
+This was a `BLOCKED_PRE_GUARD_PRODUCTION_WIRING` deployment attempt. It did not invoke Product Contribution QA. The separate historical `ABORTED_PRE_MUTATION_QA_INVOCATION` count remains one.
+
+## PE-008V production closure capture fix
+
+PE-008V uses the existing isolated worktree and branch. A fresh fetch confirmed `origin/main` remains `de90ff061c20b164c127aa97e845e3f192429543`. PE-008V performs no Local runtime access, deployment, mutation-session acquisition, live QA invocation, or persistent WordPress write. The runtime and stage facts above remain the last observed PE-008U state.
+
+The new regression reads the actual closure declarations inside `vg_pe008_production()` and checks their free variables against their lexical `use (...)` captures. Before the production change, the test failed with `production guard does not capture base_environment`; the other 33 PE-008 bootstrap cases passed. The production fix adds `$base_environment` to the guard closure's existing capture list. The smoke closure already captures the same environment snapshot and required no change. The real subprocess tests remain in place.
+
+The sibling callback audit found no other uncaptured production variable:
+
+| Production callback | Outer-scope variable audit |
+| --- | --- |
+| `guard` | `$active`, `$stage`, `$old`, `$old_path`, `$new`, `$new_path`, `$wordpress_root`, `$wp_cli`, `$command_library`, and `$base_environment` are captured; `$expected` is a parameter; report, socket, and command values are local. |
+| `verify` | `$old`, `$new`, `$old_path`, and `$new_path` are captured; `$path` and `$which` are parameters; authority, manifest, and report values are local. |
+| `smoke` | `$target`, `$wp_cli`, `$base_environment`, and `$smoke_library` are captured; `$root` and `$require_guard` are parameters; plugin, socket, and command values are local. |
+| `rename` | The inline static arrow callback uses only its `$a` and `$b` parameters and has no outer-scope variable dependency. |
+
+Local PE-008V verification passed: `check-source.sh`; the Platform Core dashboard suite at 127/127; Product Contribution integrity at 28/28; protected-state regression; PE-008 bootstrap at 34/34; mutation core at 74; session at 19/19; mutation policy at 32/32; static policy across 133 tracked PHP files and 34 files with mutation APIs; and FCM integration at 3/3. The source gate also passed PHP lint, JSON parsing, Python AST parsing, `bash -n`, and ShellCheck. `actionlint` 1.7.12 and `git diff --check` passed. The canonical Platform Core build remains at 55 files with tree `5816b80ac4355782523aa4baa82bd9e55dd87326f15972f287ff1afa7567482a` and archive `22d998019e3fe3d93d675250a26eba5be3dbc248badd9be4d7507fbdf9cffdb9`.
+
+The exact draft PR head and GitHub checks are reported in the handoff. PE-008 deployment remains blocked. A new deployment attempt requires independent review of the updated head and renewed authorization.
