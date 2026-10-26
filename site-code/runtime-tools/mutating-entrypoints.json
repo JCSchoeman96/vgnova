@@ -26,6 +26,13 @@
             "classification": "test_only"
         },
         {
+            "path": "site-code/person-foundation/migrate-approved-person-profiles.php",
+            "classification": "mutating",
+            "session_guard_required": true,
+            "guard_function": "vg_runtime_mutation_assert_session",
+            "purpose": "migration"
+        },
+        {
             "path": "site-code/person-foundation/seed-person-type-terms.php",
             "classification": "mutating",
             "session_guard_required": true,
@@ -34,6 +41,10 @@
         },
         {
             "path": "site-code/person-foundation/tests/run-person-foundation-tests.php",
+            "classification": "test_only"
+        },
+        {
+            "path": "site-code/person-foundation/tests/run-person-profile-migration-tests.php",
             "classification": "test_only"
         },
         {

@@ -2,16 +2,22 @@
 declare(strict_types=1);
 
 /**
- * Seed the approved initial person_type vocabulary.
+ * Seed the exact approved person_type vocabulary.
  *
- * Run with:
- * wp eval-file /path/to/seed-person-type-terms.php
+ * Run through the runtime mutation coordinator:
+ * php site-code/bin/vgnova-runtime-mutate.php \
+ *   --target=vgnova-local-10039 \
+ *   --wp-root="/home/jcschoeman96/Local Sites/voelgoed-novamira/app/public/" \
+ *   --purpose="Seed approved Person Types" \
+ *   -- \
+ *   wp eval-file site-code/person-foundation/seed-person-type-terms.php
  */
 function vg_seed_person_type_terms(): array
 {
     $taxonomy = 'person_type';
     $approved_terms = [
         'mentor' => 'Mentor',
+        'kenner' => 'Kenner',
     ];
 
     if (! taxonomy_exists($taxonomy)) {
@@ -25,31 +31,40 @@ function vg_seed_person_type_terms(): array
     if (is_wp_error($current_terms)) {
         throw new RuntimeException('Could not read person_type terms: ' . $current_terms->get_error_message());
     }
+    if (! is_array($current_terms)) {
+        throw new RuntimeException('Could not read person_type terms: unexpected result.');
+    }
 
     foreach ($current_terms as $current_term) {
         if (
-            $current_term->slug === 'mentor'
-            && $current_term->name !== 'Mentor'
+            ! is_object($current_term)
+            || ! isset($current_term->taxonomy, $current_term->slug, $current_term->name)
+            || $current_term->taxonomy !== $taxonomy
+            || ! is_string($current_term->slug)
+            || ! is_string($current_term->name)
         ) {
+            throw new RuntimeException('Could not read person_type terms: invalid term record.');
+        }
+
+        $approved_name_for_slug = $approved_terms[$current_term->slug] ?? null;
+        if ($approved_name_for_slug !== null && $current_term->name !== $approved_name_for_slug) {
             throw new RuntimeException(sprintf(
                 'The person_type slug "%s" conflicts with the approved name "%s". No terms were changed.',
                 $current_term->slug,
-                'Mentor'
+                $approved_name_for_slug
             ));
         }
 
-        if (
-            $current_term->name === 'Mentor'
-            && $current_term->slug !== 'mentor'
-        ) {
+        $approved_slug_for_name = array_search($current_term->name, $approved_terms, true);
+        if ($approved_slug_for_name !== false && $current_term->slug !== $approved_slug_for_name) {
             throw new RuntimeException(sprintf(
                 'The person_type name "%s" conflicts with the approved slug "%s". No terms were changed.',
                 $current_term->name,
-                'mentor'
+                $approved_slug_for_name
             ));
         }
 
-        if ($current_term->slug !== 'mentor' || $current_term->name !== 'Mentor') {
+        if ($approved_name_for_slug === null || $current_term->name !== $approved_name_for_slug) {
             throw new RuntimeException(sprintf(
                 'Unexpected person_type term "%s" (%s) exists. No terms were changed.',
                 $current_term->name,
@@ -125,6 +140,7 @@ function vg_seed_person_type_terms(): array
 
 if (defined('WP_CLI') && WP_CLI && ! defined('VG_PERSON_FOUNDATION_TESTING')) {
     try {
+        require_once dirname(__DIR__) . '/runtime-tools/runtime-mutation-session.php';
         vg_runtime_mutation_assert_session('vgnova-local-10039');
         $result = vg_seed_person_type_terms();
         \WP_CLI::success(sprintf(

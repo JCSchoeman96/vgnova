@@ -1,0 +1,6 @@
+legacy_id,decision,target_title,target_slug,target_status,person_types,copy_featured_image,copy_excerpt,copy_content,copy_person_fields,relationship_policy,authority
+753,MIGRATE,Lynette Beer,lynette-beer,publish,mentor|kenner,NO,NO,NO,NO,EXCLUDE_ALL_CURRENT,OWNER_CONFIRMED_2026-10-25
+754,DO_NOT_MIGRATE,,,,,NO,NO,NO,NO,EXCLUDE_ALL_CURRENT,OWNER_CONFIRMED_2026-10-25
+755,DO_NOT_MIGRATE,,,,,NO,NO,NO,NO,EXCLUDE_ALL_CURRENT,OWNER_CONFIRMED_2026-10-25
+756,DO_NOT_MIGRATE,,,,,NO,NO,NO,NO,EXCLUDE_ALL_CURRENT,OWNER_CONFIRMED_2026-10-25
+757,DO_NOT_MIGRATE,,,,,NO,NO,NO,NO,EXCLUDE_ALL_CURRENT,OWNER_CONFIRMED_2026-10-25

@@ -8,6 +8,8 @@
 
 **Source baseline:** `c1d2af80a71b477e0eb859d3f74ea3741eab9b71`
 
+Task 10A / Person 5D has now run on the local staging runtime: owner-approved Person ID 1705 exists for Lynette Beer, and the Person Type vocabulary is Mentor plus Kenner. PR #58 is open and unmerged; independent review is pending. The Task 5B implementation findings below remain historical evidence; see the [versioned Task 10A architecture](PERSON_MIGRATION_ARCHITECTURE_v1.1.0.md), [owner decisions](PERSON_PROFILE_OWNER_DECISIONS_v1.0.0.md), and [runtime manifest](PERSON_5D_RUNTIME_MANIFEST_v1.0.0.json) for current state.
+
 ## Ownership
 
 ACF Pro owns the canonical Person schema:
@@ -76,7 +78,7 @@ The optional `group_vg_person_details` group applies only to `post_type == perso
 
 `person_type` is flat, visible in the admin and REST API, and has no public taxonomy queries or rewrite route. Its field control allows multiple future approved classifications, saves and loads WordPress term relationships, and does not allow inline term creation. It does not use ACF post meta as a separate classification source. Person is not attached to legacy `content_category`.
 
-The source-controlled `seed-person-type-terms.php` seeder approves only `Mentor` (`mentor`). It creates the term when absent, leaves an exact existing term unchanged, stops safely on conflicts or unapproved terms, and creates no relationships. The runtime contains exactly one `person_type` term and zero Person assignments.
+At Task 5B, the source-controlled seeder approved only `Mentor` (`mentor`), and the runtime had one Person Type term with zero Person assignments. Task 10A later expanded the controlled vocabulary to exactly `Mentor / mentor` and `Kenner / kenner`; the runtime now contains those two terms and exactly the two approved relationships on Lynette Beer. See the versioned Task 10A evidence linked above.
 
 Person publication uses WordPress post status. Indexing belongs to the SEO system; protected access belongs to the access or membership system. There is no custom Person status field.
 
@@ -109,7 +111,7 @@ The reproducible runtime check is `site-code/runtime-tests/person-foundation-qa.
 
 After cleanup, all Person post statuses total zero; the temporary post has no post meta or taxonomy edges; Mentor has zero relationships; and Person has zero `person_type` and `content_topic` relationships. The shared topic terms and counts returned to their pre-QA state.
 
-The QA script snapshots profiles 753–757, event 763, and products 767/768 before and after its run. It verified the profile status, slug, modified timestamp, role and group terms, `content_topic`, and `content_category`; it also verified the event/product statuses, slugs, timestamps, and relationship IDs. All snapshots matched. The five profile migration decisions remain `DEFER`.
+The Task 5B QA script snapshots profiles 753–757, event 763, and products 767/768 before and after its run. It verified profile and relationship state, and all snapshots matched. At the end of Task 5C the five decisions were `DEFER`; the owner later superseded those current decisions, without changing the historical Task 5C evidence. Task 10A owner decisions and before/after checks are recorded in the versioned runtime manifest.
 
 ## Regression checks
 
@@ -134,4 +136,4 @@ Task 5B creates no Person from `medewerker` and changes no legacy profile, event
 
 Task 5B does not resolve legacy provenance, create migration mappings, migrate Mentor assignments, implement `event_participation`, change `event_medewerkers`, migrate product people, modify `9-acf-product-copy.php` or `10-vg-bricks-medewerker-queries.php`, add Person relationships to Uitsending, podcasts, courses, or editorial posts, or decommission `medewerker`, `team_member`, or any other legacy model. It does not migrate Bricks templates, create old-URL redirects, or change FluentSnippets. Social links, phone, email, address, booking/contact fields, and social repeaters remain deferred until a demonstrated profile requirement exists. No real person's expertise topic was assigned.
 
-Task 5C must independently decide `MIGRATE`, `DO_NOT_MIGRATE`, or `DEFER` for profiles 753–757. Only a future approved `MIGRATE` decision authorizes creating a canonical Person from a legacy profile.
+At the end of Task 5B, Task 5C still needed to decide `MIGRATE`, `DO_NOT_MIGRATE`, or `DEFER` for profiles 753–757. The later owner decision and Task 10A execution are recorded in the versioned successor artifacts; the historical Task 5B and 5C findings above are retained as written evidence of their time.
