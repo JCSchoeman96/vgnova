@@ -38,8 +38,12 @@ The final Person is published as `Lynette Beer` / `lynette-beer`, with empty con
 
 All five legacy profile snapshots and the known Event/Product relationship values matched before and after migration. No legacy profile, event, product, or relationship changed. The exact runtime writes and route checks are recorded in the [runtime manifest](PERSON_5D_RUNTIME_MANIFEST_v1.0.0.json).
 
+## Runtime authority provenance
+
+The migration runner code was committed as `7857dd7a22f6ca4864141d87fb658f94682f33a9`. The authority CSV it consumed was present in the working tree but was not committed at execution; Git first records that CSV in `f0d761544ef85f01b01e79ccc5a1605cf6ec2af3`. No evidence shows that the exact CSV bytes were independently preserved at runtime. The committed runner independently hard-pins and validates the effective policy for profile 753: migrate Lynette Beer as a published `lynette-beer` Person with `mentor|kenner`, no copied content or Person fields, and `EXCLUDE_ALL_CURRENT` relationships. Provenance is partial for the CSV bytes, while the effective runtime policy is verified from the committed migration code.
+
 ## Verification
 
-The runtime manifest records the source gate and protected-state evidence captured for runtime execution. The PR verification section records the fresh final branch-head counts. Verification includes the complete `site-code/bin/check-source.sh` gate, focused Person Foundation and Person migration suites, required Product/Event/Bricks/PE-005 gates, changed-PHP lint, JSON and CSV checks, and `git diff --check`.
+The runtime manifest separates the source gate captured for runtime execution from the final source gate at PR head `d59dde2d8a2db43128a75ed1459a30e8fa1c925e`. The final PR-head gate reported Person Foundation 12 and Person Profile Migration 14, alongside the required Product/Event/Bricks/PE-005 gates, lint, JSON and CSV checks, and `git diff --check`.
 
 Task 10A remains open for independent programme review. This report does not claim that its PR has merged.

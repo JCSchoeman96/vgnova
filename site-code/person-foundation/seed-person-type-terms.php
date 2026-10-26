@@ -4,8 +4,13 @@ declare(strict_types=1);
 /**
  * Seed the exact approved person_type vocabulary.
  *
- * Run with:
- * wp eval-file /path/to/seed-person-type-terms.php
+ * Run through the runtime mutation coordinator:
+ * php site-code/bin/vgnova-runtime-mutate.php \
+ *   --target=vgnova-local-10039 \
+ *   --wp-root="/home/jcschoeman96/Local Sites/voelgoed-novamira/app/public/" \
+ *   --purpose="Seed approved Person Types" \
+ *   -- \
+ *   wp eval-file site-code/person-foundation/seed-person-type-terms.php
  */
 function vg_seed_person_type_terms(): array
 {

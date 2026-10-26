@@ -26,6 +26,15 @@
     },
     "authority_boundary": "Identity authority permits the identity and approved durable classifications for 753. It does not authorize placeholder editorial content or any current Event/Product relationship."
   },
+  "runtime_authority_provenance": {
+    "runtime_code_commit": "7857dd7a22f6ca4864141d87fb658f94682f33a9",
+    "runtime_authority_artifact_commit": "NOT_YET_COMMITTED_AT_EXECUTION",
+    "authority_artifact_first_commit": "f0d761544ef85f01b01e79ccc5a1605cf6ec2af3",
+    "authority_bytes_independently_preserved_at_execution": "NO",
+    "effective_runtime_policy": "VERIFIED_FROM_COMMITTED_MIGRATION_CODE",
+    "runtime_provenance": "PARTIAL",
+    "disclosure": "The authority CSV was present in the working tree when the migration ran, but it was not committed until f0d761544ef85f01b01e79ccc5a1605cf6ec2af3, and no evidence shows that its exact bytes were independently preserved at execution. The committed migration code at 7857dd7a22f6ca4864141d87fb658f94682f33a9 independently hard-pins and validates the effective policy for 753: MIGRATE Lynette Beer as a published lynette-beer Person, assign mentor|kenner, copy no image, excerpt, content, or Person fields, and exclude all current relationships. The provenance gap concerns the CSV bytes, not which Person policy the code allowed."
+  },
   "pre_write_state": {
     "canonical_counts": {
       "person": 0,
@@ -349,7 +358,7 @@
       "meaning": "Masteriyo housekeeping flag; no Masteriyo content is present."
     }
   ],
-  "source_verification": {
+  "runtime_execution_source_verification": {
     "status": "PASS",
     "tested_implementation_commit": "7857dd7a22f6ca4864141d87fb658f94682f33a9",
     "full_source_gate": {
@@ -404,6 +413,63 @@
       "authority_csv": "PASS",
       "classification_mapping": "PASS"
     }
+  },
+  "final_pr_head_source_verification": {
+    "status": "PASS",
+    "verified_pr_head": "d59dde2d8a2db43128a75ed1459a30e8fa1c925e",
+    "github_actions_run": "40306175497",
+    "full_source_gate": {
+      "command": "PYTHONDONTWRITEBYTECODE=1 bash site-code/bin/check-source.sh",
+      "exit_code": 0
+    },
+    "fresh_suite_counts": {
+      "Content Topic": 67,
+      "Event Participation": 69,
+      "Event Participation Bricks": 12,
+      "Event Role Seeder": 13,
+      "Product Contribution": 142,
+      "Product People": 101,
+      "Person Foundation": 12,
+      "Person Profile Migration": 14,
+      "Event Participation Schema Contract": 3,
+      "Editorial Dimensions Seeder": 11,
+      "Event Participation QA Setup Failure Regression": "1/1",
+      "Product Contribution QA Setup Safety": "5/5",
+      "Product Contribution QA Cleanup Safety": "9/9",
+      "PE-005 Platform Core Integrity": "24/24",
+      "Runtime Mutation Core": 73,
+      "Runtime Mutation Session": "19/19",
+      "Runtime Mutation Policy": 31,
+      "FCM Self Featured Python Integration": "3/3"
+    },
+    "mutation_policy": {
+      "tracked_php_files": 127,
+      "files_with_detected_mutation_apis": 34,
+      "result": "PASS"
+    },
+    "platform_core_assembly": {
+      "two_exact_commit_builds": "PASS",
+      "file_count_each": 55,
+      "tree_sha256_each": "5816b80ac4355782523aa4baa82bd9e55dd87326f15972f287ff1afa7567482a",
+      "archive_sha256_each": "22d998019e3fe3d93d675250a26eba5be3dbc248badd9be4d7507fbdf9cffdb9",
+      "manifest_sha256_each": "8a80dc7b3dcc20284f767318b48f52c2c4c7588df6a002a2017be27ffbe41362"
+    },
+    "php_lint": {
+      "tracked_php_files": 127,
+      "result": "PASS"
+    },
+    "diff_check": {
+      "result": "PASS"
+    },
+    "json_parse": {
+      "changed_and_created_json": "PASS"
+    },
+    "csv_structure": {
+      "migration_manifest": "PASS",
+      "authority_csv": "PASS",
+      "classification_mapping": "PASS"
+    },
+    "verification_scope_note": "These full-gate results and GitHub checks apply to PR head d59dde2d8a2db43128a75ed1459a30e8fa1c925e. The subsequent evidence correction changes this manifest, the implementation report, and the seeder invocation comment only. It does not change the migration runner or runtime behavior. Exact-head CI for the correction commit is pending."
   },
   "migration_failure_notes": [
     "An initial seeder invocation stopped before any WordPress mutation because the source CLI did not load the runtime mutation-session helper. The CLI bootstrap was fixed, reviewed, and rerun successfully; no cleanup was needed for the failed pre-mutation attempt."
