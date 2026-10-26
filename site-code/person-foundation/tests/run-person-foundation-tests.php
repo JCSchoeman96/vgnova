@@ -8,6 +8,7 @@ $GLOBALS['vg_person_foundation_test_terms'] = [];
 $GLOBALS['vg_person_foundation_test_next_term_id'] = 900;
 $GLOBALS['vg_person_foundation_test_insert_calls'] = [];
 $GLOBALS['vg_person_foundation_test_set_object_terms_calls'] = [];
+$GLOBALS['vg_person_foundation_test_get_terms_return'] = null;
 
 final class PersonFoundationTestError
 {
@@ -26,8 +27,12 @@ function taxonomy_exists(string $taxonomy): bool
     return ! empty($GLOBALS['vg_person_foundation_test_taxonomies'][$taxonomy]);
 }
 
-function get_terms(array $args): array|PersonFoundationTestError
+function get_terms(array $args): mixed
 {
+    if ($GLOBALS['vg_person_foundation_test_get_terms_return'] !== null) {
+        return $GLOBALS['vg_person_foundation_test_get_terms_return'];
+    }
+
     $taxonomy = (string) ($args['taxonomy'] ?? '');
     if (! taxonomy_exists($taxonomy)) {
         return new PersonFoundationTestError('Taxonomy is not registered.');
@@ -126,6 +131,7 @@ function person_foundation_test_reset(): void
     $GLOBALS['vg_person_foundation_test_next_term_id'] = 900;
     $GLOBALS['vg_person_foundation_test_insert_calls'] = [];
     $GLOBALS['vg_person_foundation_test_set_object_terms_calls'] = [];
+    $GLOBALS['vg_person_foundation_test_get_terms_return'] = null;
 }
 
 function person_foundation_test_load_json(string $filename): array
@@ -307,6 +313,16 @@ $tests = [
         person_foundation_test_assert_true(str_contains($error->getMessage(), 'Unexpected'), 'The unapproved term must be identified.');
         person_foundation_test_assert_same([$existing], $GLOBALS['vg_person_foundation_test_terms'], 'An unexpected term must not be deleted or changed.');
         person_foundation_test_assert_same([], $GLOBALS['vg_person_foundation_test_insert_calls'], 'An unexpected term must stop before inserts.');
+    },
+    'an unexpected non-array term query result stops before mutation' => static function (): void {
+        person_foundation_test_reset();
+        $GLOBALS['vg_person_foundation_test_get_terms_return'] = false;
+
+        $error = person_foundation_test_assert_throws(static fn () => vg_seed_person_type_terms(), 'An unexpected term query result must fail.');
+
+        person_foundation_test_assert_true(str_contains($error->getMessage(), 'unexpected result'), 'The unexpected term query result must be identified.');
+        person_foundation_test_assert_same([], $GLOBALS['vg_person_foundation_test_terms'], 'An unexpected term query result must not change terms.');
+        person_foundation_test_assert_same([], $GLOBALS['vg_person_foundation_test_insert_calls'], 'An unexpected term query result must stop before inserts.');
     },
     'a missing taxonomy stops safely without creating terms' => static function (): void {
         person_foundation_test_reset();

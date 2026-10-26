@@ -26,6 +26,9 @@ function vg_seed_person_type_terms(): array
     if (is_wp_error($current_terms)) {
         throw new RuntimeException('Could not read person_type terms: ' . $current_terms->get_error_message());
     }
+    if (! is_array($current_terms)) {
+        throw new RuntimeException('Could not read person_type terms: unexpected result.');
+    }
 
     foreach ($current_terms as $current_term) {
         $approved_name_for_slug = $approved_terms[$current_term->slug] ?? null;

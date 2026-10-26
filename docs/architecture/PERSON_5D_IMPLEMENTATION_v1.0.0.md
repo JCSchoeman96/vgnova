@@ -1,6 +1,6 @@
 # Task 10A / Person 5D implementation report
 
-**Status:** Executed on staging; PR #58 open and unmerged; independent review pending
+**Status:** Executed on staging; PR #58 open and unmerged; pending independent programme review
 **Version:** 1.0.0
 **Execution date:** 2026-10-26
 **Repository baseline:** `ab7e7d853772fb920237e47d8fa83c72ed389fba`
@@ -16,7 +16,7 @@ Identity, editorial content, and relationship authority remain separate. The own
 
 - Expanded the controlled Person Type seeder to the exact vocabulary `Mentor / mentor` and `Kenner / kenner`, preserving fail-closed conflict checks, deterministic behavior, and idempotence.
 - Added a source-controlled owner-decision record and exact migration authority CSV.
-- Added a deterministic migration runner limited to approved `MIGRATE` rows. It checks source ID, post type, identity, target collision, approved vocabulary, and source fingerprint; creates one Person; assigns only approved types; verifies the result; and cleans up only its exact newly inserted Person if a later step fails.
+- Added a deterministic migration runner limited to approved `MIGRATE` rows. It checks source ID, post type, identity, target collision, and approved vocabulary; creates one Person; assigns only approved types; verifies the result; and cleans up only its exact newly inserted Person if a later step fails. Separate pre/post source fingerprints document protected runtime state.
 - Added focused migration tests and wired them into `check-source.sh`.
 - Added the versioned architecture, implementation, current-state, and runtime evidence records. The historical unversioned architecture and Task 5C evidence were retained.
 
