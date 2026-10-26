@@ -196,6 +196,10 @@
             "classification": "test_only"
         },
         {
+            "path": "site-code/runtime-tests/tests/run-pe008-protected-state-tests.php",
+            "classification": "test_only"
+        },
+        {
             "path": "site-code/runtime-tests/tests/run-runtime-mutation-core-tests.php",
             "classification": "test_only"
         },
@@ -206,6 +210,10 @@
         {
             "path": "site-code/runtime-tests/tests/run-runtime-mutation-session-tests.php",
             "classification": "test_only"
+        },
+        {
+            "path": "site-code/runtime-tools/pe008-protected-state.php",
+            "classification": "library"
         },
         {
             "path": "site-code/runtime-tools/runtime-mutation-core.php",

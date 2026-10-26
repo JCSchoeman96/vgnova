@@ -38,6 +38,7 @@ const VG_PRODUCT_CONTRIBUTION_QA_EXPECTED_PRODUCT_IDS = [525, 527, 529, 531, 642
 
 require_once __DIR__ . '/product-people-qa-side-effects.php';
 require_once __DIR__ . '/platform-core-runtime-integrity.php';
+require_once dirname(__DIR__) . '/runtime-tools/pe008-protected-state.php';
 
 function vg_product_contribution_qa_check(bool $condition, string $message): void
 {
@@ -176,15 +177,7 @@ function vg_product_contribution_qa_validate_identity(array $identity): void
 
 function vg_product_contribution_qa_hash(mixed $value): string
 {
-    $previous_precision = ini_get('serialize_precision');
-    if ($previous_precision === false || ini_set('serialize_precision', '-1') === false) {
-        throw new RuntimeException('Could not normalize PHP float serialization precision for protected fingerprints.');
-    }
-    try {
-        return hash('sha256', serialize($value));
-    } finally {
-        ini_set('serialize_precision', $previous_precision);
-    }
+    return vg_pe008_serialized_fingerprint($value)['sha256'];
 }
 
 function vg_product_contribution_qa_count(string $sql, string $description): int
@@ -245,9 +238,9 @@ function vg_product_contribution_qa_person_baseline_matches(array $inventory, ar
         'post_count' => 1,
         'postmeta_count' => 1,
         'term_relationship_count' => 2,
-        'posts_sha256' => '792654d2d6a47aec75ef635e4bc51e3a67d35f621dfef021f1dcd4f97e6e080f',
+        'posts_sha256' => 'f2a980eb64045700dc3a4ca07a7950ec3cb1daea14e4a400ac48e6837b2e9b5b',
         'postmeta_sha256' => '0d043dd56c404e0ddb6d7ad496249b770d296a6cd72290bfd7774189e5c820e5',
-        'term_relationships_sha256' => '220c90c6c8838738030fe3ae3c3011446cd9d6b6b0162cba8c6597d438ab13b6',
+        'term_relationships_sha256' => '1d347313f990ba8063fe34926ef537e85d2dc4bdc575e5369338be45b9bdf7fb',
     ];
     return $inventory === $expected_inventory && $fingerprint === $expected_fingerprint;
 }
@@ -274,28 +267,14 @@ function vg_product_contribution_qa_relationship_count(int $post_id): int
 function vg_product_contribution_qa_group_fingerprint(array $ids): array
 {
     global $wpdb;
-    $ids = array_values(array_unique(array_map('intval', $ids)));
-    if ($ids === []) {
-        throw new RuntimeException('Protected fingerprint ID list cannot be empty.');
-    }
-    $in = implode(',', $ids);
-    $posts = $wpdb->get_results("SELECT * FROM {$wpdb->posts} WHERE ID IN ({$in}) ORDER BY ID ASC", ARRAY_A);
-    $meta = $wpdb->get_results("SELECT * FROM {$wpdb->postmeta} WHERE post_id IN ({$in}) ORDER BY post_id ASC, meta_key ASC, meta_id ASC", ARRAY_A);
-    $relationships = $wpdb->get_results(
-        "SELECT r.object_id,r.term_taxonomy_id,r.term_order,tt.taxonomy,tt.term_id,t.slug FROM {$wpdb->term_relationships} r JOIN {$wpdb->term_taxonomy} tt ON tt.term_taxonomy_id=r.term_taxonomy_id JOIN {$wpdb->terms} t ON t.term_id=tt.term_id WHERE r.object_id IN ({$in}) ORDER BY r.object_id ASC,r.term_taxonomy_id ASC,r.term_order ASC,tt.taxonomy ASC,tt.term_id ASC,t.slug ASC",
-        ARRAY_A
-    );
+    $queries = vg_pe008_group_fingerprint_queries($wpdb, $ids);
+    $posts = $wpdb->get_results($queries['posts'], ARRAY_A);
+    $meta = $wpdb->get_results($queries['postmeta'], ARRAY_A);
+    $relationships = $wpdb->get_results($queries['term_relationships'], ARRAY_A);
     if ($wpdb->last_error !== '') {
         throw new RuntimeException('Could not read protected post fingerprints: ' . $wpdb->last_error);
     }
-    return [
-        'post_count' => count($posts),
-        'postmeta_count' => count($meta),
-        'term_relationship_count' => count($relationships),
-        'posts_sha256' => vg_product_contribution_qa_hash($posts),
-        'postmeta_sha256' => vg_product_contribution_qa_hash($meta),
-        'term_relationships_sha256' => vg_product_contribution_qa_hash($relationships),
-    ];
+    return vg_pe008_group_fingerprint_from_rows($posts, $meta, $relationships);
 }
 
 function vg_product_contribution_qa_bricks_component_fingerprint(): array

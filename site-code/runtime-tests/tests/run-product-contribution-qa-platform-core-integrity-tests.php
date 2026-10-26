@@ -169,9 +169,39 @@ $run_case('exact temporary tree is accepted with the canonical tree hash', stati
     }
 });
 
-$run_case('Task 10A Person baseline requires the exact protected record and fingerprint', static function (): void {
+$run_case('Person 1705 group fingerprint reproduces from the preserved Task 10A capture', static function (): void {
     if (! function_exists('vg_product_contribution_qa_person_baseline_matches')) {
         throw new RuntimeException('The exact Task 10A Person baseline guard is missing.');
+    }
+    $fixture_path = dirname(__DIR__) . '/fixtures/person-1705-fingerprint-capture.json';
+    $fixture_bytes = file_get_contents($fixture_path);
+    vg_pc_integrity_test_assert(is_string($fixture_bytes), 'The captured Person 1705 fixture could not be read');
+    $fixture = json_decode($fixture_bytes, true, 512, JSON_THROW_ON_ERROR);
+    $capture = $fixture['captured_rows'];
+    $post = $capture['post'];
+    $postmeta = $capture['postmeta'];
+    $task10a_relationships = $capture['taxonomy_relationships_task10a_projection'];
+    $relationship_fields = ['object_id', 'term_taxonomy_id', 'term_order', 'taxonomy', 'term_id', 'slug'];
+    $group_relationships = array_map(
+        static fn (array $row): array => array_intersect_key($row, array_flip($relationship_fields)),
+        $task10a_relationships
+    );
+    $previous_precision = ini_get('serialize_precision');
+    vg_pc_integrity_test_assert(is_string($previous_precision) && ini_set('serialize_precision', '-1') !== false, 'Stable serialization precision could not be set');
+    try {
+        $fingerprint = [
+            'post_count' => 1,
+            'postmeta_count' => count($postmeta),
+            'term_relationship_count' => count($group_relationships),
+            'posts_sha256' => hash('sha256', serialize([$post])),
+            'postmeta_sha256' => hash('sha256', serialize($postmeta)),
+            'term_relationships_sha256' => hash('sha256', serialize($group_relationships)),
+        ];
+        vg_pc_integrity_test_assert($fingerprint['posts_sha256'] === 'f2a980eb64045700dc3a4ca07a7950ec3cb1daea14e4a400ac48e6837b2e9b5b', 'The preserved row did not reproduce the Product Contribution post-list digest');
+        vg_pc_integrity_test_assert($fingerprint['postmeta_sha256'] === '0d043dd56c404e0ddb6d7ad496249b770d296a6cd72290bfd7774189e5c820e5', 'Postmeta control digest differs');
+        vg_pc_integrity_test_assert($fingerprint['term_relationships_sha256'] === '1d347313f990ba8063fe34926ef537e85d2dc4bdc575e5369338be45b9bdf7fb', 'The six-column relationship projection digest differs');
+    } finally {
+        ini_set('serialize_precision', $previous_precision);
     }
     $inventory = [[
         'id' => 1705,
@@ -181,17 +211,9 @@ $run_case('Task 10A Person baseline requires the exact protected record and fing
         'post_date_gmt' => '2026-10-26 09:05:12',
         'post_modified_gmt' => '2026-10-26 09:05:12',
     ]];
-    $fingerprint = [
-        'post_count' => 1,
-        'postmeta_count' => 1,
-        'term_relationship_count' => 2,
-        'posts_sha256' => '792654d2d6a47aec75ef635e4bc51e3a67d35f621dfef021f1dcd4f97e6e080f',
-        'postmeta_sha256' => '0d043dd56c404e0ddb6d7ad496249b770d296a6cd72290bfd7774189e5c820e5',
-        'term_relationships_sha256' => '220c90c6c8838738030fe3ae3c3011446cd9d6b6b0162cba8c6597d438ab13b6',
-    ];
     vg_pc_integrity_test_assert(
         vg_product_contribution_qa_person_baseline_matches($inventory, $fingerprint),
-        'The exact Task 10A Person baseline was rejected.'
+        'The source guard rejects the deterministic Product Contribution fingerprint reproduced from captured Person 1705 rows.'
     );
     foreach ([[], [...$inventory, [...$inventory[0], 'id' => 1706]], [[...$inventory[0], 'post_status' => 'draft']], [[...$inventory[0], 'post_name' => 'other-slug']]] as $changed_inventory) {
         vg_pc_integrity_test_assert(
