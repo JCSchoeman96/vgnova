@@ -33,6 +33,8 @@ OVERLAY_PATHS = (
     "site-code/voelgoed-platform-core/includes/Event",
     "site-code/voelgoed-platform-core/includes/Product",
 )
+# Runtime is a bootstrap dependency overlay, not a lifecycle component namespace.
+LIFECYCLE_OVERLAY_MODULES = ("Taxonomy", "Event", "Product")
 ARCHIVE_NAME = "voelgoed-platform-core.tar.gz"
 MANIFEST_NAME = "voelgoed-platform-core.manifest.json"
 SUPPORTED_FILE_MODES = {"100644": 0o644, "100755": 0o755}
@@ -1705,7 +1707,7 @@ def assemble(
         modes[runtime_path] = source_item.mode
 
     overlay_classes: set[str] = set()
-    for module_name in ("Taxonomy", "Event", "Product"):
+    for module_name in LIFECYCLE_OVERLAY_MODULES:
         overlay_classes.update(php_classes(plugin_root / "includes" / module_name))
     clean_bootstrap_guard(
         text_file(plugin_root / "voelgoed-platform-core.php", "root plugin entrypoint"),

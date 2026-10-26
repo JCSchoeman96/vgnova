@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import ast
 import gzip
 import hashlib
 import importlib.util
@@ -27,12 +28,14 @@ from typing import Any
 ROOT_PLUGIN = "voelgoed-platform-core"
 BUILDER_PATH = "site-code/bin/build-platform-core.py"
 PATCH_PATH = "site-code/voelgoed-platform-core/integration.patch"
-OVERLAY_PATHS = (
+CANONICAL_OVERLAY_PATHS = (
     "site-code/voelgoed-platform-core/includes/Runtime",
     "site-code/voelgoed-platform-core/includes/Taxonomy",
     "site-code/voelgoed-platform-core/includes/Event",
     "site-code/voelgoed-platform-core/includes/Product",
 )
+OVERLAY_PATHS = CANONICAL_OVERLAY_PATHS
+CANONICAL_LIFECYCLE_OVERLAY_MODULES = ("Taxonomy", "Event", "Product")
 FIXTURE_PATHS = (ROOT_PLUGIN, *OVERLAY_PATHS, PATCH_PATH, BUILDER_PATH)
 ARCHIVE_NAME = "voelgoed-platform-core.tar.gz"
 MANIFEST_NAME = "voelgoed-platform-core.manifest.json"
@@ -64,6 +67,67 @@ CRC32_TABLE = build_crc32_table()
 
 class CheckFailure(RuntimeError):
     """A reproducibility or negative-fixture assertion failed."""
+
+
+def require_canonical_overlay_paths(paths: object, *, context: str) -> None:
+    if not isinstance(paths, (tuple, list)) or tuple(paths) != CANONICAL_OVERLAY_PATHS:
+        raise CheckFailure(
+            f"{context} overlay paths differ from the exact ordered four-overlay contract."
+        )
+
+
+def committed_python_constant(
+    repo_root: Path,
+    commit: str,
+    source_path: str,
+    name: str,
+) -> object:
+    source = command(["git", "show", f"{commit}:{source_path}"], cwd=repo_root).stdout
+    try:
+        module = ast.parse(source.decode("utf-8", "strict"), filename=source_path)
+    except (UnicodeDecodeError, SyntaxError) as error:
+        raise CheckFailure(f"Committed source is not valid Python: {source_path}: {error}") from error
+
+    matches = []
+    for statement in module.body:
+        if isinstance(statement, ast.Assign) and any(
+            isinstance(target, ast.Name) and target.id == name for target in statement.targets
+        ):
+            matches.append(statement.value)
+        elif isinstance(statement, ast.AnnAssign) and isinstance(statement.target, ast.Name) and statement.target.id == name:
+            matches.append(statement.value)
+    if len(matches) != 1 or matches[0] is None:
+        raise CheckFailure(f"Committed builder must define {name} exactly once: {source_path}")
+    try:
+        return ast.literal_eval(matches[0])
+    except (ValueError, TypeError) as error:
+        raise CheckFailure(f"Committed builder {name} must be a literal tuple: {source_path}") from error
+
+
+def run_overlay_contract_guard_case(repo_root: Path, commit: str) -> None:
+    require_canonical_overlay_paths(OVERLAY_PATHS, context="Verifier")
+
+    try:
+        require_canonical_overlay_paths(OVERLAY_PATHS[1:], context="Negative fixture")
+    except CheckFailure:
+        pass
+    else:
+        raise CheckFailure("The overlay contract guard accepted a set missing Runtime.")
+
+    builder_paths = committed_python_constant(repo_root, commit, BUILDER_PATH, "OVERLAY_PATHS")
+    require_canonical_overlay_paths(builder_paths, context="Committed builder")
+    lifecycle_modules = committed_python_constant(
+        repo_root,
+        commit,
+        BUILDER_PATH,
+        "LIFECYCLE_OVERLAY_MODULES",
+    )
+    if lifecycle_modules != CANONICAL_LIFECYCLE_OVERLAY_MODULES:
+        raise CheckFailure(
+            "Committed builder lifecycle modules must remain Taxonomy, Event, and Product; Runtime is a dependency overlay."
+        )
+    print("PASS source contract: builder and verifier use Runtime, Taxonomy, Event, Product in canonical order")
+    print("PASS source contract: Runtime overlay remains outside lifecycle component discovery")
 
 
 def command(
@@ -2491,6 +2555,8 @@ def main() -> int:
 
     commit = resolve_commit(repo_root, args.ref)
     print(f"source_commit={commit}")
+
+    run_overlay_contract_guard_case(repo_root, commit)
 
     if args.verify_output is not None:
         output = Path(args.verify_output)
