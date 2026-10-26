@@ -1,0 +1,409 @@
+{
+  "schema": "voelgoed.person-5d-runtime-manifest",
+  "version": "1.0.0",
+  "status": "CURRENT",
+  "execution_date": "2026-10-26",
+  "repository_execution_baseline": "ab7e7d853772fb920237e47d8fa83c72ed389fba",
+  "branch": "feat/person-5d-lynette-migration",
+  "runtime": {
+    "ABSPATH": "/home/jcschoeman96/Local Sites/voelgoed-novamira/app/public/",
+    "home": "http://localhost:10039",
+    "siteurl": "http://localhost:10039",
+    "database": "local",
+    "database_host": "localhost",
+    "effective_port": 10039,
+    "verified_after_migration": true
+  },
+  "owner_authority": {
+    "artifact": "PERSON_PROFILE_OWNER_DECISIONS_v1.0.0.md",
+    "decision_date": "2026-10-25",
+    "decisions": {
+      "753": "MIGRATE",
+      "754": "DO_NOT_MIGRATE",
+      "755": "DO_NOT_MIGRATE",
+      "756": "DO_NOT_MIGRATE",
+      "757": "DO_NOT_MIGRATE"
+    },
+    "authority_boundary": "Identity authority permits the identity and approved durable classifications for 753. It does not authorize placeholder editorial content or any current Event/Product relationship."
+  },
+  "pre_write_state": {
+    "canonical_counts": {
+      "person": 0,
+      "event_participation": 0,
+      "product_contribution": 0
+    },
+    "person_type_vocabulary": [
+      {
+        "id": 410,
+        "name": "Mentor",
+        "slug": "mentor",
+        "count": 0
+      }
+    ],
+    "kenner_term": "absent",
+    "person_type_relationships": 0,
+    "lynette_slug_conflicts": [],
+    "legacy_profiles": {
+      "753": {
+        "post_type": "medewerker",
+        "title": "Lynette Beer",
+        "slug": "lynette-beer",
+        "fresh_task_5c_normalized_sha256": "d6dcafe0459e5211aef51849e5879a7d5f0ea24fc86af0529554277bb7acb0d2",
+        "historical_task_5c_sha256": "2aad48c7dceef6dd0b4ba8db43b569cf12b7667621e56d6760ebe3377d6ca9f1"
+      },
+      "754": {
+        "post_type": "medewerker",
+        "title": "Annelize van der Merwe",
+        "slug": "annelize-van-der-merwe",
+        "fresh_task_5c_normalized_sha256": "837f3555054e67228447453fbb409d1ec4a0b019b820d7a0da719904100ef43c",
+        "historical_task_5c_sha256": "837f3555054e67228447453fbb409d1ec4a0b019b820d7a0da719904100ef43c"
+      },
+      "755": {
+        "post_type": "medewerker",
+        "title": "Thandi Mokoena",
+        "slug": "thandi-mokoena",
+        "fresh_task_5c_normalized_sha256": "41ed4f4974eb308c7d75ec259f6ce7ee6fb73fdb6c79689e09c2f1628a34d1f3",
+        "historical_task_5c_sha256": "41ed4f4974eb308c7d75ec259f6ce7ee6fb73fdb6c79689e09c2f1628a34d1f3"
+      },
+      "756": {
+        "post_type": "medewerker",
+        "title": "Elna Pretorius",
+        "slug": "elna-pretorius",
+        "fresh_task_5c_normalized_sha256": "8a7ecef9d6a81c3b30a71cd2da91520d4b1bb43e11b309ffcb521b8611754df3",
+        "historical_task_5c_sha256": "8a7ecef9d6a81c3b30a71cd2da91520d4b1bb43e11b309ffcb521b8611754df3"
+      },
+      "757": {
+        "post_type": "medewerker",
+        "title": "Retha Coetzee",
+        "slug": "retha-coetzee",
+        "fresh_task_5c_normalized_sha256": "8a008248a5ed29c17d91da5b019854def31678c87151a7b0183aa40cc7c9a6f0",
+        "historical_task_5c_sha256": "e37c0cd48024fa9d9a12083101ad509757d850ba14c7af79f234f1c1d5477fc2"
+      }
+    },
+    "historical_fingerprint_note": "The Task 5C documented object-key sorting, sorted term IDs and edges, compact UTF-8 JSON, and exclusion of editor-lock/last-editor metadata. The historical nested incoming-edge JSON bytes were not retained. Fresh source fields and edges were inspected and the immediate pre/post Task 10A fingerprints match; historical digest differences for 753 and 757 are preserved and are not treated as new runtime drift."
+  },
+  "seed_person_types": {
+    "first_run": {
+      "existing": [
+        "mentor"
+      ],
+      "created": [
+        {
+          "id": 419,
+          "name": "Kenner",
+          "slug": "kenner"
+        }
+      ]
+    },
+    "exact_rerun": {
+      "created": [],
+      "existing": [
+        "mentor",
+        "kenner"
+      ]
+    },
+    "final_vocabulary": [
+      {
+        "id": 410,
+        "name": "Mentor",
+        "slug": "mentor",
+        "count": 1
+      },
+      {
+        "id": 419,
+        "name": "Kenner",
+        "slug": "kenner",
+        "count": 1
+      }
+    ]
+  },
+  "migration": {
+    "authority_csv": "PERSON_PROFILE_MIGRATION_AUTHORITY_v1.0.0.csv",
+    "created_person_ids": [
+      1705
+    ],
+    "migrated_legacy_ids": [
+      753
+    ],
+    "skipped_legacy_ids": [
+      754,
+      755,
+      756,
+      757
+    ],
+    "target": {
+      "id": 1705,
+      "post_type": "person",
+      "post_status": "publish",
+      "post_title": "Lynette Beer",
+      "post_name": "lynette-beer",
+      "post_content": "",
+      "post_excerpt": "",
+      "featured_image_id": 0,
+      "optional_person_fields": {
+        "person_professional_title": null,
+        "person_credentials": null,
+        "person_company": null,
+        "person_website": null
+      },
+      "person_type_terms": [
+        {
+          "id": 410,
+          "name": "Mentor",
+          "slug": "mentor"
+        },
+        {
+          "id": 419,
+          "name": "Kenner",
+          "slug": "kenner"
+        }
+      ],
+      "content_topic_terms": [],
+      "postmeta_keys": []
+    },
+    "copied_content": [],
+    "copied_relationships": [],
+    "taxonomy_authority": "Native WordPress person_type taxonomy relationships. No ACF sync was run."
+  },
+  "counts": {
+    "person": {
+      "before": 0,
+      "after": 1
+    },
+    "event_participation": {
+      "before": 0,
+      "after": 0
+    },
+    "product_contribution": {
+      "before": 0,
+      "after": 0
+    }
+  },
+  "protected_legacy_relationships": {
+    "before": {
+      "event_763_event_medewerkers": [
+        753,
+        757
+      ],
+      "product_765_produk_medewerkers": null,
+      "product_765_produk_bron_event": 763,
+      "product_767_produk_medewerkers": [
+        753
+      ],
+      "product_767_produk_bron_event": 763,
+      "product_768_produk_medewerkers": [
+        753,
+        757
+      ],
+      "product_768_produk_bron_event": 763
+    },
+    "after": {
+      "event_763_event_medewerkers": [
+        753,
+        757
+      ],
+      "product_765_produk_medewerkers": null,
+      "product_765_produk_bron_event": 763,
+      "product_767_produk_medewerkers": [
+        753
+      ],
+      "product_767_produk_bron_event": 763,
+      "product_768_produk_medewerkers": [
+        753,
+        757
+      ],
+      "product_768_produk_bron_event": 763
+    },
+    "unchanged": true,
+    "inventory_counts": {
+      "published_events": 17,
+      "events_with_people": 1,
+      "published_products": 20,
+      "products_with_people": 2,
+      "products_with_source_event": 3
+    }
+  },
+  "legacy_source_comparison": {
+    "profiles_753_757_pre_vs_post_migration": "MATCH",
+    "protected_snapshot": {
+      "posts": {
+        "count": 5,
+        "sha256": "6cb107bcb3a70ed61526caff114e5f7771d838905e1ebf4de2bf207e894ba420"
+      },
+      "postmeta": {
+        "count": 34,
+        "sha256": "3a5bfb948796c6ba11ad98c50d4de8d1eabcdd2db73d6fc94abfe15203f24e5c"
+      },
+      "term_relationships": {
+        "count": 10,
+        "sha256": "37ef040584ca77a139e611763910d7700ec9e9b05a50d63241f871817c489ae3"
+      }
+    },
+    "known_relationship_values_pre_vs_post": "MATCH"
+  },
+  "routes": {
+    "/mense/": {
+      "http_status": 200,
+      "redirect": null
+    },
+    "/mense/lynette-beer/": {
+      "http_status": 200,
+      "redirect": null
+    },
+    "/medewerkers/lynette-beer/": {
+      "http_status": 200,
+      "redirect": null
+    },
+    "redirects_introduced": false
+  },
+  "protected_runtime_state": {
+    "bricks": {
+      "changed": false,
+      "prewrite_templates": {
+        "count": 28,
+        "templates_sha256": "6e8002a2024c9f66b3ba8ea0c8774f71fce5356d872f358caa561647fb0c458b",
+        "ids": [
+          124,
+          772,
+          773,
+          774,
+          1127
+        ]
+      },
+      "postwrite_checked_templates": {
+        "count": 5,
+        "posts_sha256": "c1e6eaaa582d5f9524acc20aa714158049e95836f2d9416db73224a46a31f6fe",
+        "postmeta_sha256": "0162a741a5dba558677e40718bcb22d3b3bf69fada57efa21b4659f139df2239"
+      },
+      "component_6b463f_sha256": "57370bbb83d3125758eba9a5194eb1a898b8914b546ee4d84b32f642e07aeaac",
+      "bricks_option_row_sha256": "55beb9ae2508c235362bc850d6f11954f0634d1bace3d8a59e3869c750b7d004"
+    },
+    "fluentsnippets": {
+      "changed": false,
+      "9-acf-product-copy.php": {
+        "pre_sha256": "58e8035502b30397b9659f952e4d49bbdbd7cdbd15070e37e5b07ebaa5ce2f70",
+        "post_sha256": "58e8035502b30397b9659f952e4d49bbdbd7cdbd15070e37e5b07ebaa5ce2f70"
+      },
+      "10-vg-bricks-medewerker-queries.php": {
+        "pre_sha256": "e1b7c014cd15a673d663426403a2024a21a1286075c355015f4e217d7e498fa2",
+        "post_sha256": "e1b7c014cd15a673d663426403a2024a21a1286075c355015f4e217d7e498fa2"
+      }
+    },
+    "platform_core": {
+      "source_changes": 0,
+      "runtime_deployment": 0,
+      "integrity": "PASS",
+      "file_count": 54,
+      "source_commit": "7af938ac6f4422b1fa779b52444121e7a9293995",
+      "runtime_tree_sha256": "856a3e5978559bfb2572b4b1ff4b34df916743f9e72d6b18220ee64e98af5f56",
+      "manifest_sha256": "c87d339ebe83203a82a3f02b27de9854be9e360835da9893077af9c9c318c1ee"
+    },
+    "acf_schema": {
+      "source_definition_files_changed": 0,
+      "runtime_syncs": 0,
+      "unrelated_schema_writes": 0
+    },
+    "route_configuration_changed": false,
+    "member_perks_changed": false
+  },
+  "runtime_writes": [
+    {
+      "kind": "person_type_term",
+      "operation": "create",
+      "id": 419,
+      "name": "Kenner",
+      "slug": "kenner"
+    },
+    {
+      "kind": "post",
+      "operation": "wp_insert_post",
+      "id": 1705,
+      "post_type": "person",
+      "source_legacy_id": 753
+    },
+    {
+      "kind": "taxonomy_relationship",
+      "operation": "wp_set_object_terms",
+      "object_id": 1705,
+      "taxonomy": "person_type",
+      "term_ids": [
+        410,
+        419
+      ]
+    }
+  ],
+  "source_verification": {
+    "status": "PASS",
+    "tested_implementation_commit": "7857dd7a22f6ca4864141d87fb658f94682f33a9",
+    "full_source_gate": {
+      "command": "PYTHONDONTWRITEBYTECODE=1 bash site-code/bin/check-source.sh",
+      "exit_code": 0
+    },
+    "fresh_suite_counts": {
+      "Content Topic": 67,
+      "Event Participation": 69,
+      "Event Participation Bricks": 12,
+      "Event Role Seeder": 13,
+      "Product Contribution": 142,
+      "Product People": 101,
+      "Person Foundation": 10,
+      "Person Profile Migration": 14,
+      "Event Participation Schema Contract": 3,
+      "Editorial Dimensions Seeder": 11,
+      "Event Participation QA Setup Failure Regression": "1/1",
+      "Product Contribution QA Setup Safety": "5/5",
+      "Product Contribution QA Cleanup Safety": "9/9",
+      "PE-005 Platform Core Integrity": "24/24",
+      "Runtime Mutation Core": 73,
+      "Runtime Mutation Session": "19/19",
+      "Runtime Mutation Policy": 31,
+      "FCM Self Featured Python Integration": "3/3"
+    },
+    "mutation_policy": {
+      "tracked_php_files": 127,
+      "files_with_detected_mutation_apis": 34,
+      "result": "PASS"
+    },
+    "platform_core_assembly": {
+      "two_exact_commit_builds": "PASS",
+      "file_count_each": 55,
+      "tree_sha256_each": "5816b80ac4355782523aa4baa82bd9e55dd87326f15972f287ff1afa7567482a",
+      "archive_sha256_each": "22d998019e3fe3d93d675250a26eba5be3dbc248badd9be4d7507fbdf9cffdb9",
+      "manifest_sha256_each": "8a80dc7b3dcc20284f767318b48f52c2c4c7588df6a002a2017be27ffbe41362"
+    },
+    "php_lint": {
+      "tracked_php_files": 127,
+      "result": "PASS"
+    },
+    "diff_check": {
+      "unstaged": "PASS",
+      "staged": "PASS"
+    },
+    "json_parse": {
+      "changed_and_created_json": "PASS"
+    },
+    "csv_structure": {
+      "migration_manifest": "PASS",
+      "authority_csv": "PASS",
+      "classification_mapping": "PASS"
+    }
+  },
+  "migration_failure_notes": [
+    "An initial seeder invocation stopped before any WordPress mutation because the source CLI did not load the runtime mutation-session helper. The CLI bootstrap was fixed, reviewed, and rerun successfully; no cleanup was needed for the failed pre-mutation attempt."
+  ],
+  "unexpected_drift": [],
+  "rollback_cleanup_errors": [],
+  "protected_state_result": "PASS",
+  "runtime_mutation_coordinator": {
+    "target": "vgnova-local-10039",
+    "repository_commit_at_runtime": "ab7e7d853772fb920237e47d8fa83c72ed389fba",
+    "session_state": "released",
+    "child_exit_code": 0,
+    "filesystem_lock_held_after_run": false,
+    "database_locks_after_run": {
+      "a": "free",
+      "b": "free"
+    },
+    "cleanup_errors": []
+  }
+}
