@@ -31,6 +31,16 @@ function vg_seed_person_type_terms(): array
     }
 
     foreach ($current_terms as $current_term) {
+        if (
+            ! is_object($current_term)
+            || ! isset($current_term->taxonomy, $current_term->slug, $current_term->name)
+            || $current_term->taxonomy !== $taxonomy
+            || ! is_string($current_term->slug)
+            || ! is_string($current_term->name)
+        ) {
+            throw new RuntimeException('Could not read person_type terms: invalid term record.');
+        }
+
         $approved_name_for_slug = $approved_terms[$current_term->slug] ?? null;
         if ($approved_name_for_slug !== null && $current_term->name !== $approved_name_for_slug) {
             throw new RuntimeException(sprintf(

@@ -324,6 +324,24 @@ $tests = [
         person_foundation_test_assert_same([], $GLOBALS['vg_person_foundation_test_terms'], 'An unexpected term query result must not change terms.');
         person_foundation_test_assert_same([], $GLOBALS['vg_person_foundation_test_insert_calls'], 'An unexpected term query result must stop before inserts.');
     },
+    'malformed term query entries stop before mutation' => static function (): void {
+        $invalid_results = [
+            ['not a term'],
+            [(object) ['taxonomy' => 'person_type', 'name' => 'Mentor']],
+            [(object) ['taxonomy' => 'medewerker_rol', 'slug' => 'mentor', 'name' => 'Mentor']],
+        ];
+
+        foreach ($invalid_results as $invalid_result) {
+            person_foundation_test_reset();
+            $GLOBALS['vg_person_foundation_test_get_terms_return'] = $invalid_result;
+
+            $error = person_foundation_test_assert_throws(static fn () => vg_seed_person_type_terms(), 'A malformed term record must fail.');
+
+            person_foundation_test_assert_true(str_contains($error->getMessage(), 'invalid term record'), 'The malformed term record must be identified.');
+            person_foundation_test_assert_same([], $GLOBALS['vg_person_foundation_test_terms'], 'A malformed term record must not change terms.');
+            person_foundation_test_assert_same([], $GLOBALS['vg_person_foundation_test_insert_calls'], 'A malformed term record must stop before inserts.');
+        }
+    },
     'a missing taxonomy stops safely without creating terms' => static function (): void {
         person_foundation_test_reset();
         $GLOBALS['vg_person_foundation_test_taxonomies']['person_type'] = false;
