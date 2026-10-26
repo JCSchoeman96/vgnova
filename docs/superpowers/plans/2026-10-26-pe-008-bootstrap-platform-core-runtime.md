@@ -10,7 +10,7 @@
 
 **Spec:** PE-007 coordination contracts plus Platform Core Assembly Contract v1.3.0.
 
-**Current disposition:** PE-008S source remediation is in progress on the existing draft PR #59. Runtime deployment remains blocked. The exact current `origin/main` is `de90ff061c20b164c127aa97e845e3f192429543`; the intervening change is documentation-only, so the artifact authority remains the published `50ee4bee1ae1405522df7b67634b8935d4e9d9ed` artifact.
+**Current disposition:** PE-008S process changes passed independent review. PE-008T refreshes the existing draft PR #59 to the newest current-main publication, `de90ff061c20b164c127aa97e845e3f192429543`. Runtime deployment remains blocked pending exact-head review and a separate deployment authorization.
 
 ## Files and responsibilities
 
@@ -30,12 +30,12 @@
 
 - [x] Confirm the fetched `origin/main` SHA, create the isolated worktree, inspect repository contracts, and record the current source baseline.
 - [x] After `origin/main` advanced, inspect every intervening commit, stop before runtime mutation, and select the successful publication for the newest exact `main` SHA.
-- [x] Download artifact `12645287640` from successful workflow `40311497761` for `50ee4bee1ae1405522df7b67634b8935d4e9d9ed`; preserve the actual transport ZIP, embedded archive, published manifest, and prior 54-file manifest outside the active plugin directory.
+- [x] Download the intermediate artifact `12645287640` from successful workflow `40311497761` for `50ee4bee1ae1405522df7b67634b8935d4e9d9ed`; preserve its exact manifest as historical provenance alongside the prior 54-file manifest.
 - [x] Verify transport ZIP SHA `e90073d5a7a3e2dff0a871090c7ae036d7a8922f60a589d11ca85870965a23ed`, archive SHA `22d998019e3fe3d93d675250a26eba5be3dbc248badd9be4d7507fbdf9cffdb9`, and published manifest SHA `b728e69d1488a28601982bfb5e84b4104b11cab5f6c9ae1dcd2a38192ef696a7`; run `check-platform-core-build.py --verify-output` with CPython 3.14.4 and the full source SHA.
 - [x] Classify the active plugin against both exact manifests using the existing integrity verifier; stop on any state other than exact-old or exact-new.
 - [x] Capture the read-only WordPress identity, coordinator lock state, protected DB definitions, term counts, approved product baseline, and fingerprints for protected runtime records. The Person baseline is exactly one explained record, ID 1705 (`lynette-beer`), from the recorded Task 10A session; preserve and fingerprint its post row, postmeta, taxonomy relationships, and raw ACF values.
 - [x] Write the Product Contribution authority regression first and run it against the old 54-file authority to prove the published 55-file artifact is rejected.
-- [x] Change the QA authority to the actual `50ee4bee…` publication and replace the fixture with its exact downloaded manifest bytes; update assertions and prove the authority transition passes while existing negative cases still fail closed.
+- [x] Change the QA authority to the actual `50ee4bee…` publication and replace the fixture with its exact downloaded manifest bytes; PE-008T supersedes this intermediate authority with the newest `de90ff0…` publication.
 - [x] Change the stale zero-Person precondition to require the exact Task 10A Person 1705 inventory and post/postmeta/taxonomy fingerprint; add it to the protected pre/post snapshot and prove the guard with source-only tests.
 - [x] Write source-safe helper tests first, including uncoordinated execution, exact-old and already-new outcomes, mismatch refusal, unsafe stage refusal, backup collision, both rename failures, rollback verification, and retained backup behavior.
 - [x] Implement the PE-008-only helper with fixed target paths and hashes; require the loaded PE-007 guard before any filesystem mutation, use whole-directory renames, verify after each state transition, and restore the old tree on failure.
@@ -108,3 +108,18 @@ The superseded stage `/home/jcschoeman96/Local Sites/voelgoed-novamira/app/voelg
 - [x] Run every required source gate, syntax/lint check, and diff check on the PE-008S code.
 - [ ] Push the existing PR #59 branch; verify exact-head GitHub checks; stop with PR #59 still draft and unmerged.
 - [ ] Do not deploy Platform Core or run live Product Contribution QA.
+
+## PE-008T provenance refresh
+
+**Status:** Source-only. PR #59 remains draft and unmerged. The runtime remains untouched and deployment remains blocked.
+
+- [x] Fetch `origin/main`, verify it is `de90ff061c20b164c127aa97e845e3f192429543`, and rebase the existing PE-008 branch onto it.
+- [x] Inspect `50ee4bee…` to `de90ff0…`; the net source diff adds documentation only.
+- [x] Download the actual workflow `40342642997` artifact `12659772564`; verify transport ZIP `22128391bfb1c9ee040b929cc47385db71980d4d8dcacc0171d8b03fef413d7f`, manifest `7cd38e758babddf495e484013d9345750af6f39689bc428f67d89a814949a932`, archive `22d998019e3fe3d93d675250a26eba5be3dbc248badd9be4d7507fbdf9cffdb9`, tree `5816b80ac4355782523aa4baa82bd9e55dd87326f15972f287ff1afa7567482a`, and 55 files.
+- [x] Verify the downloaded files with CPython 3.14.4 and `check-platform-core-build.py --ref de90ff061c20b164c127aa97e845e3f192429543 --verify-output`.
+- [x] Preserve the exact `50ee4bee…` manifest at `voelgoed-platform-core-pe008-50ee.manifest.json`; replace the active manifest fixture with the exact downloaded `de90ff0…` bytes.
+- [x] Update Product Contribution QA and deployment-helper authority constants to the `de90ff0…` publication without changing PE-008S deployment mechanics.
+- [x] Add a regression proving the `50ee4bee…` and `de90ff0…` published manifests differ only in `source_commit` and `source_ref_requested`, while schema, inventory, tree, and archive match.
+- [x] Run all PE-008S and source gates and commit the authority/tooling update as `cb6d76d78952fb568edde36e95930e93595b56d7`.
+- [ ] Push the rebased branch to PR #59 and inspect exact-head GitHub checks.
+- [ ] Stop for independent review. Do not deploy, merge, or mark the draft ready.

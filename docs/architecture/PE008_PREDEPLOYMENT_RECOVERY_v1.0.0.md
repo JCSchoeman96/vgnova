@@ -4,21 +4,26 @@
 
 ## Baseline and artifact authority
 
-The exact source baseline is `50ee4bee1ae1405522df7b67634b8935d4e9d9ed`. The current-main artifact came from successful workflow `40311497761`, artifact `12645287640`, named `voelgoed-platform-core-50ee4bee1ae1405522df7b67634b8935d4e9d9ed`.
+The current source baseline is `de90ff061c20b164c127aa97e845e3f192429543`. The changes since `50ee4bee1ae1405522df7b67634b8935d4e9d9ed` add documentation only, but the successful main workflow published a newer schema-v3 artifact. PE-008 now uses that newest exact-main publication.
 
 | Authority | Value |
 | --- | --- |
-| Transport ZIP SHA-256 | `e90073d5a7a3e2dff0a871090c7ae036d7a8922f60a589d11ca85870965a23ed` |
-| Published manifest SHA-256 | `b728e69d1488a28601982bfb5e84b4104b11cab5f6c9ae1dcd2a38192ef696a7` |
+| Workflow | `40342642997` |
+| Artifact ID | `12659772564` |
+| Artifact name | `voelgoed-platform-core-de90ff061c20b164c127aa97e845e3f192429543` |
+| Transport ZIP SHA-256 | `22128391bfb1c9ee040b929cc47385db71980d4d8dcacc0171d8b03fef413d7f` |
+| Published manifest SHA-256 | `7cd38e758babddf495e484013d9345750af6f39689bc428f67d89a814949a932` |
 | Embedded archive SHA-256 | `22d998019e3fe3d93d675250a26eba5be3dbc248badd9be4d7507fbdf9cffdb9` |
 | Tree SHA-256 | `5816b80ac4355782523aa4baa82bd9e55dd87326f15972f287ff1afa7567482a` |
 | File count | `55` |
 
-The published ZIP, archive, and manifest are preserved under `/home/jcschoeman96/.cache/vgnova/pe008-20261026/current-main-50ee4bee/`. The independent exact-output verifier passed for source commit `50ee4bee1ae1405522df7b67634b8935d4e9d9ed` and reported the same 55-file tree, archive, and published-manifest hashes. The published manifest bytes are authoritative.
+The exact downloaded artifact is preserved under `/home/jcschoeman96/.cache/vgnova/pe008-20261026/current-main-de90ff061c20b164c127aa97e845e3f192429543/`. Under CPython 3.14.4, `check-platform-core-build.py --ref de90ff061c20b164c127aa97e845e3f192429543 --verify-output` passed against the two embedded files.
 
-The Product Contribution QA authority changed from the `origin/main` 54-file authority at `7af938ac6f4422b1fa779b52444121e7a9293995` to the actual current-main 55-file publication at `50ee4bee1ae1405522df7b67634b8935d4e9d9ed`. The old manifest bytes remain in the rollback/classification fixture; the new fixture contains the exact downloaded published manifest bytes.
+The prior `50ee4bee…` artifact remains historical PE-008R evidence. Its exact manifest bytes are preserved as `site-code/runtime-tests/fixtures/voelgoed-platform-core-pe008-50ee.manifest.json` with SHA-256 `b728e69d1488a28601982bfb5e84b4104b11cab5f6c9ae1dcd2a38192ef696a7`. The `50ee4bee…` and `de90ff0…` archives and file inventories are identical. Their published manifest JSON differs only in `source_commit` and `source_ref_requested`, so the manifest digests differ. The `de90ff0…` manifest is the active fixture and current authority.
 
-The source gate also builds a verifier artifact with `source_ref_requested=HEAD`. Its manifest digest was `b44d99008f62bba3695a4ec13a81eb8808d2e8fec105bf52bf168e71fad77ced`; its tree and archive hashes matched. That verifier manifest is not the release manifest. The exact published current-main manifest bytes and digest `b728e69d1488a28601982bfb5e84b4104b11cab5f6c9ae1dcd2a38192ef696a7` remain authoritative because the manifest records the requested source ref.
+The Product Contribution QA authority changed from the 54-file artifact at `7af938ac6f4422b1fa779b52444121e7a9293995`, through the intermediate `50ee4bee…` publication, to the current `de90ff0…` publication. The 54-file rollback/classification manifest remains unchanged.
+
+The source gate also builds a verifier artifact with `source_ref_requested=HEAD`. Its manifest digest differs from the published release manifest because the requested ref is part of the manifest. The published `de90ff0…` manifest bytes and digest `7cd38e758babddf495e484013d9345750af6f39689bc428f67d89a814949a932` remain authoritative.
 
 ## Aborted pre-mutation QA invocation
 
@@ -66,7 +71,7 @@ Postmeta is the control. Both query paths return the same sole row, build the sa
 
 The mismatched constants first appeared in deployment-tool commit `445a656448d3222befd721117fe7cef5aebbba8a`. The initial RED regression computed the group hashes from the captured rows and failed because the current Person guard still expected the Task 10A hashes: 26/27 integrity checks passed. After changing only the expected group hashes and moving the query/canonical serialization into `site-code/runtime-tools/pe008-protected-state.php`, the suite passed 27/27. The standalone PE-008 protected-state regression also passed. It does not load WordPress or include the Product Contribution QA file.
 
-The Product Contribution authority now pins the actual `50ee4bee…` published manifest bytes. The old `54`-file fixture remains preserved for exact-old runtime classification. The earlier temporary `HEAD`-build manifest digest is not used.
+At the PE-008R evidence snapshot, Product Contribution pinned the actual `50ee4bee…` publication. PE-008T below supersedes that active authority with the newest `de90ff0…` manifest. The old `54`-file fixture remains preserved for exact-old runtime classification, and the intermediate `50ee4bee…` bytes remain in their own historical fixture.
 
 ## Runtime and coordinator state
 
@@ -95,7 +100,7 @@ The source gate's local verifier build retained the Platform Core tree hash and 
 
 The first independent review of draft head `47bef76468a5d54c6cacd50f33c2bf2f6abf4b7f` found that a failed `stage → active` rename followed by a failed `stage → failed` preservation rename returned before trying `backup → active`. The active plugin directory could therefore remain absent even though the old backup was intact.
 
-A fault-injection regression failed before the correction because the helper did not attempt the fourth rename. The helper now verifies that the unchanged stage still matches the exact new authority, reports that stage path as the retained failed tree, and attempts backup restoration. If the stage cannot be verified, the helper still restores and verifies the old active tree before returning `BLOCKED_CRITICAL`. Additional fault-injection cases exposed empty failed-tree reservations on critical exits; the helper now removes the reservation when empty and leaves it intact whenever it contains a preserved failed tree. The revised helper suite passes all 28 cases. A fresh independent review and exact-head GitHub checks remain pending for the updated draft head.
+A fault-injection regression failed before the correction because the helper did not attempt the fourth rename. The helper now verifies that the unchanged stage still matches the exact new authority, reports that stage path as the retained failed tree, and attempts backup restoration. If the stage cannot be verified, the helper still restores and verifies the old active tree before returning `BLOCKED_CRITICAL`. Additional fault-injection cases exposed empty failed-tree reservations on critical exits; the helper now removes the reservation when empty and leaves it intact whenever it contains a preserved failed tree. A later independent review accepted the PE-008S process and exit-code changes at head `27b8900883f5a71e99ac16f2d367a9311add3b1b`; exact-head run `40357725833` passed. PE-008T below refreshes only the artifact provenance. Its exact-head review and checks remain pending.
 
 ## PE-008R mutation counts
 
@@ -113,7 +118,7 @@ A fault-injection regression failed before the correction because the helper did
 | Successful live Product Contribution QA runs | 0 |
 | Aborted pre-mutation QA invocations | 1 |
 
-No credentials are stored in this report. A later approved PE-008 execution must create a new stage from artifact `12645287640`; it must not use the superseded staging directory. PE-008 remains blocked from deployment until independent review of the exact draft PR head and a separate authorization to run the deployment.
+No credentials are stored in this report. A later approved PE-008 execution must create a new stage from artifact `12659772564`; it must not use the superseded staging directory or the intermediate `50ee4bee…` artifact. PE-008 remains blocked from deployment until independent review of the exact draft PR head and a separate authorization to run the deployment.
 
 ## PE-008S process isolation and CLI results
 
@@ -148,3 +153,21 @@ The production CLI result mapping is:
 The PE-008S TDD regression first failed while normal `--require` remained in argv and while the system WP-CLI settings path was not disabled. A direct WP-CLI probe then showed `WP_CLI_EARLY_REQUIRE` loads before the `WP_CLI` class exists, so that environment hook cannot register the guard command. The regression failed again while the helper used that early hook. The helper now uses `WP_CLI_REQUIRE`; the installed WP-CLI probe registered and ran a `before_wp_load` command, and all 33 PE-008 cases passed. The source-safe subprocess case proves FD3 reaches the child, fixture descriptors 4 through 8 do not, the PE-007 session fields and socket override arrive without credentials, and the parent starts its first rename only after the child exits. Separate subprocess tests check the JSON status and process exit for every terminal state.
 
 PE-008S has not accessed Local WordPress, performed a deployment, started a PE-007 mutation session, or run live Product Contribution QA. Runtime mutation counts remain unchanged from PE-008R: Platform Core deployments 0, ACF writes 0, taxonomy writes 0, post writes 0, persistent WordPress DB writes 0, Bricks writes 0, FluentSnippet writes 0, rewrite flushes 0, plugin activation/deactivation writes 0, successful live QA runs 0, and aborted pre-mutation QA invocations 1.
+
+## PE-008T provenance refresh
+
+`origin/main` advanced to `de90ff061c20b164c127aa97e845e3f192429543`. The intervening source diff adds only documentation. The successful main workflow `40342642997` nevertheless published artifact `12659772564`, so PE-008 now uses that publication as its source authority.
+
+The transport ZIP SHA-256 is `22128391bfb1c9ee040b929cc47385db71980d4d8dcacc0171d8b03fef413d7f`. The published manifest SHA-256 is `7cd38e758babddf495e484013d9345750af6f39689bc428f67d89a814949a932`. The archive SHA-256 remains `22d998019e3fe3d93d675250a26eba5be3dbc248badd9be4d7507fbdf9cffdb9`, the tree SHA-256 remains `5816b80ac4355782523aa4baa82bd9e55dd87326f15972f287ff1afa7567482a`, and the file count remains 55.
+
+The downloaded `50ee4bee…` and `de90ff0…` artifacts have byte-identical archives and identical file inventories. Their published manifest JSON differs only in `source_commit` and `source_ref_requested`, which identify the exact release commit. The `50ee4bee…` manifest remains preserved at `site-code/runtime-tests/fixtures/voelgoed-platform-core-pe008-50ee.manifest.json`; the active fixture now contains the exact downloaded `de90ff0…` manifest bytes. A regression pins both byte digests and the expected field-level comparison.
+
+The PE-008S deployment helper mechanics were not changed by this refresh. They still use a WordPress-free deployment parent, a separate pre-rename WP-CLI guard child, FD3 session proof, the distinct post-swap smoke child, and the exit contract `SWAPPED=0`, `SKIPPED_ALREADY_EXACT=0`, `ROLLED_BACK=3`, `BLOCKED=1`, `BLOCKED_CRITICAL=2`.
+
+The source authority commit is `cb6d76d78952fb568edde36e95930e93595b56d7`; the artifact source commit is `de90ff061c20b164c127aa97e845e3f192429543`. The PE-008T diff changes only the active manifest authority, its regression, and the historical manifest fixture. In the deployment helper, only the expected new manifest authority changed.
+
+The authority regression ran RED before source constants or manifest bytes changed. It passed 25/27 checks and failed because it still read the `50ee4bee…` manifest while expecting the current publication. After preserving the historical bytes and installing the exact downloaded `de90ff0…` manifest, it passed 28/28. The comparison regression confirms that the two release manifests differ only in `source_commit` and `source_ref_requested`.
+
+The PE-008T source gates passed: `check-source.sh`, `voelgoed-platform-core/bin/check.sh`, Product Contribution integrity 28/28, PE-008 protected-state, PE-008 bootstrap 33/33, mutation core 74, mutation session 19/19, mutation policy 32, static policy across 133 tracked PHP files, and FCM 3/3. The dashboard suite passed 127/127. PHP lint, JSON validation, Python AST, Bash syntax, ShellCheck, `actionlint` 1.7.12 through mise, the canonical artifact checks, and final `git diff --check` passed.
+
+PE-008T performed no Local WordPress inspection, deployment, mutation-session acquisition, live QA invocation, or persistent write. Its runtime mutation counts are zero. The earlier aborted pre-mutation QA invocation remains recorded as one. The exact PE-008T GitHub check result is reported with the final draft PR head; deployment remains blocked.
