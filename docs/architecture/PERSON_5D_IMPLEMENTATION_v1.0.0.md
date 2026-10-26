@@ -40,6 +40,6 @@ All five legacy profile snapshots and the known Event/Product relationship value
 
 ## Verification
 
-The final verification results and fresh suite counts are recorded in the runtime manifest and PR body. Verification includes the complete `site-code/bin/check-source.sh` gate, focused Person Foundation and Person migration suites, required Product/Event/Bricks/PE-005 gates, changed-PHP lint, JSON and CSV checks, and `git diff --check`.
+The runtime manifest records the source gate and protected-state evidence captured for runtime execution. The PR verification section records the fresh final branch-head counts. Verification includes the complete `site-code/bin/check-source.sh` gate, focused Person Foundation and Person migration suites, required Product/Event/Bricks/PE-005 gates, changed-PHP lint, JSON and CSV checks, and `git diff --check`.
 
 Task 10A remains open for independent programme review. This report does not claim that its PR has merged.
