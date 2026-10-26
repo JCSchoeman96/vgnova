@@ -76,6 +76,59 @@ function pe008_test_config(string $root): array
 
 $GLOBALS['pe008_failures'] = 0;
 $cases = [
+    'failed backup restore removes empty reservation' => static function (): void {
+        $root = sys_get_temp_dir() . '/pe008-' . bin2hex(random_bytes(6)); mkdir($root, 0700);
+        try {
+            $c = pe008_test_config($root);
+            pe008_test_tree($c['active'], 'old');
+            pe008_test_tree($c['stage'], 'new');
+            $n = 0;
+            $real = $c['rename'];
+            $c['rename'] = static function (string $from, string $to) use (&$n, $real): bool {
+                ++$n;
+                return in_array($n, [2, 3, 4], true) ? false : $real($from, $to);
+            };
+            $r = vg_pe008_bootstrap_run($c);
+            pe008_test_assert($r['status'] === 'BLOCKED_CRITICAL' && ! file_exists($c['active']) && is_dir($c['backup']), 'backup restore failure did not retain the blocked filesystem state');
+            pe008_test_assert((glob($c['failed_parent'] . '/.pe008-failed-*') ?: []) === [], 'empty reservation remained after backup restore failure');
+        } finally { pe008_test_remove($root); }
+    },
+    'restored old smoke failure removes empty reservation' => static function (): void {
+        $root = sys_get_temp_dir() . '/pe008-' . bin2hex(random_bytes(6)); mkdir($root, 0700);
+        try {
+            $c = pe008_test_config($root);
+            pe008_test_tree($c['active'], 'old');
+            pe008_test_tree($c['stage'], 'new');
+            $n = 0;
+            $real = $c['rename'];
+            $c['rename'] = static function (string $from, string $to) use (&$n, $real): bool {
+                ++$n;
+                return in_array($n, [2, 3], true) ? false : $real($from, $to);
+            };
+            $c['smoke'] = static fn (): bool => false;
+            $r = vg_pe008_bootstrap_run($c);
+            pe008_test_assert($r['status'] === 'BLOCKED_CRITICAL' && file_get_contents($c['active'] . '/identity.txt') === 'old', 'old tree was not restored before smoke failure was reported');
+            pe008_test_assert((glob($c['failed_parent'] . '/.pe008-failed-*') ?: []) === [], 'empty reservation remained after restored-old smoke failure');
+        } finally { pe008_test_remove($root); }
+    },
+    'failed active-new preservation removes empty reservation' => static function (): void {
+        $root = sys_get_temp_dir() . '/pe008-' . bin2hex(random_bytes(6)); mkdir($root, 0700);
+        try {
+            $c = pe008_test_config($root);
+            pe008_test_tree($c['active'], 'old');
+            pe008_test_tree($c['stage'], 'new');
+            $n = 0;
+            $real = $c['rename'];
+            $c['rename'] = static function (string $from, string $to) use (&$n, $real): bool {
+                ++$n;
+                return $n === 3 ? false : $real($from, $to);
+            };
+            $c['smoke'] = static fn (): bool => false;
+            $r = vg_pe008_bootstrap_run($c);
+            pe008_test_assert($r['status'] === 'BLOCKED_CRITICAL' && file_get_contents($c['active'] . '/identity.txt') === 'new', 'failed new tree was not left active and blocked');
+            pe008_test_assert((glob($c['failed_parent'] . '/.pe008-failed-*') ?: []) === [], 'empty reservation remained after active-new preservation failure');
+        } finally { pe008_test_remove($root); }
+    },
     'guard rejection creates no failed reservation directory' => static function (): void {
         $root = sys_get_temp_dir() . '/pe008-' . bin2hex(random_bytes(6)); mkdir($root, 0700);
         try { $c = pe008_test_config($root); pe008_test_tree($c['active'], 'old'); pe008_test_tree($c['stage'], 'new'); $observed = null; $c['guard'] = static function () use (&$observed, $c): bool { $observed = glob($c['failed_parent'] . '/.pe008-failed-*') ?: []; return false; }; $r = vg_pe008_bootstrap_run($c); pe008_test_assert($r['status'] === 'BLOCKED' && $observed === [], 'guard rejection created a failed reservation before validation'); }

@@ -82,6 +82,7 @@ function vg_pe008_bootstrap_run(array $config): array
         if ($rename($active, $failed)) {
             $failed_state = 'preserved';
         } else {
+            @rmdir($failed_reservation);
             return ['status' => 'BLOCKED_CRITICAL', 'reason' => 'could_not_preserve_failed_new_tree', 'active' => $active, 'backup' => $backup, 'failed' => $failed];
         }
     } elseif (file_exists($stage) || is_link($stage)) {
@@ -106,6 +107,7 @@ function vg_pe008_bootstrap_run(array $config): array
         }
     }
     if (! $rename($backup, $active)) {
+        @rmdir($failed_reservation);
         return ['status' => 'BLOCKED_CRITICAL', 'reason' => 'could_not_restore_backup', 'active' => $active, 'backup' => $backup, 'failed' => $failed, 'failed_state' => $failed_state];
     }
     try {
@@ -115,6 +117,7 @@ function vg_pe008_bootstrap_run(array $config): array
         $restored_smoke = false;
     }
     if (! $restored_smoke) {
+        @rmdir($failed_reservation);
         return ['status' => 'BLOCKED_CRITICAL', 'reason' => 'restored_old_tree_failed_verification', 'active' => $active, 'backup' => $backup, 'failed' => $failed, 'failed_state' => $failed_state];
     }
     if ($failed_state === 'unverified_at_stage') {

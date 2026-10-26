@@ -71,7 +71,7 @@ The new read-only library and its standalone regression use only captured fixtur
 
 ### Independent review rollback correction
 
-The independent review of initial draft head `47bef76468a5d54c6cacd50f33c2bf2f6abf4b7f` found that failure to rename the stage to the failed-tree path returned before restoring the old backup. A fault-injection regression demonstrated the missing backup-restore attempt. The helper now verifies and reports the still-exact stage as retained, then restores and verifies the old runtime tree. If the retained stage is not exact, restoration still runs before the helper returns `BLOCKED_CRITICAL` and the empty failed-tree reservation is removed. The regressions passed after the fixes; the helper suite now has 25 passing cases.
+Independent review found that failure to rename the stage to the failed-tree path returned before restoring the old backup. A fault-injection regression demonstrated the missing backup-restore attempt, and another review round found empty reservation directories on critical exits. The helper now verifies and reports the still-exact stage as retained, attempts old-tree restoration, and removes empty reservations on critical exits while leaving non-empty reservations intact. The regressions passed after the fixes; the helper suite now has 28 passing cases.
 
 ### PE-008R read-only runtime check
 

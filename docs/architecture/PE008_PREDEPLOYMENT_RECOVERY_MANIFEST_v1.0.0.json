@@ -163,7 +163,7 @@
     "platform_core_check": "PASS",
     "product_contribution_integrity": "27/27 PASS",
     "pe008_protected_state": "PASS",
-    "pe008_bootstrap_helper": "25 cases PASS",
+    "pe008_bootstrap_helper": "28 cases PASS",
     "runtime_mutation_core": "73 tests PASS",
     "runtime_mutation_session": "19/19 PASS",
     "runtime_mutation_policy": "31/31 PASS",
