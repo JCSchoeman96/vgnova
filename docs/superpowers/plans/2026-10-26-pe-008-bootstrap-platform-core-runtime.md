@@ -24,16 +24,18 @@
 ## Tasks
 
 - [x] Confirm the fetched `origin/main` SHA, create the isolated worktree, inspect repository contracts, and record the current source baseline.
-- [x] Download artifact `12634663495` from successful workflow `40287961867`; preserve the transport ZIP, embedded archive, published manifest, and prior 54-file manifest outside the active plugin directory.
-- [x] Verify transport, archive, and manifest hashes, then run `check-platform-core-build.py --verify-output` with CPython 3.14.4 and the full source SHA.
+- [x] After `origin/main` advanced, inspect every intervening commit, stop before runtime mutation, and select the successful publication for the newest exact `main` SHA.
+- [x] Download artifact `12645287640` from successful workflow `40311497761` for `50ee4bee1ae1405522df7b67634b8935d4e9d9ed`; preserve the actual transport ZIP, embedded archive, published manifest, and prior 54-file manifest outside the active plugin directory.
+- [x] Verify transport ZIP SHA `e90073d5a7a3e2dff0a871090c7ae036d7a8922f60a589d11ca85870965a23ed`, archive SHA `22d998019e3fe3d93d675250a26eba5be3dbc248badd9be4d7507fbdf9cffdb9`, and published manifest SHA `b728e69d1488a28601982bfb5e84b4104b11cab5f6c9ae1dcd2a38192ef696a7`; run `check-platform-core-build.py --verify-output` with CPython 3.14.4 and the full source SHA.
 - [x] Classify the active plugin against both exact manifests using the existing integrity verifier; stop on any state other than exact-old or exact-new.
 - [x] Capture the read-only WordPress identity, coordinator lock state, protected DB definitions, term counts, approved product baseline, and fingerprints for protected runtime records. The Person baseline is exactly one explained record, ID 1705 (`lynette-beer`), from the recorded Task 10A session; preserve and fingerprint its post row, postmeta, taxonomy relationships, and raw ACF values.
-- [x] Write the Product Contribution authority regression first and run it against the current authority to prove the 55-file artifact is rejected.
-- [x] Change the QA authority and replace the fixture with the exact downloaded manifest bytes; update assertions and prove the authority transition passes while existing negative cases still fail closed.
+- [x] Write the Product Contribution authority regression first and run it against the old 54-file authority to prove the published 55-file artifact is rejected.
+- [x] Change the QA authority to the actual `50ee4bee…` publication and replace the fixture with its exact downloaded manifest bytes; update assertions and prove the authority transition passes while existing negative cases still fail closed.
+- [x] Change the stale zero-Person precondition to require the exact Task 10A Person 1705 inventory and post/postmeta/taxonomy fingerprint; add it to the protected pre/post snapshot and prove the guard with source-only tests.
 - [x] Write source-safe helper tests first, including uncoordinated execution, exact-old and already-new outcomes, mismatch refusal, unsafe stage refusal, backup collision, both rename failures, rollback verification, and retained backup behavior.
 - [x] Implement the PE-008-only helper with fixed target paths and hashes; require the loaded PE-007 guard before any filesystem mutation, use whole-directory renames, verify after each state transition, and restore the old tree on failure.
 - [x] Add the helper to the mutation inventory with the required session guard and add its offline suite to `check-source.sh`.
-- [x] Run all requested source gates, PE-007 regressions, syntax checks, linters, and diff checks; review the exact diff and confirm Platform Core canonical source bytes did not change.
+- [x] Run all requested source gates, PE-007 regressions, syntax checks, linters, and diff checks on the rebased current-main source; review the exact diff and confirm Platform Core canonical source bytes did not change.
 - [ ] Commit the tested authority transition and helper before deployment; record the tooling commit separately from the artifact source commit.
 - [ ] Extract the published archive outside `wp-content/plugins`, verify exact staged parity, reject unsafe filesystem objects, and prove active, stage, and backup parent share a device.
 - [ ] Recheck PE-007 status, then run the helper only as the coordinator child in one session with both independent database lock keepers and the host lock.

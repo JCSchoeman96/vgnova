@@ -146,7 +146,7 @@ function vg_pc_integrity_test_report(array $fixture, ?callable $read_file = null
 }
 
 $passed = 0;
-$total = 26;
+$total = 27;
 $run_case = static function (string $name, callable $test) use (&$passed): void {
     try {
         $test();
@@ -169,11 +169,49 @@ $run_case('exact temporary tree is accepted with the canonical tree hash', stati
     }
 });
 
+$run_case('Task 10A Person baseline requires the exact protected record and fingerprint', static function (): void {
+    if (! function_exists('vg_product_contribution_qa_person_baseline_matches')) {
+        throw new RuntimeException('The exact Task 10A Person baseline guard is missing.');
+    }
+    $inventory = [[
+        'id' => 1705,
+        'post_type' => 'person',
+        'post_status' => 'publish',
+        'post_name' => 'lynette-beer',
+        'post_date_gmt' => '2026-10-26 09:05:12',
+        'post_modified_gmt' => '2026-10-26 09:05:12',
+    ]];
+    $fingerprint = [
+        'post_count' => 1,
+        'postmeta_count' => 1,
+        'term_relationship_count' => 2,
+        'posts_sha256' => '792654d2d6a47aec75ef635e4bc51e3a67d35f621dfef021f1dcd4f97e6e080f',
+        'postmeta_sha256' => '0d043dd56c404e0ddb6d7ad496249b770d296a6cd72290bfd7774189e5c820e5',
+        'term_relationships_sha256' => '220c90c6c8838738030fe3ae3c3011446cd9d6b6b0162cba8c6597d438ab13b6',
+    ];
+    vg_pc_integrity_test_assert(
+        vg_product_contribution_qa_person_baseline_matches($inventory, $fingerprint),
+        'The exact Task 10A Person baseline was rejected.'
+    );
+    foreach ([[], [...$inventory, [...$inventory[0], 'id' => 1706]], [[...$inventory[0], 'post_status' => 'draft']], [[...$inventory[0], 'post_name' => 'other-slug']]] as $changed_inventory) {
+        vg_pc_integrity_test_assert(
+            ! vg_product_contribution_qa_person_baseline_matches($changed_inventory, $fingerprint),
+            'A missing, additional, or changed Person inventory was accepted.'
+        );
+    }
+    $changed_fingerprint = $fingerprint;
+    $changed_fingerprint['postmeta_sha256'] = str_repeat('f', 64);
+    vg_pc_integrity_test_assert(
+        ! vg_product_contribution_qa_person_baseline_matches($inventory, $changed_fingerprint),
+        'A changed Person postmeta fingerprint was accepted.'
+    );
+});
+
 $run_case('published manifest fixture is pinned to the downloaded artifact bytes', static function (): void {
     $path = dirname(__DIR__) . '/fixtures/voelgoed-platform-core-pe005.manifest.json';
     $bytes = file_get_contents($path);
     vg_pc_integrity_test_assert(is_string($bytes), 'Published manifest fixture could not be read');
-    vg_pc_integrity_test_assert(hash('sha256', $bytes) === 'ceba4caa9394ca3dc6dedca2794199c921fed85118b9d4a4d6606e711a8d12a8', 'Published manifest fixture digest differs');
+    vg_pc_integrity_test_assert(hash('sha256', $bytes) === 'b728e69d1488a28601982bfb5e84b4104b11cab5f6c9ae1dcd2a38192ef696a7', 'Published manifest fixture digest differs');
     $manifest = json_decode($bytes, true, 512, JSON_THROW_ON_ERROR);
     $runtime_guard_paths = array_values(array_filter(
         array_column($manifest['files'], 'path'),
@@ -181,7 +219,8 @@ $run_case('published manifest fixture is pinned to the downloaded artifact bytes
     ));
     vg_pc_integrity_test_assert(
         $manifest['schema_version'] === 3
-            && $manifest['source_commit'] === 'ab7e7d853772fb920237e47d8fa83c72ed389fba'
+            && $manifest['source_commit'] === '50ee4bee1ae1405522df7b67634b8935d4e9d9ed'
+            && $manifest['source_ref_requested'] === '50ee4bee1ae1405522df7b67634b8935d4e9d9ed'
             && $manifest['file_count'] === 55
             && $manifest['tree_sha256'] === '5816b80ac4355782523aa4baa82bd9e55dd87326f15972f287ff1afa7567482a'
             && $manifest['archive_sha256'] === '22d998019e3fe3d93d675250a26eba5be3dbc248badd9be4d7507fbdf9cffdb9'
@@ -190,13 +229,13 @@ $run_case('published manifest fixture is pinned to the downloaded artifact bytes
     );
     vg_pc_integrity_test_assert(
         VG_PRODUCT_CONTRIBUTION_QA_PLATFORM_CORE_AUTHORITY === [
-            'artifact_name' => 'voelgoed-platform-core-ab7e7d853772fb920237e47d8fa83c72ed389fba',
-            'source_commit' => 'ab7e7d853772fb920237e47d8fa83c72ed389fba',
+            'artifact_name' => 'voelgoed-platform-core-50ee4bee1ae1405522df7b67634b8935d4e9d9ed',
+            'source_commit' => '50ee4bee1ae1405522df7b67634b8935d4e9d9ed',
             'schema_version' => 3,
             'file_count' => 55,
             'tree_sha256' => '5816b80ac4355782523aa4baa82bd9e55dd87326f15972f287ff1afa7567482a',
             'archive_sha256' => '22d998019e3fe3d93d675250a26eba5be3dbc248badd9be4d7507fbdf9cffdb9',
-            'manifest_sha256' => 'ceba4caa9394ca3dc6dedca2794199c921fed85118b9d4a4d6606e711a8d12a8',
+            'manifest_sha256' => 'b728e69d1488a28601982bfb5e84b4104b11cab5f6c9ae1dcd2a38192ef696a7',
         ],
         'Product Contribution QA authority constant differs from the published artifact'
     );
@@ -236,7 +275,7 @@ $run_case('previous 54-file authority rejects the exact published 55-file manife
         vg_pc_integrity_test_assert(
             $report['exact'] === false
                 && $report['expected_file_count'] === 54
-                && $report['observed_manifest_sha256'] === 'ceba4caa9394ca3dc6dedca2794199c921fed85118b9d4a4d6606e711a8d12a8'
+                && $report['observed_manifest_sha256'] === 'b728e69d1488a28601982bfb5e84b4104b11cab5f6c9ae1dcd2a38192ef696a7'
                 && in_array('Pinned Platform Core manifest SHA-256 differs from the expected artifact manifest.', $report['manifest_errors'], true),
             'Previous 54-file authority accepted the exact published 55-file manifest',
             $report

@@ -26,13 +26,13 @@ const VG_PRODUCT_CONTRIBUTION_QA_OWNER_META = '_vg_task_8c_product_contribution_
 const VG_PRODUCT_CONTRIBUTION_QA_OWNER_LABEL = '[QA][AUTOMATED] Product Contribution';
 const VG_PRODUCT_CONTRIBUTION_QA_SOURCE_PATH = '/home/jcschoeman96/projects/current/vgnova/site-code/acf-json';
 const VG_PRODUCT_CONTRIBUTION_QA_PLATFORM_CORE_AUTHORITY = [
-    'artifact_name' => 'voelgoed-platform-core-ab7e7d853772fb920237e47d8fa83c72ed389fba',
-    'source_commit' => 'ab7e7d853772fb920237e47d8fa83c72ed389fba',
+    'artifact_name' => 'voelgoed-platform-core-50ee4bee1ae1405522df7b67634b8935d4e9d9ed',
+    'source_commit' => '50ee4bee1ae1405522df7b67634b8935d4e9d9ed',
     'schema_version' => 3,
     'file_count' => 55,
     'tree_sha256' => '5816b80ac4355782523aa4baa82bd9e55dd87326f15972f287ff1afa7567482a',
     'archive_sha256' => '22d998019e3fe3d93d675250a26eba5be3dbc248badd9be4d7507fbdf9cffdb9',
-    'manifest_sha256' => 'ceba4caa9394ca3dc6dedca2794199c921fed85118b9d4a4d6606e711a8d12a8',
+    'manifest_sha256' => 'b728e69d1488a28601982bfb5e84b4104b11cab5f6c9ae1dcd2a38192ef696a7',
 ];
 const VG_PRODUCT_CONTRIBUTION_QA_EXPECTED_PRODUCT_IDS = [525, 527, 529, 531, 642, 765, 767, 768, 842, 844, 845, 846, 905, 908, 911, 914, 917, 920, 923, 1186];
 
@@ -204,6 +204,52 @@ function vg_product_contribution_qa_post_count(string $post_type): int
         $wpdb->prepare("SELECT COUNT(*) FROM {$wpdb->posts} WHERE post_type = %s", $post_type),
         'post count for ' . $post_type
     );
+}
+
+/** @return list<array{id:int,post_type:string,post_status:string,post_name:string,post_date_gmt:string,post_modified_gmt:string}> */
+function vg_product_contribution_qa_person_inventory(): array
+{
+    global $wpdb;
+    $rows = $wpdb->get_results(
+        $wpdb->prepare(
+            "SELECT ID,post_type,post_status,post_name,post_date_gmt,post_modified_gmt FROM {$wpdb->posts} WHERE post_type = %s ORDER BY ID ASC",
+            'person'
+        ),
+        ARRAY_A
+    );
+    if ($wpdb->last_error !== '' || ! is_array($rows)) {
+        throw new RuntimeException('Could not read the protected Person inventory: ' . $wpdb->last_error);
+    }
+    return array_map(static fn (array $row): array => [
+        'id' => (int) $row['ID'],
+        'post_type' => (string) $row['post_type'],
+        'post_status' => (string) $row['post_status'],
+        'post_name' => (string) $row['post_name'],
+        'post_date_gmt' => (string) $row['post_date_gmt'],
+        'post_modified_gmt' => (string) $row['post_modified_gmt'],
+    ], $rows);
+}
+
+/** @param list<array{id:int,post_type:string,post_status:string,post_name:string,post_date_gmt:string,post_modified_gmt:string}> $inventory */
+function vg_product_contribution_qa_person_baseline_matches(array $inventory, array $fingerprint): bool
+{
+    $expected_inventory = [[
+        'id' => 1705,
+        'post_type' => 'person',
+        'post_status' => 'publish',
+        'post_name' => 'lynette-beer',
+        'post_date_gmt' => '2026-10-26 09:05:12',
+        'post_modified_gmt' => '2026-10-26 09:05:12',
+    ]];
+    $expected_fingerprint = [
+        'post_count' => 1,
+        'postmeta_count' => 1,
+        'term_relationship_count' => 2,
+        'posts_sha256' => '792654d2d6a47aec75ef635e4bc51e3a67d35f621dfef021f1dcd4f97e6e080f',
+        'postmeta_sha256' => '0d043dd56c404e0ddb6d7ad496249b770d296a6cd72290bfd7774189e5c820e5',
+        'term_relationships_sha256' => '220c90c6c8838738030fe3ae3c3011446cd9d6b6b0162cba8c6597d438ab13b6',
+    ];
+    return $inventory === $expected_inventory && $fingerprint === $expected_fingerprint;
 }
 
 function vg_product_contribution_qa_post_meta_count(int $post_id): int
@@ -445,6 +491,7 @@ function vg_product_contribution_qa_protected_snapshot(): array
     }
     return [
         'profiles_753_757' => vg_product_contribution_qa_group_fingerprint([753, 754, 755, 756, 757]),
+        'person_1705' => vg_product_contribution_qa_group_fingerprint([1705]),
         'event_763' => vg_product_contribution_qa_group_fingerprint([763]),
         'products_765_767_768' => vg_product_contribution_qa_group_fingerprint([765, 767, 768]),
         'templates_773_1127' => vg_product_contribution_qa_group_fingerprint([773, 1127]),
@@ -757,6 +804,7 @@ function vg_product_contribution_qa_persistent_state(): array
     return [
         'product_contribution_posts' => vg_product_contribution_qa_post_count('product_contribution'),
         'person_posts' => vg_product_contribution_qa_post_count('person'),
+        'person_inventory' => vg_product_contribution_qa_person_inventory(),
         'event_participation_posts' => vg_product_contribution_qa_post_count(EventParticipationRepository::POST_TYPE),
         'product_role_terms' => count(vg_product_contribution_qa_role_terms()),
         'product_role_term_slugs' => array_column(vg_product_contribution_qa_role_terms(), 'slug'),
@@ -1153,7 +1201,13 @@ function vg_product_contribution_qa_preflight(array &$context): void
     vg_product_contribution_qa_check($actual_roles === $expected_roles && count($context['roles']) === 4, 'Product Role vocabulary is not exactly the four approved terms.');
     vg_product_contribution_qa_check(vg_product_contribution_qa_role_relationship_count() === 0, 'Product Role relationships exist before QA.');
     vg_product_contribution_qa_check(vg_product_contribution_qa_post_count('product_contribution') === 0, 'Persistent Product Contribution posts exist before QA.');
-    vg_product_contribution_qa_check(vg_product_contribution_qa_post_count('person') === 0, 'Persistent Person posts differ from the authorized baseline.');
+    vg_product_contribution_qa_check(
+        vg_product_contribution_qa_person_baseline_matches(
+            vg_product_contribution_qa_person_inventory(),
+            vg_product_contribution_qa_group_fingerprint([1705])
+        ),
+        'Persistent Person inventory or Person 1705 fingerprint differs from the authorized Task 10A baseline.'
+    );
     vg_product_contribution_qa_check(vg_product_contribution_qa_post_count(EventParticipationRepository::POST_TYPE) === 0, 'Persistent Event Participation posts differ from the authorized baseline.');
     $context['persistent_pre'] = vg_product_contribution_qa_persistent_state();
     vg_product_contribution_qa_check($context['persistent_pre']['target_acf_database_definitions'] === 3, 'Exactly three target Product Contribution ACF definitions must be persisted before QA.');
