@@ -1,5 +1,5 @@
 {
-  "archive_sha256": "9d5fd288025703fe4f71ed1f3ee264cd3fc9c0b61cf74d137b40e941bc2e2243",
+  "archive_sha256": "22d998019e3fe3d93d675250a26eba5be3dbc248badd9be4d7507fbdf9cffdb9",
   "artifact_name": "voelgoed-platform-core.tar.gz",
   "build_toolchain": {
     "archive_encoder_version": "vgpc-gzip-stored-v1",
@@ -10,8 +10,8 @@
     "zlib_encoding": "not-used"
   },
   "builder_path": "site-code/bin/build-platform-core.py",
-  "builder_sha256": "bd4826f1981c400e2fd4032f0c3aa66271bef38c3e50b73bb7a2ed21fcbf6928",
-  "file_count": 54,
+  "builder_sha256": "c7778739de05cb7a95f7fcc29ec42291f470abae6dfd463b6180c4e46ae06066",
+  "file_count": 55,
   "files": [
     {
       "mode": "100755",
@@ -118,8 +118,8 @@
     {
       "mode": "100644",
       "path": "includes/Event/EventRoleSeeder.php",
-      "sha256": "9b0396bf9b2e4b3515fb0b2bd5224e03e501fd964efe80e03cd3f1a76f98c4e6",
-      "size": 8704
+      "sha256": "a8128e06fc35db286265e381aca886b381a124b89d4752391a0067f1f6c46923",
+      "size": 8772
     },
     {
       "mode": "100644",
@@ -184,8 +184,8 @@
     {
       "mode": "100644",
       "path": "includes/Product/ProductRoleSeeder.php",
-      "sha256": "2b8979dad3eade53b6f5204e06a36621eadbda320ee18efc86b84d166221d4b8",
-      "size": 8588
+      "sha256": "b55daac10bc3e1219a20af90001b575726a4112d2dd170e4bc7ed5cbd08e4dd6",
+      "size": 8656
     },
     {
       "mode": "100644",
@@ -198,6 +198,12 @@
       "path": "includes/Product/ProductSourceEventBricks.php",
       "sha256": "9781aac4f6594d0626539f0f7fc488b863b3fe0af4a9e8b34e3604fed1467697",
       "size": 4205
+    },
+    {
+      "mode": "100644",
+      "path": "includes/Runtime/RuntimeMutationSession.php",
+      "sha256": "87229e6961420f885b42aec0713cbf8a4c7b13838db76b1f9cb5c82c19f1ac86",
+      "size": 16720
     },
     {
       "mode": "100644",
@@ -238,8 +244,8 @@
     {
       "mode": "100644",
       "path": "includes/Taxonomy/ContentTopicMigration.php",
-      "sha256": "928521996320fbce4db8154e63a217c34a34bfd0bcf397337cc7ee29f271d856",
-      "size": 41413
+      "sha256": "31040fd077c4a8efe05cafd11e6767bdc983897ad4ff60c3d1ec15a2f97bd44b",
+      "size": 41617
     },
     {
       "mode": "100644",
@@ -250,8 +256,8 @@
     {
       "mode": "100644",
       "path": "includes/Taxonomy/ContentTopicTaxonomy.php",
-      "sha256": "5668c77070bebe2dcaa3984438f5297486ed2963803864abbbb7b92b724048c9",
-      "size": 15926
+      "sha256": "c46bdd598f1add571323c0c499e00b63d19f03eb828560d5ae3e3d4645c2c659",
+      "size": 15994
     },
     {
       "mode": "100644",
@@ -334,13 +340,14 @@
     {
       "mode": "100644",
       "path": "voelgoed-platform-core.php",
-      "sha256": "3fc688ccf27ec11ee4bb9fe5e282630ded724d4a987e5489f9bc77142dca72bb",
-      "size": 2708
+      "sha256": "366966c61606c7e6c99a8116ed7a37a41f842e337658b6a8bfe35ade1e15fe78",
+      "size": 2759
     }
   ],
   "integration_patch_path": "site-code/voelgoed-platform-core/integration.patch",
-  "integration_patch_sha256": "7230916850225f7ffb1478cc180f8f42b32934505358ac437d771507ac3ba8a2",
+  "integration_patch_sha256": "cfe32be32718dbd0c1a061648939ebda1053e08bc24dc9163e13ae5581f9e907",
   "overlay_source_paths": [
+    "site-code/voelgoed-platform-core/includes/Runtime",
     "site-code/voelgoed-platform-core/includes/Taxonomy",
     "site-code/voelgoed-platform-core/includes/Event",
     "site-code/voelgoed-platform-core/includes/Product"
@@ -351,7 +358,7 @@
   },
   "root_source_path": "voelgoed-platform-core",
   "schema_version": 3,
-  "source_commit": "7af938ac6f4422b1fa779b52444121e7a9293995",
-  "source_ref_requested": "7af938ac6f4422b1fa779b52444121e7a9293995",
-  "tree_sha256": "856a3e5978559bfb2572b4b1ff4b34df916743f9e72d6b18220ee64e98af5f56"
+  "source_commit": "ab7e7d853772fb920237e47d8fa83c72ed389fba",
+  "source_ref_requested": "ab7e7d853772fb920237e47d8fa83c72ed389fba",
+  "tree_sha256": "5816b80ac4355782523aa4baa82bd9e55dd87326f15972f287ff1afa7567482a"
 }

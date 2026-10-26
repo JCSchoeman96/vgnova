@@ -7,6 +7,13 @@
             "classification": "library"
         },
         {
+            "path": "site-code/bin/pe008-bootstrap-platform-core-runtime.php",
+            "classification": "mutating",
+            "session_guard_required": true,
+            "guard_function": "vg_runtime_mutation_assert_session",
+            "purpose": "maintenance"
+        },
+        {
             "path": "site-code/bin/vgnova-runtime-mutate.php",
             "classification": "library"
         },
@@ -182,6 +189,10 @@
         },
         {
             "path": "site-code/runtime-tests/tests/run-product-contribution-qa-setup-tests.php",
+            "classification": "test_only"
+        },
+        {
+            "path": "site-code/runtime-tests/tests/run-pe008-bootstrap-platform-core-runtime-tests.php",
             "classification": "test_only"
         },
         {

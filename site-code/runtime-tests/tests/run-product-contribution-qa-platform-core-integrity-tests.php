@@ -146,7 +146,7 @@ function vg_pc_integrity_test_report(array $fixture, ?callable $read_file = null
 }
 
 $passed = 0;
-$total = 24;
+$total = 26;
 $run_case = static function (string $name, callable $test) use (&$passed): void {
     try {
         $test();
@@ -173,16 +173,77 @@ $run_case('published manifest fixture is pinned to the downloaded artifact bytes
     $path = dirname(__DIR__) . '/fixtures/voelgoed-platform-core-pe005.manifest.json';
     $bytes = file_get_contents($path);
     vg_pc_integrity_test_assert(is_string($bytes), 'Published manifest fixture could not be read');
-    vg_pc_integrity_test_assert(hash('sha256', $bytes) === 'c87d339ebe83203a82a3f02b27de9854be9e360835da9893077af9c9c318c1ee', 'Published manifest fixture digest differs');
+    vg_pc_integrity_test_assert(hash('sha256', $bytes) === 'ceba4caa9394ca3dc6dedca2794199c921fed85118b9d4a4d6606e711a8d12a8', 'Published manifest fixture digest differs');
     $manifest = json_decode($bytes, true, 512, JSON_THROW_ON_ERROR);
+    $runtime_guard_paths = array_values(array_filter(
+        array_column($manifest['files'], 'path'),
+        static fn (string $path): bool => $path === 'includes/Runtime/RuntimeMutationSession.php'
+    ));
     vg_pc_integrity_test_assert(
         $manifest['schema_version'] === 3
-            && $manifest['source_commit'] === '7af938ac6f4422b1fa779b52444121e7a9293995'
-            && $manifest['file_count'] === 54
-            && $manifest['tree_sha256'] === '856a3e5978559bfb2572b4b1ff4b34df916743f9e72d6b18220ee64e98af5f56'
-            && $manifest['archive_sha256'] === '9d5fd288025703fe4f71ed1f3ee264cd3fc9c0b61cf74d137b40e941bc2e2243',
-        'Published manifest fixture does not match the PE-005 authority'
+            && $manifest['source_commit'] === 'ab7e7d853772fb920237e47d8fa83c72ed389fba'
+            && $manifest['file_count'] === 55
+            && $manifest['tree_sha256'] === '5816b80ac4355782523aa4baa82bd9e55dd87326f15972f287ff1afa7567482a'
+            && $manifest['archive_sha256'] === '22d998019e3fe3d93d675250a26eba5be3dbc248badd9be4d7507fbdf9cffdb9'
+            && $runtime_guard_paths === ['includes/Runtime/RuntimeMutationSession.php'],
+        'Published manifest fixture does not match the PE-008 authority and required session guard'
     );
+    vg_pc_integrity_test_assert(
+        VG_PRODUCT_CONTRIBUTION_QA_PLATFORM_CORE_AUTHORITY === [
+            'artifact_name' => 'voelgoed-platform-core-ab7e7d853772fb920237e47d8fa83c72ed389fba',
+            'source_commit' => 'ab7e7d853772fb920237e47d8fa83c72ed389fba',
+            'schema_version' => 3,
+            'file_count' => 55,
+            'tree_sha256' => '5816b80ac4355782523aa4baa82bd9e55dd87326f15972f287ff1afa7567482a',
+            'archive_sha256' => '22d998019e3fe3d93d675250a26eba5be3dbc248badd9be4d7507fbdf9cffdb9',
+            'manifest_sha256' => 'ceba4caa9394ca3dc6dedca2794199c921fed85118b9d4a4d6606e711a8d12a8',
+        ],
+        'Product Contribution QA authority constant differs from the published artifact'
+    );
+});
+
+$run_case('previous 54-file authority is preserved byte-for-byte for rollback classification', static function (): void {
+    $path = dirname(__DIR__) . '/fixtures/voelgoed-platform-core-pe008-old.manifest.json';
+    $bytes = file_get_contents($path);
+    vg_pc_integrity_test_assert(is_string($bytes), 'Previous published manifest could not be read');
+    vg_pc_integrity_test_assert(hash('sha256', $bytes) === 'c87d339ebe83203a82a3f02b27de9854be9e360835da9893077af9c9c318c1ee', 'Previous manifest digest differs');
+    $manifest = json_decode($bytes, true, 512, JSON_THROW_ON_ERROR);
+    vg_pc_integrity_test_assert(
+        $manifest['source_commit'] === '7af938ac6f4422b1fa779b52444121e7a9293995'
+            && $manifest['file_count'] === 54
+            && $manifest['tree_sha256'] === '856a3e5978559bfb2572b4b1ff4b34df916743f9e72d6b18220ee64e98af5f56',
+        'Previous manifest no longer identifies the exact predeployment authority'
+    );
+});
+
+$run_case('previous 54-file authority rejects the exact published 55-file manifest', static function (): void {
+    $fixture = vg_pc_integrity_test_fixture();
+    try {
+        $old_authority = [
+            'artifact_name' => 'voelgoed-platform-core-7af938ac6f4422b1fa779b52444121e7a9293995',
+            'source_commit' => '7af938ac6f4422b1fa779b52444121e7a9293995',
+            'schema_version' => 3,
+            'file_count' => 54,
+            'tree_sha256' => '856a3e5978559bfb2572b4b1ff4b34df916743f9e72d6b18220ee64e98af5f56',
+            'archive_sha256' => '9d5fd288025703fe4f71ed1f3ee264cd3fc9c0b61cf74d137b40e941bc2e2243',
+            'manifest_sha256' => 'c87d339ebe83203a82a3f02b27de9854be9e360835da9893077af9c9c318c1ee',
+        ];
+        $report = vg_product_contribution_qa_platform_core_integrity_report(
+            $fixture['plugin_root'],
+            dirname(__DIR__) . '/fixtures/voelgoed-platform-core-pe005.manifest.json',
+            $old_authority
+        );
+        vg_pc_integrity_test_assert(
+            $report['exact'] === false
+                && $report['expected_file_count'] === 54
+                && $report['observed_manifest_sha256'] === 'ceba4caa9394ca3dc6dedca2794199c921fed85118b9d4a4d6606e711a8d12a8'
+                && in_array('Pinned Platform Core manifest SHA-256 differs from the expected artifact manifest.', $report['manifest_errors'], true),
+            'Previous 54-file authority accepted the exact published 55-file manifest',
+            $report
+        );
+    } finally {
+        vg_pc_integrity_test_remove_tree($fixture['root']);
+    }
 });
 
 $run_case('modified file content is rejected', static function (): void {
