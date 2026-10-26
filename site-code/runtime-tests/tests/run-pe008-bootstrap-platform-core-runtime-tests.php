@@ -86,6 +86,55 @@ $cases = [
         try { $c = pe008_test_config($root); pe008_test_tree($c['active'], 'old'); pe008_test_tree($c['stage'], 'new'); $n = 0; $real = $c['rename']; $c['rename'] = static function (string $a, string $b) use (&$n, $real): bool { ++$n; return $n === 3 ? false : $real($a, $b); }; $c['smoke'] = static fn (): bool => false; $r = vg_pe008_bootstrap_run($c); pe008_test_assert($r['status'] === 'BLOCKED_CRITICAL' && is_dir($c['active']), 'failed-tree preservation failure was not critical'); }
         finally { pe008_test_remove($root); }
     },
+    'failed stage preservation still restores old backup' => static function (): void {
+        $root = sys_get_temp_dir() . '/pe008-' . bin2hex(random_bytes(6)); mkdir($root, 0700);
+        try {
+            $c = pe008_test_config($root);
+            pe008_test_tree($c['active'], 'old');
+            pe008_test_tree($c['stage'], 'new');
+            $n = 0;
+            $real = $c['rename'];
+            $c['rename'] = static function (string $from, string $to) use (&$n, $real): bool {
+                ++$n;
+                return in_array($n, [2, 3], true) ? false : $real($from, $to);
+            };
+            $r = vg_pe008_bootstrap_run($c);
+            pe008_test_assert($r['status'] === 'ROLLED_BACK', 'old backup was not restored after failed stage preservation');
+            pe008_test_assert($n === 4, 'backup restoration was not attempted after failed stage preservation');
+            pe008_test_assert(file_get_contents($c['active'] . '/identity.txt') === 'old', 'restored active tree is not old');
+            pe008_test_assert(file_get_contents($c['stage'] . '/identity.txt') === 'new', 'unmoved new tree was not retained at stage');
+            pe008_test_assert(! file_exists($c['backup']), 'backup remained outside active path after restoration');
+            pe008_test_assert(($r['failed'] ?? null) === $c['stage'], 'rollback did not report the retained failed stage path');
+        } finally { pe008_test_remove($root); }
+    },
+    'unverified retained stage restores old backup and clears reservation' => static function (): void {
+        $root = sys_get_temp_dir() . '/pe008-' . bin2hex(random_bytes(6)); mkdir($root, 0700);
+        try {
+            $c = pe008_test_config($root);
+            pe008_test_tree($c['active'], 'old');
+            pe008_test_tree($c['stage'], 'new');
+            $n = 0;
+            $real_rename = $c['rename'];
+            $c['rename'] = static function (string $from, string $to) use (&$n, $real_rename): bool {
+                ++$n;
+                return in_array($n, [2, 3], true) ? false : $real_rename($from, $to);
+            };
+            $stage_reads = 0;
+            $real_verify = $c['verify'];
+            $c['verify'] = static function (string $path, string $authority) use (&$stage_reads, $c, $real_verify): array {
+                $report = $real_verify($path, $authority);
+                if ($path === $c['stage'] && ++$stage_reads > 1) {
+                    $report['exact'] = false;
+                }
+                return $report;
+            };
+            $r = vg_pe008_bootstrap_run($c);
+            pe008_test_assert($r['status'] === 'BLOCKED_CRITICAL', 'unverified retained stage was reported as a clean rollback');
+            pe008_test_assert(file_get_contents($c['active'] . '/identity.txt') === 'old', 'old backup was not restored before blocking');
+            pe008_test_assert(! file_exists($c['backup']), 'restored backup remained outside active path');
+            pe008_test_assert((glob($c['failed_parent'] . '/.pe008-failed-*') ?: []) === [], 'empty failed-tree reservation was left behind');
+        } finally { pe008_test_remove($root); }
+    },
     'backup restore rename failure is critical' => static function (): void {
         $root = sys_get_temp_dir() . '/pe008-' . bin2hex(random_bytes(6)); mkdir($root, 0700);
         try { $c = pe008_test_config($root); pe008_test_tree($c['active'], 'old'); pe008_test_tree($c['stage'], 'new'); $n = 0; $real = $c['rename']; $c['rename'] = static function (string $a, string $b) use (&$n, $real): bool { ++$n; return $n === 4 ? false : $real($a, $b); }; $c['smoke'] = static fn (): bool => false; $r = vg_pe008_bootstrap_run($c); pe008_test_assert($r['status'] === 'BLOCKED_CRITICAL' && is_dir($c['backup']), 'backup restore failure was not critical'); }

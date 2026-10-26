@@ -51,7 +51,7 @@
 
 ## PE-008R amendment, 2026-10-26
 
-**Status:** Source-only remediation in progress. Runtime deployment remains blocked until the exact draft PR head receives independent review and a later deployment task authorizes execution.
+**Status:** Source-only remediation is in draft PR #59. Runtime deployment remains blocked until the revised exact PR head receives independent review and a later deployment task authorizes execution.
 
 ### Aborted pre-mutation QA invocation
 
@@ -69,6 +69,10 @@ The classification is `HASH_PROVENANCE_DEFECT`. The source guard now uses the ex
 
 The new read-only library and its standalone regression use only captured fixture rows. Neither includes nor invokes the live Product Contribution QA file. They pin the Task 10A and group-query SQL, column order, row order, PHP scalar values, canonical serialization, byte lengths, and hashes. The PE-008 helper regression checks the deployment and fingerprinting sources for any QA include or `vg_product_contribution_qa_run()` invocation.
 
+### Independent review rollback correction
+
+The independent review of initial draft head `47bef76468a5d54c6cacd50f33c2bf2f6abf4b7f` found that failure to rename the stage to the failed-tree path returned before restoring the old backup. A fault-injection regression demonstrated the missing backup-restore attempt. The helper now verifies and reports the still-exact stage as retained, then restores and verifies the old runtime tree. If the retained stage is not exact, restoration still runs before the helper returns `BLOCKED_CRITICAL` and the empty failed-tree reservation is removed. The regressions passed after the fixes; the helper suite now has 25 passing cases.
+
 ### PE-008R read-only runtime check
 
 The authorized Local VGNova runtime still matches the exact old 54-file manifest: tree `856a3e5978559bfb2572b4b1ff4b34df916743f9e72d6b18220ee64e98af5f56`, with zero missing, extra, content-mismatched, mode-mismatched, symlink, or unsupported objects. Person inventory remains exactly ID 1705. Product Contribution and Event Participation counts remain zero, and the Product Contribution QA owner-meta query returned no rows.
@@ -85,6 +89,6 @@ The superseded stage `/home/jcschoeman96/Local Sites/voelgoed-novamira/app/voelg
 - [x] Correct the Person baseline guard under TDD; retain the actual RED and GREEN results above.
 - [x] Confirm the runtime remains exact-old, confirm Person 1705's logical state, and confirm both database advisory locks and the host lock are free.
 - [x] Run all PE-008R source gates without live QA.
-- [ ] Complete independent review of the exact source and deployment helper; keep runtime deployment blocked.
-- [ ] Commit and push the source-only remediation, open a DRAFT PR with `SOURCE-ONLY PRE-DEPLOYMENT REVIEW` and `NO PLATFORM CORE DEPLOYMENT HAS OCCURRED` in its body, and verify exact-head GitHub checks.
+- [x] Complete a first independent review of the source and deployment helper. Resolve the uncovered stage-preservation rollback issue and keep runtime deployment blocked.
+- [ ] Commit and push the rollback correction to draft PR #59, obtain a fresh independent review of the revised exact source, and verify exact-head GitHub checks.
 - [ ] Stop after reporting the exact draft PR head. Do not deploy or merge.

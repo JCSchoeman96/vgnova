@@ -163,7 +163,7 @@
     "platform_core_check": "PASS",
     "product_contribution_integrity": "27/27 PASS",
     "pe008_protected_state": "PASS",
-    "pe008_bootstrap_helper": "23 cases PASS",
+    "pe008_bootstrap_helper": "25 cases PASS",
     "runtime_mutation_core": "73 tests PASS",
     "runtime_mutation_session": "19/19 PASS",
     "runtime_mutation_policy": "31/31 PASS",
@@ -174,12 +174,12 @@
     "live_product_contribution_qa": "NOT RUN"
   },
   "pull_request": {
-    "draft": null,
-    "number": null,
+    "draft": true,
+    "number": 59,
     "base_sha": "50ee4bee1ae1405522df7b67634b8935d4e9d9ed",
-    "head_sha": null,
-    "url": null,
-    "mergeability": null,
-    "github_checks": "PENDING"
+    "head_ref": "ops/pe-008-platform-core-runtime-bootstrap",
+    "url": "https://github.com/JCSchoeman96/vgnova/pull/59",
+    "mergeability": "MERGEABLE",
+    "github_checks": "See exact-head checks on PR 59"
   }
 }

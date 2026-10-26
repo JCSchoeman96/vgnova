@@ -88,7 +88,21 @@ function vg_pe008_bootstrap_run(array $config): array
         if ($rename($stage, $failed)) {
             $failed_state = 'preserved';
         } else {
-            return ['status' => 'BLOCKED_CRITICAL', 'reason' => 'could_not_preserve_failed_stage', 'active' => $active, 'stage' => $stage, 'backup' => $backup, 'failed' => $failed];
+            $retained_stage = ['exact' => false];
+            if (file_exists($stage) && ! is_link($stage)) {
+                try {
+                    $retained_stage = $verify($stage, 'new');
+                } catch (Throwable) {
+                    $retained_stage = ['exact' => false];
+                }
+            }
+            if (($retained_stage['exact'] ?? false) === true) {
+                $failed_state = 'retained_at_stage';
+                $failed = $stage;
+            } else {
+                $failed_state = 'unverified_at_stage';
+                $failed = $stage;
+            }
         }
     }
     if (! $rename($backup, $active)) {
@@ -103,8 +117,14 @@ function vg_pe008_bootstrap_run(array $config): array
     if (! $restored_smoke) {
         return ['status' => 'BLOCKED_CRITICAL', 'reason' => 'restored_old_tree_failed_verification', 'active' => $active, 'backup' => $backup, 'failed' => $failed, 'failed_state' => $failed_state];
     }
+    if ($failed_state === 'unverified_at_stage') {
+        @rmdir($failed_reservation);
+        return ['status' => 'BLOCKED_CRITICAL', 'reason' => 'could_not_verify_retained_failed_stage', 'active' => $active, 'failed' => $failed, 'failed_state' => $failed_state];
+    }
     @rmdir($failed_reservation);
-    return ['status' => 'ROLLED_BACK', 'active' => $active, 'failed' => $failed_state === 'preserved' ? $failed : null];
+    return ['status' => 'ROLLED_BACK', 'active' => $active,
+        'failed' => in_array($failed_state, ['preserved', 'retained_at_stage'], true) ? $failed : null,
+        'failed_state' => $failed_state];
 }
 
 function vg_pe008_manifest_authority(string $path, array $expected): array

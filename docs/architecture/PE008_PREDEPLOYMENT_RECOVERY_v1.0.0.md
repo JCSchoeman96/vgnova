@@ -84,12 +84,18 @@ All source gates passed after the remediation:
 - `./voelgoed-platform-core/bin/check.sh` passed all 127 dashboard checks.
 - Product Contribution integrity regression: 27/27 passed.
 - PE-008 protected-state fingerprint regression passed from the captured fixture only.
-- PE-008 deployment helper regression: 23 cases passed using temporary trees only.
+- PE-008 deployment helper regression: 25 cases passed using temporary trees only.
 - Runtime mutation core: 73 tests passed; session: 19/19; policy: 31/31; static policy scanned 131 tracked PHP files and passed.
 - FCM integration: 3 tests passed.
 - `actionlint` passed with version 1.7.12; `git diff --cached --check` passed.
 
 The source gate's local verifier build retained the Platform Core tree hash and archive hash. No canonical Platform Core module source file changed. No live QA entrypoint ran.
+
+### Independent review finding and correction
+
+The first independent review of draft head `47bef76468a5d54c6cacd50f33c2bf2f6abf4b7f` found that a failed `stage → active` rename followed by a failed `stage → failed` preservation rename returned before trying `backup → active`. The active plugin directory could therefore remain absent even though the old backup was intact.
+
+A fault-injection regression failed before the correction because the helper did not attempt the fourth rename. The helper now verifies that the unchanged stage still matches the exact new authority, reports that stage path as the retained failed tree, and attempts backup restoration. If the stage cannot be verified, the helper still restores and verifies the old active tree before returning `BLOCKED_CRITICAL`, then removes the empty failed-tree reservation. The regressions confirm old-tree restoration, exact new-stage retention, and reservation cleanup. The revised helper suite passes all 25 cases. A fresh independent review and exact-head GitHub checks remain pending for the updated draft head.
 
 ## PE-008R mutation counts
 
