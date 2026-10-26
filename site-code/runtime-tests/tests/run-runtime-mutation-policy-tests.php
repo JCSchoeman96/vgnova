@@ -75,6 +75,66 @@ $test('guarded mutator is accepted', static function (): void {
     });
 });
 
+$test('isolated WP-CLI session guard is accepted only for the PE-008 deployment boundary', static function (): void {
+    vg_runtime_mutation_policy_with_temp_root(static function (string $root): void {
+        $mutator = 'site-code/bin/pe008-bootstrap-platform-core-runtime.php';
+        $verifier = 'site-code/runtime-tools/pe008-wp-cli-session-guard.php';
+        mkdir(dirname($root . '/' . $mutator), 0700, true);
+        mkdir(dirname($root . '/' . $verifier), 0700, true);
+        file_put_contents($root . '/' . $mutator, <<<'PHP'
+<?php
+function vg_pe008_guard_command() {}
+function vg_pe008_run_subprocess() { proc_close($process); }
+function vg_pe008_bootstrap_run() { $guard($config['target']); @mkdir($failed_reservation, 0700); if (! $rename($active, $backup)) {} }
+function vg_pe008_production() {
+    $command_library = 'pe008-wp-cli-session-guard.php';
+    VgRuntimeMutationCore::descriptorSafeCommand($command, [3]);
+    $environment['WP_CLI_CONFIG_PATH'] = '/dev/null';
+    $environment['WP_CLI_SYSTEM_SETTINGS_PATH'] = '/dev/null';
+    $environment['WP_CLI_REQUIRE'] = $command_library;
+    vg_pe008_guard_command();
+    vg_pe008_run_subprocess($command, $base_environment, $command_library);
+    vg_pe008_run_subprocess($command, $base_environment, $smoke_library);
+    vg_pe008_bootstrap_run();
+}
+PHP);
+        file_put_contents($root . '/' . $verifier, <<<'PHP'
+<?php
+WP_CLI::add_hook('before_wp_load', static function () { define('DISABLE_WP_CRON', true); define('WPMU_PLUGIN_DIR', '/dev/null'); });
+WP_CLI::add_command('pe008 session-guard', static function ($target) { vg_runtime_mutation_assert_session($target); }, ['when' => 'after_wp_load']);
+PHP);
+        $inventoryPath = $root . '/inventory.json';
+        $mutatingEntry = vg_runtime_mutation_policy_entry($mutator, 'mutating', [
+            'session_guard_required' => true,
+            'guard_function' => 'vg_runtime_mutation_assert_session',
+            'session_guard_boundary' => 'isolated_wp_cli_child',
+            'guard_verifier_path' => $verifier,
+            'purpose' => 'maintenance',
+        ]);
+        file_put_contents($inventoryPath, vg_runtime_mutation_policy_inventory([
+            $mutatingEntry,
+            vg_runtime_mutation_policy_entry($verifier, 'library'),
+        ]));
+        $result = vg_runtime_mutation_policy_check($root, $inventoryPath, [$mutator, $verifier]);
+        vg_runtime_mutation_policy_test($result['valid'], implode("\n", $result['errors']));
+
+        $wrongPath = 'other-mutator.php';
+        file_put_contents($root . '/' . $wrongPath, '<?php');
+        file_put_contents($inventoryPath, vg_runtime_mutation_policy_inventory([
+            vg_runtime_mutation_policy_entry($wrongPath, 'mutating', [
+                'session_guard_required' => true,
+                'guard_function' => 'vg_runtime_mutation_assert_session',
+                'session_guard_boundary' => 'isolated_wp_cli_child',
+                'guard_verifier_path' => $verifier,
+                'purpose' => 'maintenance',
+            ]),
+            vg_runtime_mutation_policy_entry($verifier, 'library'),
+        ]));
+        $result = vg_runtime_mutation_policy_check($root, $inventoryPath, [$wrongPath, $verifier]);
+        vg_runtime_mutation_policy_test(! $result['valid'], 'The isolated-child guard boundary became a blanket exemption.');
+    });
+});
+
 $test('read-only and test-only files may contain inspected or stubbed APIs', static function (): void {
     vg_runtime_mutation_policy_with_temp_root(static function (string $root): void {
         file_put_contents($root . '/reader.php', '<?php $posts = get_posts([]);');

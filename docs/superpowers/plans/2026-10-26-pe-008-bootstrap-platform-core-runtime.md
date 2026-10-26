@@ -10,6 +10,8 @@
 
 **Spec:** PE-007 coordination contracts plus Platform Core Assembly Contract v1.3.0.
 
+**Current disposition:** PE-008S source remediation is in progress on the existing draft PR #59. Runtime deployment remains blocked. The exact current `origin/main` is `de90ff061c20b164c127aa97e845e3f192429543`; the intervening change is documentation-only, so the artifact authority remains the published `50ee4bee1ae1405522df7b67634b8935d4e9d9ed` artifact.
+
 ## Files and responsibilities
 
 - `site-code/runtime-tests/product-contribution-qa.php` pins the published Platform Core authority used by future QA.
@@ -92,3 +94,17 @@ The superseded stage `/home/jcschoeman96/Local Sites/voelgoed-novamira/app/voelg
 - [x] Complete a first independent review of the source and deployment helper. Resolve the uncovered stage-preservation rollback issue and keep runtime deployment blocked.
 - [ ] Commit and push the rollback correction to draft PR #59, obtain a fresh independent review of the revised exact source, and verify exact-head GitHub checks.
 - [ ] Stop after reporting the exact draft PR head. Do not deploy or merge.
+
+### PE-008S source-only remediation
+
+- [x] Replace the in-process WordPress session check with a fresh WP-CLI child that uses the staged `RuntimeMutationSession.php`; wait for the child to exit before creating the failed-tree reservation or renaming any directory.
+- [x] Keep the filesystem-mutating deployment parent WordPress-free; suppress plugins, themes, MU plugins, and WP-Cron in the pre-rename guard child.
+- [x] Pass the session environment and FD3 to guard and smoke children through the coordinator-safe descriptor wrapper; carry a DB socket override in PHP settings and the approved socket environment key without credentials.
+- [x] Use a separate fresh WP-CLI process for the post-swap smoke.
+- [x] Map `ROLLED_BACK` to exit 3, `BLOCKED` to exit 1, and `BLOCKED_CRITICAL` to exit 2; keep successful deployment and already-exact skip at exit 0.
+- [x] Add temporary-fixture subprocess regressions for FD3 ownership, descriptor filtering, child termination before the first rename, socket propagation, and every terminal-state exit code.
+- [x] Add narrow mutation-policy checks for the PE-008 isolated child guard boundary and retain direct session checks for all other mutators.
+- [x] Record the PE-008S changes and TDD RED/GREEN results in the recovery evidence.
+- [x] Run every required source gate, syntax/lint check, and diff check on the PE-008S code.
+- [ ] Push the existing PR #59 branch; verify exact-head GitHub checks; stop with PR #59 still draft and unmerged.
+- [ ] Do not deploy Platform Core or run live Product Contribution QA.

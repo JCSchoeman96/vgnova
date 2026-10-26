@@ -11,6 +11,8 @@
             "classification": "mutating",
             "session_guard_required": true,
             "guard_function": "vg_runtime_mutation_assert_session",
+            "session_guard_boundary": "isolated_wp_cli_child",
+            "guard_verifier_path": "site-code/runtime-tools/pe008-wp-cli-session-guard.php",
             "purpose": "maintenance"
         },
         {
@@ -213,6 +215,14 @@
         },
         {
             "path": "site-code/runtime-tools/pe008-protected-state.php",
+            "classification": "library"
+        },
+        {
+            "path": "site-code/runtime-tools/pe008-wp-cli-runtime-smoke.php",
+            "classification": "library"
+        },
+        {
+            "path": "site-code/runtime-tools/pe008-wp-cli-session-guard.php",
             "classification": "library"
         },
         {

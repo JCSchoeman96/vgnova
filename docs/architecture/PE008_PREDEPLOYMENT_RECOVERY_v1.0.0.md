@@ -114,3 +114,37 @@ A fault-injection regression failed before the correction because the helper did
 | Aborted pre-mutation QA invocations | 1 |
 
 No credentials are stored in this report. A later approved PE-008 execution must create a new stage from artifact `12645287640`; it must not use the superseded staging directory. PE-008 remains blocked from deployment until independent review of the exact draft PR head and a separate authorization to run the deployment.
+
+## PE-008S process isolation and CLI results
+
+PR #59 remains draft and unmerged. The runtime deployment remains blocked. PE-008S changes only source, tests, and this evidence.
+
+The deployment process tree is:
+
+```text
+PE-007 coordinator
+└── PE-008 deployment parent (WordPress-free)
+    ├── pre-rename WP-CLI guard child
+    ├── filesystem directory swap
+    └── post-swap WP-CLI smoke child
+```
+
+The parent loads no `wp-load.php`, `wp-settings.php`, active plugin, or theme. It verifies exact-old and staged exact-new trees, then starts the pre-rename child. That child receives the PE-007 session environment and FD3, suppresses plugin, theme, MU-plugin, and WP-Cron loading, explicitly loads the staged `RuntimeMutationSession.php`, and calls `vg_runtime_mutation_assert_session('vgnova-local-10039')`. The parent waits for `proc_close()` before it creates a failed-tree reservation or renames the active directory. The child test uses a temporary locked file and fixture descriptors; it does not connect to Local WordPress or MariaDB.
+
+WP-CLI loads the source-controlled command library through `WP_CLI_REQUIRE`, which is equivalent to its normal `--require` option and makes the `WP_CLI` command API available before the WordPress load hook. A direct probe against the installed WP-CLI confirmed that a command registered this way runs at `before_wp_load`. The child process sets `WP_CLI_CONFIG_PATH` and `WP_CLI_SYSTEM_SETTINGS_PATH` to `/dev/null` and runs from `/` to avoid unrelated user, system, or repository-local WP-CLI configuration. The helper carries a supplied Local DB socket through `mysqli.default_socket`, `pdo_mysql.default_socket`, and `VGNOVA_DB_SOCKET`. It does not place DB credentials in argv or the child environment. With no socket override, it uses the current PHP socket defaults and removes any stale socket override from the child environment. The official [WP-CLI config reference](https://make.wordpress.org/cli/handbook/references/config/) documents `WP_CLI_REQUIRE` as equivalent to `--require` and documents `WP_CLI_SYSTEM_SETTINGS_PATH`.
+
+The post-swap smoke runs in another new WP-CLI process. It checks PHP 8.5.x, WordPress bootstrap, active Platform Core at version `0.1.0`, and the deployed session guard while PE-007 coordination is active. The rollback smoke uses a separate process after the old tree is restored.
+
+The production CLI result mapping is:
+
+| Result | Exit |
+| --- | ---: |
+| `SWAPPED` | 0 |
+| `SKIPPED_ALREADY_EXACT` | 0 |
+| `ROLLED_BACK` | 3 |
+| `BLOCKED` | 1 |
+| `BLOCKED_CRITICAL` | 2 |
+
+The PE-008S TDD regression first failed while normal `--require` remained in argv and while the system WP-CLI settings path was not disabled. A direct WP-CLI probe then showed `WP_CLI_EARLY_REQUIRE` loads before the `WP_CLI` class exists, so that environment hook cannot register the guard command. The regression failed again while the helper used that early hook. The helper now uses `WP_CLI_REQUIRE`; the installed WP-CLI probe registered and ran a `before_wp_load` command, and all 33 PE-008 cases passed. The source-safe subprocess case proves FD3 reaches the child, fixture descriptors 4 through 8 do not, the PE-007 session fields and socket override arrive without credentials, and the parent starts its first rename only after the child exits. Separate subprocess tests check the JSON status and process exit for every terminal state.
+
+PE-008S has not accessed Local WordPress, performed a deployment, started a PE-007 mutation session, or run live Product Contribution QA. Runtime mutation counts remain unchanged from PE-008R: Platform Core deployments 0, ACF writes 0, taxonomy writes 0, post writes 0, persistent WordPress DB writes 0, Bricks writes 0, FluentSnippet writes 0, rewrite flushes 0, plugin activation/deactivation writes 0, successful live QA runs 0, and aborted pre-mutation QA invocations 1.

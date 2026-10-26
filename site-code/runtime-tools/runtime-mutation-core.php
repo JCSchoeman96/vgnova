@@ -442,7 +442,7 @@ final class VgRuntimeMutationCore
     }
 
     /** @param array<string,string> $baseEnvironment @param array<string,mixed> $proof @return array<string,string> */
-    public static function childEnvironment(array $baseEnvironment, array $proof): array
+    public static function childEnvironment(array $baseEnvironment, array $proof, ?string $socketOverride = null): array
     {
         $environment = self::safeEnvironment($baseEnvironment);
         foreach (array_keys($environment) as $key) {
@@ -460,6 +460,14 @@ final class VgRuntimeMutationCore
             $environment['VGNOVA_MUTATION_DB_CONNECTION_ID_' . $suffix] = (string) ($lock['connection_id'] ?? '');
         }
         $environment['VGNOVA_MUTATION_LOCK_FILE'] = (string) ($proof['lock_file'] ?? '');
+        if ($socketOverride !== null && $socketOverride !== '') {
+            if (! self::isAbsolutePathForDatabase($socketOverride)) {
+                throw new VgRuntimeMutationException(71, 'INVALID_DB_SOCKET_OVERRIDE', 'Database socket override must be an absolute path.');
+            }
+            $environment['VGNOVA_DB_SOCKET'] = $socketOverride;
+        } else {
+            unset($environment['VGNOVA_DB_SOCKET']);
+        }
         return $environment;
     }
 
