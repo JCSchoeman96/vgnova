@@ -232,62 +232,75 @@ $tests = [
             'The group must not duplicate title, featured image, excerpt, or content.'
         );
     },
-    'seeds only the approved Mentor term without assigning any Person' => static function (): void {
+    'seeds exactly Mentor and Kenner without assigning any Person' => static function (): void {
         person_foundation_test_reset();
 
         $result = vg_seed_person_type_terms();
 
-        person_foundation_test_assert_same(['mentor'], $result['created'], 'A clean run must create only mentor.');
+        person_foundation_test_assert_same(['mentor', 'kenner'], $result['created'], 'A clean run must create the exact approved vocabulary.');
         person_foundation_test_assert_same([], $result['existing'], 'A clean run must have no existing approved term.');
-        person_foundation_test_assert_same(1, count($GLOBALS['vg_person_foundation_test_terms']), 'The initial vocabulary must contain exactly one term.');
-        person_foundation_test_assert_same('Mentor', $GLOBALS['vg_person_foundation_test_terms'][0]->name, 'The approved name must be Mentor.');
-        person_foundation_test_assert_same('mentor', $GLOBALS['vg_person_foundation_test_terms'][0]->slug, 'The approved slug must be mentor.');
+        person_foundation_test_assert_same(2, count($GLOBALS['vg_person_foundation_test_terms']), 'The initial vocabulary must contain exactly two terms.');
+        person_foundation_test_assert_same(
+            [['Mentor', 'mentor'], ['Kenner', 'kenner']],
+            array_map(static fn (object $term): array => [$term->name, $term->slug], $GLOBALS['vg_person_foundation_test_terms']),
+            'The initial vocabulary must contain only the two exact approved name/slug pairs.'
+        );
         person_foundation_test_assert_same(0, count($GLOBALS['vg_person_foundation_test_set_object_terms_calls']), 'The vocabulary seeder must never create Person assignments.');
     },
-    'rerunning the seeder leaves Mentor unchanged' => static function (): void {
+    'rerunning the seeder creates nothing and leaves both terms unchanged' => static function (): void {
         person_foundation_test_reset();
         vg_seed_person_type_terms();
-        $term_before = get_object_vars($GLOBALS['vg_person_foundation_test_terms'][0]);
+        $terms_before = array_map(static fn (object $term): array => get_object_vars($term), $GLOBALS['vg_person_foundation_test_terms']);
 
         $result = vg_seed_person_type_terms();
 
         person_foundation_test_assert_same([], $result['created'], 'A rerun must create no duplicate terms.');
-        person_foundation_test_assert_same(['mentor'], $result['existing'], 'A rerun must recognize Mentor.');
-        person_foundation_test_assert_same($term_before, get_object_vars($GLOBALS['vg_person_foundation_test_terms'][0]), 'A rerun must leave the existing term unchanged.');
+        person_foundation_test_assert_same(['mentor', 'kenner'], $result['existing'], 'A rerun must recognize both approved terms.');
+        person_foundation_test_assert_same($terms_before, array_map(static fn (object $term): array => get_object_vars($term), $GLOBALS['vg_person_foundation_test_terms']), 'A rerun must leave the existing terms unchanged.');
     },
-    'an exact existing Mentor term is unchanged' => static function (): void {
+    'a runtime with only Mentor creates only Kenner' => static function (): void {
         person_foundation_test_reset();
         $term = person_foundation_test_add_term('Mentor', 'mentor');
 
         $result = vg_seed_person_type_terms();
 
-        person_foundation_test_assert_same([], $result['created'], 'An exact existing term must not be recreated.');
+        person_foundation_test_assert_same(['kenner'], $result['created'], 'A partial approved vocabulary must create only its missing term.');
         person_foundation_test_assert_same(['mentor'], $result['existing'], 'An exact existing term must be reported as existing.');
         person_foundation_test_assert_same($term, $GLOBALS['vg_person_foundation_test_terms'][0], 'An exact existing term must retain its identity and values.');
+        person_foundation_test_assert_same(['Mentor', 'Kenner'], array_column(array_map('get_object_vars', $GLOBALS['vg_person_foundation_test_terms']), 'name'), 'The resulting vocabulary must contain both approved terms.');
     },
-    'a same-slug conflict stops before changing terms' => static function (): void {
+    'a runtime with only Kenner creates only Mentor' => static function (): void {
         person_foundation_test_reset();
-        $existing = person_foundation_test_add_term('Mentors', 'mentor');
+        $term = person_foundation_test_add_term('Kenner', 'kenner');
 
-        $error = person_foundation_test_assert_throws(static fn () => vg_seed_person_type_terms(), 'A same-slug conflict must fail.');
+        $result = vg_seed_person_type_terms();
 
-        person_foundation_test_assert_true(str_contains($error->getMessage(), 'conflict'), 'The conflict must be explained.');
-        person_foundation_test_assert_same([$existing], $GLOBALS['vg_person_foundation_test_terms'], 'A slug conflict must not rewrite terms.');
-        person_foundation_test_assert_same([], $GLOBALS['vg_person_foundation_test_insert_calls'], 'A slug conflict must stop before inserts.');
+        person_foundation_test_assert_same(['mentor'], $result['created'], 'A partial approved vocabulary must create only its missing term.');
+        person_foundation_test_assert_same(['kenner'], $result['existing'], 'The exact existing Kenner term must be reported as existing.');
+        person_foundation_test_assert_same($term, $GLOBALS['vg_person_foundation_test_terms'][0], 'An exact existing term must retain its identity and values.');
     },
-    'a same-name conflict stops before changing terms' => static function (): void {
-        person_foundation_test_reset();
-        $existing = person_foundation_test_add_term('Mentor', 'mentor-legacy');
+    'wrong name or slug conflicts for either approved term stop before mutation' => static function (): void {
+        $cases = [
+            ['Mentors', 'mentor'],
+            ['Mentor', 'mentor-old'],
+            ['Kenners', 'kenner'],
+            ['Kenner', 'kenner-old'],
+        ];
 
-        $error = person_foundation_test_assert_throws(static fn () => vg_seed_person_type_terms(), 'A same-name conflict must fail.');
+        foreach ($cases as [$name, $slug]) {
+            person_foundation_test_reset();
+            $existing = person_foundation_test_add_term($name, $slug);
 
-        person_foundation_test_assert_true(str_contains($error->getMessage(), 'conflict'), 'The conflict must be explained.');
-        person_foundation_test_assert_same([$existing], $GLOBALS['vg_person_foundation_test_terms'], 'A name conflict must not rewrite terms.');
-        person_foundation_test_assert_same([], $GLOBALS['vg_person_foundation_test_insert_calls'], 'A name conflict must stop before inserts.');
+            $error = person_foundation_test_assert_throws(static fn () => vg_seed_person_type_terms(), 'A conflicting approved definition must fail.');
+
+            person_foundation_test_assert_true(str_contains($error->getMessage(), 'conflict'), 'The conflict must be explained.');
+            person_foundation_test_assert_same([$existing], $GLOBALS['vg_person_foundation_test_terms'], 'A definition conflict must not rewrite terms.');
+            person_foundation_test_assert_same([], $GLOBALS['vg_person_foundation_test_insert_calls'], 'A definition conflict must stop before inserts.');
+        }
     },
-    'an unexpected term stops before changing the vocabulary' => static function (): void {
+    'an unexpected third term stops before changing the vocabulary' => static function (): void {
         person_foundation_test_reset();
-        $existing = person_foundation_test_add_term('Kenner', 'kenner');
+        $existing = person_foundation_test_add_term('Spreker', 'spreker');
 
         $error = person_foundation_test_assert_throws(static fn () => vg_seed_person_type_terms(), 'An unapproved term must fail.');
 

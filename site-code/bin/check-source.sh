@@ -11,6 +11,7 @@ php site-code/voelgoed-platform-core/tests/run-event-role-seeder-tests.php
 php site-code/voelgoed-platform-core/tests/run-product-contribution-tests.php
 php site-code/voelgoed-platform-core/tests/run-product-people-tests.php
 php site-code/person-foundation/tests/run-person-foundation-tests.php
+php site-code/person-foundation/tests/run-person-profile-migration-tests.php
 php site-code/event-participation/tests/run-event-participation-foundation-tests.php
 php site-code/editorial-dimensions/tests/run-editorial-dimensions-tests.php
 php site-code/runtime-tests/tests/run-event-consumer-6c-qa-tests.php
