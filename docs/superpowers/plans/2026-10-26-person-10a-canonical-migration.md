@@ -96,8 +96,8 @@ Create or modify only these files unless a verified source dependency requires a
 
 - [x] Write the implementation and post-Task-10A current-state documents from the verified result. Keep Task 5C and older snapshots intact.
 - [x] Update the manifest with the exact target Person ID and `MIGRATED` state only after runtime verification succeeds. Leave the run `BLOCKED` and avoid claiming a migration if runtime access remains unavailable.
-- [ ] Run the full `bash site-code/bin/check-source.sh` on the final branch head. Explicitly run Person Foundation, Person migration, Product Contribution, Product People, Event Participation, all relevant Bricks adapter suites, PE-005 assembly/integrity checks, PHP lint on changed PHP files, JSON parsing, CSV checks, and `git diff --check`.
-- [ ] Confirm the final protected-state comparison, changed-file list, and exact test counts. Stage only reviewed task files and commit in reviewable groups.
+- [x] Run the full `bash site-code/bin/check-source.sh` on the final branch head. Explicitly run Person Foundation, Person migration, Product Contribution, Product People, Event Participation, all relevant Bricks adapter suites, PE-005 assembly/integrity checks, PHP lint on changed PHP files, JSON parsing, CSV checks, and `git diff --check`.
+- [x] Confirm the final protected-state comparison, changed-file list, and exact test counts. Stage only reviewed task files and commit in reviewable groups.
 
 ## Task 9: Open an unmerged review PR
 
