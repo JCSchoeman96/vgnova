@@ -80,6 +80,10 @@ final class ProductContributionAdmin
         }
 
         if (($post->post_type ?? null) !== ProductContributionRepository::POST_TYPE) {
+            $can_publish = apply_filters('voelgoed/platform_core/future_post_can_publish', true, $post_id, $post);
+            if ($can_publish !== true) {
+                return;
+            }
             check_and_publish_future_post($post_id);
             return;
         }

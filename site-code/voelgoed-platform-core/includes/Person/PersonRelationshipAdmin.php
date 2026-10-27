@@ -1,0 +1,233 @@
+<?php
+declare(strict_types=1);
+
+namespace Voelgoed\PlatformCore\Person;
+
+defined('ABSPATH') || exit;
+
+/** Enforces editor validation and keeps the derived Person index current. */
+final class PersonRelationshipAdmin
+{
+    public const FUTURE_PUBLISH_FILTER = 'voelgoed/platform_core/future_post_can_publish';
+
+    /** @var array<string, string> */
+    private const FIELD_KEYS = [
+        'primary_author' => 'field_vg_article_primary_author',
+        'additional_authors' => 'field_vg_article_additional_authors',
+        'expert_contributors' => 'field_vg_article_expert_contributors',
+        'reviewed_by' => 'field_vg_article_reviewed_by',
+        'lead_instructor' => 'field_vg_course_lead_instructor',
+        'additional_instructors' => 'field_vg_course_additional_instructors',
+        'experts' => 'field_vg_course_experts',
+    ];
+
+    public function __construct(
+        private ?PersonRelationshipIndexer $indexer = null,
+        private ?PersonRelationshipSourceReader $reader = null,
+        private ?PersonRelationshipValidator $validator = null,
+    ) {
+        $this->reader ??= new PersonRelationshipSourceReader();
+        $this->validator ??= new PersonRelationshipValidator();
+        $this->indexer ??= new PersonRelationshipIndexer(
+            new PersonRelationshipSourceLock(),
+            $this->reader,
+            $this->validator,
+            new PersonRelationshipRepository(new PersonRelationshipSchema()),
+        );
+    }
+
+    public function register(): void
+    {
+        foreach (self::FIELD_KEYS as $role => $field_key) {
+            add_filter('acf/validate_value/key=' . $field_key, fn (mixed $valid, mixed $value, array $field, string $input_name): mixed => $this->validate_field($valid, $value, $field, $input_name, $role), 10, 4);
+        }
+        add_filter('wp_insert_post_data', [$this, 'validate_source_before_save'], 10, 2);
+        add_action('acf/save_post', [$this, 'project_after_acf_save'], 20, 1);
+        add_action('before_delete_post', [$this, 'remove_after_permanent_delete'], 10, 2);
+        add_filter(self::FUTURE_PUBLISH_FILTER, [$this, 'future_post_can_publish'], 10, 3);
+    }
+
+    public function validate_field(mixed $valid, mixed $value, array $field, string $input_name, string $role): mixed
+    {
+        if ($valid !== true) {
+            return $valid;
+        }
+
+        $post_id = $this->request_post_id();
+        $post = $post_id > 0 ? get_post($post_id) : false;
+        $source_type = is_object($post) ? (string) ($post->post_type ?? '') : $this->request_source_type();
+        if (! PersonRelationshipContract::supported_source_type($source_type)) {
+            return true;
+        }
+
+        $projection = $this->projection_for_source($post_id, [$role => $value], $source_type);
+        if (is_wp_error($projection)) {
+            return $projection->get_error_message();
+        }
+
+        $status = $this->request_status($post_id, $post);
+        if ($status === 'future') {
+            $status = 'publish';
+        }
+        $result = $this->validate_projection($projection, $status);
+        return is_wp_error($result) ? $result->get_error_message() : true;
+    }
+
+    /** Validate published and scheduled source data before WordPress writes it. */
+    public function validate_source_before_save(array $data, array $postarr): array
+    {
+        $source_type = (string) ($data['post_type'] ?? '');
+        $status = (string) ($data['post_status'] ?? 'draft');
+        if (! PersonRelationshipContract::supported_source_type($source_type) || ! in_array($status, ['publish', 'future'], true)) {
+            return $data;
+        }
+
+        $post_id = $this->normalize_id($postarr['ID'] ?? $data['ID'] ?? 0);
+        $projection = $this->projection_for_source($post_id, [], $source_type);
+        if (is_wp_error($projection)) {
+            wp_die($projection->get_error_message(), 'Person relationship validation failed', ['response' => 400]);
+        }
+        $result = $this->validate_projection($projection, 'publish');
+        if (is_wp_error($result)) {
+            wp_die($result->get_error_message(), 'Person relationship validation failed', ['response' => 400]);
+        }
+        return $data;
+    }
+
+    /** The ACF source remains saved even when its derived projection fails. */
+    public function project_after_acf_save(mixed $post_id): void
+    {
+        $post_id = $this->normalize_id($post_id);
+        if ($post_id < 1 || ! PersonRelationshipContract::supported_source_type((string) get_post_type($post_id))) {
+            return;
+        }
+
+        try {
+            $result = $this->indexer->rebuild_source($post_id);
+            if (is_wp_error($result)) {
+                return;
+            }
+        } catch (\Throwable $error) {
+            error_log(sprintf('Person relationship projection failed for source %d (%s).', $post_id, get_class($error)));
+        }
+    }
+
+    /** Remove only disposable index rows when WordPress permanently deletes a source. */
+    public function remove_after_permanent_delete(int $post_id, mixed $post = null): void
+    {
+        $post_type = is_object($post) ? (string) ($post->post_type ?? '') : (string) get_post_type($post_id);
+        if (! PersonRelationshipContract::supported_source_type($post_type)) {
+            return;
+        }
+
+        $this->indexer->remove_source($post_id);
+    }
+
+    public function future_post_can_publish(mixed $can_publish, mixed $post_id, mixed $post): bool
+    {
+        if ($can_publish !== true) {
+            return false;
+        }
+        $post_id = $this->normalize_id($post_id);
+        $source_type = is_object($post) ? (string) ($post->post_type ?? '') : (string) get_post_type($post_id);
+        if (! PersonRelationshipContract::supported_source_type($source_type)) {
+            return true;
+        }
+
+        $projection = $this->projection_for_source($post_id, [], $source_type);
+        if (is_wp_error($projection)) {
+            return false;
+        }
+        return $this->validate_projection($projection, 'publish') === true;
+    }
+
+    /** @return array{source_post_id:int,source_post_type:string,relationships:list<array{person_id:int,role_key:string,position:int}>}|\WP_Error */
+    private function projection_for_source(int $post_id, array $overrides, string $source_type): array|\WP_Error
+    {
+        $roles = PersonRelationshipContract::allowed_roles($source_type);
+        if ($roles === []) {
+            return new \WP_Error('unsupported_source', 'This post type has no approved Person relationship contract.');
+        }
+
+        $relationships = [];
+        foreach ($roles as $role) {
+            $field_key = self::FIELD_KEYS[$role];
+            if (array_key_exists($role, $overrides)) {
+                $value = $overrides[$role];
+            } elseif (isset($_POST['acf']) && is_array($_POST['acf']) && array_key_exists($field_key, $_POST['acf'])) {
+                $value = $_POST['acf'][$field_key];
+            } elseif ($post_id > 0) {
+                $value = get_field($role, $post_id, false);
+            } else {
+                $value = null;
+            }
+
+            if ($value === null || $value === false || $value === '') {
+                continue;
+            }
+            $single = in_array($role, ['primary_author', 'lead_instructor'], true);
+            if ($single) {
+                if (is_array($value)) {
+                    return new \WP_Error('malformed_relationship', sprintf('The %s field must contain one Person ID.', $role));
+                }
+                $values = [$value];
+            } else {
+                if (! is_array($value) || ! array_is_list($value)) {
+                    return new \WP_Error('malformed_relationship', sprintf('The %s field must contain an ordered list of Person IDs.', $role));
+                }
+                $values = $value;
+            }
+            foreach ($values as $position => $person_id) {
+                $person_id = $this->normalize_id($person_id);
+                if ($person_id < 1) {
+                    return new \WP_Error('malformed_relationship', sprintf('The %s field contains an invalid Person ID.', $role));
+                }
+                $relationships[] = ['person_id' => $person_id, 'role_key' => $role, 'position' => $position];
+            }
+        }
+
+        return ['source_post_id' => $post_id, 'source_post_type' => $source_type, 'relationships' => $relationships];
+    }
+
+    private function request_post_id(): int
+    {
+        return $this->normalize_id($_POST['post_ID'] ?? $_POST['_acf_post_id'] ?? 0);
+    }
+
+    private function validate_projection(array $projection, string $status): true|\WP_Error
+    {
+        // WordPress may validate a new post before it has assigned the real ID.
+        if (($projection['source_post_id'] ?? 0) < 1) {
+            $projection['source_post_id'] = 1;
+        }
+        return $this->validator->validate_projection($projection, $status);
+    }
+
+    private function request_source_type(): string
+    {
+        $type = $_POST['post_type'] ?? '';
+        return is_string($type) ? $type : '';
+    }
+
+    private function request_status(int $post_id, mixed $post): string
+    {
+        $status = $_POST['post_status'] ?? (is_object($post) ? ($post->post_status ?? null) : null);
+        if (is_string($status) && $status !== '') {
+            return $status;
+        }
+        return $post_id > 0 ? (string) get_post_status($post_id) : 'draft';
+    }
+
+    private function normalize_id(mixed $value): int
+    {
+        if (is_object($value)) {
+            $value = $value->ID ?? null;
+        } elseif (is_array($value)) {
+            $value = $value['ID'] ?? $value['id'] ?? null;
+        }
+        if (is_string($value) && preg_match('/^[1-9][0-9]*$/', $value) === 1) {
+            $value = (int) $value;
+        }
+        return is_int($value) && $value > 0 ? $value : 0;
+    }
+}
