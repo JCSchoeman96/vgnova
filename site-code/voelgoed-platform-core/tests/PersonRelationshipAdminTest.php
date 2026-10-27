@@ -57,6 +57,22 @@ final class PersonRelationshipAdminTest
         vgpc_test_true(isset($GLOBALS['vgpc_test_actions']['rest_after_insert_mto-course']), 'REST Course saves must project after REST metadata persistence.');
         vgpc_test_true(isset($GLOBALS['vgpc_test_actions']['before_delete_post']), 'Permanent deletion must clean derived rows.');
         vgpc_test_true(isset($GLOBALS['vgpc_test_filters']['voelgoed/platform_core/future_post_can_publish']), 'Scheduled publication must use the shared filter seam.');
+        vgpc_test_true(! isset($GLOBALS['vgpc_test_filters']['query']), 'Person publication validation must not register a global SQL query interception filter.');
+    }
+
+    public function test_platform_core_person_source_does_not_register_global_sql_query_interception(): void
+    {
+        $includes = dirname(__DIR__) . '/includes';
+        $iterator = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($includes, FilesystemIterator::SKIP_DOTS));
+        foreach ($iterator as $file) {
+            if (! $file->isFile() || $file->getExtension() !== 'php') continue;
+            $source = file_get_contents($file->getPathname());
+            vgpc_test_true(is_string($source), 'Platform Core source must be readable for the SQL interception policy check.');
+            vgpc_test_true(
+                preg_match('/add_filter\\s*\\(\\s*([\'\\\"])query\\1/i', $source) !== 1,
+                'Platform Core production source must not register the global query filter.'
+            );
+        }
     }
 
     public function test_invalid_bypass_publish_is_diagnosed_dirtied_and_left_published_without_rewriting_acf(): void
@@ -71,6 +87,7 @@ final class PersonRelationshipAdminTest
         get_post(702);
         $GLOBALS['vgpc_test_posts'][701]->post_status = 'publish';
         $GLOBALS['vgpc_test_posts'][702]->post_status = 'draft';
+        vgpc_test_same('publish', $GLOBALS['vgpc_test_posts'][701]->post_status, 'The low-level bypass fixture starts after WordPress has already written the published status.');
         $GLOBALS['vgpc_test_meta'][701][PersonRelationshipContract::DIRTY_META_KEY] = '0';
         $diagnostics = [];
         add_action('voelgoed/platform_core/person_relationship_integrity_violation', static function (array $event) use (&$diagnostics): void { $diagnostics[] = $event; }, 10, 1);
