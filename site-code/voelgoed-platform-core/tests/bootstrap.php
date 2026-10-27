@@ -476,10 +476,23 @@ function clean_post_cache(int $post_id): void
     unset($GLOBALS['vgpc_test_get_post_cache'][$post_id]);
 }
 
+function wp_cache_delete(int|string $key, string $group = ''): bool
+{
+    $GLOBALS['vgpc_test_cache_deletes'][] = [$key, $group];
+    return true;
+}
+
 function acf_flush_value_cache(int|string $post_id = 0, string $field_name = ''): void
 {
-    $cache_key = $field_name . ':' . (string) $post_id;
-    unset($GLOBALS['vgpc_test_get_field_cache'][$cache_key]);
+    if ($field_name !== '') {
+        unset($GLOBALS['vgpc_test_get_field_cache'][$field_name . ':' . (string) $post_id]);
+        return;
+    }
+    foreach (array_keys($GLOBALS['vgpc_test_get_field_cache']) as $cache_key) {
+        if (str_ends_with($cache_key, ':' . (string) $post_id)) {
+            unset($GLOBALS['vgpc_test_get_field_cache'][$cache_key]);
+        }
+    }
 }
 
 function wp_insert_post(array $postarr, bool $wp_error = false): int|WP_Error

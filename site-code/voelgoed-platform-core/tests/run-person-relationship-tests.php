@@ -5,6 +5,7 @@ $root = dirname(__DIR__, 3);
 $test_root = __DIR__;
 $runners = [
     'run-person-relationship-source-tests.php',
+    'run-person-relationship-contract-tests.php',
     'run-person-relationship-storage-tests.php',
     'run-person-relationship-query-tests.php',
     'run-person-relationship-indexer-tests.php',

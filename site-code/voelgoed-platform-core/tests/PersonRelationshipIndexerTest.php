@@ -21,6 +21,30 @@ final class PersonRelationshipIndexerTest
         vgpc_test_same(1, count($GLOBALS['wpdb']->inserted), 'Successful rebuild should insert the full projection.');
         vgpc_test_same(20, $GLOBALS['wpdb']->inserted[0][1]['person_id'], 'Projection must use canonical Person ID.');
         vgpc_test_true(in_array('SELECT RELEASE_LOCK(%s)', array_column($GLOBALS['wpdb']->queries, 'query'), true), 'Rebuild must release the source lock.');
+        vgpc_test_true(in_array([10, 'post_meta'], $GLOBALS['vgpc_test_cache_deletes'], true), 'Direct SQL dirty clearing must invalidate postmeta cache.');
+    }
+
+    public function test_rebuild_flushes_stale_acf_request_cache_after_lock(): void
+    {
+        vgpc_test_reset();
+        $this->ready_schema();
+        $this->add_source_and_person(70, 'draft', 71, 'draft');
+        $this->add_source_and_person(70, 'draft', 72, 'draft');
+        $GLOBALS['vgpc_test_enable_query_cache'] = true;
+        $GLOBALS['vgpc_test_meta'][70]['primary_author'] = 71;
+        get_field('primary_author', 70, false);
+        $GLOBALS['vgpc_test_meta'][70]['primary_author'] = 72;
+        vgpc_test_same(true, $this->indexer()->rebuild_source(70), 'A save must rebuild from post-lock authority.');
+        vgpc_test_same(72, $GLOBALS['wpdb']->inserted[0][1]['person_id'], 'Pre-lock ACF cached values must not enter the projection.');
+    }
+
+    public function test_trashed_source_can_be_rebuilt_as_nonpublic_source_data(): void
+    {
+        vgpc_test_reset();
+        $this->ready_schema();
+        $this->add_source_and_person(73, 'trash', 74, 'draft');
+        $GLOBALS['vgpc_test_meta'][73]['primary_author'] = 74;
+        vgpc_test_same(true, $this->indexer()->rebuild_source(73), 'Trash is an enumerable nonpublic source status, not a rebuild error.');
     }
 
     public function test_rebuild_marks_source_dirty_when_validation_fails(): void

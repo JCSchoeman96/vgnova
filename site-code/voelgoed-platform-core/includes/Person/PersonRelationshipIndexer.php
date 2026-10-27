@@ -49,6 +49,13 @@ final class PersonRelationshipIndexer
             }
             $locked = true;
 
+            // ACF and WordPress may have cached field postmeta before we won
+            // the lock. Drop that request cache before reading the authority.
+            clean_post_cache($source_post_id);
+            if (function_exists('acf_flush_value_cache')) {
+                acf_flush_value_cache($source_post_id);
+            }
+
             $generation_snapshot = get_post_meta($source_post_id, self::DIRTY_GENERATION_META_KEY, true);
             $projection = $this->reader->read($source_post_id);
             if (is_wp_error($projection)) {
@@ -59,7 +66,9 @@ final class PersonRelationshipIndexer
                 return $this->fail($source_post_id, new \WP_Error('source_read_failed', 'Could not read the current source state.'));
             }
             $current_status = (string) ($current_source->post_status ?? '');
-            $validation_status = $current_status === 'future' ? 'publish' : $current_status;
+            // Trash objects are retained in the derived index. Validate their
+            // references as non-public source data, as with draft/private.
+            $validation_status = match ($current_status) { 'future' => 'publish', 'trash' => 'draft', default => $current_status };
             $valid = $this->validator->validate_projection($projection, $validation_status);
             if (is_wp_error($valid)) {
                 return $this->fail($source_post_id, $valid);
@@ -166,13 +175,16 @@ final class PersonRelationshipIndexer
               AND dirty.meta_key = %s
               AND dirty.meta_value = '1'
               AND generation.meta_id IS NULL";
-        return $wpdb->query($wpdb->prepare(
+        $result = $wpdb->query($wpdb->prepare(
             $sql,
             self::DIRTY_GENERATION_META_KEY,
             (string) $generation_snapshot,
             $source_post_id,
             PersonRelationshipContract::DIRTY_META_KEY,
         )) !== false;
+        // Direct SQL bypasses WordPress's postmeta cache invalidation.
+        wp_cache_delete($source_post_id, 'post_meta');
+        return $result;
     }
 
     private function is_dirty_marker(mixed $value): bool

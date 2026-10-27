@@ -73,6 +73,19 @@ final class PersonRelationshipService
                 || (string) ($source->post_status ?? '') !== 'publish'
                 || (string) get_post_meta($id, PersonRelationshipContract::DIRTY_META_KEY, true) === '1'
             ) continue;
+            // Fail closed even if both dirty-marker writes failed. The source
+            // ACF fields remain authoritative, so require a matching row.
+            $projection = $this->reader->read($id);
+            if (is_wp_error($projection)) continue;
+            $matches = false;
+            foreach ($projection['relationships'] as $relationship) {
+                if ($relationship['person_id'] === $person_id
+                    && (! $role_keys || in_array($relationship['role_key'], $role_keys, true))) {
+                    $matches = true;
+                    break;
+                }
+            }
+            if (! $matches) continue;
             $results[$id] = $id;
         }
         ksort($results, SORT_NUMERIC);

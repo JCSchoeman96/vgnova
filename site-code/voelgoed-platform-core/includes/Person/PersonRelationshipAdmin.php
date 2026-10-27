@@ -82,6 +82,12 @@ final class PersonRelationshipAdmin
     /** Validate published and scheduled source data before WordPress writes it. */
     public function validate_source_before_save(array $data, array $postarr): array
     {
+        // REST validates the submitted merge in validate_rest_source. At this
+        // pre-insert hook REST meta has not persisted yet, so stored ACF values
+        // can be stale and must not veto a valid repair request.
+        if (defined('REST_REQUEST') && REST_REQUEST) {
+            return $data;
+        }
         $source_type = (string) ($data['post_type'] ?? '');
         $status = (string) ($data['post_status'] ?? 'draft');
         if (! PersonRelationshipContract::supported_source_type($source_type) || ! in_array($status, ['publish', 'future'], true)) {

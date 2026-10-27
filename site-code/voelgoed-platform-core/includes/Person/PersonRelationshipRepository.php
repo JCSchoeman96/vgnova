@@ -32,7 +32,9 @@ final class PersonRelationshipRepository
         global $wpdb;
         $sql = "SELECT DISTINCT source_post_id FROM {$this->schema->table_name()} WHERE person_id = %d AND source_post_type = %s";
         $args = [$person_id, $source_post_type];
-        if ($role_keys) { $sql .= ' AND role_key IN (' . implode(',', array_fill(0, count($role_keys), '%s')) . ')'; array_push($args, ...$role_keys); }
+        // Never let unsupported or legacy role rows enter public reverse reads.
+        $role_keys = $role_keys ?: $allowed;
+        $sql .= ' AND role_key IN (' . implode(',', array_fill(0, count($role_keys), '%s')) . ')'; array_push($args, ...$role_keys);
         $sql .= ' ORDER BY source_post_id ASC';
         try { $ids = $wpdb->get_col($wpdb->prepare($sql, ...$args)); } catch (\Throwable) { return []; }
         if (! is_array($ids) || (string) ($wpdb->last_error ?? '') !== '') return [];

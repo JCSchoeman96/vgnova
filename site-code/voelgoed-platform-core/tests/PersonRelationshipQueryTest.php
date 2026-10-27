@@ -33,6 +33,10 @@ final class PersonRelationshipQueryTest
         $this->post(30, 'post', 'publish');
         $this->post(31, 'post', 'draft');
         $this->post(32, 'post', 'publish');
+        $this->register_fields();
+        $GLOBALS['vgpc_test_meta'][30]['primary_author'] = 20;
+        $GLOBALS['vgpc_test_meta'][31]['primary_author'] = 20;
+        $GLOBALS['vgpc_test_meta'][32]['primary_author'] = 20;
         update_post_meta(32, PersonRelationshipContract::DIRTY_META_KEY, 1);
         $GLOBALS['wpdb']->get_col_handler = static fn (string $query, array $args): array => [32, 31, 30, 30];
         vgpc_test_same([30], $this->service()->articles_for_person(20), 'Reverse results must be unique, published, clean, and ascending.');
