@@ -99,19 +99,19 @@ final class PersonRelationshipCli
         foreach ($this->source_ids($assoc_args['source'] ?? null) as $source_id) {
             $issues = $this->reconciler->inspect_source($source_id);
             if (is_wp_error($issues)) {
-                $sources[] = ['source_post_id' => $source_id, 'error' => $issues->get_error_code()];
+                $sources[] = ['source_post_id' => $source_id, 'error' => $this->error_details($issues)];
                 continue;
             }
             if ($repair && $issues !== []) {
                 $result = $this->indexer->rebuild_source($source_id);
                 if (is_wp_error($result)) {
-                    $sources[] = ['source_post_id' => $source_id, 'issues' => $issues, 'repair_error' => $result->get_error_code()];
+                    $sources[] = ['source_post_id' => $source_id, 'issues' => $issues, 'repair_error' => $this->error_details($result)];
                     continue;
                 }
                 $repaired[] = $source_id;
                 $issues = $this->reconciler->inspect_source($source_id);
                 if (is_wp_error($issues)) {
-                    $sources[] = ['source_post_id' => $source_id, 'error' => $issues->get_error_code(), 'repaired' => true];
+                    $sources[] = ['source_post_id' => $source_id, 'error' => $this->error_details($issues), 'repaired' => true];
                     continue;
                 }
             }
@@ -133,7 +133,10 @@ final class PersonRelationshipCli
         \WP_CLI::line('Source ID | Issues | Repair');
         foreach ($sources as $source) {
             $issue_count = count($source['issues'] ?? []);
-            $status = isset($source['repair_error']) ? 'failed' : (in_array($source['source_post_id'], $repaired, true) ? 'reindexed' : 'unchanged');
+            $status = isset($source['error']) && isset($source['repaired']) ? 'reindexed, follow-up inspect failed: ' . $this->format_error($source['error'])
+                : (isset($source['error']) ? 'inspect failed: ' . $this->format_error($source['error'])
+                : (isset($source['repair_error']) ? 'repair failed: ' . $this->format_error($source['repair_error'])
+                : (in_array($source['source_post_id'], $repaired, true) ? ($issue_count > 0 ? 'reindexed, issues remain' : 'reindexed') : ($issue_count > 0 ? 'issues remain' : 'unchanged'))));
             \WP_CLI::line(sprintf('%d | %d | %s', $source['source_post_id'], $issue_count, $status));
         }
         \WP_CLI::line(sprintf('Sources: %d, with issues: %d, repaired: %d', $report['summary']['sources'], $report['summary']['with_issues'], $report['summary']['repaired']));
@@ -175,5 +178,17 @@ final class PersonRelationshipCli
     private function assert_mutation_session(): void
     {
         ($this->mutation_guard)();
+    }
+
+    /** @return array{code:string,message:string} */
+    private function error_details(\WP_Error $error): array
+    {
+        return ['code' => (string) $error->get_error_code(), 'message' => (string) $error->get_error_message()];
+    }
+
+    /** @param array{code:string,message:string} $error */
+    private function format_error(array $error): string
+    {
+        return sprintf('%s: %s', $error['code'], $error['message']);
     }
 }

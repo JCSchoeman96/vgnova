@@ -24,6 +24,36 @@ final class PersonRelationshipCliTest
         vgpc_test_same('line', WP_CLI::$messages[0]['type'], 'Read-only reconciliation should report its result.');
     }
 
+    public function test_table_reconcile_displays_inspection_error_code_and_message(): void
+    {
+        vgpc_test_reset();
+        $this->register_fields();
+        $GLOBALS['vgpc_test_posts'][81] = (object) ['ID' => 81, 'post_type' => 'post', 'post_status' => 'draft'];
+        $GLOBALS['vgpc_test_meta'][81]['primary_author'] = [12];
+        $cli = $this->cli(static function (): void {});
+        $cli->reconcile_command([], ['source' => '81', 'format' => 'table']);
+        $output = implode("\n", array_column(WP_CLI::$messages, 'message'));
+        vgpc_test_true(str_contains($output, 'inspect failed: malformed_relationship: The primary_author field must contain a single Person value.'), 'Table output must expose inspection error code and message.');
+        vgpc_test_true(str_contains($output, 'with issues: 1'), 'Inspection errors must count as unresolved issues.');
+    }
+
+    public function test_table_reconcile_reports_successful_reindex_and_repair_summary(): void
+    {
+        vgpc_test_reset();
+        $this->register_fields();
+        $GLOBALS['vgpc_test_posts'][82] = (object) ['ID' => 82, 'post_type' => 'post', 'post_status' => 'draft'];
+        $GLOBALS['vgpc_test_meta'][82]['primary_author'] = 12;
+        $GLOBALS['vgpc_test_posts'][12] = (object) ['ID' => 12, 'post_type' => 'person', 'post_status' => 'draft'];
+        update_post_meta(82, \Voelgoed\PlatformCore\Person\PersonRelationshipContract::DIRTY_META_KEY, 1);
+        $GLOBALS['vgpc_test_options'][\Voelgoed\PlatformCore\Person\PersonRelationshipSchema::VERSION_OPTION] = 1;
+        $GLOBALS['wpdb']->get_var_handler = static fn (string $query, array $args): mixed => str_contains($query, 'SHOW TABLES') ? ($args[0] ?? '') : '1';
+        $cli = $this->cli(static function (): void {});
+        $cli->reconcile_command([], ['source' => '82', 'repair' => true, 'format' => 'table']);
+        $output = implode("\n", array_column(WP_CLI::$messages, 'message'));
+        vgpc_test_true(str_contains($output, '82 | 1 | reindexed, issues remain'), 'A repair with unresolved post-check issues must report both outcomes.');
+        vgpc_test_true(str_contains($output, 'with issues: 1, repaired: 1'), 'Repair count and remaining issue count must both be reported.');
+    }
+
     public function test_rebuild_requires_mutation_session_before_reindexing(): void
     {
         vgpc_test_reset();
@@ -112,5 +142,14 @@ final class PersonRelationshipCliTest
         );
         $reconciler = new \Voelgoed\PlatformCore\Person\PersonRelationshipReconciler($reader, $repository, $validator);
         return new PersonRelationshipCli($schema, $indexer, $reconciler, $guard);
+    }
+
+    private function register_fields(): void
+    {
+        $fields = [];
+        foreach (array_merge(\Voelgoed\PlatformCore\Person\PersonRelationshipContract::allowed_roles('post'), \Voelgoed\PlatformCore\Person\PersonRelationshipContract::allowed_roles('mto-course')) as $role) {
+            $fields[] = ['key' => 'field_' . $role, 'name' => $role];
+        }
+        acf_add_local_field_group(['key' => 'group_person_cli_test', 'fields' => $fields]);
     }
 }

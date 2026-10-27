@@ -95,6 +95,7 @@ final class PersonRelationshipIndexerTest
 
     public function test_dirty_marker_is_exact_integer_one(): void
     {
+        $GLOBALS['vgpc_test_posts'][60] = (object) ['ID' => 60, 'post_type' => 'post', 'post_status' => 'draft'];
         update_post_meta(60, PersonRelationshipContract::DIRTY_META_KEY, 'random-string');
         $indexer = $this->indexer();
         vgpc_test_true(! $indexer->is_dirty(60), 'Arbitrary marker values must not be treated as dirty.');
