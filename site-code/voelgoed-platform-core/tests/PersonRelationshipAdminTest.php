@@ -50,6 +50,8 @@ final class PersonRelationshipAdminTest
         }
         vgpc_test_true(isset($GLOBALS['vgpc_test_filters']['wp_insert_post_data']), 'Source publication must be checked before save.');
         vgpc_test_true(isset($GLOBALS['vgpc_test_actions']['acf/save_post']), 'ACF saves must project at priority 20.');
+        vgpc_test_true(isset($GLOBALS['vgpc_test_actions']['rest_after_insert_post']), 'REST Article saves must project after REST metadata persistence.');
+        vgpc_test_true(isset($GLOBALS['vgpc_test_actions']['rest_after_insert_mto-course']), 'REST Course saves must project after REST metadata persistence.');
         vgpc_test_true(isset($GLOBALS['vgpc_test_actions']['before_delete_post']), 'Permanent deletion must clean derived rows.');
         vgpc_test_true(isset($GLOBALS['vgpc_test_filters']['voelgoed/platform_core/future_post_can_publish']), 'Scheduled publication must use the shared filter seam.');
     }
@@ -192,11 +194,13 @@ final class PersonRelationshipAdminTest
         $GLOBALS['wpdb']->fail_insert = false;
         $GLOBALS['wpdb']->fail_query = false;
         $GLOBALS['wpdb']->query_handler = null;
-        do_action('before_delete_post', 15, get_post(15));
+        $deleted_source = get_post(15);
+        do_action('before_delete_post', 15, $deleted_source);
         vgpc_test_true((bool) array_filter($GLOBALS['wpdb']->queries, static fn (array $query): bool => str_contains($query['query'], 'DELETE FROM wp_vg_person_relationship_index')), 'Permanent deletion must remove derived source rows.');
         $GLOBALS['wpdb']->fail_query = true;
-        do_action('before_delete_post', 15, get_post(15));
-        vgpc_test_true((new PersonRelationshipIndexer(new PersonRelationshipSourceLock(), new PersonRelationshipSourceReader(), new PersonRelationshipValidator(), new PersonRelationshipRepository(new PersonRelationshipSchema()), static function (): void {}))->is_dirty(15), 'Failed permanent-delete cleanup must leave a repair marker for diagnosis.');
+        wp_delete_post(15, true);
+        vgpc_test_true(! isset($GLOBALS['vgpc_test_meta'][15]), 'WordPress permanent deletion must remove source metadata after the pre-delete hook.');
+        vgpc_test_true(count(array_filter($GLOBALS['wpdb']->queries, static fn (array $query): bool => str_contains($query['query'], 'DELETE FROM wp_vg_person_relationship_index'))) >= 3, 'The post-meta deletion hook must retry derived-row cleanup after an earlier cleanup failure.');
     }
 
     public function test_rest_publication_validates_acf_payload_before_core_save(): void
@@ -207,7 +211,8 @@ final class PersonRelationshipAdminTest
         $_POST = [];
         $request = new VGPC_TestRestRequest(['status' => 'publish', 'acf' => ['primary_author' => 32]]);
 
-        $result = apply_filters('rest_pre_insert_post', (object) ['post_type' => 'post', 'post_status' => 'publish'], $request, true);
+        // WP_REST_Posts_Controller dispatches rest_pre_insert_{post_type} with two args.
+        $result = apply_filters('rest_pre_insert_post', (object) ['post_type' => 'post', 'post_status' => 'publish'], $request);
         vgpc_test_true(is_wp_error($result), 'REST publication with a draft Person must return an error before core saves the post.');
         vgpc_test_true(str_contains($result->get_error_message(), 'Person 32'), 'REST error must identify the invalid Person.');
     }
@@ -222,7 +227,7 @@ final class PersonRelationshipAdminTest
             'additional_authors' => [34],
         ]]);
 
-        $result = apply_filters('rest_pre_insert_post', (object) ['ID' => 33, 'post_type' => 'post', 'post_status' => 'draft'], $request, false);
+        $result = apply_filters('rest_pre_insert_post', (object) ['ID' => 33, 'post_type' => 'post', 'post_status' => 'draft'], $request);
         vgpc_test_true(is_wp_error($result), 'REST update with a duplicate assignment must be rejected.');
         vgpc_test_true(str_contains($result->get_error_message(), 'Person 34'), 'REST error must retain a useful reason.');
     }
@@ -236,7 +241,25 @@ final class PersonRelationshipAdminTest
         $prepared_post = (object) ['ID' => 35, 'post_type' => 'mto-course', 'post_status' => 'future'];
         $request = new VGPC_TestRestRequest(['status' => 'future', 'acf' => ['field_vg_course_lead_instructor' => 36]]);
 
-        vgpc_test_same($prepared_post, apply_filters('rest_pre_insert_mto-course', $prepared_post, $request, false), 'A valid scheduled Course REST request must pass with the field-key payload ACF can submit.');
+        vgpc_test_same($prepared_post, apply_filters('rest_pre_insert_mto-course', $prepared_post, $request), 'A valid scheduled Course REST request must pass with the field-key payload ACF can submit.');
+    }
+
+    public function test_rest_acf_fields_project_after_full_rest_persistence(): void
+    {
+        $admin = $this->admin();
+        $admin->register();
+        $this->source_and_people(37, 'draft', [38]);
+        $GLOBALS['vgpc_test_options'][PersonRelationshipSchema::VERSION_OPTION] = PersonRelationshipSchema::SCHEMA_VERSION;
+        $GLOBALS['wpdb']->get_var_handler = static fn (string $query): string => str_contains($query, 'SHOW TABLES') ? 'wp_vg_person_relationship_index' : '1';
+        $_POST = [];
+        $request = new VGPC_TestRestRequest(['status' => 'draft', 'acf' => ['primary_author' => 38]]);
+        $prepared = (object) ['ID' => 37, 'post_type' => 'post', 'post_status' => 'draft'];
+        vgpc_test_same($prepared, apply_filters('rest_pre_insert_post', $prepared, $request), 'The two-argument WordPress REST filter dispatch must validate without an argument-count error.');
+
+        // Model WordPress persisting REST meta before rest_after_insert_{post_type}.
+        $GLOBALS['vgpc_test_meta'][37]['primary_author'] = 38;
+        do_action('rest_after_insert_post', get_post(37), $request, false);
+        vgpc_test_true((bool) array_filter($GLOBALS['wpdb']->inserted, static fn (array $row): bool => ($row[1]['source_post_id'] ?? null) === 37 && ($row[1]['person_id'] ?? null) === 38), 'The REST after-insert projection must read the fully persisted ACF field.');
     }
 
     public function test_projection_and_delete_failures_are_reported(): void

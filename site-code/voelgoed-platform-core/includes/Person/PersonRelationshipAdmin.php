@@ -42,10 +42,13 @@ final class PersonRelationshipAdmin
             add_filter('acf/validate_value/key=' . $field_key, fn (mixed $valid, mixed $value, array $field, string $input_name): mixed => $this->validate_field($valid, $value, $field, $input_name, $role), 10, 4);
         }
         add_filter('wp_insert_post_data', [$this, 'validate_source_before_save'], 10, 2);
-        add_filter('rest_pre_insert_post', [$this, 'validate_rest_source'], 10, 3);
-        add_filter('rest_pre_insert_mto-course', [$this, 'validate_rest_source'], 10, 3);
+        add_filter('rest_pre_insert_post', [$this, 'validate_rest_source'], 10, 2);
+        add_filter('rest_pre_insert_mto-course', [$this, 'validate_rest_source'], 10, 2);
+        add_action('rest_after_insert_post', [$this, 'project_after_rest_save'], 20, 3);
+        add_action('rest_after_insert_mto-course', [$this, 'project_after_rest_save'], 20, 3);
         add_action('acf/save_post', [$this, 'project_after_acf_save'], 20, 1);
         add_action('before_delete_post', [$this, 'remove_after_permanent_delete'], 10, 2);
+        add_action('deleted_post', [$this, 'retry_delete_cleanup_after_meta_removal'], 10, 2);
         add_action('admin_notices', [$this, 'render_projection_failure_notice']);
         add_filter(self::FUTURE_PUBLISH_FILTER, [$this, 'future_post_can_publish'], 10, 3);
     }
@@ -98,7 +101,7 @@ final class PersonRelationshipAdmin
     }
 
     /** Validate relationship values from REST requests before core writes the source. */
-    public function validate_rest_source(mixed $prepared_post, mixed $request, bool $creating): mixed
+    public function validate_rest_source(mixed $prepared_post, mixed $request): mixed
     {
         if (! is_object($prepared_post)) {
             return new \WP_Error('invalid_person_relationship_request', 'Could not validate Person relationships for this request.', ['status' => 400]);
@@ -107,7 +110,7 @@ final class PersonRelationshipAdmin
         if (! PersonRelationshipContract::supported_source_type($source_type)) {
             return $prepared_post;
         }
-        $post_id = $creating ? 0 : $this->normalize_id($prepared_post->ID ?? 0);
+        $post_id = $this->normalize_id($prepared_post->ID ?? 0);
         $params = is_object($request) && method_exists($request, 'get_params') ? $request->get_params() : null;
         if (! is_array($params)) {
             return new \WP_Error('invalid_person_relationship_request', 'Could not read Person relationship values from this request.', ['status' => 400]);
@@ -167,6 +170,15 @@ final class PersonRelationshipAdmin
         }
     }
 
+    /** REST meta fields, including ACF REST fields, are persisted before this action. */
+    public function project_after_rest_save(mixed $post, mixed $request = null, mixed $creating = null): void
+    {
+        $post_id = $this->normalize_id(is_object($post) ? ($post->ID ?? 0) : 0);
+        if ($post_id > 0) {
+            $this->project_after_acf_save($post_id);
+        }
+    }
+
     /** Remove only disposable index rows when WordPress permanently deletes a source. */
     public function remove_after_permanent_delete(int $post_id, mixed $post = null): void
     {
@@ -178,6 +190,19 @@ final class PersonRelationshipAdmin
         $result = $this->indexer->remove_source($post_id);
         if (is_wp_error($result)) {
             error_log(sprintf('Person relationship delete cleanup failed for source %d (%s).', $post_id, $result->get_error_code()));
+        }
+    }
+
+    /** Retry after WordPress removes post meta, which also removes dirty markers. */
+    public function retry_delete_cleanup_after_meta_removal(int $post_id, mixed $post = null): void
+    {
+        $post_type = is_object($post) ? (string) ($post->post_type ?? '') : '';
+        if (! PersonRelationshipContract::supported_source_type($post_type)) {
+            return;
+        }
+        $result = $this->indexer->remove_source($post_id);
+        if (is_wp_error($result)) {
+            error_log(sprintf('Person relationship post-delete cleanup retry failed for source %d (%s).', $post_id, $result->get_error_code()));
         }
     }
 

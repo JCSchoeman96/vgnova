@@ -552,10 +552,12 @@ function wp_delete_post(int $post_id, bool $force_delete = false): object|false
         return $post;
     }
 
+    do_action('before_delete_post', $post_id, $post);
     unset($GLOBALS['vgpc_test_posts'][$post_id], $GLOBALS['vgpc_test_meta'][$post_id]);
     foreach ($GLOBALS['vgpc_test_relationships'] as $taxonomy => $relationships) {
         unset($GLOBALS['vgpc_test_relationships'][$taxonomy][$post_id]);
     }
+    do_action('deleted_post', $post_id, $post);
 
     return $post;
 }
@@ -745,6 +747,9 @@ function get_post_meta(int $post_id, string $meta_key = '', bool $single = false
 
 function update_post_meta(int $post_id, string $meta_key, mixed $value): bool
 {
+    if (! get_post($post_id)) {
+        return false;
+    }
     if (isset($GLOBALS['vgpc_update_post_meta_handler'])) {
         $result = ($GLOBALS['vgpc_update_post_meta_handler'])($post_id, $meta_key, $value);
         if ($result === false) return false;
