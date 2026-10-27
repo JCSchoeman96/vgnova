@@ -136,14 +136,16 @@ final class PersonRelationshipIndexer
     private function fail(int $source_post_id, \WP_Error $error): \WP_Error
     {
         if ($source_post_id > 0) {
-            $marker_ok = update_post_meta($source_post_id, PersonRelationshipContract::DIRTY_META_KEY, 1);
-            if (! $marker_ok && ! $this->is_dirty_marker(get_post_meta($source_post_id, PersonRelationshipContract::DIRTY_META_KEY, true))) {
-                $error = new \WP_Error('dirty_marker_persistence_failed', 'Could not persist the dirty marker.');
-            }
+            // Advance first. A concurrent successful rebuild can then either
+            // retain the marker or delete it before this write sets it again.
             $generation = bin2hex(random_bytes(16));
             $generation_ok = update_post_meta($source_post_id, self::DIRTY_GENERATION_META_KEY, $generation);
             if (! $generation_ok || get_post_meta($source_post_id, self::DIRTY_GENERATION_META_KEY, true) !== $generation) {
                 $error = new \WP_Error('dirty_marker_persistence_failed', 'Could not persist dirty generation state.');
+            }
+            $marker_ok = update_post_meta($source_post_id, PersonRelationshipContract::DIRTY_META_KEY, 1);
+            if (! $marker_ok && ! $this->is_dirty_marker(get_post_meta($source_post_id, PersonRelationshipContract::DIRTY_META_KEY, true))) {
+                $error = new \WP_Error('dirty_marker_persistence_failed', 'Could not persist the dirty marker.');
             }
         }
         $code = preg_replace('/[^a-zA-Z0-9_-]/', '', (string) $error->get_error_code()) ?: 'projection_failed';
@@ -153,15 +155,24 @@ final class PersonRelationshipIndexer
 
     private function clear_dirty_if_unchanged(int $source_post_id, mixed $generation_snapshot): bool
     {
-        $generation_current = get_post_meta($source_post_id, self::DIRTY_GENERATION_META_KEY, true);
-        if ($generation_snapshot !== $generation_current) {
-            return true;
-        }
-        $dirty = get_post_meta($source_post_id, PersonRelationshipContract::DIRTY_META_KEY, true);
-        if ($this->is_dirty_marker($dirty) && ! delete_post_meta($source_post_id, PersonRelationshipContract::DIRTY_META_KEY, 1)) {
-            return false;
-        }
-        return true;
+        global $wpdb;
+        $meta_table = $wpdb->postmeta;
+        $sql = "DELETE dirty FROM {$meta_table} AS dirty
+            LEFT JOIN {$meta_table} AS generation
+              ON generation.post_id = dirty.post_id
+             AND generation.meta_key = %s
+             AND generation.meta_value <> %s
+            WHERE dirty.post_id = %d
+              AND dirty.meta_key = %s
+              AND dirty.meta_value = '1'
+              AND generation.meta_id IS NULL";
+        return $wpdb->query($wpdb->prepare(
+            $sql,
+            self::DIRTY_GENERATION_META_KEY,
+            (string) $generation_snapshot,
+            $source_post_id,
+            PersonRelationshipContract::DIRTY_META_KEY,
+        )) !== false;
     }
 
     private function is_dirty_marker(mixed $value): bool

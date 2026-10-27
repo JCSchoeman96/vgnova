@@ -49,7 +49,22 @@ final class VGPC_TestWpdb
     /** @var callable|null */
     public $query_handler = null;
 
-    public function query(array|string $statement): int|false { $statement = is_array($statement) ? $statement : ['query' => $statement, 'args' => []]; $this->queries[] = $statement; if (is_callable($this->query_handler)) ($this->query_handler)($statement['query'], $statement['args']); return $this->fail_query && ! str_contains($statement['query'], 'ROLLBACK') ? false : 1; }
+    public function query(array|string $statement): int|false
+    {
+        $statement = is_array($statement) ? $statement : ['query' => $statement, 'args' => []];
+        $this->queries[] = $statement;
+        if (is_callable($this->query_handler)) ($this->query_handler)($statement['query'], $statement['args']);
+        if ($this->fail_query && ! str_contains($statement['query'], 'ROLLBACK')) return false;
+        if (str_contains($statement['query'], 'DELETE dirty FROM wp_postmeta')) {
+            [$generation_key, $snapshot, $post_id, $dirty_key] = $statement['args'];
+            $meta = &$GLOBALS['vgpc_test_meta'][(int) $post_id];
+            if (($meta[$dirty_key] ?? null) === 1
+                && (! array_key_exists($generation_key, $meta) || (string) $meta[$generation_key] === (string) $snapshot)) {
+                unset($meta[$dirty_key]);
+            }
+        }
+        return 1;
+    }
 
     public function get_results(array $statement, mixed $format = null): array { $this->queries[] = $statement; return []; }
 

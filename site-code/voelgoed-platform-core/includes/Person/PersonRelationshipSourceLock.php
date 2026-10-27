@@ -12,6 +12,9 @@ final class PersonRelationshipSourceLock
         if ($source_post_id < 1) return false;
         $name = 'vg_person_rel_' . $source_post_id;
         if (isset($this->held[$name])) return true;
+        // A previous operation may have failed to release this lock. Do not
+        // let that result contaminate a new acquisition attempt.
+        unset($this->release_failed[$name]);
         global $wpdb;
         try { $ok = $wpdb->get_var($wpdb->prepare('SELECT GET_LOCK(%s, %d)', $name, 10)); }
         catch (\Throwable) { return false; }

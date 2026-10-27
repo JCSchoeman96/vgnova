@@ -116,6 +116,7 @@ final class PersonRelationshipIndexerTest
 
     public function test_unchanged_dirty_marker_is_confirmed_after_update_returns_false(): void
     {
+        $GLOBALS['vgpc_update_post_meta_handler'] = null;
         update_post_meta(63, PersonRelationshipContract::DIRTY_META_KEY, 1);
         $GLOBALS['vgpc_test_posts'][63] = (object) ['ID' => 63, 'post_type' => 'post', 'post_status' => 'draft'];
         $GLOBALS['wpdb']->get_var_handler = static fn (string $query): string => str_contains($query, 'GET_LOCK') ? '0' : '1';
@@ -124,6 +125,28 @@ final class PersonRelationshipIndexerTest
         vgpc_test_true(is_wp_error($result), 'Lock failure remains an error.');
         vgpc_test_true($indexer->is_dirty(63), 'Unchanged integer marker must count as persisted despite update_post_meta returning false.');
         vgpc_test_same('source_lock_failed', $result->get_error_code(), 'Unchanged marker must not replace the original failure.');
+    }
+
+    public function test_dirty_failure_interleaved_with_atomic_clear_survives(): void
+    {
+        $this->ready_schema();
+        $this->add_source_and_person(66, 'draft', 67, 'draft');
+        $GLOBALS['vgpc_test_meta'][66]['primary_author'] = 67;
+        update_post_meta(66, PersonRelationshipContract::DIRTY_META_KEY, 1);
+        update_post_meta(66, '_vg_person_relationship_index_dirty_generation', 'older-generation');
+        $interleaved = false;
+        $GLOBALS['wpdb']->query_handler = static function (string $query) use (&$interleaved): void {
+            if (! $interleaved && str_contains($query, 'DELETE dirty FROM wp_postmeta')) {
+                $interleaved = true;
+                update_post_meta(66, '_vg_person_relationship_index_dirty_generation', 'newer-generation');
+                update_post_meta(66, PersonRelationshipContract::DIRTY_META_KEY, 1);
+            }
+        };
+
+        $indexer = $this->indexer();
+        vgpc_test_same(true, $indexer->rebuild_source(66), 'An older successful projection can finish while a newer save records failure.');
+        vgpc_test_true($interleaved, 'Dirty-state compare and clear must run as one database operation.');
+        vgpc_test_true($indexer->is_dirty(66), 'A newer failure interleaved with marker clearing must remain dirty.');
     }
 
     public function test_release_failure_is_reported_and_can_be_retried(): void
