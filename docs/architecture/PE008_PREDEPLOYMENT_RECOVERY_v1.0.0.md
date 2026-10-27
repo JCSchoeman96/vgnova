@@ -1,6 +1,6 @@
 # PE-008 predeployment recovery v1.0.0
 
-**Status:** The authorized PE-008W retry returned `BLOCKED` before reservation or rename. The active plugin remains exact-old and no Platform Core deployment has occurred. No further retry is included in this evidence update.
+**Status:** PE-008 remains blocked. The PE-008W retry stopped before reservation or rename, and the PE-008X diagnostic reproduced a WP-CLI database-bootstrap failure before the session report ran. The active plugin remains exact-old. No deployment retry is authorized.
 
 ## Baseline and artifact authority
 
@@ -246,3 +246,34 @@ The read-only post-attempt snapshot at `/home/jcschoeman96/.cache/vgnova/pe008-2
 | Successful live Product Contribution QA runs | 0 |
 
 The PE-008W blocked retry is separate from `BLOCKED_PRE_GUARD_PRODUCTION_WIRING` in PE-008U and the historical `ABORTED_PRE_MUTATION_QA_INVOCATION`. The QA invocation count remains one; PE-008W did not include or invoke the QA harness. Aggregate successful Platform Core deployments remain zero and persistent WordPress writes remain zero. A new deployment attempt requires a separate decision after the session-guard failure is reviewed.
+
+## PE-008X nested session diagnostic
+
+The diagnostic ran at `2026-10-27 06:29 UTC` from tooling head `2363b02b0640307e1768c283adef4ff2d60e639a`. The source checks on that exact head passed in GitHub Actions run `40460036669`: Dashboard checks, Canonical source checks, and `VG Nova Platform Gate` succeeded; publication was skipped. `origin/main` remained `de90ff061c20b164c127aa97e845e3f192429543`. PR #59 remained draft, open, and unmerged.
+
+Immediately before the diagnostic, the active plugin matched the old 54-file manifest exactly: zero missing, extra, content-mismatched, mode-mismatched, symlink, or unsupported entries; tree `856a3e5978559bfb2572b4b1ff4b34df916743f9e72d6b18220ee64e98af5f56`. The existing stage matched the new 55-file manifest exactly with the same zero deltas and tree `5816b80ac4355782523aa4baa82bd9e55dd87326f15972f287ff1afa7567482a`. The active plugin and stage shared device `66306`. PE-007 status showed the host lock and both database locks free.
+
+One PE-007 session ran the read-only diagnostic parent. The parent started and reaped its WP-CLI child. The child exited `1`; stdout was empty, stderr contained 49 bytes, and the parent could not parse a diagnostic JSON object. The sanitized stderr was `Error: Error establishing a database connection.` WordPress did not finish bootstrap, so the `pe008 session-diagnostic` command and `vg_runtime_mutation_session_report()` did not execute. `session_valid`, the report error list, filesystem-lock validity, and DB-owner matches are therefore unavailable.
+
+Classify this probe as `WP_CLI_BOOTSTRAP_OR_COMMAND`, specifically a database connection failure during WordPress bootstrap. This proves that the current nested WP-CLI path cannot reach the diagnostic command with the supplied Local DB transport. PE-008W did not preserve its child output, so this probe cannot prove that the earlier child emitted the same message. It does not establish whether the PE-007 session report would have passed after WordPress connected. No deployment retry is authorized.
+
+Raw subprocess captures remain outside the repository with mode `0600` under `/home/jcschoeman96/.cache/vgnova/pe008-session-diagnostic-20261027T071500Z/`. Stdout is empty. The 49-byte stderr contains only the database-bootstrap error above. The committed evidence records the sanitized classification, not the raw capture files.
+
+After the probe, PE-007 status reported the host lock and DB locks A and B free. The active plugin remained exact-old at 54 files and the stage remained exact-new at 55 files. No backup directory was created. No failed-tree reservation or directory rename occurred. The diagnostic did not load or invoke Product Contribution QA. No persistent WordPress writes occurred. The historical QA invocation count remains one; the PE-008U and PE-008W blocked incidents remain separate.
+
+| PE-008X action or state | Result |
+| --- | --- |
+| Probe started | Yes; WP-CLI child process started |
+| Child exit / stderr empty | `1` / No |
+| Diagnostic JSON parsed / session report executed | No / No |
+| Primary failure layer | `WP_CLI_BOOTSTRAP_OR_COMMAND` |
+| Sanitized child error | WordPress could not establish a database connection |
+| Session validity and lock-owner report | Not available; diagnostic command did not execute |
+| Host lock / DB lock A / DB lock B after release | Free / Free / Free |
+| Active plugin after probe | Exact-old, 54 files; tree `856a3e5978559bfb2572b4b1ff4b34df916743f9e72d6b18220ee64e98af5f56` |
+| Stage after probe | Exact-new, 55 files; tree `5816b80ac4355782523aa4baa82bd9e55dd87326f15972f287ff1afa7567482a` |
+| Backup / failed reservation / directory renames | Absent / none / zero |
+| Platform Core deployments / persistent WordPress writes / successful live QA runs | `0` / `0` / `0` |
+| Historical aborted pre-mutation QA invocation | `1` |
+| Blocked pre-guard wiring attempts / blocked pre-rename guard attempts | `1` / `1` |
+| PE-008X diagnostic probes | `1` |

@@ -597,5 +597,76 @@
       "plugin_activation_deactivation_writes": 0,
       "live_qa_runs": 0
     }
+  },
+  "pe008x": {
+    "status": "ROOT_CAUSE_IDENTIFIED_NO_DEPLOYMENT_RETRY_AUTHORIZED",
+    "diagnostic_classification": "PE008_SESSION_DIAGNOSTIC",
+    "diagnostic_invocations": 1,
+    "tooling_head": "2363b02b0640307e1768c283adef4ff2d60e639a",
+    "origin_main": "de90ff061c20b164c127aa97e845e3f192429543",
+    "workflow_id": "40460036669",
+    "workflow_checks": {
+      "dashboard": "success",
+      "canonical_source": "success",
+      "platform_gate": "success",
+      "artifact_publication": "skipped"
+    },
+    "coordinator": {
+      "target": "vgnova-local-10039",
+      "purpose": "PE-008 nested session guard diagnostic",
+      "session_acquired": true,
+      "diagnostic_parent_started": true,
+      "host_lock_after": "free",
+      "database_lock_a_after": "free",
+      "database_lock_b_after": "free"
+    },
+    "process_result": {
+      "probe_started": true,
+      "child_exit_code": 1,
+      "child_stderr_empty": false,
+      "stdout_bytes": 0,
+      "stderr_bytes": 49,
+      "diagnostic_json_parsed": false,
+      "process_error_code": "child_nonzero_exit",
+      "sanitized_stderr": "Error: Error establishing a database connection.",
+      "failure_layer": "WP_CLI_BOOTSTRAP_OR_COMMAND"
+    },
+    "session_report": {
+      "executed": false,
+      "session_valid": null,
+      "errors": null,
+      "filesystem_lock_held": null,
+      "database_lock_a_owner_matches": null,
+      "database_lock_b_owner_matches": null
+    },
+    "raw_capture": {
+      "directory": "/home/jcschoeman96/.cache/vgnova/pe008-session-diagnostic-20261027T071500Z",
+      "stdout_file": "pe008-session-diagnostic-20261027T062915Z-18d20688.stdout.txt",
+      "stderr_file": "pe008-session-diagnostic-20261027T062915Z-18d20688.stderr.txt",
+      "file_mode": "0600",
+      "committed": false
+    },
+    "runtime_after": {
+      "active_classification": "OLD_AUTHORITY_EXACT",
+      "active_file_count": 54,
+      "active_tree_sha256": "856a3e5978559bfb2572b4b1ff4b34df916743f9e72d6b18220ee64e98af5f56",
+      "stage_path": "/home/jcschoeman96/Local Sites/voelgoed-novamira/app/voelgoed-platform-core.pe008-stage-20261026T194240Z",
+      "stage_exact_new": true,
+      "stage_file_count": 55,
+      "stage_tree_sha256": "5816b80ac4355782523aa4baa82bd9e55dd87326f15972f287ff1afa7567482a",
+      "backup_exists": false,
+      "failed_tree_reservation_created": false,
+      "directory_renames": 0
+    },
+    "runtime_mutation_counts": {
+      "platform_core_deployments": 0,
+      "persistent_wordpress_writes": 0,
+      "successful_live_product_contribution_qa_runs": 0,
+      "aborted_pre_mutation_qa_invocations": 1,
+      "blocked_pre_guard_production_wiring_attempts": 1,
+      "blocked_pre_rename_mutation_session_guard_attempts": 1
+    },
+    "live_product_contribution_qa": "NOT RUN",
+    "deployment_retry_authorized": false
   }
 }
