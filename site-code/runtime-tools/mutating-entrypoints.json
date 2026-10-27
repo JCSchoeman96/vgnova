@@ -221,6 +221,61 @@
             "classification": "library"
         },
         {
+            "path": "site-code/voelgoed-platform-core/includes/Person/PersonRelationshipAdmin.php",
+            "classification": "explicit_exemption",
+            "reason": "Normal WordPress Article and Course editor callbacks remain outside administrative runtime coordination.",
+            "reviewed_scope": "ACF save, REST save, publication validation, and permanent-delete hooks that validate or project canonical Person relationships."
+        },
+        {
+            "path": "site-code/voelgoed-platform-core/includes/Person/PersonRelationshipCli.php",
+            "classification": "mutating",
+            "session_guard_required": true,
+            "guard_function": "vg_runtime_mutation_assert_session",
+            "purpose": "maintenance"
+        },
+        {
+            "path": "site-code/voelgoed-platform-core/includes/Person/PersonRelationshipContract.php",
+            "classification": "library"
+        },
+        {
+            "path": "site-code/voelgoed-platform-core/includes/Person/PersonRelationshipIndexer.php",
+            "classification": "explicit_exemption",
+            "reason": "The indexer writes the disposable projection during ordinary source saves and through guarded maintenance commands.",
+            "reviewed_scope": "Replace or remove derived rows and update the dirty marker for one supported Article or Course source."
+        },
+        {
+            "path": "site-code/voelgoed-platform-core/includes/Person/PersonRelationshipReconciler.php",
+            "classification": "library"
+        },
+        {
+            "path": "site-code/voelgoed-platform-core/includes/Person/PersonRelationshipRepository.php",
+            "classification": "explicit_exemption",
+            "reason": "The repository persists only the disposable Person relationship projection for the ordinary indexer and guarded maintenance commands.",
+            "reviewed_scope": "Replace or delete index rows for one source without changing authoritative ACF values."
+        },
+        {
+            "path": "site-code/voelgoed-platform-core/includes/Person/PersonRelationshipSchema.php",
+            "classification": "explicit_exemption",
+            "reason": "Schema installation is available only through the mutation-guarded Person relationship setup command.",
+            "reviewed_scope": "Create or verify the derived Person relationship index table and version option."
+        },
+        {
+            "path": "site-code/voelgoed-platform-core/includes/Person/PersonRelationshipService.php",
+            "classification": "library"
+        },
+        {
+            "path": "site-code/voelgoed-platform-core/includes/Person/PersonRelationshipSourceLock.php",
+            "classification": "library"
+        },
+        {
+            "path": "site-code/voelgoed-platform-core/includes/Person/PersonRelationshipSourceReader.php",
+            "classification": "library"
+        },
+        {
+            "path": "site-code/voelgoed-platform-core/includes/Person/PersonRelationshipValidator.php",
+            "classification": "library"
+        },
+        {
             "path": "site-code/voelgoed-platform-core/includes/Event/EventParticipationAdmin.php",
             "classification": "explicit_exemption",
             "reason": "Normal WordPress event editor callbacks remain outside administrative runtime coordination.",
@@ -359,6 +414,34 @@
             "classification": "test_only"
         },
         {
+            "path": "site-code/voelgoed-platform-core/tests/PersonRelationshipAdminTest.php",
+            "classification": "test_only"
+        },
+        {
+            "path": "site-code/voelgoed-platform-core/tests/PersonRelationshipCliTest.php",
+            "classification": "test_only"
+        },
+        {
+            "path": "site-code/voelgoed-platform-core/tests/PersonRelationshipContractTest.php",
+            "classification": "test_only"
+        },
+        {
+            "path": "site-code/voelgoed-platform-core/tests/PersonRelationshipIndexerTest.php",
+            "classification": "test_only"
+        },
+        {
+            "path": "site-code/voelgoed-platform-core/tests/PersonRelationshipQueryTest.php",
+            "classification": "test_only"
+        },
+        {
+            "path": "site-code/voelgoed-platform-core/tests/PersonRelationshipSourceTest.php",
+            "classification": "test_only"
+        },
+        {
+            "path": "site-code/voelgoed-platform-core/tests/PersonRelationshipStorageTest.php",
+            "classification": "test_only"
+        },
+        {
             "path": "site-code/voelgoed-platform-core/tests/PersonProductsBricksTest.php",
             "classification": "test_only"
         },
@@ -416,6 +499,30 @@
         },
         {
             "path": "site-code/voelgoed-platform-core/tests/ProductSourceEventBricksTest.php",
+            "classification": "test_only"
+        },
+        {
+            "path": "site-code/voelgoed-platform-core/tests/run-person-relationship-admin-tests.php",
+            "classification": "test_only"
+        },
+        {
+            "path": "site-code/voelgoed-platform-core/tests/run-person-relationship-cli-tests.php",
+            "classification": "test_only"
+        },
+        {
+            "path": "site-code/voelgoed-platform-core/tests/run-person-relationship-indexer-tests.php",
+            "classification": "test_only"
+        },
+        {
+            "path": "site-code/voelgoed-platform-core/tests/run-person-relationship-query-tests.php",
+            "classification": "test_only"
+        },
+        {
+            "path": "site-code/voelgoed-platform-core/tests/run-person-relationship-source-tests.php",
+            "classification": "test_only"
+        },
+        {
+            "path": "site-code/voelgoed-platform-core/tests/run-person-relationship-storage-tests.php",
             "classification": "test_only"
         },
         {
