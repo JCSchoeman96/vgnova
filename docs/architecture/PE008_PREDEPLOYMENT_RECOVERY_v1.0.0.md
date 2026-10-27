@@ -1,6 +1,6 @@
 # PE-008 predeployment recovery v1.0.0
 
-**Status:** PE-008V source-only remediation is prepared for draft-PR review. Runtime deployment remains blocked. No Platform Core deployment has occurred.
+**Status:** The authorized PE-008W retry returned `BLOCKED` before reservation or rename. The active plugin remains exact-old and no Platform Core deployment has occurred. No further retry is included in this evidence update.
 
 ## Baseline and artifact authority
 
@@ -214,3 +214,35 @@ The sibling callback audit found no other uncaptured production variable:
 Local PE-008V verification passed: `check-source.sh`; the Platform Core dashboard suite at 127/127; Product Contribution integrity at 28/28; protected-state regression; PE-008 bootstrap at 34/34; mutation core at 74; session at 19/19; mutation policy at 32/32; static policy across 133 tracked PHP files and 34 files with mutation APIs; and FCM integration at 3/3. The source gate also passed PHP lint, JSON parsing, Python AST parsing, `bash -n`, and ShellCheck. `actionlint` 1.7.12 and `git diff --check` passed. The canonical Platform Core build remains at 55 files with tree `5816b80ac4355782523aa4baa82bd9e55dd87326f15972f287ff1afa7567482a` and archive `22d998019e3fe3d93d675250a26eba5be3dbc248badd9be4d7507fbdf9cffdb9`.
 
 The exact draft PR head and GitHub checks are reported in the handoff. PE-008 deployment remains blocked. A new deployment attempt requires independent review of the updated head and renewed authorization.
+
+## PE-008W authorized retry stopped before rename
+
+The retry ran at `2026-10-27 04:55 UTC` from the independently reviewed tooling head `0094319e96a8d4610adf4229cba75d1e7d4abcfa`, with `origin/main` still at `de90ff061c20b164c127aa97e845e3f192429543`. The authorized publication remained workflow `40342642997`, artifact `12659772564`, with the exact `de90ff0…` published manifest, archive, and tree authorities listed above.
+
+Immediately before the retry, the reviewed worktree was clean at the expected tooling head. A fresh integrity check classified the active plugin as `OLD_AUTHORITY_EXACT`: 54 files, tree `856a3e5978559bfb2572b4b1ff4b34df916743f9e72d6b18220ee64e98af5f56`, with zero missing, extra, content-mismatched, mode-mismatched, symlink, or unsupported entries. The preserved stage at `/home/jcschoeman96/Local Sites/voelgoed-novamira/app/voelgoed-platform-core.pe008-stage-20261026T194240Z` matched the published 55-file authority exactly, had no symlinks, unsupported objects, or world-writable entries, and shared device `66306` with the active directory and backup parent. Its files retained the original maximum change time `2026-10-26T19:43:26.868965189Z`. The new backup path `/home/jcschoeman96/Local Sites/voelgoed-novamira/app/voelgoed-platform-core.pe008-backup-20261027T045227Z` was absent.
+
+The runtime identity was WordPress `7.1.3`, runtime PHP `8.5.12`, WP-CLI PHP `8.5.4`, ACF Pro `6.8.1`, WooCommerce `11.2.1`, and active Platform Core `0.1.0`. The fresh protected-state capture at `/home/jcschoeman96/.cache/vgnova/pe008-20261027/runtime-predeployment-20261027T045227Z.json` had SHA-256 `4d3c4cbd1470e163cf45061699cb0f1aea11321a699e2f15988fd4552ef8c6f1`. Its complete summary matched the prior accepted protected snapshot. Person 1705 remained the sole published `person` record at slug `lynette-beer`, with Mentor and Kenner, no `content_topic` relationships, `_masteriyo_has_content=0`, and fingerprints `f2a980eb64045700dc3a4ca07a7950ec3cb1daea14e4a400ac48e6837b2e9b5b`, `0d043dd56c404e0ddb6d7ad496249b770d296a6cd72290bfd7774189e5c820e5`, and `1d347313f990ba8063fe34926ef537e85d2dc4bdc575e5369338be45b9bdf7fb` for post, postmeta, and taxonomy relationships. The Product Contribution and Event Participation counts remained zero; all 20 approved products, the protected ACF definitions, Product Role terms and relationships, profiles, event, templates, Bricks state, and FluentSnippets fingerprints matched.
+
+The PE-007 coordinator acquired session `fd5999ac793624d9b5cc726d91606d1a` for target `vgnova-local-10039` and launched the reviewed helper from that session. The production guard callback ran, but the helper returned `{"status":"BLOCKED","reason":"mutation_session_invalid"}` with child exit code `1`. The helper's result does not distinguish WP-CLI child startup failure from a started child returning an unclean/nonzero result; no guard-child stdout, stderr, or exit code was retained. Therefore the guard child is recorded as **not confirmed started or successfully exited**, and the session assertion is not recorded as successful. This is the point where PE-008W stopped.
+
+The state machine checks the guard result before creating the failed-tree reservation or performing either rename. The post-attempt filesystem check found no new failed-tree reservation. Active-to-backup and stage-to-active renames did not occur: the active directory still matched exact-old, the stage remained exact-new, and the new backup path remained absent. No post-swap WordPress smoke or deployed-guard handshake ran.
+
+The read-only post-attempt snapshot at `/home/jcschoeman96/.cache/vgnova/pe008-20261027/runtime-postblocked-20261027T045227Z.json` had SHA-256 `d50dff3bbebc1e5b0c0ee8328a6395e4314ab4040297fec44f508a6d41d70798`. Its protected summary equaled the pre-attempt summary, including Person 1705, ACF database-definition fingerprints, protected groups, products, Bricks, FluentSnippets, and route-option fingerprints. The active runtime remained `OLD_AUTHORITY_EXACT`; the stage remained exact-new. Coordinator status after release reported the host lock and DB locks A and B free. The sanitized DB lock names were `vgnova.mutation.a.f9d63fbcd072e54005ff68365e36e040fbf11b93` and `vgnova.mutation.b.f9d63fbcd072e54005ff68365e36e040fbf11b93`.
+
+| PE-008W action or state | Result |
+| --- | --- |
+| Coordinator launched / PE-007 session acquired | Yes; session `fd5999ac793624d9b5cc726d91606d1a` |
+| Helper launched at reviewed tooling head | Yes; `0094319e96a8d4610adf4229cba75d1e7d4abcfa` |
+| Production guard callback entered | Yes; returned false to the state machine |
+| WP-CLI guard child started and exited successfully | Not confirmed; helper output did not retain child startup/result details |
+| Deployment result / coordinator child exit | `BLOCKED` / `1`; reason `mutation_session_invalid` |
+| Failed-tree reservation created | No |
+| Active-to-backup rename | No |
+| Stage-to-active rename | No |
+| Active post-attempt state | Exact-old: 54 files; tree `856a3e5978559bfb2572b4b1ff4b34df916743f9e72d6b18220ee64e98af5f56` |
+| Stage post-attempt state | Exact-new: 55 files; tree `5816b80ac4355782523aa4baa82bd9e55dd87326f15972f287ff1afa7567482a` |
+| New backup destination | Absent |
+| Persistent WordPress state delta observed | None; pre/post protected summaries are equal |
+| Successful live Product Contribution QA runs | 0 |
+
+The PE-008W blocked retry is separate from `BLOCKED_PRE_GUARD_PRODUCTION_WIRING` in PE-008U and the historical `ABORTED_PRE_MUTATION_QA_INVOCATION`. The QA invocation count remains one; PE-008W did not include or invoke the QA harness. Aggregate successful Platform Core deployments remain zero and persistent WordPress writes remain zero. A new deployment attempt requires a separate decision after the session-guard failure is reviewed.

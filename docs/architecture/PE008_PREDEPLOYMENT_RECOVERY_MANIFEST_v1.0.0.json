@@ -1,7 +1,7 @@
 {
   "schema": "vgnova.pe008-predeployment-recovery-manifest",
   "version": "1.0.0",
-  "status": "SOURCE_ONLY_PE008V_REVIEW_PENDING",
+  "status": "BLOCKED_PRE_RENAME_MUTATION_SESSION_GUARD",
   "deployment_authorized": false,
   "source_baseline": {
     "artifact_source_main": "de90ff061c20b164c127aa97e845e3f192429543",
@@ -121,7 +121,7 @@
     "product_contribution_posts": 0,
     "event_participation_posts": 0,
     "product_contribution_qa_owner_rows": 0,
-    "last_inspected_during": "PE-008U rechecked the active plugin tree and coordinator after its blocked attempt; the protected database snapshot remains from PE-008R; PE-008V performed no runtime access",
+    "last_inspected_during": "PE-008W read-only pre/post retry snapshots; protected summaries matched and active plugin remained exact-old.",
     "pe008t_runtime_mutation": "none",
     "deployment_authorized": false
   },
@@ -180,7 +180,9 @@
     "rewrite_flushes": 0,
     "plugin_activation_deactivation_writes": 0,
     "successful_live_qa_runs": 0,
-    "aborted_pre_mutation_qa_invocations": 1
+    "aborted_pre_mutation_qa_invocations": 1,
+    "blocked_pre_guard_deployment_attempts": 1,
+    "blocked_pre_rename_mutation_session_guard_attempts": 1
   },
   "pe008r_source_verification": {
     "check_source": "PASS",
@@ -291,7 +293,8 @@
     "mergeability": "MERGEABLE",
     "github_checks": "See exact-head checks on PR 59",
     "last_reviewed_pe008s_head": "27b8900883f5a71e99ac16f2d367a9311add3b1b",
-    "pe008t_checks": "must pass on the final exact PE-008T head before independent review"
+    "pe008t_checks": "Exact reviewed tooling head 0094319e96a8d4610adf4229cba75d1e7d4abcfa; run 40397144966 passed Dashboard, Canonical source, and VG Nova Platform Gate; publication skipped.",
+    "reviewed_tooling_head": "0094319e96a8d4610adf4229cba75d1e7d4abcfa"
   },
   "intermediate_publication": {
     "workflow_id": "40311497761",
@@ -453,5 +456,146 @@
     "runtime_access": "None. PE-008V did not inspect the Local runtime, access the stage, acquire a mutation session, run live QA, or write WordPress data.",
     "deployment_authorized": false,
     "live_product_contribution_qa": "NOT RUN"
+  },
+  "pe008w": {
+    "status": "BLOCKED_PRE_RENAME_MUTATION_SESSION_GUARD",
+    "deployment_authorized_for_this_attempt": true,
+    "next_retry_authorized": false,
+    "tooling_head": "0094319e96a8d4610adf4229cba75d1e7d4abcfa",
+    "origin_main": "de90ff061c20b164c127aa97e845e3f192429543",
+    "artifact": {
+      "workflow_id": "40342642997",
+      "artifact_id": "12659772564",
+      "source_commit": "de90ff061c20b164c127aa97e845e3f192429543",
+      "manifest_sha256": "7cd38e758babddf495e484013d9345750af6f39689bc428f67d89a814949a932",
+      "archive_sha256": "22d998019e3fe3d93d675250a26eba5be3dbc248badd9be4d7507fbdf9cffdb9",
+      "tree_sha256": "5816b80ac4355782523aa4baa82bd9e55dd87326f15972f287ff1afa7567482a",
+      "file_count": 55,
+      "transport_zip_sha256": "22128391bfb1c9ee040b929cc47385db71980d4d8dcacc0171d8b03fef413d7f"
+    },
+    "freshness_and_worktree": {
+      "origin_main_verified": "de90ff061c20b164c127aa97e845e3f192429543",
+      "head_verified": "0094319e96a8d4610adf4229cba75d1e7d4abcfa",
+      "worktree_clean": true
+    },
+    "stage": {
+      "path": "/home/jcschoeman96/Local Sites/voelgoed-novamira/app/voelgoed-platform-core.pe008-stage-20261026T194240Z",
+      "fresh_integrity": "EXACT_NEW_AUTHORITY",
+      "file_count": 55,
+      "tree_sha256": "5816b80ac4355782523aa4baa82bd9e55dd87326f15972f287ff1afa7567482a",
+      "missing": 0,
+      "extra": 0,
+      "content_mismatch": 0,
+      "mode_mismatch": 0,
+      "symlinks": 0,
+      "unsupported": 0,
+      "world_writable": 0,
+      "device_id": 66306,
+      "max_file_ctime_utc": "2026-10-26T19:43:26.868965189Z",
+      "max_file_mtime_utc": "2026-10-26T19:43:26.868965189Z",
+      "unchanged_by_blocked_attempt": true
+    },
+    "backup": {
+      "path": "/home/jcschoeman96/Local Sites/voelgoed-novamira/app/voelgoed-platform-core.pe008-backup-20261027T045227Z",
+      "existed_before": false,
+      "exists_after": false
+    },
+    "predeployment_runtime": {
+      "classification": "OLD_AUTHORITY_EXACT",
+      "file_count": 54,
+      "tree_sha256": "856a3e5978559bfb2572b4b1ff4b34df916743f9e72d6b18220ee64e98af5f56",
+      "missing": 0,
+      "extra": 0,
+      "content_mismatch": 0,
+      "mode_mismatch": 0,
+      "symlinks": 0,
+      "unsupported": 0,
+      "wordpress_version": "7.1.3",
+      "runtime_php_version": "8.5.12",
+      "wp_cli_php_version": "8.5.4",
+      "acf_pro_version": "6.8.1",
+      "woocommerce_version": "11.2.1",
+      "platform_core_active": true,
+      "platform_core_version": "0.1.0"
+    },
+    "coordinator": {
+      "target": "vgnova-local-10039",
+      "session_acquired": true,
+      "session_id": "fd5999ac793624d9b5cc726d91606d1a",
+      "helper_launched": true,
+      "guard_callback_entered": true,
+      "guard_callback_result": false,
+      "guard_child_started": "NOT_CONFIRMED_FROM_HELPER_RESULT",
+      "guard_child_exit_code": null,
+      "helper_result": {
+        "status": "BLOCKED",
+        "reason": "mutation_session_invalid"
+      },
+      "coordinator_child_exit_code": 1,
+      "host_lock_before": "free",
+      "database_lock_a_before": "free",
+      "database_lock_b_before": "free",
+      "host_lock_after": "free",
+      "database_lock_a_after": "free",
+      "database_lock_b_after": "free",
+      "database_lock_a_name": "vgnova.mutation.a.f9d63fbcd072e54005ff68365e36e040fbf11b93",
+      "database_lock_b_name": "vgnova.mutation.b.f9d63fbcd072e54005ff68365e36e040fbf11b93",
+      "database_connection_ids_after": {
+        "a": null,
+        "b": null
+      }
+    },
+    "filesystem_after": {
+      "active_classification": "OLD_AUTHORITY_EXACT",
+      "active_file_count": 54,
+      "active_tree_sha256": "856a3e5978559bfb2572b4b1ff4b34df916743f9e72d6b18220ee64e98af5f56",
+      "stage_exact_new": true,
+      "backup_exists": false,
+      "failed_tree_reservation_created": false,
+      "active_to_backup_rename": false,
+      "stage_to_active_rename": false,
+      "post_swap_smoke_run": false,
+      "deployed_guard_handshake": false
+    },
+    "protected_state": {
+      "pre_snapshot": "/home/jcschoeman96/.cache/vgnova/pe008-20261027/runtime-predeployment-20261027T045227Z.json",
+      "pre_snapshot_sha256": "4d3c4cbd1470e163cf45061699cb0f1aea11321a699e2f15988fd4552ef8c6f1",
+      "post_snapshot": "/home/jcschoeman96/.cache/vgnova/pe008-20261027/runtime-postblocked-20261027T045227Z.json",
+      "post_snapshot_sha256": "d50dff3bbebc1e5b0c0ee8328a6395e4314ab4040297fec44f508a6d41d70798",
+      "protected_summaries_equal": true,
+      "person_1705": {
+        "post_count": 1,
+        "postmeta_count": 1,
+        "relationship_count": 2,
+        "post_sha256": "f2a980eb64045700dc3a4ca07a7950ec3cb1daea14e4a400ac48e6837b2e9b5b",
+        "postmeta_sha256": "0d043dd56c404e0ddb6d7ad496249b770d296a6cd72290bfd7774189e5c820e5",
+        "relationships_sha256": "1d347313f990ba8063fe34926ef537e85d2dc4bdc575e5369338be45b9bdf7fb"
+      },
+      "approved_products_count": 20,
+      "approved_product_ids_match": true,
+      "acf_database_definitions_match": true,
+      "protected_groups_match": true,
+      "bricks_match": true,
+      "fluent_snippets_match": true
+    },
+    "incident_counters": {
+      "aborted_pre_mutation_qa_invocations": 1,
+      "blocked_pre_guard_production_wiring_attempts": 1,
+      "blocked_pre_rename_mutation_session_guard_attempts": 1,
+      "successful_live_product_contribution_qa_runs": 0,
+      "successful_platform_core_deployments": 0,
+      "persistent_wordpress_writes": 0
+    },
+    "runtime_mutation_counts": {
+      "acf_sync": 0,
+      "taxonomy_writes": 0,
+      "post_writes": 0,
+      "persistent_database_writes": 0,
+      "bricks_writes": 0,
+      "fluentsnippet_writes": 0,
+      "rewrite_flushes": 0,
+      "plugin_activation_deactivation_writes": 0,
+      "live_qa_runs": 0
+    }
   }
 }
