@@ -39,6 +39,7 @@ final class PersonRelationshipIndexer
             }
             $locked = true;
 
+            $dirty_snapshot = get_post_meta($source_post_id, PersonRelationshipContract::DIRTY_META_KEY, true);
             $projection = $this->reader->read($source_post_id);
             if (is_wp_error($projection)) {
                 return $this->fail($source_post_id, $projection);
@@ -61,7 +62,7 @@ final class PersonRelationshipIndexer
             if (is_wp_error($result)) {
                 return $this->fail($source_post_id, $result);
             }
-            delete_post_meta($source_post_id, PersonRelationshipContract::DIRTY_META_KEY);
+            $this->clear_dirty_if_unchanged($source_post_id, $dirty_snapshot);
             return true;
         } catch (\Throwable) {
             return $this->fail($source_post_id, new \WP_Error('projection_failed', 'Could not project source relationships.'));
@@ -88,11 +89,12 @@ final class PersonRelationshipIndexer
                 return $this->fail($source_post_id, new \WP_Error('source_lock_failed', 'Could not acquire the source relationship lock.'));
             }
             $locked = true;
+            $dirty_snapshot = get_post_meta($source_post_id, PersonRelationshipContract::DIRTY_META_KEY, true);
             $result = $this->repository->delete_source($source_post_id);
             if (is_wp_error($result)) {
                 return $this->fail($source_post_id, $result);
             }
-            delete_post_meta($source_post_id, PersonRelationshipContract::DIRTY_META_KEY);
+            $this->clear_dirty_if_unchanged($source_post_id, $dirty_snapshot);
             return true;
         } catch (\Throwable) {
             return $this->fail($source_post_id, new \WP_Error('projection_failed', 'Could not remove source relationships.'));
@@ -105,16 +107,23 @@ final class PersonRelationshipIndexer
 
     public function is_dirty(int $source_post_id): bool
     {
-        return $source_post_id > 0 && (string) get_post_meta($source_post_id, PersonRelationshipContract::DIRTY_META_KEY, true) === '1';
+        return $source_post_id > 0 && get_post_meta($source_post_id, PersonRelationshipContract::DIRTY_META_KEY, true) !== '';
     }
 
     private function fail(int $source_post_id, \WP_Error $error): \WP_Error
     {
         if ($source_post_id > 0) {
-            update_post_meta($source_post_id, PersonRelationshipContract::DIRTY_META_KEY, 1);
+            update_post_meta($source_post_id, PersonRelationshipContract::DIRTY_META_KEY, 'dirty:' . bin2hex(random_bytes(16)));
         }
         $code = preg_replace('/[^a-zA-Z0-9_-]/', '', (string) $error->get_error_code()) ?: 'projection_failed';
         ($this->logger)(sprintf('Person relationship projection failed for source %d (%s).', max(0, $source_post_id), $code));
         return $error;
+    }
+
+    private function clear_dirty_if_unchanged(int $source_post_id, mixed $snapshot): void
+    {
+        if ($snapshot !== '' && $snapshot !== false && $snapshot !== null) {
+            delete_post_meta($source_post_id, PersonRelationshipContract::DIRTY_META_KEY, $snapshot);
+        }
     }
 }

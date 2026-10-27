@@ -31,11 +31,14 @@ final class PersonRelationshipSourceLock
         try {
             $released = $wpdb->get_var($wpdb->prepare('SELECT RELEASE_LOCK(%s)', $name));
         } catch (\Throwable) {
+            error_log('Person relationship source lock release failed.');
             return;
         }
-        if (in_array((string) $released, ['0', '1'], true)) {
+        if ((string) $released === '1') {
             unset($this->held[$name]);
+            return;
         }
+        error_log('Person relationship source lock release failed.');
     }
     public function release_all(): void
     {

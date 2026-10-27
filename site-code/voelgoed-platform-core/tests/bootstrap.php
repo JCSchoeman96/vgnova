@@ -46,7 +46,10 @@ final class VGPC_TestWpdb
 
     public bool $fail_insert = false;
 
-    public function query(array|string $statement): int|false { $this->queries[] = is_array($statement) ? $statement : ['query' => $statement, 'args' => []]; return $this->fail_query && ! str_contains(is_array($statement) ? $statement['query'] : $statement, 'ROLLBACK') ? false : 1; }
+    /** @var callable|null */
+    public $query_handler = null;
+
+    public function query(array|string $statement): int|false { $statement = is_array($statement) ? $statement : ['query' => $statement, 'args' => []]; $this->queries[] = $statement; if (is_callable($this->query_handler)) ($this->query_handler)($statement['query'], $statement['args']); return $this->fail_query && ! str_contains($statement['query'], 'ROLLBACK') ? false : 1; }
 
     public function get_results(array $statement, mixed $format = null): array { $this->queries[] = $statement; return []; }
 
@@ -706,8 +709,11 @@ function update_post_meta(int $post_id, string $meta_key, mixed $value): bool
     return true;
 }
 
-function delete_post_meta(int $post_id, string $meta_key): bool
+function delete_post_meta(int $post_id, string $meta_key, mixed $value = ''): bool
 {
+    if (func_num_args() >= 3 && ($GLOBALS['vgpc_test_meta'][$post_id][$meta_key] ?? null) !== $value) {
+        return false;
+    }
     unset($GLOBALS['vgpc_test_meta'][$post_id][$meta_key]);
     return true;
 }

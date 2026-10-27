@@ -33,7 +33,7 @@ final class PersonRelationshipIndexerTest
 
         $result = $indexer->rebuild_source(11);
         vgpc_test_true(is_wp_error($result), 'Published source with a draft Person must fail projection.');
-        vgpc_test_same(1, get_post_meta(11, PersonRelationshipContract::DIRTY_META_KEY, true), 'Failed projection must set dirty state.');
+        vgpc_test_true($indexer->is_dirty(11), 'Failed projection must set dirty state.');
         vgpc_test_same(1, count($logged), 'Failure must be logged once.');
         vgpc_test_true(str_contains($logged[0], '11') && str_contains($logged[0], 'invalid_person_status'), 'Log must contain source ID and sanitized error code.');
         vgpc_test_true(in_array('SELECT RELEASE_LOCK(%s)', array_column($GLOBALS['wpdb']->queries, 'query'), true), 'Validation failure must release lock.');
@@ -47,7 +47,7 @@ final class PersonRelationshipIndexerTest
 
         $indexer = $this->indexer(static function (): void {});
         vgpc_test_true(is_wp_error($indexer->rebuild_source(15)), 'Scheduled public source must not accept a draft Person.');
-        vgpc_test_same(1, get_post_meta(15, PersonRelationshipContract::DIRTY_META_KEY, true), 'Scheduled source validation failure must mark it dirty.');
+        vgpc_test_true($indexer->is_dirty(15), 'Scheduled source validation failure must mark it dirty.');
     }
 
     public function test_rebuild_marks_source_dirty_when_repository_fails(): void
@@ -59,7 +59,7 @@ final class PersonRelationshipIndexerTest
         $indexer = $this->indexer();
 
         vgpc_test_true(is_wp_error($indexer->rebuild_source(12)), 'Repository failure must be returned.');
-        vgpc_test_same(1, get_post_meta(12, PersonRelationshipContract::DIRTY_META_KEY, true), 'Repository failure must mark source dirty.');
+        vgpc_test_true($indexer->is_dirty(12), 'Repository failure must mark source dirty.');
         vgpc_test_true(in_array('SELECT RELEASE_LOCK(%s)', array_column($GLOBALS['wpdb']->queries, 'query'), true), 'Repository failure must release lock.');
     }
 
@@ -71,7 +71,25 @@ final class PersonRelationshipIndexerTest
 
         $indexer = $this->indexer();
         vgpc_test_true(is_wp_error($indexer->rebuild_source(13)), 'Contended lock must fail projection.');
-        vgpc_test_same(1, get_post_meta(13, PersonRelationshipContract::DIRTY_META_KEY, true), 'Lock failure must mark source dirty.');
+        vgpc_test_true($indexer->is_dirty(13), 'Lock failure must mark source dirty.');
+    }
+
+    public function test_concurrent_save_failure_dirty_marker_survives_older_rebuild(): void
+    {
+        $this->ready_schema();
+        $this->add_source_and_person(16, 'draft', 26, 'draft');
+        $GLOBALS['vgpc_test_meta'][16]['primary_author'] = 26;
+        $GLOBALS['wpdb']->fail_insert = false;
+        $GLOBALS['wpdb']->fail_query = false;
+        $GLOBALS['wpdb']->query_handler = static function (string $query): void {
+            if (str_starts_with($query, 'DELETE FROM wp_vg_person_relationship_index')) {
+                update_post_meta(16, PersonRelationshipContract::DIRTY_META_KEY, 'dirty:new-save');
+            }
+        };
+
+        $indexer = $this->indexer();
+        vgpc_test_same(true, $indexer->rebuild_source(16), 'Older rebuild may finish after newer save misses the lock.');
+        vgpc_test_true($indexer->is_dirty(16), 'Newer save dirty marker must survive older rebuild completion.');
     }
 
     public function test_remove_source_deletes_rows_and_clears_dirty_state(): void
