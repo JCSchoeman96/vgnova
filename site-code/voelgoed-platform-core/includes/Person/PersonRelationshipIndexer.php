@@ -105,6 +105,27 @@ final class PersonRelationshipIndexer
         return $result;
     }
 
+    /** Remove anomalous rows only while holding the source lock and after a fresh eligibility check. */
+    public function remove_stale_source(int $source_post_id): true|\WP_Error
+    {
+        if ($source_post_id < 1) return new \WP_Error('invalid_source_id', 'Source post ID must be positive.');
+        if (! $this->lock->acquire($source_post_id)) return new \WP_Error('source_lock_failed', 'Could not acquire the source relationship lock.');
+        try {
+            $source = get_post($source_post_id);
+            if (is_object($source) && PersonRelationshipContract::supported_source_type((string) ($source->post_type ?? ''))) {
+                return new \WP_Error('source_cleanup_not_eligible', 'The source is now supported and must not be pruned.');
+            }
+            $result = $this->repository->delete_source($source_post_id);
+            if (is_wp_error($result)) return $result;
+            if (! $this->clear_dirty_if_unchanged($source_post_id, get_post_meta($source_post_id, self::DIRTY_GENERATION_META_KEY, true))) {
+                return new \WP_Error('dirty_marker_clear_failed', 'Could not clear the dirty marker.');
+            }
+            return true;
+        } finally {
+            $this->lock->release($source_post_id);
+        }
+    }
+
     private function perform_remove(int $source_post_id): true|\WP_Error
     {
         if ($source_post_id < 1) {

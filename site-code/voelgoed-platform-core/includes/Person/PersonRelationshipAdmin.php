@@ -9,6 +9,8 @@ defined('ABSPATH') || exit;
 final class PersonRelationshipAdmin
 {
     public const FUTURE_PUBLISH_FILTER = 'voelgoed/platform_core/future_post_can_publish';
+    private PersonRelationshipSourceLock $writer_lock;
+    private int $locked_source_id = 0;
 
     /** @var array<string, string> */
     private const FIELD_KEYS = [
@@ -26,6 +28,7 @@ final class PersonRelationshipAdmin
         private ?PersonRelationshipSourceReader $reader = null,
         private ?PersonRelationshipValidator $validator = null,
     ) {
+        $this->writer_lock = new PersonRelationshipSourceLock();
         $this->reader ??= new PersonRelationshipSourceReader();
         $this->validator ??= new PersonRelationshipValidator();
         $this->indexer ??= new PersonRelationshipIndexer(
@@ -47,6 +50,7 @@ final class PersonRelationshipAdmin
         add_action('rest_after_insert_post', [$this, 'project_after_rest_save'], 20, 3);
         add_action('rest_after_insert_mto-course', [$this, 'project_after_rest_save'], 20, 3);
         add_action('acf/save_post', [$this, 'project_after_acf_save'], 20, 1);
+        add_action('shutdown', [$this, 'release_source_write_lock'], PHP_INT_MAX, 0);
         add_action('before_delete_post', [$this, 'remove_after_permanent_delete'], 10, 2);
         add_action('deleted_post', [$this, 'retry_delete_cleanup_after_meta_removal'], 10, 2);
         add_action('admin_notices', [$this, 'render_projection_failure_notice']);
@@ -66,6 +70,10 @@ final class PersonRelationshipAdmin
             return true;
         }
 
+        if (! $this->begin_source_write($post_id)) {
+            return 'Person relationship fields could not be saved because this source is being edited by another request. Retry the save.';
+        }
+
         $projection = $this->projection_for_source($post_id, [$role => $value], $source_type);
         if (is_wp_error($projection)) {
             return $projection->get_error_message();
@@ -82,12 +90,6 @@ final class PersonRelationshipAdmin
     /** Validate published and scheduled source data before WordPress writes it. */
     public function validate_source_before_save(array $data, array $postarr): array
     {
-        // REST validates the submitted merge in validate_rest_source. At this
-        // pre-insert hook REST meta has not persisted yet, so stored ACF values
-        // can be stale and must not veto a valid repair request.
-        if (defined('REST_REQUEST') && REST_REQUEST) {
-            return $data;
-        }
         $source_type = (string) ($data['post_type'] ?? '');
         $status = (string) ($data['post_status'] ?? 'draft');
         if (! PersonRelationshipContract::supported_source_type($source_type) || ! in_array($status, ['publish', 'future'], true)) {
@@ -160,6 +162,7 @@ final class PersonRelationshipAdmin
     public function project_after_acf_save(mixed $post_id): void
     {
         $post_id = $this->normalize_id($post_id);
+        $this->release_source_write_lock($post_id);
         if ($post_id < 1 || ! PersonRelationshipContract::supported_source_type((string) get_post_type($post_id))) {
             return;
         }
@@ -173,6 +176,30 @@ final class PersonRelationshipAdmin
         } catch (\Throwable $error) {
             $this->report_operator_failure($post_id, 'unexpected_' . strtolower((new \ReflectionClass($error))->getShortName()));
         }
+    }
+
+    /** Acquire before ACF persists any validated fields and mark the index unsafe first. */
+    private function begin_source_write(int $post_id): bool
+    {
+        if ($post_id < 1) return true;
+        if ($this->locked_source_id === $post_id) return true;
+        if ($this->locked_source_id > 0 || ! $this->writer_lock->acquire($post_id)) return false;
+        $this->locked_source_id = $post_id;
+        update_post_meta($post_id, PersonRelationshipContract::DIRTY_META_KEY, 1);
+        if ((string) get_post_meta($post_id, PersonRelationshipContract::DIRTY_META_KEY, true) !== '1') {
+            $this->release_source_write_lock($post_id);
+            return false;
+        }
+        return true;
+    }
+
+    public function release_source_write_lock(mixed $post_id = null): void
+    {
+        $post_id = $this->normalize_id($post_id);
+        if ($this->locked_source_id < 1 || ($post_id > 0 && $post_id !== $this->locked_source_id)) return;
+        $source_id = $this->locked_source_id;
+        $this->locked_source_id = 0;
+        $this->writer_lock->release($source_id);
     }
 
     /** REST meta fields, including ACF REST fields, are persisted before this action. */
@@ -255,9 +282,39 @@ final class PersonRelationshipAdmin
 
         $projection = $this->projection_for_source($post_id, [], $source_type);
         if (is_wp_error($projection)) {
+            $this->report_operator_failure($post_id, $projection->get_error_code());
+            $this->schedule_one_future_retry($post_id);
             return false;
         }
-        return $this->validate_projection($projection, 'publish') === true;
+        $result = $this->validate_projection($projection, 'publish');
+        if (is_wp_error($result)) {
+            $this->report_operator_failure($post_id, $result->get_error_code());
+            $this->schedule_one_future_retry($post_id);
+            return false;
+        }
+        delete_transient($this->future_retry_key($post_id));
+        return true;
+    }
+
+    private function schedule_one_future_retry(int $post_id): void
+    {
+        $key = $this->future_retry_key($post_id);
+        if (get_transient($key)) {
+            delete_transient($key);
+            return;
+        }
+        set_transient($key, 1, HOUR_IN_SECONDS);
+        $scheduled = wp_next_scheduled('publish_future_post', [$post_id]);
+        if ($scheduled !== false) return;
+        $result = wp_schedule_single_event(time() + 60, 'publish_future_post', [$post_id]);
+        if ($result !== true && wp_next_scheduled('publish_future_post', [$post_id]) === false) {
+            error_log(sprintf('Person relationship scheduled publication retry could not be queued for source %d.', $post_id));
+        }
+    }
+
+    private function future_retry_key(int $post_id): string
+    {
+        return 'vg_person_relationship_future_retry_' . $post_id;
     }
 
     /** @return array{source_post_id:int,source_post_type:string,relationships:list<array{person_id:int,role_key:string,position:int}>}|\WP_Error */

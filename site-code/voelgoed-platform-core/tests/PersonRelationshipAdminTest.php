@@ -87,6 +87,26 @@ final class PersonRelationshipAdminTest
         vgpc_test_same(true, $valid, 'A draft source may reference a draft Person.');
     }
 
+    public function test_acf_validation_locks_writer_and_leaves_dirty_marker_after_interrupted_save(): void
+    {
+        $admin = $this->admin();
+        $admin->register();
+        $this->source_and_people(111, 'draft', [222]);
+        $_POST = ['post_ID' => 111, 'post_status' => 'draft'];
+        $lock_calls = 0;
+        $GLOBALS['wpdb']->get_var_handler = static function (string $query) use (&$lock_calls): string {
+            if (str_contains($query, 'GET_LOCK')) return ++$lock_calls === 1 ? '1' : '0';
+            return '1';
+        };
+        $field = ['key' => 'field_vg_article_primary_author', 'name' => 'primary_author'];
+        vgpc_test_same(true, apply_filters('acf/validate_value/key=field_vg_article_primary_author', true, 222, $field, 'acf[field_vg_article_primary_author]'), 'The first writer should acquire the source lock before ACF writes fields.');
+        vgpc_test_same('1', (string) get_post_meta(111, PersonRelationshipContract::DIRTY_META_KEY, true), 'The dirty marker must be persisted before field writes start.');
+        $second = new PersonRelationshipAdmin();
+        vgpc_test_true(is_string($second->validate_field(true, 222, $field, 'acf[field_vg_article_primary_author]', 'primary_author')), 'A concurrent writer must fail closed while another source save owns the lock.');
+        $admin->release_source_write_lock();
+        vgpc_test_same('1', (string) get_post_meta(111, PersonRelationshipContract::DIRTY_META_KEY, true), 'An interrupted save must leave reverse reads fail-closed until repair.');
+    }
+
     public function test_scheduled_publish_filter_blocks_invalid_and_allows_valid_sources(): void
     {
         $admin = $this->admin();
@@ -109,6 +129,18 @@ final class PersonRelationshipAdminTest
         vgpc_test_same(false, apply_filters('voelgoed/platform_core/future_post_can_publish', true, 13, get_post(13)), 'A scheduled Course with a draft Person must stay unpublished.');
         $GLOBALS['vgpc_test_posts'][24]->post_status = 'publish';
         vgpc_test_same(true, apply_filters('voelgoed/platform_core/future_post_can_publish', true, 13, get_post(13)), 'A scheduled Course with a published Person may publish.');
+    }
+
+    public function test_invalid_scheduled_source_reports_and_queues_only_one_retry(): void
+    {
+        vgpc_test_reset();
+        $admin = $this->admin();
+        $this->source_and_people(113, 'future', [223]);
+        $GLOBALS['vgpc_test_meta'][113]['primary_author'] = 223;
+        vgpc_test_same(false, $admin->future_post_can_publish(true, 113, get_post(113)), 'Invalid scheduled source must remain unpublished.');
+        vgpc_test_same(1, count($GLOBALS['vgpc_test_scheduled_events']), 'The first block should queue one retry.');
+        vgpc_test_same(false, $admin->future_post_can_publish(true, 113, get_post(113)), 'An unresolved relationship must remain blocked on retry.');
+        vgpc_test_same(1, count($GLOBALS['vgpc_test_scheduled_events']), 'A persistent validation error must not create an endless retry loop.');
     }
 
     public function test_invalid_scheduled_source_is_not_sent_to_wordpress_publisher(): void

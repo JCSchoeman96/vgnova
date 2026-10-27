@@ -71,10 +71,12 @@ final class PersonRelationshipCli
 
         $source_ids = $this->source_ids($assoc_args['source'] ?? null);
         $rebuilt = 0;
+        $failures = [];
         foreach ($source_ids as $source_id) {
             $result = $this->indexer->rebuild_source($source_id);
             if (is_wp_error($result)) {
-                \WP_CLI::error(sprintf('Could not rebuild source %d: %s', $source_id, $result->get_error_message()));
+                $failures[] = ['source_post_id' => $source_id, 'code' => $result->get_error_code(), 'message' => $result->get_error_message()];
+                continue;
             }
             $rebuilt++;
         }
@@ -83,9 +85,13 @@ final class PersonRelationshipCli
             if (is_wp_error($anomalies)) \WP_CLI::error($anomalies->get_error_message());
             foreach ($anomalies as $anomaly) {
                 if (! in_array($anomaly['code'], ['orphan_index_source', 'unsupported_index_source'], true)) continue;
-                $deleted = $this->repository->delete_source($anomaly['source_post_id']);
-                if (is_wp_error($deleted)) \WP_CLI::error(sprintf('Could not remove stale index rows for source %d.', $anomaly['source_post_id']));
+                $deleted = $this->indexer->remove_stale_source($anomaly['source_post_id']);
+                if (is_wp_error($deleted)) $failures[] = ['source_post_id' => $anomaly['source_post_id'], 'code' => $deleted->get_error_code(), 'message' => $deleted->get_error_message()];
             }
+        }
+        if ($failures !== []) {
+            foreach ($failures as $failure) \WP_CLI::line(sprintf('FAILED %d | %s | %s', $failure['source_post_id'], $failure['code'], $failure['message']));
+            \WP_CLI::error(sprintf('Rebuilt %d source(s); %d source(s) need attention.', $rebuilt, count($failures)));
         }
         \WP_CLI::success(sprintf('Rebuilt Person relationship index for %d supported source(s).', $rebuilt));
     }
@@ -142,7 +148,7 @@ final class PersonRelationshipCli
                         if (is_wp_error($repair_result)) $repair_error = $this->error_details($repair_result);
                         else $repaired[] = $source_id;
                     } elseif ($repair && in_array($issue['code'], ['orphan_index_source', 'unsupported_index_source'], true)) {
-                        $repair_result = $this->repository->delete_source($source_id);
+                        $repair_result = $this->indexer->remove_stale_source($source_id);
                         if (is_wp_error($repair_result)) $repair_error = $this->error_details($repair_result);
                         else $repaired[] = $source_id;
                     }

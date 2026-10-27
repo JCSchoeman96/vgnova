@@ -10,6 +10,16 @@ if (! function_exists('vg_runtime_mutation_assert_session')) {
     }
 }
 
+if (! function_exists('get_transient')) {
+    function get_transient(string $key): mixed { return $GLOBALS['vgpc_test_transients'][$key] ?? false; }
+    function set_transient(string $key, mixed $value, int $expiration = 0): bool { $GLOBALS['vgpc_test_transients'][$key] = $value; return true; }
+    function delete_transient(string $key): bool { unset($GLOBALS['vgpc_test_transients'][$key]); return true; }
+}
+if (! function_exists('wp_next_scheduled')) {
+    function wp_next_scheduled(string $hook, array $args = []): int|false { return false; }
+    function wp_schedule_single_event(int $timestamp, string $hook, array $args = []): bool { $GLOBALS['vgpc_test_scheduled_events'][] = [$timestamp, $hook, $args]; return true; }
+}
+
 if (! class_exists('WP_Error')) {
     class WP_Error
     {
@@ -255,6 +265,8 @@ $GLOBALS['vgpc_test_get_field_cache'] = [];
 
 function vgpc_test_reset(): void
 {
+    $GLOBALS['vgpc_test_transients'] = [];
+    $GLOBALS['vgpc_test_scheduled_events'] = [];
     $GLOBALS['vgpc_test_taxonomies'] = [];
     $GLOBALS['vgpc_test_terms'] = [];
     $GLOBALS['vgpc_test_options'] = [];
