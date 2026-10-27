@@ -52,10 +52,58 @@ final class PersonRelationshipAdminTest
         vgpc_test_true(isset($GLOBALS['vgpc_test_actions']['acf/save_post']), 'ACF saves must project at priority 20.');
         vgpc_test_same(1, min(array_column($GLOBALS['vgpc_test_actions']['acf/save_post'], 'priority')), 'Actual ACF saves must validate before ACF writes its fields.');
         vgpc_test_true(isset($GLOBALS['vgpc_test_actions']['wp_after_insert_post']), 'Source type transition locks must release after WordPress finishes insertion.');
+        vgpc_test_true(isset($GLOBALS['vgpc_test_actions']['transition_post_status']), 'Published source transitions must be checked for bypassed relationship validation.');
         vgpc_test_true(isset($GLOBALS['vgpc_test_actions']['rest_after_insert_post']), 'REST Article saves must project after REST metadata persistence.');
         vgpc_test_true(isset($GLOBALS['vgpc_test_actions']['rest_after_insert_mto-course']), 'REST Course saves must project after REST metadata persistence.');
         vgpc_test_true(isset($GLOBALS['vgpc_test_actions']['before_delete_post']), 'Permanent deletion must clean derived rows.');
         vgpc_test_true(isset($GLOBALS['vgpc_test_filters']['voelgoed/platform_core/future_post_can_publish']), 'Scheduled publication must use the shared filter seam.');
+    }
+
+    public function test_invalid_bypass_publish_is_diagnosed_dirtied_and_left_published_without_rewriting_acf(): void
+    {
+        $admin = $this->admin();
+        $admin->register();
+        $this->source_and_people(701, 'draft', [702]);
+        $GLOBALS['vgpc_test_posts'][702]->post_status = 'publish';
+        update_field('primary_author', 702, 701);
+        $GLOBALS['vgpc_test_enable_query_cache'] = true;
+        vgpc_test_same(702, get_field('primary_author', 701, false), 'The fixture must prime a stale ACF value before the stored field changes.');
+        get_post(702);
+        $GLOBALS['vgpc_test_posts'][701]->post_status = 'publish';
+        $GLOBALS['vgpc_test_posts'][702]->post_status = 'draft';
+        $GLOBALS['vgpc_test_meta'][701][PersonRelationshipContract::DIRTY_META_KEY] = '0';
+        $diagnostics = [];
+        add_action('voelgoed/platform_core/person_relationship_integrity_violation', static function (array $event) use (&$diagnostics): void { $diagnostics[] = $event; }, 10, 1);
+
+        do_action('transition_post_status', 'publish', 'draft', $GLOBALS['vgpc_test_posts'][701]);
+        do_action('transition_post_status', 'publish', 'publish', $GLOBALS['vgpc_test_posts'][701]);
+
+        vgpc_test_same('1', (string) get_post_meta(701, PersonRelationshipContract::DIRTY_META_KEY, true), 'A bypassed invalid publish must set dirty to exactly 1.');
+        vgpc_test_same(1, count($diagnostics), 'Repeated transition callbacks must not duplicate diagnostics.');
+        vgpc_test_same(['severity' => 'high', 'code' => 'invalid_person_relationships_on_publish', 'source_id' => 701, 'source_type' => 'post'], $diagnostics[0] ?? null, 'The diagnostic must contain only sanitized integrity details.');
+        vgpc_test_same('publish', $GLOBALS['vgpc_test_posts'][701]->post_status, 'The detector must leave the already-written status unchanged.');
+        vgpc_test_same(702, get_field('primary_author', 701, false), 'The detector must leave authoritative ACF relationships unchanged.');
+        vgpc_test_same([[701, 'post_meta']], $GLOBALS['vgpc_test_cache_deletes'], 'The detector must invalidate stored post metadata before rereading ACF.');
+    }
+
+    public function test_valid_or_unsupported_publish_transition_does_not_dirty_or_diagnose(): void
+    {
+        $admin = $this->admin();
+        $admin->register();
+        $this->source_and_people(703, 'draft', [704]);
+        update_field('primary_author', 704, 703);
+        $GLOBALS['vgpc_test_posts'][703]->post_status = 'publish';
+        $GLOBALS['vgpc_test_posts'][704]->post_status = 'publish';
+        $GLOBALS['vgpc_test_posts'][705] = (object) ['ID' => 705, 'post_type' => 'product', 'post_status' => 'publish'];
+        $diagnostics = [];
+        add_action('voelgoed/platform_core/person_relationship_integrity_violation', static function (array $event) use (&$diagnostics): void { $diagnostics[] = $event; }, 10, 1);
+
+        do_action('transition_post_status', 'publish', 'draft', $GLOBALS['vgpc_test_posts'][703]);
+        do_action('transition_post_status', 'publish', 'draft', $GLOBALS['vgpc_test_posts'][705]);
+
+        vgpc_test_same('', (string) get_post_meta(703, PersonRelationshipContract::DIRTY_META_KEY, true), 'A valid publish must not mutate dirty metadata.');
+        vgpc_test_same('', (string) get_post_meta(705, PersonRelationshipContract::DIRTY_META_KEY, true), 'Unsupported source types must not mutate dirty metadata.');
+        vgpc_test_same([], $diagnostics, 'Valid and unsupported transitions must not report integrity violations.');
     }
 
     public function test_rejects_malformed_and_duplicate_field_submissions(): void

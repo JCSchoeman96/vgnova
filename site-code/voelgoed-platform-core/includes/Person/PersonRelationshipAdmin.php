@@ -11,6 +11,8 @@ final class PersonRelationshipAdmin
     public const FUTURE_PUBLISH_FILTER = 'voelgoed/platform_core/future_post_can_publish';
     private PersonRelationshipSourceLock $writer_lock;
     private int $locked_source_id = 0;
+    /** @var array<int, true> */
+    private array $reported_publish_violations = [];
 
     /** @var array<string, string> */
     private const FIELD_KEYS = [
@@ -46,6 +48,9 @@ final class PersonRelationshipAdmin
         }
         add_filter('wp_insert_post_data', [$this, 'validate_source_before_save'], 10, 2);
         add_action('wp_after_insert_post', [$this, 'release_source_write_lock'], PHP_INT_MAX, 1);
+        // WordPress fires this after the status write. It detects unsupported
+        // low-level publication bypasses; supported writes remain prevalidated.
+        add_action('transition_post_status', [$this, 'detect_invalid_published_source'], 1000, 3);
         add_filter('rest_pre_insert_post', [$this, 'validate_rest_source'], 10, 2);
         add_filter('rest_pre_insert_mto-course', [$this, 'validate_rest_source'], 10, 2);
         add_action('rest_after_insert_post', [$this, 'project_after_rest_save'], 20, 3);
@@ -57,6 +62,55 @@ final class PersonRelationshipAdmin
         add_action('deleted_post', [$this, 'retry_delete_cleanup_after_meta_removal'], 10, 2);
         add_action('admin_notices', [$this, 'render_projection_failure_notice']);
         add_filter(self::FUTURE_PUBLISH_FILTER, [$this, 'future_post_can_publish'], 10, 3);
+    }
+
+    /** Detect and quarantine an invalid relationship projection after a bypass publish. */
+    public function detect_invalid_published_source(mixed $new_status, mixed $old_status, mixed $post): void
+    {
+        if ($new_status !== 'publish' || $old_status === 'publish' || ! is_object($post)) return;
+        $source_id = $this->normalize_id($post->ID ?? 0);
+        $source_type = (string) ($post->post_type ?? '');
+        if ($source_id < 1 || ! PersonRelationshipContract::supported_source_type($source_type)) return;
+
+        // transition_post_status runs after WordPress writes status. Drop cached
+        // post/meta values so validation sees the authoritative stored ACF data.
+        if (function_exists('clean_post_cache')) clean_post_cache($source_id);
+        if (function_exists('wp_cache_delete')) wp_cache_delete($source_id, 'post_meta');
+        if (function_exists('acf_flush_value_cache')) {
+            foreach (PersonRelationshipContract::allowed_roles($source_type) as $role) {
+                acf_flush_value_cache($source_id, $role);
+            }
+        }
+        $projection = $this->reader->read($source_id);
+        if (is_array($projection) && function_exists('clean_post_cache')) {
+            foreach ($projection['relationships'] as $relationship) {
+                clean_post_cache($relationship['person_id']);
+            }
+        }
+        $result = is_wp_error($projection)
+            ? $projection
+            : $this->validate_projection($projection, 'publish');
+        if (! is_wp_error($result)) return;
+
+        $dirty_key = PersonRelationshipContract::DIRTY_META_KEY;
+        if ((string) get_post_meta($source_id, $dirty_key, true) !== '1') {
+            update_post_meta($source_id, $dirty_key, 1);
+        }
+        if (isset($this->reported_publish_violations[$source_id])) return;
+        $this->reported_publish_violations[$source_id] = true;
+
+        $event = [
+            'severity' => 'high',
+            'code' => 'invalid_person_relationships_on_publish',
+            'source_id' => $source_id,
+            'source_type' => $source_type,
+        ];
+        error_log(sprintf(
+            '[HIGH] Person relationship integrity violation on published source %d (%s). Reverse relationships marked dirty.',
+            $source_id,
+            $source_type
+        ));
+        do_action('voelgoed/platform_core/person_relationship_integrity_violation', $event);
     }
 
     public function validate_field(mixed $valid, mixed $value, array $field, string $input_name, string $role): mixed
