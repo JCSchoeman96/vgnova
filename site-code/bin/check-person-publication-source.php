@@ -1,10 +1,7 @@
 <?php
 declare(strict_types=1);
 
-/**
- * Test-only code is classified by repository-relative path. Production files have
- * no exemptions, and this guard scans only paths returned by git ls-files.
- */
+/** Test-only code is classified by repository-relative path. */
 function vg_person_publication_source_is_test_only(string $path): bool
 {
     $normalized = '/' . trim(str_replace('\\', '/', $path), '/') . '/';
@@ -13,10 +10,23 @@ function vg_person_publication_source_is_test_only(string $path): bool
         || str_contains($normalized, '/fixtures/');
 }
 
-/** @return list<string> */
-function vg_person_publication_source_tracked_php_files(string $repositoryRoot): array
+/** Third-party dependencies are outside repository ownership. */
+function vg_person_publication_source_is_excluded(string $path): bool
 {
-    $command = ['git', '-C', $repositoryRoot, 'ls-files', '-z', '--', '*.php'];
+    $normalized = '/' . trim(str_replace('\\', '/', $path), '/') . '/';
+    return str_contains($normalized, '/vendor/')
+        || str_contains($normalized, '/.git/')
+        || str_contains($normalized, '/node_modules/');
+}
+
+/** @return list<string> */
+function vg_person_publication_source_repository_php_files(string $repositoryRoot): array
+{
+    $root = realpath($repositoryRoot);
+    if ($root === false) {
+        return [];
+    }
+    $command = ['git', '-C', $root, 'ls-files', '-s', '-z'];
     $process = @proc_open($command, [
         0 => ['file', '/dev/null', 'r'],
         1 => ['pipe', 'w'],
@@ -32,7 +42,37 @@ function vg_person_publication_source_tracked_php_files(string $repositoryRoot):
     if ($exitCode !== 0 || ! is_string($stdout)) {
         return [];
     }
-    $files = array_values(array_filter(explode("\0", $stdout), static fn (string $path): bool => $path !== ''));
+    $submodules = [];
+    foreach (explode("\0", $stdout) as $entry) {
+        if (preg_match('/^160000 [^ ]+ 0\t(.+)$/s', $entry, $matches) === 1) {
+            $submodules[] = $matches[1];
+        }
+    }
+    $files = [];
+    $iterator = new RecursiveIteratorIterator(
+        new RecursiveCallbackFilterIterator(
+            new RecursiveDirectoryIterator($root, FilesystemIterator::SKIP_DOTS),
+            static function (SplFileInfo $item) use ($root, $submodules): bool {
+                $relative = ltrim(str_replace('\\', '/', substr($item->getPathname(), strlen($root))), '/');
+                if ($item->isLink() || vg_person_publication_source_is_excluded($relative)) {
+                    return false;
+                }
+                foreach ($submodules as $submodule) {
+                    if ($relative === $submodule || str_starts_with($relative, $submodule . '/')) {
+                        return false;
+                    }
+                }
+                return true;
+            }
+        ),
+        RecursiveIteratorIterator::LEAVES_ONLY
+    );
+    foreach ($iterator as $file) {
+        if (! $file->isFile() || strtolower($file->getExtension()) !== 'php') {
+            continue;
+        }
+        $files[] = str_replace('\\', '/', substr($file->getPathname(), strlen($root) + 1));
+    }
     sort($files);
     return $files;
 }
@@ -44,6 +84,13 @@ function vg_person_publication_source_call_lines(string $source): array
     $lines = [];
     for ($index = 0, $count = count($tokens); $index < $count; $index++) {
         $token = $tokens[$index];
+        if (is_array($token) && $token[0] === T_CONSTANT_ENCAPSED_STRING) {
+            $literal = substr($token[1], 1, -1);
+            if (strtolower(stripslashes($literal)) === ('wp_publish_' . 'post')) {
+                $lines[] = $token[2];
+            }
+            continue;
+        }
         if (! is_array($token) || ! in_array($token[0], [T_STRING, T_NAME_QUALIFIED, T_NAME_FULLY_QUALIFIED], true)) {
             continue;
         }
@@ -54,18 +101,11 @@ function vg_person_publication_source_call_lines(string $source): array
         if ($name !== ('wp_publish_' . 'post')) {
             continue;
         }
-        for ($next = $index + 1; $next < $count; $next++) {
-            $nextToken = $tokens[$next];
-            if (is_array($nextToken) && in_array($nextToken[0], [T_WHITESPACE, T_COMMENT, T_DOC_COMMENT], true)) {
-                continue;
-            }
-            if ($nextToken === '(') {
-                $lines[] = $token[2];
-            }
-            break;
-        }
+        // Any executable identifier reference is forbidden, including imported aliases
+        // and names passed to dynamic dispatch. Comments never appear in this token stream.
+        $lines[] = $token[2];
     }
-    return $lines;
+    return array_values(array_unique($lines));
 }
 
 /** @return array{valid:bool,files_scanned:int,errors:list<string>} */
@@ -87,6 +127,9 @@ function vg_person_publication_source_check_files(string $repositoryRoot, array 
             $errors[] = 'Path escapes repository ownership: ' . $path . '.';
             continue;
         }
+        if (vg_person_publication_source_is_excluded($normalized)) {
+            continue;
+        }
         if (vg_person_publication_source_is_test_only($normalized) && ! $includeFixtureForTest) {
             continue;
         }
@@ -102,7 +145,7 @@ function vg_person_publication_source_check_files(string $repositoryRoot, array 
         }
         $scanned++;
         foreach (vg_person_publication_source_call_lines($source) as $line) {
-            $errors[] = $normalized . ':' . $line . ': direct publication call lacks an approved pre-publication validation boundary.';
+            $errors[] = $normalized . ':' . $line . ': unauthorized wp_publish_post reference lacks an approved pre-publication validation boundary.';
         }
     }
     sort($errors);
@@ -112,9 +155,9 @@ function vg_person_publication_source_check_files(string $repositoryRoot, array 
 /** @return array{valid:bool,files_scanned:int,errors:list<string>} */
 function vg_person_publication_source_check_repository(string $repositoryRoot): array
 {
-    $files = vg_person_publication_source_tracked_php_files($repositoryRoot);
+    $files = vg_person_publication_source_repository_php_files($repositoryRoot);
     if ($files === []) {
-        return ['valid' => false, 'files_scanned' => 0, 'errors' => ['No tracked repository PHP files found.']];
+        return ['valid' => false, 'files_scanned' => 0, 'errors' => ['No repository-owned PHP files found.']];
     }
     return vg_person_publication_source_check_files($repositoryRoot, $files);
 }

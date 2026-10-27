@@ -3,8 +3,24 @@
     "scope": "Every tracked PHP file. Runtime entry points, reusable libraries, normal application writers, and test support are classified separately.",
     "entries": [
         {
+            "path": "site-code/bin/check-person-publication-source.php",
+            "classification": "library"
+        },
+        {
             "path": "site-code/bin/check-runtime-mutation-policy.php",
             "classification": "library"
+        },
+        {
+            "path": "site-code/bin/tests/fixtures/ignored/ignored-publication.php",
+            "classification": "test_only"
+        },
+        {
+            "path": "site-code/bin/tests/fixtures/production/unauthorized-publication.php",
+            "classification": "test_only"
+        },
+        {
+            "path": "site-code/bin/tests/test-person-publication-source-policy.php",
+            "classification": "test_only"
         },
         {
             "path": "site-code/bin/vgnova-runtime-mutate.php",
