@@ -41,7 +41,6 @@ final class PersonRelationshipSourceLock
         try {
             $released = $wpdb->get_var($wpdb->prepare('SELECT RELEASE_LOCK(%s)', $name));
         } catch (\Throwable) {
-            unset($this->held[$name]);
             $this->release_failed[$name] = true;
             error_log('Person relationship source lock release failed.');
             return;

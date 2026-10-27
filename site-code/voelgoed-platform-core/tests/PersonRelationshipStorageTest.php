@@ -89,6 +89,24 @@ final class PersonRelationshipStorageTest
         )), 'A NULL release result must clear local ownership and prevent another release attempt.');
     }
 
+    public function test_source_lock_retries_release_after_exception(): void
+    {
+        $attempts = 0;
+        $GLOBALS['wpdb']->get_var_handler = static function (string $query) use (&$attempts): string {
+            if (str_contains($query, 'RELEASE_LOCK') && ++$attempts === 1) throw new RuntimeException('release failed');
+            return '1';
+        };
+        $lock = new \Voelgoed\PlatformCore\Person\PersonRelationshipSourceLock();
+        vgpc_test_true($lock->acquire(59), 'Expected test lock acquisition.');
+        $lock->release(59);
+        vgpc_test_true(! $lock->acquire(59), 'A failed release must block a new operation.');
+        $lock->release_all();
+        vgpc_test_same(2, $attempts, 'Cleanup must retry an indeterminate release.');
+        vgpc_test_true($lock->acquire(59), 'Acquisition may resume after confirmed cleanup.');
+        $lock->release(59);
+        $GLOBALS['wpdb']->get_var_handler = null;
+    }
+
     public function test_repository_rejects_malformed_rows_and_fails_closed_when_table_unavailable(): void
     {
         $schema = new \Voelgoed\PlatformCore\Person\PersonRelationshipSchema();
