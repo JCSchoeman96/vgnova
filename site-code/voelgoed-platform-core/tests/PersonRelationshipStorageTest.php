@@ -14,7 +14,7 @@ final class PersonRelationshipStorageTest
 
     public function test_schema_install_emits_exact_expected_ddl_without_foreign_keys(): void
     {
-        $GLOBALS['wpdb']->get_var_handler = static fn (string $query, array $args): string => str_contains($query, 'SHOW TABLES') ? 'wp_vg_person_relationship_index' : '1';
+        $this->install_valid_schema_stub();
         $schema = new \Voelgoed\PlatformCore\Person\PersonRelationshipSchema();
         vgpc_test_same(true, $schema->install(), 'Schema install should succeed.');
         vgpc_test_same(1, count($GLOBALS['vgpc_test_dbdelta_sql']), 'Install should call dbDelta once.');
@@ -22,6 +22,61 @@ final class PersonRelationshipStorageTest
         $expected = 'CREATE TABLE wp_vg_person_relationship_index ( id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT, source_post_id BIGINT UNSIGNED NOT NULL, source_post_type VARCHAR(32) NOT NULL, person_id BIGINT UNSIGNED NOT NULL, role_key VARCHAR(64) NOT NULL, position INT UNSIGNED NOT NULL DEFAULT 0, PRIMARY KEY (id), UNIQUE KEY source_person_role (source_post_id,person_id,role_key), KEY person_source_type (person_id,source_post_type), KEY person_role (person_id,role_key), KEY source_post (source_post_id) ) ENGINE=InnoDB DEFAULT CHARACTER SET utf8mb4;';
         vgpc_test_same($expected, $ddl, 'Install must create the exact approved columns and keys.');
         vgpc_test_true(! preg_match('/\\bFOREIGN\\s+KEY\\b/i', $ddl), 'Schema must not create foreign keys.');
+        vgpc_test_same(1, get_option($schema::VERSION_OPTION), 'Schema version must persist only after exact schema verification.');
+    }
+
+    public function test_schema_readiness_rejects_wrong_columns(): void
+    {
+        $GLOBALS['vgpc_test_options'][\Voelgoed\PlatformCore\Person\PersonRelationshipSchema::VERSION_OPTION] = 1;
+        $this->install_valid_schema_stub();
+        $GLOBALS['wpdb']->get_schema_results_handler = static fn (string $query): array => str_contains($query, 'SHOW FULL COLUMNS')
+            ? [(object) ['Field' => 'wrong_column', 'Type' => 'bigint unsigned', 'Null' => 'NO', 'Default' => null, 'Extra' => '']]
+            : [];
+        $schema = new \Voelgoed\PlatformCore\Person\PersonRelationshipSchema();
+        vgpc_test_true(! $schema->is_ready(), 'A table with the wrong columns and indexes must not be ready.');
+    }
+
+    public function test_schema_readiness_rejects_missing_required_index(): void
+    {
+        $GLOBALS['vgpc_test_options'][\Voelgoed\PlatformCore\Person\PersonRelationshipSchema::VERSION_OPTION] = 1;
+        $this->install_valid_schema_stub();
+        $GLOBALS['wpdb']->get_schema_results_handler = static function (string $query): array {
+            if (str_contains($query, 'SHOW FULL COLUMNS')) {
+                return [
+                    ['Field' => 'id', 'Type' => 'bigint unsigned', 'Null' => 'NO', 'Default' => null, 'Extra' => 'auto_increment'],
+                    ['Field' => 'source_post_id', 'Type' => 'bigint unsigned', 'Null' => 'NO', 'Default' => null, 'Extra' => ''],
+                    ['Field' => 'source_post_type', 'Type' => 'varchar(32)', 'Null' => 'NO', 'Default' => null, 'Extra' => ''],
+                    ['Field' => 'person_id', 'Type' => 'bigint unsigned', 'Null' => 'NO', 'Default' => null, 'Extra' => ''],
+                    ['Field' => 'role_key', 'Type' => 'varchar(64)', 'Null' => 'NO', 'Default' => null, 'Extra' => ''],
+                    ['Field' => 'position', 'Type' => 'int unsigned', 'Null' => 'NO', 'Default' => '0', 'Extra' => ''],
+                ];
+            }
+            return [];
+        };
+        $schema = new \Voelgoed\PlatformCore\Person\PersonRelationshipSchema();
+        vgpc_test_true(! $schema->is_ready(), 'A table missing all required index definitions must not be ready.');
+    }
+
+    public function test_schema_install_does_not_persist_version_when_database_shape_or_engine_is_wrong(): void
+    {
+        unset($GLOBALS['vgpc_test_options'][\Voelgoed\PlatformCore\Person\PersonRelationshipSchema::VERSION_OPTION]);
+        $this->install_valid_schema_stub();
+        $GLOBALS['wpdb']->get_schema_status_handler = static fn (): object => (object) ['Engine' => 'MyISAM'];
+        $schema = new \Voelgoed\PlatformCore\Person\PersonRelationshipSchema();
+        $result = $schema->install();
+        vgpc_test_true(is_wp_error($result), 'Install must fail when the table engine is not transactional InnoDB.');
+        vgpc_test_same(0, (int) get_option($schema::VERSION_OPTION, 0), 'An unverified database schema must not receive the current version.');
+    }
+
+    public function test_schema_install_reports_version_persistence_failure(): void
+    {
+        $this->install_valid_schema_stub();
+        $GLOBALS['vgpc_update_option_handler'] = static fn (): bool => false;
+        $schema = new \Voelgoed\PlatformCore\Person\PersonRelationshipSchema();
+        $result = $schema->install();
+        vgpc_test_true(is_wp_error($result), 'Install must report a schema version option that did not persist.');
+        vgpc_test_same(0, (int) get_option($schema::VERSION_OPTION, 0), 'Failed version persistence must remain visible.');
+        $GLOBALS['vgpc_update_option_handler'] = null;
     }
 
     public function test_schema_readiness_fails_closed_when_database_check_throws(): void
@@ -148,5 +203,34 @@ final class PersonRelationshipStorageTest
         vgpc_test_same(true, $recovered, 'A replacement after rollback should succeed.');
         $queries = array_column($GLOBALS['wpdb']->queries, 'query');
         vgpc_test_true(in_array('COMMIT', $queries, true), 'Successful replacement must commit.');
+    }
+
+    private function install_valid_schema_stub(): void
+    {
+        $GLOBALS['wpdb']->get_var_handler = static fn (string $query): string => str_contains($query, 'SHOW TABLES') ? 'wp_vg_person_relationship_index' : '1';
+        $GLOBALS['wpdb']->get_schema_status_handler = static fn (): object => (object) ['Engine' => 'InnoDB'];
+        $GLOBALS['wpdb']->get_schema_results_handler = static function (string $query): array {
+            if (str_contains($query, 'SHOW FULL COLUMNS')) {
+                return [
+                    ['Field' => 'id', 'Type' => 'bigint unsigned', 'Null' => 'NO', 'Default' => null, 'Extra' => 'auto_increment'],
+                    ['Field' => 'source_post_id', 'Type' => 'bigint unsigned', 'Null' => 'NO', 'Default' => null, 'Extra' => ''],
+                    ['Field' => 'source_post_type', 'Type' => 'varchar(32)', 'Null' => 'NO', 'Default' => null, 'Extra' => ''],
+                    ['Field' => 'person_id', 'Type' => 'bigint unsigned', 'Null' => 'NO', 'Default' => null, 'Extra' => ''],
+                    ['Field' => 'role_key', 'Type' => 'varchar(64)', 'Null' => 'NO', 'Default' => null, 'Extra' => ''],
+                    ['Field' => 'position', 'Type' => 'int unsigned', 'Null' => 'NO', 'Default' => '0', 'Extra' => ''],
+                ];
+            }
+            return [
+                ['Key_name' => 'PRIMARY', 'Column_name' => 'id', 'Non_unique' => 0, 'Seq_in_index' => 1],
+                ['Key_name' => 'source_person_role', 'Column_name' => 'source_post_id', 'Non_unique' => 0, 'Seq_in_index' => 1],
+                ['Key_name' => 'source_person_role', 'Column_name' => 'person_id', 'Non_unique' => 0, 'Seq_in_index' => 2],
+                ['Key_name' => 'source_person_role', 'Column_name' => 'role_key', 'Non_unique' => 0, 'Seq_in_index' => 3],
+                ['Key_name' => 'person_source_type', 'Column_name' => 'person_id', 'Non_unique' => 1, 'Seq_in_index' => 1],
+                ['Key_name' => 'person_source_type', 'Column_name' => 'source_post_type', 'Non_unique' => 1, 'Seq_in_index' => 2],
+                ['Key_name' => 'person_role', 'Column_name' => 'person_id', 'Non_unique' => 1, 'Seq_in_index' => 1],
+                ['Key_name' => 'person_role', 'Column_name' => 'role_key', 'Non_unique' => 1, 'Seq_in_index' => 2],
+                ['Key_name' => 'source_post', 'Column_name' => 'source_post_id', 'Non_unique' => 1, 'Seq_in_index' => 1],
+            ];
+        };
     }
 }

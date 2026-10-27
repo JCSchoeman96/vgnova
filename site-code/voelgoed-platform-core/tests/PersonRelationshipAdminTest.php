@@ -51,7 +51,7 @@ final class PersonRelationshipAdminTest
         vgpc_test_true(isset($GLOBALS['vgpc_test_filters']['wp_insert_post_data']), 'Source publication must be checked before save.');
         vgpc_test_true(isset($GLOBALS['vgpc_test_actions']['acf/save_post']), 'ACF saves must project at priority 20.');
         vgpc_test_same(1, min(array_column($GLOBALS['vgpc_test_actions']['acf/save_post'], 'priority')), 'Actual ACF saves must validate before ACF writes its fields.');
-        vgpc_test_true(isset($GLOBALS['vgpc_test_actions']['wp_after_insert_post']), 'Source type transition locks must release after WordPress finishes insertion.');
+        vgpc_test_true(isset($GLOBALS['vgpc_test_actions']['shutdown']), 'Source write locks must release after editor and REST persistence has completed.');
         vgpc_test_true(isset($GLOBALS['vgpc_test_actions']['transition_post_status']), 'Published source transitions must be checked for bypassed relationship validation.');
         vgpc_test_true(isset($GLOBALS['vgpc_test_actions']['rest_after_insert_post']), 'REST Article saves must project after REST metadata persistence.');
         vgpc_test_true(isset($GLOBALS['vgpc_test_actions']['rest_after_insert_mto-course']), 'REST Course saves must project after REST metadata persistence.');
@@ -192,6 +192,99 @@ final class PersonRelationshipAdminTest
         vgpc_test_same([], $diagnostics, 'A supported editor save must not be misreported from the pre-ACF transition state.');
     }
 
+    public function test_editor_publish_preflight_uses_persisted_fields_before_core_status_write(): void
+    {
+        $admin = $this->admin();
+        $admin->register();
+        $this->source_and_people(715, 'draft', [716, 717]);
+        update_field('primary_author', 716, 715);
+        $GLOBALS['vgpc_test_posts'][716]->post_status = 'draft';
+        $GLOBALS['vgpc_test_posts'][717]->post_status = 'publish';
+        $_POST = ['post_ID' => 715, 'post_status' => 'publish', 'acf' => ['field_vg_article_primary_author' => 717]];
+        try {
+            apply_filters('wp_insert_post_data', ['ID' => 715, 'post_type' => 'post', 'post_status' => 'publish'], ['ID' => 715]);
+            throw new RuntimeException('Core must not publish using a submitted relationship that ACF has not persisted.');
+        } catch (RuntimeException $error) {
+            vgpc_test_true(str_contains($error->getMessage(), 'Person 716'), 'Preflight must report the invalid stored Person instead of trusting the submitted replacement.');
+        }
+        vgpc_test_same(716, get_field('primary_author', 715, false), 'Preflight must not rewrite stored ACF authority.');
+    }
+
+    public function test_acf_validation_failure_after_core_write_leaves_only_valid_stored_relationship_published(): void
+    {
+        $admin = $this->admin();
+        $admin->register();
+        $this->source_and_people(718, 'draft', [719, 720]);
+        $GLOBALS['vgpc_test_posts'][719]->post_status = 'publish';
+        $GLOBALS['vgpc_test_posts'][720]->post_status = 'publish';
+        update_field('primary_author', 719, 718);
+        $_POST = ['post_ID' => 718, 'post_status' => 'publish', 'acf' => ['field_vg_article_primary_author' => 720]];
+
+        $data = ['ID' => 718, 'post_type' => 'post', 'post_status' => 'publish'];
+        vgpc_test_same($data, apply_filters('wp_insert_post_data', $data, ['ID' => 718]), 'Core preflight may publish against valid stored authority.');
+        $GLOBALS['vgpc_test_posts'][718]->post_status = 'publish';
+        do_action('transition_post_status', 'publish', 'draft', $GLOBALS['vgpc_test_posts'][718]);
+        // The core status write has happened. Model a nonce/ACF validation failure
+        // before update_field is reached, so the submitted value never persists.
+        do_action('shutdown');
+
+        vgpc_test_same('publish', $GLOBALS['vgpc_test_posts'][718]->post_status, 'The test models WordPress writing status before ACF validation fails.');
+        vgpc_test_same(719, get_field('primary_author', 718, false), 'Failed ACF validation must leave the prior stored value intact.');
+        vgpc_test_same('', (string) get_post_meta(718, PersonRelationshipContract::DIRTY_META_KEY, true), 'The deferred check must recognize the valid stored relationship and avoid false bypass reports.');
+    }
+
+    public function test_rest_flushes_cached_fields_after_lock_and_validates_fresh_values(): void
+    {
+        $admin = $this->admin();
+        $admin->register();
+        $this->source_and_people(721, 'draft', [722, 723]);
+        $GLOBALS['vgpc_test_posts'][722]->post_status = 'draft';
+        $GLOBALS['vgpc_test_posts'][723]->post_status = 'publish';
+        update_field('primary_author', 722, 721);
+        $GLOBALS['vgpc_test_enable_query_cache'] = true;
+        vgpc_test_same(722, get_field('primary_author', 721, false), 'Prime a stale ACF value.');
+        update_field('primary_author', 723, 721);
+        $lock_seen = false;
+        $GLOBALS['wpdb']->get_var_handler = static function (string $query) use (&$lock_seen): string {
+            if (str_contains($query, 'GET_LOCK')) { $lock_seen = true; return '1'; }
+            return '1';
+        };
+        $request = new VGPC_TestRestRequest(['status' => 'publish']);
+        $result = $admin->validate_rest_source((object) ['ID' => 721, 'post_type' => 'post', 'post_status' => 'publish'], $request);
+
+        vgpc_test_true(! is_wp_error($result), 'REST must validate the fresh stored Person after taking the source lock.');
+        vgpc_test_true($lock_seen, 'REST validation must acquire the source lock before reading ACF values.');
+        vgpc_test_true(
+            array_search('get_lock', $GLOBALS['vgpc_test_database_sequence'], true) < array_search('acf_flush:primary_author', $GLOBALS['vgpc_test_database_sequence'], true),
+            'REST must acquire the source lock before flushing ACF field caches.'
+        );
+        vgpc_test_same(723, get_field('primary_author', 721, false), 'REST validation must flush the stale field cache.');
+        $admin->release_source_write_lock(721);
+    }
+
+    public function test_scheduled_validation_holds_source_lock_until_publish_finishes(): void
+    {
+        $admin = $this->admin();
+        $admin->register();
+        $this->source_and_people(724, 'future', [725]);
+        $GLOBALS['vgpc_test_posts'][725]->post_status = 'publish';
+        update_field('primary_author', 725, 724);
+        $get_lock_calls = 0;
+        $GLOBALS['wpdb']->get_var_handler = static function (string $query) use (&$get_lock_calls): string {
+            if (str_contains($query, 'GET_LOCK')) return ++$get_lock_calls === 1 ? '1' : '0';
+            return '1';
+        };
+
+        vgpc_test_same(true, apply_filters('voelgoed/platform_core/future_post_can_publish', true, 724, get_post(724)), 'A valid scheduled source may proceed.');
+        $other_writer = new PersonRelationshipSourceLock();
+        vgpc_test_true(! $other_writer->acquire(724), 'A competing writer must not enter between validation and the scheduled publish call.');
+        $GLOBALS['vgpc_test_posts'][724]->post_status = 'publish';
+        do_action('shutdown');
+        $GLOBALS['wpdb']->get_var_handler = static fn (string $query): string => '1';
+        vgpc_test_true($other_writer->acquire(724), 'The lock must become available after the publication request finishes.');
+        $other_writer->release(724);
+    }
+
     public function test_rejects_malformed_and_duplicate_field_submissions(): void
     {
         $admin = $this->admin();
@@ -286,7 +379,7 @@ final class PersonRelationshipAdminTest
         vgpc_test_true(is_wp_error($cleanup) && $cleanup->get_error_code() === 'source_lock_failed', 'Anomaly cleanup must wait while the source type transition owns the lock.');
 
         $GLOBALS['vgpc_test_posts'][114]->post_type = 'page';
-        do_action('wp_after_insert_post', 114);
+        do_action('shutdown');
         $cleanup = $this->indexer()->remove_stale_source(114);
         vgpc_test_same(true, $cleanup, 'After the transition finishes, cleanup may recheck and remove rows for the unsupported source.');
     }

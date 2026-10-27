@@ -80,7 +80,35 @@ final class VGPC_TestWpdb
     {
         $statement = is_array($statement) ? $statement : ['query' => $statement, 'args' => []];
         $this->queries[] = $statement;
-        $rows = is_callable($this->get_results_handler ?? null) ? ($this->get_results_handler)($statement['query'], $statement['args']) : [];
+        $is_schema_query = str_contains($statement['query'], 'SHOW FULL COLUMNS') || str_contains($statement['query'], 'SHOW INDEX');
+        if ($is_schema_query && is_callable($this->get_schema_results_handler ?? null)) {
+            $rows = ($this->get_schema_results_handler)($statement['query'], $statement['args']);
+        } elseif (is_callable($this->get_results_handler ?? null) && ! $is_schema_query) {
+            $rows = ($this->get_results_handler)($statement['query'], $statement['args']);
+        } elseif (str_contains($statement['query'], 'SHOW FULL COLUMNS')) {
+            $rows = [
+                ['Field' => 'id', 'Type' => 'bigint(20) unsigned', 'Null' => 'NO', 'Default' => null, 'Extra' => 'auto_increment'],
+                ['Field' => 'source_post_id', 'Type' => 'bigint(20) unsigned', 'Null' => 'NO', 'Default' => null, 'Extra' => ''],
+                ['Field' => 'source_post_type', 'Type' => 'varchar(32)', 'Null' => 'NO', 'Default' => null, 'Extra' => ''],
+                ['Field' => 'person_id', 'Type' => 'bigint(20) unsigned', 'Null' => 'NO', 'Default' => null, 'Extra' => ''],
+                ['Field' => 'role_key', 'Type' => 'varchar(64)', 'Null' => 'NO', 'Default' => null, 'Extra' => ''],
+                ['Field' => 'position', 'Type' => 'int(10) unsigned', 'Null' => 'NO', 'Default' => '0', 'Extra' => ''],
+            ];
+        } elseif (str_contains($statement['query'], 'SHOW INDEX')) {
+            $rows = [
+                ['Key_name' => 'PRIMARY', 'Column_name' => 'id', 'Non_unique' => 0, 'Seq_in_index' => 1],
+                ['Key_name' => 'source_person_role', 'Column_name' => 'source_post_id', 'Non_unique' => 0, 'Seq_in_index' => 1],
+                ['Key_name' => 'source_person_role', 'Column_name' => 'person_id', 'Non_unique' => 0, 'Seq_in_index' => 2],
+                ['Key_name' => 'source_person_role', 'Column_name' => 'role_key', 'Non_unique' => 0, 'Seq_in_index' => 3],
+                ['Key_name' => 'person_source_type', 'Column_name' => 'person_id', 'Non_unique' => 1, 'Seq_in_index' => 1],
+                ['Key_name' => 'person_source_type', 'Column_name' => 'source_post_type', 'Non_unique' => 1, 'Seq_in_index' => 2],
+                ['Key_name' => 'person_role', 'Column_name' => 'person_id', 'Non_unique' => 1, 'Seq_in_index' => 1],
+                ['Key_name' => 'person_role', 'Column_name' => 'role_key', 'Non_unique' => 1, 'Seq_in_index' => 2],
+                ['Key_name' => 'source_post', 'Column_name' => 'source_post_id', 'Non_unique' => 1, 'Seq_in_index' => 1],
+            ];
+        } else {
+            $rows = [];
+        }
         $this->last_error = '';
         return $rows;
     }
@@ -102,6 +130,12 @@ final class VGPC_TestWpdb
     public $get_results_handler = null;
 
     /** @var callable|null */
+    public $get_schema_results_handler = null;
+
+    /** @var callable|null */
+    public $get_schema_status_handler = null;
+
+    /** @var callable|null */
     public $get_row_handler = null;
 
     /** @param list<mixed> $args */
@@ -114,6 +148,7 @@ final class VGPC_TestWpdb
     public function get_var(array $statement): mixed
     {
         $this->queries[] = $statement;
+        if (str_contains($statement['query'], 'GET_LOCK')) $GLOBALS['vgpc_test_database_sequence'][] = 'get_lock';
         if (is_callable($this->get_var_handler)) {
             return ($this->get_var_handler)($statement['query'], $statement['args']);
         }
@@ -170,6 +205,11 @@ final class VGPC_TestWpdb
     /** @param array{query:string,args:list<mixed>} $statement */
     public function get_row(array $statement): object|null
     {
+        if (str_contains($statement['query'], 'SHOW TABLE STATUS')) {
+            return is_callable($this->get_schema_status_handler ?? null)
+                ? ($this->get_schema_status_handler)($statement['query'], $statement['args'])
+                : (object) ['Engine' => 'InnoDB'];
+        }
         if (is_callable($this->get_row_handler)) {
             return ($this->get_row_handler)($statement['query'], $statement['args']);
         }
@@ -262,6 +302,7 @@ $GLOBALS['vgpc_test_get_posts_cache'] = [];
 $GLOBALS['vgpc_test_get_posts_handler'] = null;
 $GLOBALS['vgpc_test_get_post_cache'] = [];
 $GLOBALS['vgpc_test_get_field_cache'] = [];
+$GLOBALS['vgpc_test_database_sequence'] = [];
 
 function vgpc_test_reset(): void
 {
@@ -301,6 +342,7 @@ $GLOBALS['vgpc_test_apply_wp_update_filter'] = false;
 $GLOBALS['vgpc_test_get_posts_handler'] = null;
     $GLOBALS['vgpc_test_get_post_cache'] = [];
     $GLOBALS['vgpc_test_get_field_cache'] = [];
+    $GLOBALS['vgpc_test_database_sequence'] = [];
     $GLOBALS['wpdb'] = new VGPC_TestWpdb();
     $GLOBALS['vgpc_test_dbdelta_sql'] = [];
     WP_CLI::$commands = [];
@@ -499,6 +541,7 @@ function wp_cache_delete(int|string $key, string $group = ''): bool
 
 function acf_flush_value_cache(int|string $post_id, string $field_name): void
 {
+    $GLOBALS['vgpc_test_database_sequence'][] = 'acf_flush:' . $field_name;
     if ($field_name === '') {
         return;
     }
@@ -970,6 +1013,9 @@ function get_option(string $option, mixed $default = false): mixed
 
 function update_option(string $option, mixed $value, mixed $autoload = null): bool
 {
+    if (is_callable($GLOBALS['vgpc_update_option_handler'] ?? null) && ! ($GLOBALS['vgpc_update_option_handler'])($option, $value, $autoload)) {
+        return false;
+    }
     $GLOBALS['vgpc_test_options'][$option] = $value;
 
     return true;

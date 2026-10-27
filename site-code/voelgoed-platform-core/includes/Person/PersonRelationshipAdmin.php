@@ -49,7 +49,6 @@ final class PersonRelationshipAdmin
             add_filter('acf/validate_value/key=' . $field_key, fn (mixed $valid, mixed $value, array $field, string $input_name): mixed => $this->validate_field($valid, $value, $field, $input_name, $role), 10, 4);
         }
         add_filter('wp_insert_post_data', [$this, 'validate_source_before_save'], 10, 2);
-        add_action('wp_after_insert_post', [$this, 'release_source_write_lock'], PHP_INT_MAX, 1);
         // WordPress fires this after the status write. It detects unsupported
         // low-level publication bypasses; supported writes remain prevalidated.
         add_action('transition_post_status', [$this, 'detect_invalid_published_source'], 1000, 3);
@@ -177,17 +176,30 @@ final class PersonRelationshipAdmin
         if ($post_id > 0 && ! $this->acquire_source_write_lock($post_id)) {
             wp_die('This source is being edited by another request. Retry the save.', 'Person relationship validation failed', ['response' => 409]);
         }
+        $this->flush_source_field_caches($post_id, $source_type);
         if (! PersonRelationshipContract::supported_source_type($source_type) || ! in_array($status, ['publish', 'future'], true)) {
             return $data;
         }
 
-        $projection = $this->projection_for_source($post_id, [], $source_type);
+        // Core writes post_status before ACF validates or persists submitted fields.
+        // Publication preflight must therefore validate the persisted authority.
+        $projection = $this->projection_for_source($post_id, [], $source_type, false);
         if (is_wp_error($projection)) {
             wp_die($projection->get_error_message(), 'Person relationship validation failed', ['response' => 400]);
         }
         $result = $this->validate_projection($projection, 'publish');
         if (is_wp_error($result)) {
             wp_die($result->get_error_message(), 'Person relationship validation failed', ['response' => 400]);
+        }
+        if (isset($_POST['acf']) && is_array($_POST['acf'])) {
+            $submitted_projection = $this->projection_for_source($post_id, [], $source_type);
+            if (is_wp_error($submitted_projection)) {
+                wp_die($submitted_projection->get_error_message(), 'Person relationship validation failed', ['response' => 400]);
+            }
+            $submitted_result = $this->validate_projection($submitted_projection, 'publish');
+            if (is_wp_error($submitted_result)) {
+                wp_die($submitted_result->get_error_message(), 'Person relationship validation failed', ['response' => 400]);
+            }
         }
         return $data;
     }
@@ -255,9 +267,13 @@ final class PersonRelationshipAdmin
                 return new \WP_Error('unsupported_person_relationship_rest_write', 'Person relationships cannot be written through REST.', ['status' => 400]);
             }
         }
-        $submitted = [];
-        $projection = $this->projection_for_source($post_id, $submitted, $source_type);
+        if ($post_id > 0 && ! $this->acquire_source_write_lock($post_id)) {
+            return new \WP_Error('source_lock_failed', 'This source is being edited by another request. Retry the save.', ['status' => 409]);
+        }
+        $this->flush_source_field_caches($post_id, $source_type);
+        $projection = $this->projection_for_source($post_id, [], $source_type, false);
         if (is_wp_error($projection)) {
+            $this->release_source_write_lock($post_id);
             return new \WP_Error($projection->get_error_code(), $projection->get_error_message(), ['status' => 400]);
         }
         $status = (string) ($prepared_post->post_status ?? ($post_id > 0 ? get_post_status($post_id) : 'draft'));
@@ -265,9 +281,11 @@ final class PersonRelationshipAdmin
             $status = 'publish';
         }
         $result = $this->validate_projection($projection, $status);
-        return is_wp_error($result)
-            ? new \WP_Error($result->get_error_code(), $result->get_error_message(), ['status' => 400])
-            : $prepared_post;
+        if (is_wp_error($result)) {
+            $this->release_source_write_lock($post_id);
+            return new \WP_Error($result->get_error_code(), $result->get_error_message(), ['status' => 400]);
+        }
+        return $prepared_post;
     }
 
     /** The ACF source remains saved even when its derived projection fails. */
@@ -314,6 +332,7 @@ final class PersonRelationshipAdmin
     {
         $post_id = $this->normalize_id(is_object($post) ? ($post->ID ?? 0) : 0);
         if ($post_id > 0) {
+            $this->release_source_write_lock($post_id);
             $this->project_after_acf_save($post_id);
         }
     }
@@ -387,14 +406,23 @@ final class PersonRelationshipAdmin
             return true;
         }
 
-        $projection = $this->projection_for_source($post_id, [], $source_type);
+        if (! $this->acquire_source_write_lock($post_id)) {
+            $this->report_operator_failure($post_id, 'source_lock_failed');
+            $this->schedule_one_future_retry($post_id);
+            return false;
+        }
+        $this->flush_source_field_caches($post_id, $source_type);
+
+        $projection = $this->projection_for_source($post_id, [], $source_type, false);
         if (is_wp_error($projection)) {
+            $this->release_source_write_lock($post_id);
             $this->report_operator_failure($post_id, $projection->get_error_code());
             $this->schedule_one_future_retry($post_id);
             return false;
         }
         $result = $this->validate_projection($projection, 'publish');
         if (is_wp_error($result)) {
+            $this->release_source_write_lock($post_id);
             $this->report_operator_failure($post_id, $result->get_error_code());
             $this->schedule_one_future_retry($post_id);
             return false;
@@ -425,7 +453,7 @@ final class PersonRelationshipAdmin
     }
 
     /** @return array{source_post_id:int,source_post_type:string,relationships:list<array{person_id:int,role_key:string,position:int}>}|\WP_Error */
-    private function projection_for_source(int $post_id, array $overrides, string $source_type): array|\WP_Error
+    private function projection_for_source(int $post_id, array $overrides, string $source_type, bool $allow_submitted = true): array|\WP_Error
     {
         $roles = PersonRelationshipContract::allowed_roles($source_type);
         if ($roles === []) {
@@ -437,7 +465,7 @@ final class PersonRelationshipAdmin
             $field_key = self::FIELD_KEYS[$role];
             if (array_key_exists($role, $overrides)) {
                 $value = $overrides[$role];
-            } elseif (isset($_POST['acf']) && is_array($_POST['acf']) && array_key_exists($field_key, $_POST['acf'])) {
+            } elseif ($allow_submitted && isset($_POST['acf']) && is_array($_POST['acf']) && array_key_exists($field_key, $_POST['acf'])) {
                 $value = $_POST['acf'][$field_key];
             } elseif ($post_id > 0) {
                 $value = get_field($role, $post_id, false);
@@ -470,6 +498,18 @@ final class PersonRelationshipAdmin
         }
 
         return ['source_post_id' => $post_id, 'source_post_type' => $source_type, 'relationships' => $relationships];
+    }
+
+    private function flush_source_field_caches(int $post_id, string $source_type): void
+    {
+        if ($post_id < 1) return;
+        if (function_exists('clean_post_cache')) clean_post_cache($post_id);
+        if (function_exists('wp_cache_delete')) wp_cache_delete($post_id, 'post_meta');
+        if (function_exists('acf_flush_value_cache')) {
+            foreach (PersonRelationshipContract::allowed_roles($source_type) as $role) {
+                acf_flush_value_cache($post_id, $role);
+            }
+        }
     }
 
     private function request_post_id(): int
