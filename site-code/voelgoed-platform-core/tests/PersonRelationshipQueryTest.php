@@ -86,7 +86,7 @@ final class PersonRelationshipQueryTest
         $duplicate = ['person_id' => 22, 'role_key' => 'additional_authors', 'position' => 0];
         $GLOBALS['wpdb']->get_results_handler = static fn (): array => [
             $duplicate,
-            $duplicate,
+            ['person_id' => 22, 'role_key' => 'additional_authors', 'position' => 1],
             ['person_id' => 22, 'role_key' => 'unapproved_role', 'position' => 0],
             ['person_id' => 23, 'role_key' => 'reviewed_by', 'position' => 0],
         ];

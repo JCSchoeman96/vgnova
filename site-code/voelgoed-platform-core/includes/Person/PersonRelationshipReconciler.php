@@ -58,7 +58,7 @@ final class PersonRelationshipReconciler
             $person_id = (int) $row['person_id'];
             $role_key = (string) $row['role_key'];
             $position = (int) $row['position'];
-            $row_key = $person_id . ':' . $role_key . ':' . $position;
+            $row_key = $person_id . ':' . $role_key;
             $duplicate = isset($seen_actual[$row_key]);
             $seen_actual[$row_key] = true;
 
