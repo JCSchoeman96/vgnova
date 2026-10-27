@@ -5,10 +5,13 @@ This directory contains the canonical Platform Core domain modules in the
 the assembly base; this module owns the runtime mutation session guard,
 `content_topic`, Event Participation, Product People, and Product Contribution
 overlays. The tracked
-`integration.patch` is an assembly input that adds the four overlay includes
-and the Taxonomy, Event, and Product lifecycle registrations to a disposable
-build tree. Runtime supplies a bootstrap dependency and has no lifecycle
-registration.
+`integration.patch` is an assembly input that adds the five overlay includes
+and the Taxonomy, Event, Product, and Person lifecycle registrations to a
+disposable build tree. Runtime supplies a bootstrap dependency and has no
+lifecycle registration. Person relationship classes load through this patch;
+the Admin and CLI components register through Platform Core. Schema setup does
+not run during bootstrap and remains available through the guarded maintenance
+command.
 
 Build the plugin from an exact committed revision with:
 

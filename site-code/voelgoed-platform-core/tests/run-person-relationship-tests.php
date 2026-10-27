@@ -97,6 +97,37 @@ foreach ($expected_classifications as $class => $classification) {
         exit(1);
     }
 }
+$expected_exemptions = [
+    'PersonRelationshipRepository' => [
+        'reason' => 'persists only the disposable Person relationship projection',
+        'reviewed_scope' => 'Replace or delete index rows for one source without changing authoritative ACF values.',
+    ],
+    'PersonRelationshipSchema' => [
+        'reason' => 'Schema installation is available only through the mutation-guarded Person relationship setup command.',
+        'reviewed_scope' => 'Create or verify the derived Person relationship index table and version option.',
+    ],
+    'PersonRelationshipIndexer' => [
+        'reason' => 'ordinary source saves',
+        'reviewed_scope' => 'Replace or remove derived rows and update the dirty marker for one supported Article or Course source.',
+    ],
+    'PersonRelationshipAdmin' => [
+        'reason' => 'Normal WordPress Article and Course editor callbacks',
+        'reviewed_scope' => 'ACF save, REST save, publication validation, and permanent-delete hooks that validate or project canonical Person relationships.',
+    ],
+];
+foreach ($expected_exemptions as $class => $required_text) {
+    $entry = $entries["site-code/voelgoed-platform-core/includes/Person/{$class}.php"] ?? [];
+    if (($entry['classification'] ?? null) !== 'explicit_exemption') {
+        fwrite(STDERR, "Mutation inventory exemption for {$class} is missing.\n");
+        exit(1);
+    }
+    foreach ($required_text as $field => $text) {
+        if (! is_string($entry[$field] ?? null) || ! str_contains($entry[$field], $text)) {
+            fwrite(STDERR, "Mutation inventory {$field} for {$class} does not document its approved narrow scope.\n");
+            exit(1);
+        }
+    }
+}
 $cli_entry = $entries['site-code/voelgoed-platform-core/includes/Person/PersonRelationshipCli.php'] ?? [];
 if (($cli_entry['session_guard_required'] ?? null) !== true
     || ($cli_entry['guard_function'] ?? null) !== 'vg_runtime_mutation_assert_session'

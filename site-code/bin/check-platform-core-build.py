@@ -763,6 +763,29 @@ def verify_runtime_overlay_proof(
         guard_bytes = guard_stream.read()
         entrypoint = entrypoint_stream.read().decode("utf-8", "strict")
         plugin_class = plugin_stream.read().decode("utf-8", "strict")
+        person_classes = (
+            "PersonRelationshipContract",
+            "PersonRelationshipSchema",
+            "PersonRelationshipSourceLock",
+            "PersonRelationshipRepository",
+            "PersonRelationshipSourceReader",
+            "PersonRelationshipValidator",
+            "PersonRelationshipIndexer",
+            "PersonRelationshipReconciler",
+            "PersonRelationshipService",
+            "PersonRelationshipAdmin",
+            "PersonRelationshipCli",
+        )
+        archive_names = set(archive.getnames())
+        missing_person_files = [
+            name for name in person_classes
+            if f"{ROOT_PLUGIN}/includes/Person/{name}.php" not in archive_names
+        ]
+        if missing_person_files:
+            raise CheckFailure(
+                "Assembled archive is missing Person relationship classes: "
+                + ", ".join(missing_person_files)
+            )
 
     if guard_bytes != source_bytes:
         raise CheckFailure("RuntimeMutationSession.php archive bytes differ from the resolved Git blob.")
@@ -773,6 +796,37 @@ def verify_runtime_overlay_proof(
         raise CheckFailure("RuntimeMutationSession.php must load before Platform Core lifecycle dispatch.")
     if "RuntimeMutationSession" in plugin_class:
         raise CheckFailure("RuntimeMutationSession.php must remain a dependency overlay, not a lifecycle component.")
+
+    person_classes = (
+        "PersonRelationshipContract",
+        "PersonRelationshipSchema",
+        "PersonRelationshipSourceLock",
+        "PersonRelationshipRepository",
+        "PersonRelationshipSourceReader",
+        "PersonRelationshipValidator",
+        "PersonRelationshipIndexer",
+        "PersonRelationshipReconciler",
+        "PersonRelationshipService",
+        "PersonRelationshipAdmin",
+        "PersonRelationshipCli",
+    )
+    for class_name in person_classes:
+        include_literal = f"'includes/Person/{class_name}.php'"
+        if entrypoint.count(include_literal) != 1:
+            raise CheckFailure(
+                f"Assembled plugin must include {class_name}.php exactly once."
+            )
+    for component, class_name in (
+        ("person_relationship_admin", "PersonRelationshipAdmin"),
+        ("person_relationship_cli", "PersonRelationshipCli"),
+    ):
+        registration = f"register_component('{component}', {class_name}::class)"
+        if plugin_class.count(registration) != 1:
+            raise CheckFailure(
+                f"Assembled Plugin.php must register {class_name} exactly once."
+            )
+    if "PersonRelationshipSchema::install" in plugin_class or "->install()" in plugin_class:
+        raise CheckFailure("Assembled plugin must not install the Person relationship schema during lifecycle registration.")
 
     lint_path = temporary_root / "RuntimeMutationSession.php"
     lint_path.write_bytes(guard_bytes)
