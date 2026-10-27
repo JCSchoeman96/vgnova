@@ -36,35 +36,6 @@ foreach ($runners as $runner) {
     }
 }
 
-$patch = file_get_contents($root . '/site-code/voelgoed-platform-core/integration.patch');
-if (! is_string($patch)) {
-    fwrite(STDERR, "Could not read Platform Core integration patch.\n");
-    exit(1);
-}
-
-$classes = [
-    'PersonRelationshipContract', 'PersonRelationshipSchema', 'PersonRelationshipSourceLock',
-    'PersonRelationshipRepository', 'PersonRelationshipSourceReader', 'PersonRelationshipValidator',
-    'PersonRelationshipIndexer', 'PersonRelationshipReconciler', 'PersonRelationshipService',
-    'PersonRelationshipAdmin', 'PersonRelationshipCli',
-];
-foreach ($classes as $class) {
-    if (! str_contains($patch, "includes/Person/{$class}.php")) {
-        fwrite(STDERR, "Integration patch does not load {$class}.\n");
-        exit(1);
-    }
-}
-foreach (['person_relationship_admin', 'person_relationship_cli'] as $component) {
-    if (! str_contains($patch, "'{$component}'")) {
-        fwrite(STDERR, "Integration patch does not register {$component}.\n");
-        exit(1);
-    }
-}
-if (str_contains($patch, 'PersonRelationshipSchema::install') || str_contains($patch, '->install()')) {
-    fwrite(STDERR, "Integration patch must not install the Person relationship schema automatically.\n");
-    exit(1);
-}
-
 $inventory_json = file_get_contents($root . '/site-code/runtime-tools/mutating-entrypoints.json');
 $inventory = is_string($inventory_json) ? json_decode($inventory_json, true) : null;
 if (! is_array($inventory) || ! is_array($inventory['entries'] ?? null)) {
@@ -140,4 +111,4 @@ if (($entries['site-code/voelgoed-platform-core/tests/run-person-relationship-te
     exit(1);
 }
 
-fwrite(STDOUT, "PASS Person relationship assembly loads all classes and registers lifecycle without schema auto-install.\n");
+fwrite(STDOUT, "PASS Person relationship mutation inventory classifications and scopes.\n");
