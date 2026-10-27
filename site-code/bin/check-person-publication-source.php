@@ -159,7 +159,36 @@ function vg_person_publication_source_check_repository(string $repositoryRoot): 
     if ($files === []) {
         return ['valid' => false, 'files_scanned' => 0, 'errors' => ['No repository-owned PHP files found.']];
     }
-    return vg_person_publication_source_check_files($repositoryRoot, $files);
+    $result = vg_person_publication_source_check_files($repositoryRoot, $files);
+    $root = realpath($repositoryRoot);
+    $patchPath = 'site-code/voelgoed-platform-core/integration.patch';
+    $patchFile = $root === false ? false : $root . '/' . $patchPath;
+    if (! is_string($patchFile) || ! is_file($patchFile)) {
+        $result['valid'] = false;
+        $result['errors'][] = 'Repository-owned executable integration.patch is missing.';
+        sort($result['errors']);
+        return $result;
+    }
+    $patch = file($patchFile, FILE_IGNORE_NEW_LINES);
+    if (! is_array($patch)) {
+        $result['valid'] = false;
+        $result['errors'][] = 'Could not read repository-owned executable integration.patch.';
+        sort($result['errors']);
+        return $result;
+    }
+    foreach ($patch as $lineNumber => $line) {
+        if (str_starts_with($line, '+++') || (! str_starts_with($line, '+') && ! str_starts_with($line, ' '))) continue;
+        foreach (vg_person_publication_source_call_lines('<?php ' . substr($line, 1)) as $ignoredLine) {
+            $result['errors'][] = sprintf(
+                '%s:%d: unauthorized wp_publish_post reference lacks an approved pre-publication validation boundary.',
+                $patchPath,
+                $lineNumber + 1
+            );
+        }
+    }
+    sort($result['errors']);
+    $result['valid'] = $result['errors'] === [];
+    return $result;
 }
 
 if (isset($_SERVER['SCRIPT_FILENAME']) && realpath((string) $_SERVER['SCRIPT_FILENAME']) === __FILE__) {

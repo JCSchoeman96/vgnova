@@ -11,6 +11,7 @@ final class PersonRelationshipAdmin
     public const FUTURE_PUBLISH_FILTER = 'voelgoed/platform_core/future_post_can_publish';
     private PersonRelationshipSourceLock $writer_lock;
     private int $locked_source_id = 0;
+    private int $future_publish_lock_source_id = 0;
     /** @var array<int, true> */
     private array $reported_publish_violations = [];
     /** @var array<int, string> */
@@ -71,11 +72,21 @@ final class PersonRelationshipAdmin
     /** Queue a post-transition check for a supported source. */
     public function detect_invalid_published_source(mixed $new_status, mixed $old_status, mixed $post): void
     {
-        if ($new_status !== 'publish' || $old_status === 'publish' || ! is_object($post)) return;
+        if (! is_object($post)) return;
         $source_id = $this->normalize_id($post->ID ?? 0);
         $source_type = (string) ($post->post_type ?? '');
         if ($source_id < 1 || ! PersonRelationshipContract::supported_source_type($source_type)) return;
-        $this->pending_publish_checks[$source_id] = $source_type;
+
+        if ($new_status === 'publish' && $old_status !== 'publish') {
+            $this->pending_publish_checks[$source_id] = $source_type;
+        }
+
+        // WordPress runs publish_future_post once per cron event. Release only
+        // that path's lock at its status transition. Editor and REST writes
+        // keep their lock through ACF persistence.
+        if ($this->future_publish_lock_source_id === $source_id) {
+            $this->release_source_write_lock($source_id);
+        }
     }
 
     /** Validate queued status transitions after WordPress and ACF finish the request. */
@@ -324,6 +335,9 @@ final class PersonRelationshipAdmin
         if ($this->locked_source_id < 1 || ($post_id > 0 && $post_id !== $this->locked_source_id)) return;
         $source_id = $this->locked_source_id;
         $this->locked_source_id = 0;
+        if ($this->future_publish_lock_source_id === $source_id) {
+            $this->future_publish_lock_source_id = 0;
+        }
         $this->writer_lock->release($source_id);
     }
 
@@ -428,6 +442,7 @@ final class PersonRelationshipAdmin
             return false;
         }
         delete_transient($this->future_retry_key($post_id));
+        $this->future_publish_lock_source_id = $post_id;
         return true;
     }
 

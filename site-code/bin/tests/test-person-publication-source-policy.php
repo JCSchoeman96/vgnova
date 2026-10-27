@@ -48,6 +48,23 @@ publication_policy_assert(! $repositoryScan['valid'], 'Untracked production PHP 
 publication_policy_assert(str_contains(implode("\n", $repositoryScan['errors']), $temporaryProductionPath), 'Untracked production failure omitted its path.');
 unlink($repositoryRoot . '/' . $temporaryProductionPath);
 
+$patchPath = $repositoryRoot . '/site-code/voelgoed-platform-core/integration.patch';
+$originalPatch = file_get_contents($patchPath);
+publication_policy_assert(is_string($originalPatch), 'The executable integration patch must be readable.');
+$patchAnchor = '+        // Schema setup remains an explicit guarded WP-CLI operation.';
+publication_policy_assert(str_contains($originalPatch, $patchAnchor), 'The patch fixture anchor must exist.');
+try {
+    file_put_contents($patchPath, str_replace($patchAnchor, '+        wp_publish_post($post);', $originalPatch));
+    $patchScan = vg_person_publication_source_check_repository($repositoryRoot);
+    publication_policy_assert(! $patchScan['valid'], 'Executable integration.patch escaped the publication source guard.');
+    publication_policy_assert(
+        str_contains(implode("\n", $patchScan['errors']), 'site-code/voelgoed-platform-core/integration.patch:'),
+        'Patch failure omitted its repository path and line.'
+    );
+} finally {
+    file_put_contents($patchPath, $originalPatch);
+}
+
 $vendorRoot = $repositoryRoot . '/site-code/bin/vendor/person-publication-policy-fixture';
 mkdir($vendorRoot, 0777, true);
 file_put_contents($vendorRoot . '/vendor-publication.php', "<?php wp_publish_post(\$post);");

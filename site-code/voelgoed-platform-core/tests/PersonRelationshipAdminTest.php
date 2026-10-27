@@ -233,6 +233,59 @@ final class PersonRelationshipAdminTest
         vgpc_test_same('', (string) get_post_meta(718, PersonRelationshipContract::DIRTY_META_KEY, true), 'The deferred check must recognize the valid stored relationship and avoid false bypass reports.');
     }
 
+    public function test_editor_cannot_repair_published_duplicate_roles_in_one_acf_save(): void
+    {
+        $admin = $this->admin();
+        $admin->register();
+        $this->source_and_people(731, 'publish', [732]);
+        $GLOBALS['vgpc_test_posts'][732]->post_status = 'publish';
+        update_field('primary_author', 732, 731);
+        update_field('additional_authors', [732], 731);
+        $_POST = ['post_ID' => 731, 'post_status' => 'publish', 'acf' => [
+            'field_vg_article_primary_author' => null,
+            'field_vg_article_additional_authors' => [732],
+        ]];
+
+        try {
+            apply_filters('wp_insert_post_data', ['ID' => 731, 'post_type' => 'post', 'post_status' => 'publish'], ['ID' => 731]);
+            throw new RuntimeException('Invalid persisted state must fail the current preflight.');
+        } catch (RuntimeException $error) {
+            vgpc_test_true(str_contains($error->getMessage(), 'may hold only one role'), 'The stored duplicate must be the reason repair is blocked.');
+        }
+        vgpc_test_same(732, get_field('primary_author', 731, false), 'Preflight must not silently rewrite the authoritative field while rejecting repair.');
+        vgpc_test_same([732], get_field('additional_authors', 731, false), 'The submitted repair must not be partially applied by preflight.');
+    }
+
+    public function test_acf_field_write_failure_can_leave_a_duplicate_after_valid_submission(): void
+    {
+        $admin = $this->admin();
+        $admin->register();
+        $this->source_and_people(733, 'publish', [734, 735]);
+        $GLOBALS['vgpc_test_posts'][734]->post_status = 'publish';
+        $GLOBALS['vgpc_test_posts'][735]->post_status = 'publish';
+        update_field('primary_author', 734, 733);
+        update_field('additional_authors', [735], 733);
+        $_POST = ['post_ID' => 733, 'post_status' => 'publish', 'acf' => [
+            'field_vg_article_primary_author' => 735,
+            'field_vg_article_additional_authors' => [734],
+        ]];
+
+        $data = ['ID' => 733, 'post_type' => 'post', 'post_status' => 'publish'];
+        vgpc_test_same($data, apply_filters('wp_insert_post_data', $data, ['ID' => 733]), 'The old and submitted complete projections are both valid.');
+        $admin->validate_actual_acf_save(733);
+        // ACF validates the submitted fields before its save loop, then writes
+        // each field independently. Model the first successful update and a
+        // later per-field persistence failure, without a cross-field rollback.
+        update_field('primary_author', 735, 733);
+        $projection = (new PersonRelationshipSourceReader())->read(733);
+        vgpc_test_true(is_array($projection), 'The first independently persisted ACF field must be readable.');
+        $partial = (new PersonRelationshipValidator())->validate_projection($projection, 'publish');
+        vgpc_test_true(is_wp_error($partial), 'A later ACF field write failure can leave the published stored projection invalid.');
+        vgpc_test_same(735, get_field('primary_author', 733, false), 'The successful first field write remains authoritative.');
+        vgpc_test_same([735], get_field('additional_authors', 733, false), 'The failed later field retains its prior value and creates a cross-role duplicate.');
+        $admin->release_source_write_lock(733);
+    }
+
     public function test_rest_flushes_cached_fields_after_lock_and_validates_fresh_values(): void
     {
         $admin = $this->admin();
@@ -262,7 +315,7 @@ final class PersonRelationshipAdminTest
         $admin->release_source_write_lock(721);
     }
 
-    public function test_scheduled_validation_holds_source_lock_until_publish_finishes(): void
+    public function test_scheduled_validation_releases_source_lock_after_each_publish_transition(): void
     {
         $admin = $this->admin();
         $admin->register();
@@ -271,7 +324,10 @@ final class PersonRelationshipAdminTest
         update_field('primary_author', 725, 724);
         $get_lock_calls = 0;
         $GLOBALS['wpdb']->get_var_handler = static function (string $query) use (&$get_lock_calls): string {
-            if (str_contains($query, 'GET_LOCK')) return ++$get_lock_calls === 1 ? '1' : '0';
+            if (str_contains($query, 'GET_LOCK')) {
+                $get_lock_calls++;
+                return $get_lock_calls === 2 ? '0' : '1';
+            }
             return '1';
         };
 
@@ -279,10 +335,42 @@ final class PersonRelationshipAdminTest
         $other_writer = new PersonRelationshipSourceLock();
         vgpc_test_true(! $other_writer->acquire(724), 'A competing writer must not enter between validation and the scheduled publish call.');
         $GLOBALS['vgpc_test_posts'][724]->post_status = 'publish';
-        do_action('shutdown');
-        $GLOBALS['wpdb']->get_var_handler = static fn (string $query): string => '1';
-        vgpc_test_true($other_writer->acquire(724), 'The lock must become available after the publication request finishes.');
+        do_action('transition_post_status', 'publish', 'future', get_post(724));
+        vgpc_test_true($other_writer->acquire(724), 'The lock must release at this publication transition, before later scheduled events run in the same cron request.');
         $other_writer->release(724);
+        do_action('shutdown');
+        vgpc_test_true($other_writer->acquire(724), 'The lock must remain available after deferred integrity checks finish.');
+        $other_writer->release(724);
+    }
+
+    public function test_editor_publish_transition_keeps_source_lock_through_acf_persistence(): void
+    {
+        $admin = $this->admin();
+        $admin->register();
+        $this->source_and_people(726, 'draft', []);
+        $_POST = ['post_ID' => 726, 'post_status' => 'publish', 'acf' => []];
+        $lock_held = false;
+        $GLOBALS['wpdb']->get_var_handler = static function (string $query) use (&$lock_held): string {
+            if (str_contains($query, 'GET_LOCK')) {
+                if ($lock_held) return '0';
+                $lock_held = true;
+                return '1';
+            }
+            if (str_contains($query, 'RELEASE_LOCK')) {
+                $lock_held = false;
+                return '1';
+            }
+            return '1';
+        };
+        $admin->validate_actual_acf_save(726);
+        $GLOBALS['vgpc_test_posts'][726]->post_status = 'publish';
+        do_action('transition_post_status', 'publish', 'draft', get_post(726));
+
+        $other_writer = new PersonRelationshipSourceLock();
+        vgpc_test_true(! $other_writer->acquire(726), 'An editor transition must not release its source lock before ACF finishes writing fields.');
+        $admin->release_source_write_lock(726);
+        vgpc_test_true($other_writer->acquire(726), 'The editor save lock must release after ACF persistence completes.');
+        $other_writer->release(726);
     }
 
     public function test_rejects_malformed_and_duplicate_field_submissions(): void
