@@ -510,6 +510,10 @@
             "classification": "test_only"
         },
         {
+            "path": "site-code/voelgoed-platform-core/tests/run-person-relationship-contract-tests.php",
+            "classification": "test_only"
+        },
+        {
             "path": "site-code/voelgoed-platform-core/tests/run-person-relationship-indexer-tests.php",
             "classification": "test_only"
         },
