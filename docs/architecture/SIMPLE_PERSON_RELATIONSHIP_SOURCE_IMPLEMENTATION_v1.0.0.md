@@ -4,6 +4,7 @@
 **Status:** Complete in source; runtime activation has not started
 **Verified preceding commit:** `5c879918e403ec0d8fbc6b70e92668c789d5d526`
 **Evidence commit:** This document is committed separately. Its exact commit is recorded in the SDD ledger after commit.
+**Publication-validity authority:** [Architecture amendment v0.1.1](../superpowers/specs/2026-10-27-simple-person-relationship-architecture-amendment_v0.1.1.md)
 
 ## State
 
@@ -29,6 +30,12 @@ Article source type `post` owns `primary_author` (optional, single), `additional
 The index table is `{$wpdb->prefix}vg_person_relationship_index`. It stores source post ID and type, Person ID, role key, and role position. Its uniqueness and lookup indexes follow the approved architecture design. Reverse reads use Platform Core's repository/service boundary, with public eligibility checks on both Person and source. No serialized ACF-meta `LIKE` path supplies production reverse results, and no copied Article or Course lists are written onto Person.
 
 Ordinary editor-save projection remains an application writer with a narrow, reviewed mutation-inventory classification. Setup, full rebuild, and repair are administrative mutations protected by the PE-007 runtime-mutation session guard. The source mutation inventory and tests verify these classifications.
+
+## Publication validity
+
+Architecture amendment v0.1.1 supersedes only the publication-validity wording in design v0.1.0. Platform Core guarantees pre-publication Person relationship validation on supported Voelgoed publication paths: normal editor saves, supported REST/API updates, Platform Core-governed scheduled publication, and repository-owned Platform Core publication operations. Invalid Article/Course Person relationships must block publication on those paths.
+
+Repository-owned production code must not call `wp_publish_post()` directly for governed Articles or Courses unless an approved pre-publication validation boundary has run. Unsupported low-level direct publication bypasses cannot be claimed to have a pre-write veto. If Platform Core observes an invalid governed Article/Course transition into `publish`, it logs a sanitized high-severity diagnostic, marks the source dirty, and makes reverse consumers fail safely. It does not undo the write or rewrite authoritative ACF relationships. No global SQL interception is used.
 
 ## Verification evidence
 
