@@ -225,6 +225,10 @@
             "classification": "library"
         },
         {
+            "path": "site-code/runtime-tools/platform-core-deployment-health.php",
+            "classification": "read_only"
+        },
+        {
             "path": "site-code/runtime-tools/runtime-mutation-exec.php",
             "classification": "library"
         },
@@ -724,6 +728,21 @@
             ],
             "guard": "The WP-CLI entrypoint validates both active MariaDB lock owners and the host flock before loading the PHP action helper; run the Python process under vgnova-runtime-mutate.php. The Python target and nested WP-CLI inherit FD3 and session environment only.",
             "reviewed_scope": "The snapshot and frontend-render requests are read-only. Mutating WP-CLI children inherit the filesystem-lock descriptor and dual-lock session environment; Platform Core independently verifies both MariaDB lock owners."
+        },
+        {
+            "path": "site-code/bin/deploy-platform-core.py",
+            "boundary": "Platform Core runtime filesystem replacement for the registered local VGNova target.",
+            "actions": [
+                "create_owned_stage_and_state_files",
+                "atomic_platform_core_directory_exchange",
+                "rename_owned_platform_core_directories"
+            ],
+            "guard": "Run as a child of site-code/bin/vgnova-runtime-mutate.php. The source-controlled PHP helper invokes vg_runtime_mutation_assert_session for the inherited descriptor-3 host lock and dual database lock proof before runtime filesystem mutation.",
+            "reviewed_scope": "One exact verified Platform Core artifact and one complete plugin directory at vgnova-local-10039. The deployer does not write WordPress database state or content.",
+            "protected": true,
+            "target": "vgnova-local-10039",
+            "coordinator": "site-code/bin/vgnova-runtime-mutate.php",
+            "session_helper": "site-code/runtime-tools/platform-core-deployment-health.php"
         }
     ]
 }

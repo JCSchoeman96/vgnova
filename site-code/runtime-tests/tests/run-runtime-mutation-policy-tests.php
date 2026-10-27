@@ -503,6 +503,106 @@ $test('the reviewed mutation inventory passes against every tracked PHP file', s
     vg_runtime_mutation_policy_test($result['files_scanned'] > 100, 'The inventory regression did not scan the repository PHP sources.');
 });
 
+$test('protected external mutators require a bounded target and coordinator declaration', static function (): void {
+    vg_runtime_mutation_policy_with_temp_root(static function (string $root): void {
+        mkdir($root . '/site-code/bin', 0700, true);
+        mkdir($root . '/site-code/runtime-tools', 0700, true);
+        file_put_contents($root . '/site-code/bin/deploy-platform-core.py', '#!/usr/bin/env python3\n');
+        file_put_contents($root . '/site-code/bin/vgnova-runtime-mutate.php', '<?php');
+        file_put_contents($root . '/site-code/runtime-tools/platform-core-deployment-health.php', '<?php');
+        $git = static function (array $arguments) use ($root): void {
+            $process = proc_open(
+                ['git', '-C', $root, ...$arguments],
+                [0 => ['file', '/dev/null', 'r'], 1 => ['pipe', 'w'], 2 => ['pipe', 'w']],
+                $pipes
+            );
+            if (! is_resource($process)) {
+                throw new RuntimeException('Could not start the policy test Git process.');
+            }
+            stream_get_contents($pipes[1]);
+            stream_get_contents($pipes[2]);
+            fclose($pipes[1]);
+            fclose($pipes[2]);
+            if (proc_close($process) !== 0) {
+                throw new RuntimeException('The policy test Git process failed.');
+            }
+        };
+        $git(['init', '--quiet']);
+        $git(['add', 'site-code/bin/deploy-platform-core.py', 'site-code/bin/vgnova-runtime-mutate.php', 'site-code/runtime-tools/platform-core-deployment-health.php']);
+        $valid = [[
+            'path' => 'site-code/bin/deploy-platform-core.py',
+            'boundary' => 'Platform Core runtime filesystem replacement',
+            'actions' => [
+                'create_owned_stage_and_state_files',
+                'atomic_platform_core_directory_exchange',
+                'rename_owned_platform_core_directories',
+            ],
+            'guard' => 'The PHP helper validates the inherited PE-007 session before filesystem mutation.',
+            'reviewed_scope' => 'One registered local target and one Platform Core directory.',
+            'protected' => true,
+            'target' => 'vgnova-local-10039',
+            'coordinator' => 'site-code/bin/vgnova-runtime-mutate.php',
+            'session_helper' => 'site-code/runtime-tools/platform-core-deployment-health.php',
+        ]];
+        $errors = vg_runtime_mutation_policy_validate_external_mutators($root, $valid);
+        vg_runtime_mutation_policy_test($errors === [], implode("\n", $errors));
+
+        $invalid = $valid;
+        $invalid[0]['actions'][] = 'delete_runtime_tree';
+        $errors = vg_runtime_mutation_policy_validate_external_mutators($root, $invalid);
+        vg_runtime_mutation_policy_test($errors !== [], 'An unreviewed destructive action passed the external mutator policy.');
+
+        $invalid = $valid;
+        $invalid[0]['target'] = 'another-target';
+        $errors = vg_runtime_mutation_policy_validate_external_mutators($root, $invalid);
+        vg_runtime_mutation_policy_test($errors !== [], 'A protected external mutator accepted a different target.');
+
+        $invalid = $valid;
+        $invalid[0]['path'] = 'site-code/bin/missing.py';
+        $errors = vg_runtime_mutation_policy_validate_external_mutators($root, $invalid);
+        vg_runtime_mutation_policy_test($errors !== [], 'A missing external mutator path passed policy.');
+
+        file_put_contents($root . '/site-code/bin/untracked.py', '#!/usr/bin/env python3\n');
+        $untracked = [[
+            'path' => 'site-code/bin/untracked.py',
+            'boundary' => 'Fixture boundary.',
+            'actions' => ['create'],
+            'guard' => 'Fixture guard.',
+            'reviewed_scope' => 'Fixture scope.',
+        ]];
+        $errors = vg_runtime_mutation_policy_validate_external_mutators($root, $untracked);
+        vg_runtime_mutation_policy_test($errors !== [], 'An untracked external mutator passed policy.');
+    });
+});
+
+$test('the PE-008 mutator and read-only health helper cannot disappear from policy', static function (): void {
+    $inventory = [
+        'entries' => [[
+            'path' => 'site-code/runtime-tools/platform-core-deployment-health.php',
+            'classification' => 'read_only',
+        ]],
+        'external_mutators' => [[
+            'path' => 'site-code/bin/deploy-platform-core.py',
+            'protected' => true,
+        ]],
+    ];
+    vg_runtime_mutation_policy_test(
+        vg_runtime_mutation_policy_validate_pe008_contract($inventory) === [],
+        'The valid PE-008 policy contract was rejected.'
+    );
+    $inventory['external_mutators'] = [];
+    vg_runtime_mutation_policy_test(
+        vg_runtime_mutation_policy_validate_pe008_contract($inventory) !== [],
+        'Policy allowed the PE-008 mutator to disappear.'
+    );
+    $inventory['external_mutators'][] = ['path' => 'site-code/bin/deploy-platform-core.py', 'protected' => true];
+    $inventory['entries'][0]['classification'] = 'library';
+    vg_runtime_mutation_policy_test(
+        vg_runtime_mutation_policy_validate_pe008_contract($inventory) !== [],
+        'Policy allowed the PE-008 helper to lose its read-only classification.'
+    );
+});
+
 $test('wpdb CRUD methods and Bricks and ACF write calls are detected', static function (): void {
     $source = <<<'PHP'
 <?php
