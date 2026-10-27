@@ -36,7 +36,7 @@ final class PersonRelationshipReconciler
         }
 
         $status = (string) ($source->post_status ?? '');
-        $validation_status = $status === 'future' ? 'publish' : $status;
+        $validation_status = match ($status) { 'future' => 'publish', 'trash' => 'draft', default => $status };
         $valid = $this->validator->validate_projection($projection, $validation_status);
         if (is_wp_error($valid)) {
             $code = match ($valid->get_error_code()) {
@@ -48,15 +48,13 @@ final class PersonRelationshipReconciler
         }
 
         $expected = $projection['relationships'];
-        $source_type_rows = $this->repository->index_source_anomalies();
-        if (is_wp_error($source_type_rows)) return $source_type_rows;
-        foreach ($source_type_rows as $type_row) {
-            if ($type_row['source_post_id'] === $source_post_id) {
-                $issues[] = ['code' => 'wrong_source_post_type', 'source_post_id' => $source_post_id, 'details' => [
-                    'stored_source_post_type' => $type_row['source_post_type'],
-                    'current_source_post_type' => $type_row['current_post_type'],
-                ]];
-            }
+        $source_type_row = $this->repository->source_type_anomaly($source_post_id);
+        if (is_wp_error($source_type_row)) return $source_type_row;
+        if ($source_type_row !== null) {
+            $issues[] = ['code' => 'wrong_source_post_type', 'source_post_id' => $source_post_id, 'details' => [
+                'stored_source_post_type' => $source_type_row['source_post_type'],
+                'current_source_post_type' => $source_type_row['current_post_type'],
+            ]];
         }
         $actual = $this->repository->relationships_for_source_checked($source_post_id);
         if (is_wp_error($actual)) return $actual;

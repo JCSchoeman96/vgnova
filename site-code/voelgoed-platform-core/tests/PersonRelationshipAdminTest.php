@@ -203,25 +203,27 @@ final class PersonRelationshipAdminTest
         vgpc_test_true(count(array_filter($GLOBALS['wpdb']->queries, static fn (array $query): bool => str_contains($query['query'], 'DELETE FROM wp_vg_person_relationship_index'))) >= 3, 'The post-meta deletion hook must retry derived-row cleanup after an earlier cleanup failure.');
     }
 
-    public function test_rest_publication_validates_acf_payload_before_core_save(): void
+    public function test_rest_publication_validates_persisted_acf_fields_before_core_save(): void
     {
         $admin = $this->admin();
         $admin->register();
         $this->source_and_people(31, 'draft', [32]);
         $_POST = [];
-        $request = new VGPC_TestRestRequest(['status' => 'publish', 'acf' => ['primary_author' => 32]]);
+        $GLOBALS['vgpc_test_meta'][31]['primary_author'] = 32;
+        $request = new VGPC_TestRestRequest(['status' => 'publish']);
 
         // WP_REST_Posts_Controller dispatches rest_pre_insert_{post_type} with two args.
-        $result = apply_filters('rest_pre_insert_post', (object) ['post_type' => 'post', 'post_status' => 'publish'], $request);
-        vgpc_test_true(is_wp_error($result), 'REST publication with a draft Person must return an error before core saves the post.');
+        $result = apply_filters('rest_pre_insert_post', (object) ['ID' => 31, 'post_type' => 'post', 'post_status' => 'publish'], $request);
+        vgpc_test_true(is_wp_error($result), 'REST publication with a draft persisted Person must fail before core saves the post.');
         vgpc_test_true(str_contains($result->get_error_message(), 'Person 32'), 'REST error must identify the invalid Person.');
     }
 
-    public function test_rest_update_rejects_duplicate_submission_without_dropping_it(): void
+    public function test_rest_update_rejects_unpersisted_relationship_overrides(): void
     {
         $admin = $this->admin();
         $admin->register();
         $this->source_and_people(33, 'draft', [34]);
+        $GLOBALS['vgpc_test_meta'][33]['primary_author'] = 34;
         $request = new VGPC_TestRestRequest(['acf' => [
             'primary_author' => 34,
             'additional_authors' => [34],
@@ -229,7 +231,7 @@ final class PersonRelationshipAdminTest
 
         $result = apply_filters('rest_pre_insert_post', (object) ['ID' => 33, 'post_type' => 'post', 'post_status' => 'draft'], $request);
         vgpc_test_true(is_wp_error($result), 'REST update with a duplicate assignment must be rejected.');
-        vgpc_test_true(str_contains($result->get_error_message(), 'Person 34'), 'REST error must retain a useful reason.');
+        vgpc_test_same('unsupported_person_relationship_rest_write', $result->get_error_code(), 'REST must reject relationship overrides that ACF does not persist.');
     }
 
     public function test_rest_course_accepts_valid_scheduled_field_key_payload(): void
@@ -238,28 +240,24 @@ final class PersonRelationshipAdminTest
         $admin->register();
         $this->source_and_people(35, 'future', [36], 'mto-course');
         $GLOBALS['vgpc_test_posts'][36]->post_status = 'publish';
+        $GLOBALS['vgpc_test_meta'][35]['lead_instructor'] = 36;
         $prepared_post = (object) ['ID' => 35, 'post_type' => 'mto-course', 'post_status' => 'future'];
-        $request = new VGPC_TestRestRequest(['status' => 'future', 'acf' => ['field_vg_course_lead_instructor' => 36]]);
+        $request = new VGPC_TestRestRequest(['status' => 'future']);
 
-        vgpc_test_same($prepared_post, apply_filters('rest_pre_insert_mto-course', $prepared_post, $request), 'A valid scheduled Course REST request must pass with the field-key payload ACF can submit.');
+        vgpc_test_same($prepared_post, apply_filters('rest_pre_insert_mto-course', $prepared_post, $request), 'A valid scheduled Course REST request must pass when stored ACF fields are valid.');
     }
 
-    public function test_rest_acf_fields_project_after_full_rest_persistence(): void
+    public function test_rest_rejects_fields_that_acf_does_not_persist(): void
     {
         $admin = $this->admin();
         $admin->register();
         $this->source_and_people(37, 'draft', [38]);
-        $GLOBALS['vgpc_test_options'][PersonRelationshipSchema::VERSION_OPTION] = PersonRelationshipSchema::SCHEMA_VERSION;
-        $GLOBALS['wpdb']->get_var_handler = static fn (string $query): string => str_contains($query, 'SHOW TABLES') ? 'wp_vg_person_relationship_index' : '1';
-        $_POST = [];
         $request = new VGPC_TestRestRequest(['status' => 'draft', 'acf' => ['primary_author' => 38]]);
         $prepared = (object) ['ID' => 37, 'post_type' => 'post', 'post_status' => 'draft'];
-        vgpc_test_same($prepared, apply_filters('rest_pre_insert_post', $prepared, $request), 'The two-argument WordPress REST filter dispatch must validate without an argument-count error.');
-
-        // Model WordPress persisting REST meta before rest_after_insert_{post_type}.
-        $GLOBALS['vgpc_test_meta'][37]['primary_author'] = 38;
-        do_action('rest_after_insert_post', get_post(37), $request, false);
-        vgpc_test_true((bool) array_filter($GLOBALS['wpdb']->inserted, static fn (array $row): bool => ($row[1]['source_post_id'] ?? null) === 37 && ($row[1]['person_id'] ?? null) === 38), 'The REST after-insert projection must read the fully persisted ACF field.');
+        $result = apply_filters('rest_pre_insert_post', $prepared, $request);
+        vgpc_test_true(is_wp_error($result), 'REST must reject relationship fields excluded from ACF REST persistence.');
+        vgpc_test_same('unsupported_person_relationship_rest_write', $result->get_error_code(), 'REST override rejection must identify the unsupported write path.');
+        vgpc_test_same([], $GLOBALS['vgpc_test_meta'][37] ?? [], 'Validation must not imply persistence of unconfigured ACF REST fields.');
     }
 
     public function test_projection_and_delete_failures_are_reported(): void

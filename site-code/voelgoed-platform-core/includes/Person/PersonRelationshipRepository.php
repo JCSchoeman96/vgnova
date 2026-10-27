@@ -33,7 +33,7 @@ final class PersonRelationshipRepository
             FROM {$this->schema->table_name()} AS i
             LEFT JOIN {$wpdb->posts} AS p ON p.ID = i.source_post_id
             ORDER BY i.source_post_id ASC";
-        try { $rows = $wpdb->get_results($wpdb->prepare($sql), ARRAY_A); }
+        try { $rows = $wpdb->get_results($sql, ARRAY_A); }
         catch (\Throwable) { return new \WP_Error('index_read_failed', 'Could not inspect indexed source types.'); }
         if (! is_array($rows) || (string) ($wpdb->last_error ?? '') !== '') return new \WP_Error('index_read_failed', 'Could not inspect indexed source types.');
         $anomalies = [];
@@ -50,6 +50,27 @@ final class PersonRelationshipRepository
             }
         }
         return $anomalies;
+    }
+
+    /** @return array{source_post_id:int,source_post_type:string,current_post_type:?string}|null|\WP_Error */
+    public function source_type_anomaly(int $source_post_id): array|null|\WP_Error
+    {
+        if ($source_post_id < 1 || ! $this->schema->is_ready()) return new \WP_Error('index_unavailable', 'The relationship index is unavailable.');
+        global $wpdb;
+        $sql = "SELECT DISTINCT i.source_post_id, i.source_post_type, p.post_type AS current_post_type
+            FROM {$this->schema->table_name()} AS i
+            LEFT JOIN {$wpdb->posts} AS p ON p.ID = i.source_post_id
+            WHERE i.source_post_id = %d";
+        try { $rows = $wpdb->get_results($wpdb->prepare($sql, $source_post_id), ARRAY_A); }
+        catch (\Throwable) { return new \WP_Error('index_read_failed', 'Could not inspect indexed source type.'); }
+        if (! is_array($rows) || (string) ($wpdb->last_error ?? '') !== '') return new \WP_Error('index_read_failed', 'Could not inspect indexed source type.');
+        $row = $rows[0] ?? null;
+        if ($row === null) return null;
+        if (! is_array($row)) return new \WP_Error('index_read_failed', 'Could not inspect indexed source type.');
+        $stored = (string) ($row['source_post_type'] ?? '');
+        $current = isset($row['current_post_type']) ? (string) $row['current_post_type'] : null;
+        if ($current !== null && $stored === $current) return null;
+        return ['source_post_id' => $source_post_id, 'source_post_type' => $stored, 'current_post_type' => $current];
     }
 
     public function source_ids_for_person(int $person_id, string $source_post_type, array $role_keys = []): array

@@ -30,12 +30,16 @@ final class PersonRelationshipIndexerTest
         $this->ready_schema();
         $this->add_source_and_person(70, 'draft', 71, 'draft');
         $this->add_source_and_person(70, 'draft', 72, 'draft');
+        $GLOBALS['vgpc_test_posts'][73] = (object) ['ID' => 73, 'post_type' => 'person', 'post_status' => 'draft'];
         $GLOBALS['vgpc_test_enable_query_cache'] = true;
         $GLOBALS['vgpc_test_meta'][70]['primary_author'] = 71;
+        $GLOBALS['vgpc_test_meta'][70]['additional_authors'] = [71];
         get_field('primary_author', 70, false);
+        get_field('additional_authors', 70, false);
         $GLOBALS['vgpc_test_meta'][70]['primary_author'] = 72;
+        $GLOBALS['vgpc_test_meta'][70]['additional_authors'] = [73];
         vgpc_test_same(true, $this->indexer()->rebuild_source(70), 'A save must rebuild from post-lock authority.');
-        vgpc_test_same(72, $GLOBALS['wpdb']->inserted[0][1]['person_id'], 'Pre-lock ACF cached values must not enter the projection.');
+        vgpc_test_same([72, 73], array_column(array_column($GLOBALS['wpdb']->inserted, 1), 'person_id'), 'Every approved field cache must be flushed after the lock so concurrent cached values cannot enter the projection.');
     }
 
     public function test_trashed_source_can_be_rebuilt_as_nonpublic_source_data(): void

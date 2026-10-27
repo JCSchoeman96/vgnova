@@ -98,6 +98,24 @@ final class PersonRelationshipCliTest
         vgpc_test_same([601, 602], $deleted_ids, 'Full rebuild must prune orphan and unsupported derived rows after source enumeration.');
     }
 
+    public function test_reconcile_repair_rebuilds_trashed_source(): void
+    {
+        vgpc_test_reset();
+        $this->register_fields();
+        $GLOBALS['vgpc_test_options'][\Voelgoed\PlatformCore\Person\PersonRelationshipSchema::VERSION_OPTION] = 1;
+        $GLOBALS['wpdb']->get_var_handler = static fn (string $query, array $args): mixed => str_contains($query, 'SHOW TABLES') ? ($args[0] ?? '') : '1';
+        $GLOBALS['wpdb']->get_results_handler = static fn (string $query): array => [];
+        $GLOBALS['vgpc_test_posts'][83] = (object) ['ID' => 83, 'post_type' => 'post', 'post_status' => 'trash'];
+        $GLOBALS['vgpc_test_posts'][84] = (object) ['ID' => 84, 'post_type' => 'person', 'post_status' => 'draft'];
+        $GLOBALS['vgpc_test_meta'][83]['primary_author'] = 84;
+        update_post_meta(83, \Voelgoed\PlatformCore\Person\PersonRelationshipContract::DIRTY_META_KEY, 1);
+        $this->cli(static function (): void {})->reconcile_command([], ['source' => '83', 'repair' => true, 'format' => 'table']);
+        vgpc_test_same(1, count($GLOBALS['wpdb']->inserted), 'The guarded repair must rebuild an indexed trashed source.');
+        vgpc_test_same(84, $GLOBALS['wpdb']->inserted[0][1]['person_id'], 'Trash repair must retain the authoritative Person assignment.');
+        $output = implode("\n", array_column(WP_CLI::$messages, 'message'));
+        vgpc_test_true(str_contains($output, '83 | 1 | reindexed'), 'CLI reconciliation must report successful trash repair.');
+    }
+
     public function test_setup_requires_mutation_session_before_schema_install(): void
     {
         vgpc_test_reset();

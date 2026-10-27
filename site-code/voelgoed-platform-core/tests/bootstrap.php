@@ -66,10 +66,13 @@ final class VGPC_TestWpdb
         return 1;
     }
 
-    public function get_results(array $statement, mixed $format = null): array
+    public function get_results(array|string $statement, mixed $format = null): array
     {
+        $statement = is_array($statement) ? $statement : ['query' => $statement, 'args' => []];
         $this->queries[] = $statement;
-        return is_callable($this->get_results_handler ?? null) ? ($this->get_results_handler)($statement['query'], $statement['args']) : [];
+        $rows = is_callable($this->get_results_handler ?? null) ? ($this->get_results_handler)($statement['query'], $statement['args']) : [];
+        $this->last_error = '';
+        return $rows;
     }
 
     public function insert(string $table, array $data, array $format = []): int|false { $this->inserted[] = [$table, $data]; return $this->fail_insert ? false : 1; }
@@ -482,17 +485,12 @@ function wp_cache_delete(int|string $key, string $group = ''): bool
     return true;
 }
 
-function acf_flush_value_cache(int|string $post_id = 0, string $field_name = ''): void
+function acf_flush_value_cache(int|string $post_id, string $field_name): void
 {
-    if ($field_name !== '') {
-        unset($GLOBALS['vgpc_test_get_field_cache'][$field_name . ':' . (string) $post_id]);
+    if ($field_name === '') {
         return;
     }
-    foreach (array_keys($GLOBALS['vgpc_test_get_field_cache']) as $cache_key) {
-        if (str_ends_with($cache_key, ':' . (string) $post_id)) {
-            unset($GLOBALS['vgpc_test_get_field_cache'][$cache_key]);
-        }
-    }
+    unset($GLOBALS['vgpc_test_get_field_cache'][$field_name . ':' . (string) $post_id]);
 }
 
 function wp_insert_post(array $postarr, bool $wp_error = false): int|WP_Error

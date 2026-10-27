@@ -106,7 +106,7 @@ final class PersonRelationshipAdmin
         return $data;
     }
 
-    /** Validate relationship values from REST requests before core writes the source. */
+    /** Reject unpersisted REST overrides and validate stored relationships before core writes the source. */
     public function validate_rest_source(mixed $prepared_post, mixed $request): mixed
     {
         if (! is_object($prepared_post)) {
@@ -121,28 +121,27 @@ final class PersonRelationshipAdmin
         if (! is_array($params)) {
             return new \WP_Error('invalid_person_relationship_request', 'Could not read Person relationship values from this request.', ['status' => 400]);
         }
-        $submitted = [];
+        // These ACF field groups are intentionally not REST-enabled. WordPress
+        // will not persist relationship values from acf/meta or top-level keys,
+        // so reject attempted overrides and validate only stored authority.
         foreach (['acf', 'meta'] as $container) {
-            if (! array_key_exists($container, $params)) {
-                continue;
-            }
-            if (! is_array($params[$container])) {
+            if (isset($params[$container]) && ! is_array($params[$container])) {
                 return new \WP_Error('malformed_person_relationship_payload', 'Person relationship data must be an object of approved fields.', ['status' => 400]);
             }
-            foreach (PersonRelationshipContract::allowed_roles($source_type) as $role) {
-                foreach ([$role, self::FIELD_KEYS[$role]] as $key) {
-                    if (array_key_exists($key, $params[$container])) {
-                        $submitted[$role] = $params[$container][$key];
-                        break;
+            if (is_array($params[$container] ?? null)) {
+                foreach (PersonRelationshipContract::allowed_roles($source_type) as $role) {
+                    if (array_key_exists($role, $params[$container]) || array_key_exists(self::FIELD_KEYS[$role], $params[$container])) {
+                        return new \WP_Error('unsupported_person_relationship_rest_write', 'Person relationships cannot be written through REST.', ['status' => 400]);
                     }
                 }
             }
         }
         foreach (PersonRelationshipContract::allowed_roles($source_type) as $role) {
             if (array_key_exists($role, $params)) {
-                $submitted[$role] = $params[$role];
+                return new \WP_Error('unsupported_person_relationship_rest_write', 'Person relationships cannot be written through REST.', ['status' => 400]);
             }
         }
+        $submitted = [];
         $projection = $this->projection_for_source($post_id, $submitted, $source_type);
         if (is_wp_error($projection)) {
             return new \WP_Error($projection->get_error_code(), $projection->get_error_message(), ['status' => 400]);

@@ -53,7 +53,9 @@ final class PersonRelationshipIndexer
             // the lock. Drop that request cache before reading the authority.
             clean_post_cache($source_post_id);
             if (function_exists('acf_flush_value_cache')) {
-                acf_flush_value_cache($source_post_id);
+                foreach (PersonRelationshipContract::allowed_roles((string) ($source->post_type ?? '')) as $field_name) {
+                    acf_flush_value_cache($source_post_id, $field_name);
+                }
             }
 
             $generation_snapshot = get_post_meta($source_post_id, self::DIRTY_GENERATION_META_KEY, true);
