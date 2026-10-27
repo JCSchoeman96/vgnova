@@ -23,7 +23,7 @@ final class PersonRelationshipIndexer
     public function rebuild_source(int $source_post_id): true|\WP_Error
     {
         $result = $this->perform_rebuild($source_post_id);
-        if ($source_post_id > 0 && ! $this->lock->release_succeeded($source_post_id)) {
+        if ($result === true && $source_post_id > 0 && ! $this->lock->release_succeeded($source_post_id)) {
             return $this->fail($source_post_id, new \WP_Error('source_lock_release_failed', 'Could not release the source relationship lock.'));
         }
         return $result;
@@ -79,7 +79,7 @@ final class PersonRelationshipIndexer
         } catch (\Throwable) {
             return $this->fail($source_post_id, new \WP_Error('projection_failed', 'Could not project source relationships.'));
         } finally {
-            if ($locked || $source_post_id > 0) {
+            if ($locked) {
                 $this->lock->release($source_post_id);
             }
         }
@@ -88,7 +88,7 @@ final class PersonRelationshipIndexer
     public function remove_source(int $source_post_id): true|\WP_Error
     {
         $result = $this->perform_remove($source_post_id);
-        if ($source_post_id > 0 && ! $this->lock->release_succeeded($source_post_id)) {
+        if ($result === true && $source_post_id > 0 && ! $this->lock->release_succeeded($source_post_id)) {
             return $this->fail($source_post_id, new \WP_Error('source_lock_release_failed', 'Could not release the source relationship lock.'));
         }
         return $result;
@@ -122,7 +122,7 @@ final class PersonRelationshipIndexer
         } catch (\Throwable) {
             return $this->fail($source_post_id, new \WP_Error('projection_failed', 'Could not remove source relationships.'));
         } finally {
-            if ($locked || $source_post_id > 0) {
+            if ($locked) {
                 $this->lock->release($source_post_id);
             }
         }

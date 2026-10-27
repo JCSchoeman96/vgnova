@@ -149,7 +149,7 @@ final class PersonRelationshipIndexerTest
         vgpc_test_true($indexer->is_dirty(66), 'A newer failure interleaved with marker clearing must remain dirty.');
     }
 
-    public function test_release_failure_is_reported_and_can_be_retried(): void
+    public function test_release_failure_is_reported_without_retrying_unconfirmed_ownership(): void
     {
         $this->ready_schema();
         $this->add_source_and_person(64, 'draft', 65, 'draft');
@@ -157,7 +157,7 @@ final class PersonRelationshipIndexerTest
         $GLOBALS['wpdb']->get_var_handler = static function (string $query) use (&$attempts): mixed {
             if (str_contains($query, 'SHOW TABLES')) return 'wp_vg_person_relationship_index';
             if (str_contains($query, 'GET_LOCK')) return '1';
-            if (str_contains($query, 'RELEASE_LOCK')) return ++$attempts === 1 ? null : '1';
+            if (str_contains($query, 'RELEASE_LOCK')) { $attempts++; return null; }
             return '1';
         };
         $lock = new \Voelgoed\PlatformCore\Person\PersonRelationshipSourceLock();
@@ -167,7 +167,29 @@ final class PersonRelationshipIndexerTest
         vgpc_test_same('source_lock_release_failed', $result->get_error_code(), 'Release failure must be diagnosable.');
         vgpc_test_true($indexer->is_dirty(64), 'Release failure must leave the source marked dirty for reconciliation.');
         $lock->release_all();
-        vgpc_test_same(2, $attempts, 'A failed release must remain tracked so release_all can retry it.');
+        vgpc_test_same(1, $attempts, 'An unconfirmed release must not be retried.');
+    }
+
+    public function test_new_operation_does_not_inherit_previous_release_failure(): void
+    {
+        $this->ready_schema();
+        $this->add_source_and_person(68, 'draft', 69, 'draft');
+        $GLOBALS['vgpc_test_meta'][68]['primary_author'] = 69;
+        $release_attempts = 0;
+        $GLOBALS['wpdb']->get_var_handler = static function (string $query) use (&$release_attempts): mixed {
+            if (str_contains($query, 'SHOW TABLES')) return 'wp_vg_person_relationship_index';
+            if (str_contains($query, 'GET_LOCK')) return '1';
+            if (str_contains($query, 'RELEASE_LOCK')) return ++$release_attempts === 1 ? '0' : '1';
+            return '1';
+        };
+        $lock = new \Voelgoed\PlatformCore\Person\PersonRelationshipSourceLock();
+        $indexer = $this->indexer(null, $lock);
+
+        $first = $indexer->rebuild_source(68);
+        vgpc_test_true(is_wp_error($first), 'An unconfirmed release must fail the operation.');
+        vgpc_test_same('source_lock_release_failed', $first->get_error_code(), 'The first release failure must be reported.');
+        vgpc_test_same(true, $indexer->rebuild_source(68), 'A fresh lock acquisition and release must not inherit stale failure status.');
+        vgpc_test_same(2, $release_attempts, 'Each operation must release only its own confirmed acquisition.');
     }
 
     public function test_remove_source_deletes_rows_and_clears_dirty_state(): void

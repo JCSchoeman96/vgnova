@@ -37,6 +37,7 @@ final class PersonRelationshipStorageTest
     {
         $lock = new \Voelgoed\PlatformCore\Person\PersonRelationshipSourceLock();
         vgpc_test_true($lock->acquire(55), 'Expected test lock acquisition.');
+        vgpc_test_true(! $lock->acquire(55), 'A second operation cannot borrow a lock already owned by this object.');
         $lock->release(55);
         $lock->release_all();
         $queries = array_column($GLOBALS['wpdb']->queries, 'query');
@@ -50,19 +51,42 @@ final class PersonRelationshipStorageTest
         vgpc_test_true(! $lock->acquire(56), 'Contended source lock must fail.');
     }
 
-    public function test_source_lock_retains_tracking_after_release_failure_then_retries(): void
+    public function test_source_lock_forgets_unconfirmed_release_and_requires_fresh_acquisition(): void
     {
         $release_attempts = 0;
         $GLOBALS['wpdb']->get_var_handler = static function (string $query) use (&$release_attempts): mixed {
             if (str_contains($query, 'GET_LOCK')) return '1';
-            if (str_contains($query, 'RELEASE_LOCK')) return ++$release_attempts === 1 ? null : '1';
+            if (str_contains($query, 'RELEASE_LOCK')) return ++$release_attempts === 1 ? '0' : '1';
             return '1';
         };
         $lock = new \Voelgoed\PlatformCore\Person\PersonRelationshipSourceLock();
         vgpc_test_true($lock->acquire(57), 'Expected test lock acquisition.');
         $lock->release(57);
         $lock->release_all();
-        vgpc_test_same(2, $release_attempts, 'Failed release must remain tracked for a later retry.');
+        vgpc_test_same(1, $release_attempts, 'An unconfirmed release must not be retried against a potentially different owner.');
+        vgpc_test_true(! $lock->release_succeeded(57), 'A failed release result must remain visible until another acquisition attempt.');
+        vgpc_test_true($lock->acquire(57), 'A later operation must make a fresh database acquisition.');
+        vgpc_test_true($lock->release_succeeded(57), 'A fresh acquisition must clear stale release status.');
+        $lock->release(57);
+        vgpc_test_same(2, $release_attempts, 'Only the newly acquired lock may be released.');
+    }
+
+    public function test_source_lock_clears_held_tracking_after_null_release_result(): void
+    {
+        $queries_before = count($GLOBALS['wpdb']->queries);
+        $GLOBALS['wpdb']->get_var_handler = static function (string $query): mixed {
+            if (str_contains($query, 'GET_LOCK')) return '1';
+            if (str_contains($query, 'RELEASE_LOCK')) return null;
+            return '1';
+        };
+        $lock = new \Voelgoed\PlatformCore\Person\PersonRelationshipSourceLock();
+        vgpc_test_true($lock->acquire(58), 'Expected test lock acquisition.');
+        $lock->release(58);
+        $lock->release_all();
+        vgpc_test_same(1, count(array_filter(
+            array_slice($GLOBALS['wpdb']->queries, $queries_before),
+            static fn (array $query): bool => $query['query'] === 'SELECT RELEASE_LOCK(%s)',
+        )), 'A NULL release result must clear local ownership and prevent another release attempt.');
     }
 
     public function test_repository_rejects_malformed_rows_and_fails_closed_when_table_unavailable(): void

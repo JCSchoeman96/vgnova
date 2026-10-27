@@ -11,9 +11,10 @@ final class PersonRelationshipSourceLock
     {
         if ($source_post_id < 1) return false;
         $name = 'vg_person_rel_' . $source_post_id;
-        if (isset($this->held[$name])) return true;
-        // A previous operation may have failed to release this lock. Do not
-        // let that result contaminate a new acquisition attempt.
+        // A lock already tracked by this object belongs to the operation that
+        // acquired it. A second operation must not borrow that ownership.
+        if (isset($this->held[$name])) return false;
+        // Release status describes the previous attempt, not this acquisition.
         unset($this->release_failed[$name]);
         global $wpdb;
         try { $ok = $wpdb->get_var($wpdb->prepare('SELECT GET_LOCK(%s, %d)', $name, 10)); }
@@ -40,12 +41,17 @@ final class PersonRelationshipSourceLock
         try {
             $released = $wpdb->get_var($wpdb->prepare('SELECT RELEASE_LOCK(%s)', $name));
         } catch (\Throwable) {
+            unset($this->held[$name]);
             $this->release_failed[$name] = true;
             error_log('Person relationship source lock release failed.');
             return;
         }
+        // Only RELEASE_LOCK() = 1 confirms that this connection released a
+        // lock it owned. For 0 or NULL, forget the claim so a later operation
+        // cannot report ownership or retry against a lock another operation
+        // may now own.
+        unset($this->held[$name]);
         if ((string) $released === '1') {
-            unset($this->held[$name]);
             unset($this->release_failed[$name]);
             return;
         }
