@@ -42,8 +42,11 @@ final class PersonRelationshipAdmin
             add_filter('acf/validate_value/key=' . $field_key, fn (mixed $valid, mixed $value, array $field, string $input_name): mixed => $this->validate_field($valid, $value, $field, $input_name, $role), 10, 4);
         }
         add_filter('wp_insert_post_data', [$this, 'validate_source_before_save'], 10, 2);
+        add_filter('rest_pre_insert_post', [$this, 'validate_rest_source'], 10, 3);
+        add_filter('rest_pre_insert_mto-course', [$this, 'validate_rest_source'], 10, 3);
         add_action('acf/save_post', [$this, 'project_after_acf_save'], 20, 1);
         add_action('before_delete_post', [$this, 'remove_after_permanent_delete'], 10, 2);
+        add_action('admin_notices', [$this, 'render_projection_failure_notice']);
         add_filter(self::FUTURE_PUBLISH_FILTER, [$this, 'future_post_can_publish'], 10, 3);
     }
 
@@ -94,6 +97,57 @@ final class PersonRelationshipAdmin
         return $data;
     }
 
+    /** Validate relationship values from REST requests before core writes the source. */
+    public function validate_rest_source(mixed $prepared_post, mixed $request, bool $creating): mixed
+    {
+        if (! is_object($prepared_post)) {
+            return new \WP_Error('invalid_person_relationship_request', 'Could not validate Person relationships for this request.', ['status' => 400]);
+        }
+        $source_type = (string) ($prepared_post->post_type ?? '');
+        if (! PersonRelationshipContract::supported_source_type($source_type)) {
+            return $prepared_post;
+        }
+        $post_id = $creating ? 0 : $this->normalize_id($prepared_post->ID ?? 0);
+        $params = is_object($request) && method_exists($request, 'get_params') ? $request->get_params() : null;
+        if (! is_array($params)) {
+            return new \WP_Error('invalid_person_relationship_request', 'Could not read Person relationship values from this request.', ['status' => 400]);
+        }
+        $submitted = [];
+        foreach (['acf', 'meta'] as $container) {
+            if (! array_key_exists($container, $params)) {
+                continue;
+            }
+            if (! is_array($params[$container])) {
+                return new \WP_Error('malformed_person_relationship_payload', 'Person relationship data must be an object of approved fields.', ['status' => 400]);
+            }
+            foreach (PersonRelationshipContract::allowed_roles($source_type) as $role) {
+                foreach ([$role, self::FIELD_KEYS[$role]] as $key) {
+                    if (array_key_exists($key, $params[$container])) {
+                        $submitted[$role] = $params[$container][$key];
+                        break;
+                    }
+                }
+            }
+        }
+        foreach (PersonRelationshipContract::allowed_roles($source_type) as $role) {
+            if (array_key_exists($role, $params)) {
+                $submitted[$role] = $params[$role];
+            }
+        }
+        $projection = $this->projection_for_source($post_id, $submitted, $source_type);
+        if (is_wp_error($projection)) {
+            return new \WP_Error($projection->get_error_code(), $projection->get_error_message(), ['status' => 400]);
+        }
+        $status = (string) ($prepared_post->post_status ?? ($post_id > 0 ? get_post_status($post_id) : 'draft'));
+        if (in_array($status, ['publish', 'future'], true)) {
+            $status = 'publish';
+        }
+        $result = $this->validate_projection($projection, $status);
+        return is_wp_error($result)
+            ? new \WP_Error($result->get_error_code(), $result->get_error_message(), ['status' => 400])
+            : $prepared_post;
+    }
+
     /** The ACF source remains saved even when its derived projection fails. */
     public function project_after_acf_save(mixed $post_id): void
     {
@@ -105,10 +159,11 @@ final class PersonRelationshipAdmin
         try {
             $result = $this->indexer->rebuild_source($post_id);
             if (is_wp_error($result)) {
+                $this->report_operator_failure($post_id, $result->get_error_code());
                 return;
             }
         } catch (\Throwable $error) {
-            error_log(sprintf('Person relationship projection failed for source %d (%s).', $post_id, get_class($error)));
+            $this->report_operator_failure($post_id, 'unexpected_' . strtolower((new \ReflectionClass($error))->getShortName()));
         }
     }
 
@@ -120,7 +175,41 @@ final class PersonRelationshipAdmin
             return;
         }
 
-        $this->indexer->remove_source($post_id);
+        $result = $this->indexer->remove_source($post_id);
+        if (is_wp_error($result)) {
+            error_log(sprintf('Person relationship delete cleanup failed for source %d (%s).', $post_id, $result->get_error_code()));
+        }
+    }
+
+    public function render_projection_failure_notice(): void
+    {
+        $post_id = $this->normalize_id($_GET['post'] ?? 0);
+        if ($post_id < 1 || ! current_user_can('edit_post', $post_id)) {
+            return;
+        }
+        $code = get_transient($this->operator_notice_key($post_id));
+        if (! is_string($code) || $code === '') {
+            return;
+        }
+        delete_transient($this->operator_notice_key($post_id));
+        echo '<div class="notice notice-error"><p>' . esc_html(sprintf(
+            'Person relationships were saved, but their reverse index could not be updated. The source is marked for repair (%s).',
+            $code
+        )) . '</p></div>';
+    }
+
+    private function report_operator_failure(int $post_id, string $code): void
+    {
+        $code = preg_replace('/[^a-zA-Z0-9_-]/', '', $code) ?: 'projection_failed';
+        error_log(sprintf('Person relationship projection failed for source %d (%s).', $post_id, $code));
+        if (get_current_user_id() > 0) {
+            set_transient($this->operator_notice_key($post_id), $code, HOUR_IN_SECONDS);
+        }
+    }
+
+    private function operator_notice_key(int $post_id): string
+    {
+        return 'vg_person_relationship_projection_error_' . get_current_user_id() . '_' . $post_id;
     }
 
     public function future_post_can_publish(mixed $can_publish, mixed $post_id, mixed $post): bool

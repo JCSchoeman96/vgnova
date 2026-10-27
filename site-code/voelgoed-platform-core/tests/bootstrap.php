@@ -292,7 +292,19 @@ $GLOBALS['vgpc_test_get_posts_handler'] = null;
     WP_CLI::$messages = [];
     $_POST = [];
     $_GET = [];
+    $GLOBALS['vgpc_test_transients'] = [];
+    $GLOBALS['vgpc_test_current_user_id'] = 1;
 }
+
+if (! defined('HOUR_IN_SECONDS')) {
+    define('HOUR_IN_SECONDS', 3600);
+}
+
+function get_current_user_id(): int { return (int) ($GLOBALS['vgpc_test_current_user_id'] ?? 1); }
+function current_user_can(string $capability, int $object_id = 0): bool { return true; }
+function set_transient(string $key, mixed $value, int $expiration = 0): bool { $GLOBALS['vgpc_test_transients'][$key] = $value; return true; }
+function get_transient(string $key): mixed { return $GLOBALS['vgpc_test_transients'][$key] ?? false; }
+function delete_transient(string $key): bool { unset($GLOBALS['vgpc_test_transients'][$key]); return true; }
 
 function dbDelta(string $sql): array
 {

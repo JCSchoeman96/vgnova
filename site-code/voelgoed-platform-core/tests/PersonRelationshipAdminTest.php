@@ -24,6 +24,15 @@ if (! function_exists('remove_action')) {
     }
 }
 
+if (! class_exists('VGPC_TestRestRequest')) {
+    final class VGPC_TestRestRequest
+    {
+        public function __construct(private array $params) {}
+        public function get_params(): array { return $this->params; }
+        public function get_param(string $key): mixed { return $this->params[$key] ?? null; }
+    }
+}
+
 final class PersonRelationshipAdminTest
 {
     public function test_registers_all_field_and_lifecycle_hooks(): void
@@ -174,12 +183,68 @@ final class PersonRelationshipAdminTest
 
         vgpc_test_same('draft', get_post(15)->post_status, 'Projection failure must not change the saved source status.');
         vgpc_test_true((new PersonRelationshipIndexer(new PersonRelationshipSourceLock(), new PersonRelationshipSourceReader(), new PersonRelationshipValidator(), new PersonRelationshipRepository(new PersonRelationshipSchema()), static function (): void {}))->is_dirty(15), 'Projection failure must retain the dirty marker.');
+        $_GET['post'] = 15;
+        ob_start();
+        do_action('admin_notices');
+        $notice = (string) ob_get_clean();
+        vgpc_test_true(str_contains($notice, 'reverse index could not be updated'), 'Projection failure must give the editing operator a safe notice.');
 
         $GLOBALS['wpdb']->fail_insert = false;
         $GLOBALS['wpdb']->fail_query = false;
         $GLOBALS['wpdb']->query_handler = null;
         do_action('before_delete_post', 15, get_post(15));
         vgpc_test_true((bool) array_filter($GLOBALS['wpdb']->queries, static fn (array $query): bool => str_contains($query['query'], 'DELETE FROM wp_vg_person_relationship_index')), 'Permanent deletion must remove derived source rows.');
+        $GLOBALS['wpdb']->fail_query = true;
+        do_action('before_delete_post', 15, get_post(15));
+        vgpc_test_true((new PersonRelationshipIndexer(new PersonRelationshipSourceLock(), new PersonRelationshipSourceReader(), new PersonRelationshipValidator(), new PersonRelationshipRepository(new PersonRelationshipSchema()), static function (): void {}))->is_dirty(15), 'Failed permanent-delete cleanup must leave a repair marker for diagnosis.');
+    }
+
+    public function test_rest_publication_validates_acf_payload_before_core_save(): void
+    {
+        $admin = $this->admin();
+        $admin->register();
+        $this->source_and_people(31, 'draft', [32]);
+        $_POST = [];
+        $request = new VGPC_TestRestRequest(['status' => 'publish', 'acf' => ['primary_author' => 32]]);
+
+        $result = apply_filters('rest_pre_insert_post', (object) ['post_type' => 'post', 'post_status' => 'publish'], $request, true);
+        vgpc_test_true(is_wp_error($result), 'REST publication with a draft Person must return an error before core saves the post.');
+        vgpc_test_true(str_contains($result->get_error_message(), 'Person 32'), 'REST error must identify the invalid Person.');
+    }
+
+    public function test_rest_update_rejects_duplicate_submission_without_dropping_it(): void
+    {
+        $admin = $this->admin();
+        $admin->register();
+        $this->source_and_people(33, 'draft', [34]);
+        $request = new VGPC_TestRestRequest(['acf' => [
+            'primary_author' => 34,
+            'additional_authors' => [34],
+        ]]);
+
+        $result = apply_filters('rest_pre_insert_post', (object) ['ID' => 33, 'post_type' => 'post', 'post_status' => 'draft'], $request, false);
+        vgpc_test_true(is_wp_error($result), 'REST update with a duplicate assignment must be rejected.');
+        vgpc_test_true(str_contains($result->get_error_message(), 'Person 34'), 'REST error must retain a useful reason.');
+    }
+
+    public function test_rest_course_accepts_valid_scheduled_field_key_payload(): void
+    {
+        $admin = $this->admin();
+        $admin->register();
+        $this->source_and_people(35, 'future', [36], 'mto-course');
+        $GLOBALS['vgpc_test_posts'][36]->post_status = 'publish';
+        $prepared_post = (object) ['ID' => 35, 'post_type' => 'mto-course', 'post_status' => 'future'];
+        $request = new VGPC_TestRestRequest(['status' => 'future', 'acf' => ['field_vg_course_lead_instructor' => 36]]);
+
+        vgpc_test_same($prepared_post, apply_filters('rest_pre_insert_mto-course', $prepared_post, $request, false), 'A valid scheduled Course REST request must pass with the field-key payload ACF can submit.');
+    }
+
+    public function test_projection_and_delete_failures_are_reported(): void
+    {
+        $admin = $this->admin();
+        $admin->register();
+        vgpc_test_true(isset($GLOBALS['vgpc_test_actions']['admin_notices']), 'Projection failures must register an operator notice.');
+        vgpc_test_true(isset($GLOBALS['vgpc_test_actions']['acf/save_post']), 'Projection handler remains registered.');
     }
 
     private function admin(): PersonRelationshipAdmin
