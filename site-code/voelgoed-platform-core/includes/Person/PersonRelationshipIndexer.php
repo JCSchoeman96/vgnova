@@ -111,6 +111,9 @@ final class PersonRelationshipIndexer
         if ($source_post_id < 1) return new \WP_Error('invalid_source_id', 'Source post ID must be positive.');
         if (! $this->lock->acquire($source_post_id)) return new \WP_Error('source_lock_failed', 'Could not acquire the source relationship lock.');
         try {
+            // Eligibility must reflect the database state after lock acquisition,
+            // not a post object cached before a concurrent type transition.
+            clean_post_cache($source_post_id);
             $source = get_post($source_post_id);
             if (is_object($source) && PersonRelationshipContract::supported_source_type((string) ($source->post_type ?? ''))) {
                 return new \WP_Error('source_cleanup_not_eligible', 'The source is now supported and must not be pruned.');

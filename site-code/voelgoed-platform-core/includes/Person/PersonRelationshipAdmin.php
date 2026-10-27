@@ -45,11 +45,13 @@ final class PersonRelationshipAdmin
             add_filter('acf/validate_value/key=' . $field_key, fn (mixed $valid, mixed $value, array $field, string $input_name): mixed => $this->validate_field($valid, $value, $field, $input_name, $role), 10, 4);
         }
         add_filter('wp_insert_post_data', [$this, 'validate_source_before_save'], 10, 2);
+        add_action('wp_after_insert_post', [$this, 'release_source_write_lock'], PHP_INT_MAX, 1);
         add_filter('rest_pre_insert_post', [$this, 'validate_rest_source'], 10, 2);
         add_filter('rest_pre_insert_mto-course', [$this, 'validate_rest_source'], 10, 2);
         add_action('rest_after_insert_post', [$this, 'project_after_rest_save'], 20, 3);
         add_action('rest_after_insert_mto-course', [$this, 'project_after_rest_save'], 20, 3);
         add_action('acf/save_post', [$this, 'project_after_acf_save'], 20, 1);
+        add_action('acf/save_post', [$this, 'validate_actual_acf_save'], 1, 1);
         add_action('shutdown', [$this, 'release_source_write_lock'], PHP_INT_MAX, 0);
         add_action('before_delete_post', [$this, 'remove_after_permanent_delete'], 10, 2);
         add_action('deleted_post', [$this, 'retry_delete_cleanup_after_meta_removal'], 10, 2);
@@ -70,10 +72,6 @@ final class PersonRelationshipAdmin
             return true;
         }
 
-        if (! $this->begin_source_write($post_id)) {
-            return 'Person relationship fields could not be saved because this source is being edited by another request. Retry the save.';
-        }
-
         $projection = $this->projection_for_source($post_id, [$role => $value], $source_type);
         if (is_wp_error($projection)) {
             return $projection->get_error_message();
@@ -87,16 +85,25 @@ final class PersonRelationshipAdmin
         return is_wp_error($result) ? $result->get_error_message() : true;
     }
 
-    /** Validate published and scheduled source data before WordPress writes it. */
+    /** Validate source state and coordinate supported-type changes before WordPress writes it. */
     public function validate_source_before_save(array $data, array $postarr): array
     {
         $source_type = (string) ($data['post_type'] ?? '');
         $status = (string) ($data['post_status'] ?? 'draft');
+        $post_id = $this->normalize_id($postarr['ID'] ?? $data['ID'] ?? 0);
+        $current_type = $post_id > 0 ? (string) get_post_type($post_id) : '';
+        if (! PersonRelationshipContract::supported_source_type($source_type)
+            && ! PersonRelationshipContract::supported_source_type($current_type)) {
+            return $data;
+        }
+
+        if ($post_id > 0 && ! $this->acquire_source_write_lock($post_id)) {
+            wp_die('This source is being edited by another request. Retry the save.', 'Person relationship validation failed', ['response' => 409]);
+        }
         if (! PersonRelationshipContract::supported_source_type($source_type) || ! in_array($status, ['publish', 'future'], true)) {
             return $data;
         }
 
-        $post_id = $this->normalize_id($postarr['ID'] ?? $data['ID'] ?? 0);
         $projection = $this->projection_for_source($post_id, [], $source_type);
         if (is_wp_error($projection)) {
             wp_die($projection->get_error_message(), 'Person relationship validation failed', ['response' => 400]);
@@ -106,6 +113,34 @@ final class PersonRelationshipAdmin
             wp_die($result->get_error_message(), 'Person relationship validation failed', ['response' => 400]);
         }
         return $data;
+    }
+
+    /** Validate the submitted ACF payload in the actual save request before ACF writes any field. */
+    public function validate_actual_acf_save(mixed $post_id): void
+    {
+        $post_id = $this->normalize_id($post_id);
+        $post = $post_id > 0 ? get_post($post_id) : false;
+        $source_type = is_object($post) ? (string) ($post->post_type ?? '') : $this->request_source_type();
+        if (! PersonRelationshipContract::supported_source_type($source_type)) return;
+        if (! $this->acquire_source_write_lock($post_id)) {
+            wp_die('Person relationship fields could not be saved because this source is being edited by another request. Retry the save.', 'Person relationship validation failed', ['response' => 409]);
+        }
+
+        $projection = $this->projection_for_source($post_id, [], $source_type);
+        if (is_wp_error($projection)) {
+            wp_die($projection->get_error_message(), 'Person relationship validation failed', ['response' => 400]);
+        }
+        $status = $this->request_status($post_id, $post);
+        if ($status === 'future') $status = 'publish';
+        $result = $this->validate_projection($projection, $status);
+        if (is_wp_error($result)) {
+            wp_die($result->get_error_message(), 'Person relationship validation failed', ['response' => 400]);
+        }
+        update_post_meta($post_id, PersonRelationshipContract::DIRTY_META_KEY, 1);
+        if ((string) get_post_meta($post_id, PersonRelationshipContract::DIRTY_META_KEY, true) !== '1') {
+            $this->release_source_write_lock($post_id);
+            wp_die('Person relationship fields could not be saved because the reverse index could not be marked for repair.', 'Person relationship validation failed', ['response' => 500]);
+        }
     }
 
     /** Reject unpersisted REST overrides and validate stored relationships before core writes the source. */
@@ -179,17 +214,12 @@ final class PersonRelationshipAdmin
     }
 
     /** Acquire before ACF persists any validated fields and mark the index unsafe first. */
-    private function begin_source_write(int $post_id): bool
+    private function acquire_source_write_lock(int $post_id): bool
     {
         if ($post_id < 1) return true;
         if ($this->locked_source_id === $post_id) return true;
         if ($this->locked_source_id > 0 || ! $this->writer_lock->acquire($post_id)) return false;
         $this->locked_source_id = $post_id;
-        update_post_meta($post_id, PersonRelationshipContract::DIRTY_META_KEY, 1);
-        if ((string) get_post_meta($post_id, PersonRelationshipContract::DIRTY_META_KEY, true) !== '1') {
-            $this->release_source_write_lock($post_id);
-            return false;
-        }
         return true;
     }
 

@@ -50,6 +50,8 @@ final class PersonRelationshipAdminTest
         }
         vgpc_test_true(isset($GLOBALS['vgpc_test_filters']['wp_insert_post_data']), 'Source publication must be checked before save.');
         vgpc_test_true(isset($GLOBALS['vgpc_test_actions']['acf/save_post']), 'ACF saves must project at priority 20.');
+        vgpc_test_same(1, min(array_column($GLOBALS['vgpc_test_actions']['acf/save_post'], 'priority')), 'Actual ACF saves must validate before ACF writes its fields.');
+        vgpc_test_true(isset($GLOBALS['vgpc_test_actions']['wp_after_insert_post']), 'Source type transition locks must release after WordPress finishes insertion.');
         vgpc_test_true(isset($GLOBALS['vgpc_test_actions']['rest_after_insert_post']), 'REST Article saves must project after REST metadata persistence.');
         vgpc_test_true(isset($GLOBALS['vgpc_test_actions']['rest_after_insert_mto-course']), 'REST Course saves must project after REST metadata persistence.');
         vgpc_test_true(isset($GLOBALS['vgpc_test_actions']['before_delete_post']), 'Permanent deletion must clean derived rows.');
@@ -87,7 +89,7 @@ final class PersonRelationshipAdminTest
         vgpc_test_same(true, $valid, 'A draft source may reference a draft Person.');
     }
 
-    public function test_acf_validation_locks_writer_and_leaves_dirty_marker_after_interrupted_save(): void
+    public function test_actual_acf_save_locks_writer_and_marks_before_acf_field_writes(): void
     {
         $admin = $this->admin();
         $admin->register();
@@ -98,13 +100,61 @@ final class PersonRelationshipAdminTest
             if (str_contains($query, 'GET_LOCK')) return ++$lock_calls === 1 ? '1' : '0';
             return '1';
         };
-        $field = ['key' => 'field_vg_article_primary_author', 'name' => 'primary_author'];
-        vgpc_test_same(true, apply_filters('acf/validate_value/key=field_vg_article_primary_author', true, 222, $field, 'acf[field_vg_article_primary_author]'), 'The first writer should acquire the source lock before ACF writes fields.');
+        $_POST['acf'] = ['field_vg_article_primary_author' => 222];
+        $admin->validate_actual_acf_save(111);
         vgpc_test_same('1', (string) get_post_meta(111, PersonRelationshipContract::DIRTY_META_KEY, true), 'The dirty marker must be persisted before field writes start.');
         $second = new PersonRelationshipAdmin();
-        vgpc_test_true(is_string($second->validate_field(true, 222, $field, 'acf[field_vg_article_primary_author]', 'primary_author')), 'A concurrent writer must fail closed while another source save owns the lock.');
+        try {
+            $second->validate_actual_acf_save(111);
+            throw new RuntimeException('A concurrent actual ACF save should be blocked.');
+        } catch (RuntimeException $error) {
+            vgpc_test_true(str_contains($error->getMessage(), 'being edited by another request'), 'A concurrent writer must fail closed while another source save owns the lock.');
+        }
         $admin->release_source_write_lock();
         vgpc_test_same('1', (string) get_post_meta(111, PersonRelationshipContract::DIRTY_META_KEY, true), 'An interrupted save must leave reverse reads fail-closed until repair.');
+    }
+
+    public function test_invalid_draft_acf_save_is_rejected_before_field_persistence(): void
+    {
+        $admin = $this->admin();
+        $admin->register();
+        $this->source_and_people(112, 'draft', [224]);
+        $_POST = ['post_ID' => 112, 'post_status' => 'draft', 'acf' => [
+            'field_vg_article_primary_author' => 224,
+            'field_vg_article_additional_authors' => [224],
+        ]];
+
+        try {
+            do_action('acf/save_post', 112);
+            throw new RuntimeException('A duplicate draft relationship should be rejected before ACF persists it.');
+        } catch (RuntimeException $error) {
+            vgpc_test_true(str_contains($error->getMessage(), 'may hold only one role'), 'Actual save validation must report the duplicate role invariant.');
+        }
+        vgpc_test_same([], $GLOBALS['vgpc_test_meta'][112] ?? [], 'Invalid draft data must stop before ACF field persistence.');
+    }
+
+    public function test_source_type_change_serializes_anomaly_cleanup_until_after_insert(): void
+    {
+        $admin = $this->admin();
+        $admin->register();
+        $this->source_and_people(114, 'draft', [], 'post');
+        $GLOBALS['vgpc_test_options'][PersonRelationshipSchema::VERSION_OPTION] = PersonRelationshipSchema::SCHEMA_VERSION;
+        $lock_attempt = 0;
+        $GLOBALS['wpdb']->get_var_handler = static function (string $query) use (&$lock_attempt): string {
+            if (str_contains($query, 'SHOW TABLES')) return 'wp_vg_person_relationship_index';
+            if (str_contains($query, 'GET_LOCK')) return ++$lock_attempt === 2 ? '0' : '1';
+            return '1';
+        };
+
+        $data = ['ID' => 114, 'post_type' => 'page', 'post_status' => 'draft'];
+        vgpc_test_same($data, apply_filters('wp_insert_post_data', $data, ['ID' => 114]), 'A source type transition must pass while holding its source lock.');
+        $cleanup = $this->indexer()->remove_stale_source(114);
+        vgpc_test_true(is_wp_error($cleanup) && $cleanup->get_error_code() === 'source_lock_failed', 'Anomaly cleanup must wait while the source type transition owns the lock.');
+
+        $GLOBALS['vgpc_test_posts'][114]->post_type = 'page';
+        do_action('wp_after_insert_post', 114);
+        $cleanup = $this->indexer()->remove_stale_source(114);
+        vgpc_test_same(true, $cleanup, 'After the transition finishes, cleanup may recheck and remove rows for the unsupported source.');
     }
 
     public function test_scheduled_publish_filter_blocks_invalid_and_allows_valid_sources(): void
