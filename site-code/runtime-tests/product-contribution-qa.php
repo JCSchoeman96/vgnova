@@ -26,18 +26,19 @@ const VG_PRODUCT_CONTRIBUTION_QA_OWNER_META = '_vg_task_8c_product_contribution_
 const VG_PRODUCT_CONTRIBUTION_QA_OWNER_LABEL = '[QA][AUTOMATED] Product Contribution';
 const VG_PRODUCT_CONTRIBUTION_QA_SOURCE_PATH = '/home/jcschoeman96/projects/current/vgnova/site-code/acf-json';
 const VG_PRODUCT_CONTRIBUTION_QA_PLATFORM_CORE_AUTHORITY = [
-    'artifact_name' => 'voelgoed-platform-core-7af938ac6f4422b1fa779b52444121e7a9293995',
-    'source_commit' => '7af938ac6f4422b1fa779b52444121e7a9293995',
+    'artifact_name' => 'voelgoed-platform-core-de90ff061c20b164c127aa97e845e3f192429543',
+    'source_commit' => 'de90ff061c20b164c127aa97e845e3f192429543',
     'schema_version' => 3,
-    'file_count' => 54,
-    'tree_sha256' => '856a3e5978559bfb2572b4b1ff4b34df916743f9e72d6b18220ee64e98af5f56',
-    'archive_sha256' => '9d5fd288025703fe4f71ed1f3ee264cd3fc9c0b61cf74d137b40e941bc2e2243',
-    'manifest_sha256' => 'c87d339ebe83203a82a3f02b27de9854be9e360835da9893077af9c9c318c1ee',
+    'file_count' => 55,
+    'tree_sha256' => '5816b80ac4355782523aa4baa82bd9e55dd87326f15972f287ff1afa7567482a',
+    'archive_sha256' => '22d998019e3fe3d93d675250a26eba5be3dbc248badd9be4d7507fbdf9cffdb9',
+    'manifest_sha256' => '7cd38e758babddf495e484013d9345750af6f39689bc428f67d89a814949a932',
 ];
 const VG_PRODUCT_CONTRIBUTION_QA_EXPECTED_PRODUCT_IDS = [525, 527, 529, 531, 642, 765, 767, 768, 842, 844, 845, 846, 905, 908, 911, 914, 917, 920, 923, 1186];
 
 require_once __DIR__ . '/product-people-qa-side-effects.php';
 require_once __DIR__ . '/platform-core-runtime-integrity.php';
+require_once dirname(__DIR__) . '/runtime-tools/pe008-protected-state.php';
 
 function vg_product_contribution_qa_check(bool $condition, string $message): void
 {
@@ -176,15 +177,7 @@ function vg_product_contribution_qa_validate_identity(array $identity): void
 
 function vg_product_contribution_qa_hash(mixed $value): string
 {
-    $previous_precision = ini_get('serialize_precision');
-    if ($previous_precision === false || ini_set('serialize_precision', '-1') === false) {
-        throw new RuntimeException('Could not normalize PHP float serialization precision for protected fingerprints.');
-    }
-    try {
-        return hash('sha256', serialize($value));
-    } finally {
-        ini_set('serialize_precision', $previous_precision);
-    }
+    return vg_pe008_serialized_fingerprint($value)['sha256'];
 }
 
 function vg_product_contribution_qa_count(string $sql, string $description): int
@@ -204,6 +197,52 @@ function vg_product_contribution_qa_post_count(string $post_type): int
         $wpdb->prepare("SELECT COUNT(*) FROM {$wpdb->posts} WHERE post_type = %s", $post_type),
         'post count for ' . $post_type
     );
+}
+
+/** @return list<array{id:int,post_type:string,post_status:string,post_name:string,post_date_gmt:string,post_modified_gmt:string}> */
+function vg_product_contribution_qa_person_inventory(): array
+{
+    global $wpdb;
+    $rows = $wpdb->get_results(
+        $wpdb->prepare(
+            "SELECT ID,post_type,post_status,post_name,post_date_gmt,post_modified_gmt FROM {$wpdb->posts} WHERE post_type = %s ORDER BY ID ASC",
+            'person'
+        ),
+        ARRAY_A
+    );
+    if ($wpdb->last_error !== '' || ! is_array($rows)) {
+        throw new RuntimeException('Could not read the protected Person inventory: ' . $wpdb->last_error);
+    }
+    return array_map(static fn (array $row): array => [
+        'id' => (int) $row['ID'],
+        'post_type' => (string) $row['post_type'],
+        'post_status' => (string) $row['post_status'],
+        'post_name' => (string) $row['post_name'],
+        'post_date_gmt' => (string) $row['post_date_gmt'],
+        'post_modified_gmt' => (string) $row['post_modified_gmt'],
+    ], $rows);
+}
+
+/** @param list<array{id:int,post_type:string,post_status:string,post_name:string,post_date_gmt:string,post_modified_gmt:string}> $inventory */
+function vg_product_contribution_qa_person_baseline_matches(array $inventory, array $fingerprint): bool
+{
+    $expected_inventory = [[
+        'id' => 1705,
+        'post_type' => 'person',
+        'post_status' => 'publish',
+        'post_name' => 'lynette-beer',
+        'post_date_gmt' => '2026-10-26 09:05:12',
+        'post_modified_gmt' => '2026-10-26 09:05:12',
+    ]];
+    $expected_fingerprint = [
+        'post_count' => 1,
+        'postmeta_count' => 1,
+        'term_relationship_count' => 2,
+        'posts_sha256' => 'f2a980eb64045700dc3a4ca07a7950ec3cb1daea14e4a400ac48e6837b2e9b5b',
+        'postmeta_sha256' => '0d043dd56c404e0ddb6d7ad496249b770d296a6cd72290bfd7774189e5c820e5',
+        'term_relationships_sha256' => '1d347313f990ba8063fe34926ef537e85d2dc4bdc575e5369338be45b9bdf7fb',
+    ];
+    return $inventory === $expected_inventory && $fingerprint === $expected_fingerprint;
 }
 
 function vg_product_contribution_qa_post_meta_count(int $post_id): int
@@ -228,28 +267,14 @@ function vg_product_contribution_qa_relationship_count(int $post_id): int
 function vg_product_contribution_qa_group_fingerprint(array $ids): array
 {
     global $wpdb;
-    $ids = array_values(array_unique(array_map('intval', $ids)));
-    if ($ids === []) {
-        throw new RuntimeException('Protected fingerprint ID list cannot be empty.');
-    }
-    $in = implode(',', $ids);
-    $posts = $wpdb->get_results("SELECT * FROM {$wpdb->posts} WHERE ID IN ({$in}) ORDER BY ID ASC", ARRAY_A);
-    $meta = $wpdb->get_results("SELECT * FROM {$wpdb->postmeta} WHERE post_id IN ({$in}) ORDER BY post_id ASC, meta_key ASC, meta_id ASC", ARRAY_A);
-    $relationships = $wpdb->get_results(
-        "SELECT r.object_id,r.term_taxonomy_id,r.term_order,tt.taxonomy,tt.term_id,t.slug FROM {$wpdb->term_relationships} r JOIN {$wpdb->term_taxonomy} tt ON tt.term_taxonomy_id=r.term_taxonomy_id JOIN {$wpdb->terms} t ON t.term_id=tt.term_id WHERE r.object_id IN ({$in}) ORDER BY r.object_id ASC,r.term_taxonomy_id ASC,r.term_order ASC,tt.taxonomy ASC,tt.term_id ASC,t.slug ASC",
-        ARRAY_A
-    );
+    $queries = vg_pe008_group_fingerprint_queries($wpdb, $ids);
+    $posts = $wpdb->get_results($queries['posts'], ARRAY_A);
+    $meta = $wpdb->get_results($queries['postmeta'], ARRAY_A);
+    $relationships = $wpdb->get_results($queries['term_relationships'], ARRAY_A);
     if ($wpdb->last_error !== '') {
         throw new RuntimeException('Could not read protected post fingerprints: ' . $wpdb->last_error);
     }
-    return [
-        'post_count' => count($posts),
-        'postmeta_count' => count($meta),
-        'term_relationship_count' => count($relationships),
-        'posts_sha256' => vg_product_contribution_qa_hash($posts),
-        'postmeta_sha256' => vg_product_contribution_qa_hash($meta),
-        'term_relationships_sha256' => vg_product_contribution_qa_hash($relationships),
-    ];
+    return vg_pe008_group_fingerprint_from_rows($posts, $meta, $relationships);
 }
 
 function vg_product_contribution_qa_bricks_component_fingerprint(): array
@@ -445,6 +470,7 @@ function vg_product_contribution_qa_protected_snapshot(): array
     }
     return [
         'profiles_753_757' => vg_product_contribution_qa_group_fingerprint([753, 754, 755, 756, 757]),
+        'person_1705' => vg_product_contribution_qa_group_fingerprint([1705]),
         'event_763' => vg_product_contribution_qa_group_fingerprint([763]),
         'products_765_767_768' => vg_product_contribution_qa_group_fingerprint([765, 767, 768]),
         'templates_773_1127' => vg_product_contribution_qa_group_fingerprint([773, 1127]),
@@ -757,6 +783,7 @@ function vg_product_contribution_qa_persistent_state(): array
     return [
         'product_contribution_posts' => vg_product_contribution_qa_post_count('product_contribution'),
         'person_posts' => vg_product_contribution_qa_post_count('person'),
+        'person_inventory' => vg_product_contribution_qa_person_inventory(),
         'event_participation_posts' => vg_product_contribution_qa_post_count(EventParticipationRepository::POST_TYPE),
         'product_role_terms' => count(vg_product_contribution_qa_role_terms()),
         'product_role_term_slugs' => array_column(vg_product_contribution_qa_role_terms(), 'slug'),
@@ -1153,7 +1180,13 @@ function vg_product_contribution_qa_preflight(array &$context): void
     vg_product_contribution_qa_check($actual_roles === $expected_roles && count($context['roles']) === 4, 'Product Role vocabulary is not exactly the four approved terms.');
     vg_product_contribution_qa_check(vg_product_contribution_qa_role_relationship_count() === 0, 'Product Role relationships exist before QA.');
     vg_product_contribution_qa_check(vg_product_contribution_qa_post_count('product_contribution') === 0, 'Persistent Product Contribution posts exist before QA.');
-    vg_product_contribution_qa_check(vg_product_contribution_qa_post_count('person') === 0, 'Persistent Person posts differ from the authorized baseline.');
+    vg_product_contribution_qa_check(
+        vg_product_contribution_qa_person_baseline_matches(
+            vg_product_contribution_qa_person_inventory(),
+            vg_product_contribution_qa_group_fingerprint([1705])
+        ),
+        'Persistent Person inventory or Person 1705 fingerprint differs from the authorized Task 10A baseline.'
+    );
     vg_product_contribution_qa_check(vg_product_contribution_qa_post_count(EventParticipationRepository::POST_TYPE) === 0, 'Persistent Event Participation posts differ from the authorized baseline.');
     $context['persistent_pre'] = vg_product_contribution_qa_persistent_state();
     vg_product_contribution_qa_check($context['persistent_pre']['target_acf_database_definitions'] === 3, 'Exactly three target Product Contribution ACF definitions must be persisted before QA.');

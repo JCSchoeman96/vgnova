@@ -1,0 +1,672 @@
+{
+  "schema": "vgnova.pe008-predeployment-recovery-manifest",
+  "version": "1.0.0",
+  "status": "BLOCKED_PRE_RENAME_MUTATION_SESSION_GUARD",
+  "deployment_authorized": false,
+  "source_baseline": {
+    "artifact_source_main": "de90ff061c20b164c127aa97e845e3f192429543",
+    "current_origin_main": "de90ff061c20b164c127aa97e845e3f192429543",
+    "current_origin_main_change": "documentation-only; canonical Platform Core tree and archive bytes unchanged, but workflow 40342642997 published a newer exact-main provenance manifest now used as PE-008 authority",
+    "deployment_tool_commit": "cb6d76d78952fb568edde36e95930e93595b56d7",
+    "branch": "ops/pe-008-platform-core-runtime-bootstrap",
+    "worktree": "/home/jcschoeman96/projects/current/vgnova/.worktrees/ops-pe-008-platform-core-runtime-bootstrap",
+    "intermediate_artifact_source_main": "50ee4bee1ae1405522df7b67634b8935d4e9d9ed",
+    "rebase_target": "de90ff061c20b164c127aa97e845e3f192429543",
+    "rebase_from": "50ee4bee1ae1405522df7b67634b8935d4e9d9ed",
+    "pe008s_reviewed_head_before_rebase": "27b8900883f5a71e99ac16f2d367a9311add3b1b",
+    "original_tooling_commit_before_pe008s": "445a656448d3222befd721117fe7cef5aebbba8a",
+    "rebased_branch_tip_before_authority_refresh": "7f1ec4b1ecbc3a38cb7762281471174dc475e448"
+  },
+  "artifact": {
+    "workflow_id": "40342642997",
+    "artifact_id": "12659772564",
+    "artifact_name": "voelgoed-platform-core-de90ff061c20b164c127aa97e845e3f192429543",
+    "source_commit": "de90ff061c20b164c127aa97e845e3f192429543",
+    "transport_zip_sha256": "22128391bfb1c9ee040b929cc47385db71980d4d8dcacc0171d8b03fef413d7f",
+    "published_manifest_sha256": "7cd38e758babddf495e484013d9345750af6f39689bc428f67d89a814949a932",
+    "archive_sha256": "22d998019e3fe3d93d675250a26eba5be3dbc248badd9be4d7507fbdf9cffdb9",
+    "tree_sha256": "5816b80ac4355782523aa4baa82bd9e55dd87326f15972f287ff1afa7567482a",
+    "file_count": 55,
+    "exact_output_verification": "PASS under CPython 3.14.4 with check-platform-core-build.py --ref de90ff061c20b164c127aa97e845e3f192429543 --verify-output",
+    "published_manifest_is_authority": true,
+    "source_ref_requested": "de90ff061c20b164c127aa97e845e3f192429543",
+    "schema_version": 3,
+    "artifact_cache": "/home/jcschoeman96/.cache/vgnova/pe008-20261026/current-main-de90ff061c20b164c127aa97e845e3f192429543/",
+    "prior_50ee_head_verifier_manifest_sha256": "b44d99008f62bba3695a4ec13a81eb8808d2e8fec105bf52bf168e71fad77ced",
+    "prior_50ee_head_verifier_source_ref_requested": "HEAD",
+    "prior_50ee_head_verifier_tree_and_archive_match": true
+  },
+  "product_contribution_authority_transition": {
+    "old": {
+      "source_commit": "7af938ac6f4422b1fa779b52444121e7a9293995",
+      "file_count": 54,
+      "tree_sha256": "856a3e5978559bfb2572b4b1ff4b34df916743f9e72d6b18220ee64e98af5f56",
+      "archive_sha256": "9d5fd288025703fe4f71ed1f3ee264cd3fc9c0b61cf74d137b40e941bc2e2243",
+      "manifest_sha256": "c87d339ebe83203a82a3f02b27de9854be9e360835da9893077af9c9c318c1ee"
+    },
+    "new": {
+      "source_commit": "de90ff061c20b164c127aa97e845e3f192429543",
+      "file_count": 55,
+      "tree_sha256": "5816b80ac4355782523aa4baa82bd9e55dd87326f15972f287ff1afa7567482a",
+      "archive_sha256": "22d998019e3fe3d93d675250a26eba5be3dbc248badd9be4d7507fbdf9cffdb9",
+      "manifest_sha256": "7cd38e758babddf495e484013d9345750af6f39689bc428f67d89a814949a932"
+    },
+    "intermediate_50ee": {
+      "source_commit": "50ee4bee1ae1405522df7b67634b8935d4e9d9ed",
+      "file_count": 55,
+      "tree_sha256": "5816b80ac4355782523aa4baa82bd9e55dd87326f15972f287ff1afa7567482a",
+      "archive_sha256": "22d998019e3fe3d93d675250a26eba5be3dbc248badd9be4d7507fbdf9cffdb9",
+      "manifest_sha256": "b728e69d1488a28601982bfb5e84b4104b11cab5f6c9ae1dcd2a38192ef696a7"
+    }
+  },
+  "incident": {
+    "classification": "ABORTED_PRE_MUTATION_QA_INVOCATION",
+    "entrypoint_invocations": 1,
+    "run_function": "vg_product_contribution_qa_run",
+    "guard": "vg_runtime_mutation_assert_session('vgnova-local-10039')",
+    "guard_order": "before run ID/token generation, preflight, mutation body, and cleanup",
+    "guard_result": "REJECTED",
+    "mutation_body_started": false,
+    "cleanup_window_opened": false,
+    "qa_owner_records_created": 0,
+    "product_contribution_records_created": 0,
+    "persistent_wordpress_writes": 0,
+    "successful_live_qa_runs": 0,
+    "platform_core_deployments": 0
+  },
+  "runtime": {
+    "target": "vgnova-local-10039",
+    "home": "http://localhost:10039",
+    "siteurl": "http://localhost:10039",
+    "database": "local@localhost",
+    "wordpress_version": "7.1.3",
+    "php_version": "8.5.12",
+    "platform_core_active": true,
+    "platform_core_version": "0.1.0",
+    "classification": "OLD_AUTHORITY_EXACT",
+    "old_authority": {
+      "source_commit": "7af938ac6f4422b1fa779b52444121e7a9293995",
+      "file_count": 54,
+      "tree_sha256": "856a3e5978559bfb2572b4b1ff4b34df916743f9e72d6b18220ee64e98af5f56",
+      "manifest_sha256": "c87d339ebe83203a82a3f02b27de9854be9e360835da9893077af9c9c318c1ee",
+      "missing": 0,
+      "extra": 0,
+      "content_mismatch": 0,
+      "mode_mismatch": 0,
+      "symlinks": 0,
+      "unsupported": 0
+    },
+    "person_inventory": [
+      {
+        "id": 1705,
+        "post_type": "person",
+        "post_status": "publish",
+        "post_title": "Lynette Beer",
+        "post_name": "lynette-beer",
+        "post_date_gmt": "2026-10-26 09:05:12"
+      }
+    ],
+    "person_postmeta": [
+      {
+        "meta_key": "_masteriyo_has_content",
+        "meta_value": "0"
+      }
+    ],
+    "person_type_terms": [
+      "Mentor",
+      "Kenner"
+    ],
+    "person_content_topic_relationships": 0,
+    "person_raw_acf_result": false,
+    "product_contribution_posts": 0,
+    "event_participation_posts": 0,
+    "product_contribution_qa_owner_rows": 0,
+    "last_inspected_during": "PE-008W read-only pre/post retry snapshots; protected summaries matched and active plugin remained exact-old.",
+    "pe008t_runtime_mutation": "none",
+    "deployment_authorized": false
+  },
+  "fingerprint_provenance": {
+    "classification": "HASH_PROVENANCE_DEFECT",
+    "capture_fixture": "site-code/runtime-tests/fixtures/person-1705-fingerprint-capture.json",
+    "capture_fixture_sha256": "8bb5f5a701d2554c235e55a7759e942dbada36e6c4a708fbc5b7e53e7310c316",
+    "original_capture_fixture": "site-code/runtime-tests/fixtures/person-1705-task10a-capture.raw.json",
+    "original_capture_sha256": "acba754272b709d5088474acde4bd9733f91744988a16b812bacfdea5dc68fbd",
+    "php_scalar_values": "strings",
+    "canonicalization": "hash('sha256', serialize($value)) with serialize_precision=-1",
+    "results": {
+      "post": {
+        "task10a_input": "one associative row",
+        "task10a_serialized_bytes": 779,
+        "task10a_sha256": "792654d2d6a47aec75ef635e4bc51e3a67d35f621dfef021f1dcd4f97e6e080f",
+        "product_contribution_input": "one-row list",
+        "product_contribution_serialized_bytes": 789,
+        "product_contribution_sha256": "f2a980eb64045700dc3a4ca07a7950ec3cb1daea14e4a400ac48e6837b2e9b5b"
+      },
+      "postmeta": {
+        "input": "same one-row list",
+        "serialized_bytes": 137,
+        "sha256": "0d043dd56c404e0ddb6d7ad496249b770d296a6cd72290bfd7774189e5c820e5"
+      },
+      "taxonomy_relationships": {
+        "task10a_projection_columns": 9,
+        "task10a_serialized_bytes": 494,
+        "task10a_sha256": "220c90c6c8838738030fe3ae3c3011446cd9d6b6b0162cba8c6597d438ab13b6",
+        "product_contribution_projection_columns": 6,
+        "product_contribution_serialized_bytes": 364,
+        "product_contribution_sha256": "1d347313f990ba8063fe34926ef537e85d2dc4bdc575e5369338be45b9bdf7fb"
+      }
+    }
+  },
+  "coordinator": {
+    "session_acquired_during_pe008r": false,
+    "filesystem_lock": "free",
+    "database_lock_a": "free",
+    "database_lock_b": "free",
+    "status_error": false
+  },
+  "superseded_stage": {
+    "path": "/home/jcschoeman96/Local Sites/voelgoed-novamira/app/voelgoed-platform-core.pe008-stage-20261026T105633Z",
+    "used": false,
+    "modified_by_pe008r": false
+  },
+  "runtime_mutation_counts": {
+    "platform_core_deployments": 0,
+    "acf_writes": 0,
+    "taxonomy_writes": 0,
+    "post_writes": 0,
+    "persistent_wordpress_db_writes": 0,
+    "bricks_writes": 0,
+    "fluent_snippet_writes": 0,
+    "rewrite_flushes": 0,
+    "plugin_activation_deactivation_writes": 0,
+    "successful_live_qa_runs": 0,
+    "aborted_pre_mutation_qa_invocations": 1,
+    "blocked_pre_guard_deployment_attempts": 1,
+    "blocked_pre_rename_mutation_session_guard_attempts": 1
+  },
+  "pe008r_source_verification": {
+    "check_source": "PASS",
+    "platform_core_check": "PASS",
+    "product_contribution_integrity": "27/27 PASS",
+    "pe008_protected_state": "PASS",
+    "pe008_bootstrap_helper": "28 cases PASS",
+    "runtime_mutation_core": "73 tests PASS",
+    "runtime_mutation_session": "19/19 PASS",
+    "runtime_mutation_policy": "31/31 PASS",
+    "static_mutation_policy": "131 tracked PHP files PASS",
+    "fcm_integration": "3 tests PASS",
+    "actionlint": "PASS",
+    "git_diff_check": "PASS",
+    "live_product_contribution_qa": "NOT RUN"
+  },
+  "pe008s": {
+    "status": "SOURCE_ONLY_DRAFT_PR_REVIEW_PENDING",
+    "deployment_authorized": false,
+    "parent_process": "WordPress-free for its lifetime",
+    "process_tree": [
+      "PE-007 coordinator",
+      "PE-008 deployment parent",
+      "pre-rename WP-CLI guard child",
+      "filesystem directory swap",
+      "post-swap WP-CLI smoke child"
+    ],
+    "pre_rename_guard": {
+      "execution": "separate WP-CLI subprocess, fully exited and reaped before failed-path reservation and first rename",
+      "command_library_transport": "WP_CLI_REQUIRE",
+      "user_config": "/dev/null",
+      "system_config": "/dev/null",
+      "working_directory": "/",
+      "skip_plugins": true,
+      "skip_themes": true,
+      "suppress_mu_plugins": true,
+      "disable_wp_cron": true,
+      "staged_guard_loaded": true,
+      "session_assertion": "vg_runtime_mutation_assert_session('vgnova-local-10039')",
+      "fd3_inherited": true,
+      "other_coordinator_descriptors_inherited": false
+    },
+    "database_transport": {
+      "socket_override_php_settings": [
+        "mysqli.default_socket",
+        "pdo_mysql.default_socket"
+      ],
+      "socket_override_environment": "VGNOVA_DB_SOCKET",
+      "credentials_in_argv_or_child_environment": false
+    },
+    "cli_exit_contract": {
+      "SWAPPED": 0,
+      "SKIPPED_ALREADY_EXACT": 0,
+      "ROLLED_BACK": 3,
+      "BLOCKED": 1,
+      "BLOCKED_CRITICAL": 2
+    },
+    "tdd": {
+      "red": [
+        "command builder regression failed while normal --require remained in argv",
+        "environment regression failed while WP_CLI_SYSTEM_SETTINGS_PATH was not disabled",
+        "direct probe rejected WP_CLI_EARLY_REQUIRE because WP_CLI was not initialized"
+      ],
+      "green": "33 PE-008 bootstrap cases passed after isolated WP_CLI_REQUIRE and exit mapping changes"
+    },
+    "wp_cli_require_probe": "PASS; installed WP-CLI registered and ran a before_wp_load command through WP_CLI_REQUIRE with both config paths disabled",
+    "mutation_counts": {
+      "platform_core_deployments": 0,
+      "acf_writes": 0,
+      "taxonomy_writes": 0,
+      "post_writes": 0,
+      "persistent_wordpress_db_writes": 0,
+      "bricks_writes": 0,
+      "fluent_snippet_writes": 0,
+      "rewrite_flushes": 0,
+      "plugin_activation_deactivation_writes": 0,
+      "successful_live_qa_runs": 0,
+      "aborted_pre_mutation_qa_invocations": 1
+    },
+    "source_verification": {
+      "pe008_bootstrap": "33/33 PASS",
+      "product_contribution_integrity": "27/27 PASS",
+      "pe008_protected_state": "PASS",
+      "runtime_mutation_core": "74 PASS",
+      "runtime_mutation_session": "19/19 PASS",
+      "runtime_mutation_policy": "32 PASS",
+      "static_mutation_policy": "133 tracked PHP files PASS",
+      "fcm_integration": "3/3 PASS",
+      "platform_core_dashboard": "127/127 PASS",
+      "check_source": "PASS",
+      "platform_core_check": "PASS",
+      "php_lint": "PASS",
+      "json_validation": "PASS",
+      "python_syntax_ast": "PASS",
+      "bash_syntax": "PASS",
+      "shellcheck": "PASS",
+      "actionlint": "PASS",
+      "git_diff_check": "PASS",
+      "live_product_contribution_qa": "NOT RUN"
+    }
+  },
+  "pull_request": {
+    "draft": true,
+    "number": 59,
+    "base_sha": "de90ff061c20b164c127aa97e845e3f192429543",
+    "head_ref": "ops/pe-008-platform-core-runtime-bootstrap",
+    "url": "https://github.com/JCSchoeman96/vgnova/pull/59",
+    "mergeability": "MERGEABLE",
+    "github_checks": "See exact-head checks on PR 59",
+    "last_reviewed_pe008s_head": "27b8900883f5a71e99ac16f2d367a9311add3b1b",
+    "pe008t_checks": "Exact reviewed tooling head 0094319e96a8d4610adf4229cba75d1e7d4abcfa; run 40397144966 passed Dashboard, Canonical source, and VG Nova Platform Gate; publication skipped.",
+    "reviewed_tooling_head": "0094319e96a8d4610adf4229cba75d1e7d4abcfa"
+  },
+  "intermediate_publication": {
+    "workflow_id": "40311497761",
+    "artifact_id": "12645287640",
+    "artifact_name": "voelgoed-platform-core-50ee4bee1ae1405522df7b67634b8935d4e9d9ed",
+    "source_commit": "50ee4bee1ae1405522df7b67634b8935d4e9d9ed",
+    "source_ref_requested": "50ee4bee1ae1405522df7b67634b8935d4e9d9ed",
+    "transport_zip_sha256": "e90073d5a7a3e2dff0a871090c7ae036d7a8922f60a589d11ca85870965a23ed",
+    "published_manifest_sha256": "b728e69d1488a28601982bfb5e84b4104b11cab5f6c9ae1dcd2a38192ef696a7",
+    "archive_sha256": "22d998019e3fe3d93d675250a26eba5be3dbc248badd9be4d7507fbdf9cffdb9",
+    "tree_sha256": "5816b80ac4355782523aa4baa82bd9e55dd87326f15972f287ff1afa7567482a",
+    "file_count": 55,
+    "manifest_fixture": "site-code/runtime-tests/fixtures/voelgoed-platform-core-pe008-50ee.manifest.json",
+    "current_manifest_changed_fields": [
+      "source_commit",
+      "source_ref_requested"
+    ],
+    "current_archive_and_file_inventory_identical": true
+  },
+  "pe008t": {
+    "status": "SOURCE_ONLY_PREDEPLOYMENT_REVIEW",
+    "rebase": {
+      "old_reviewed_head": "27b8900883f5a71e99ac16f2d367a9311add3b1b",
+      "base_sha": "de90ff061c20b164c127aa97e845e3f192429543",
+      "branch_before_authority_refresh": "7f1ec4b1ecbc3a38cb7762281471174dc475e448",
+      "authority_source_commit": "de90ff061c20b164c127aa97e845e3f192429543",
+      "authority_source_commit_sha": "cb6d76d78952fb568edde36e95930e93595b56d7"
+    },
+    "tdd": {
+      "red": "Before replacing the old fixture or source constants, the updated integrity regression failed 2 assertions and reported 25/27. It rejected the old published-manifest digest and observed the old b728e69d digest where the new de90ff authority was expected.",
+      "green": "After preserving the exact 50ee manifest and installing the downloaded de90ff manifest bytes, the integrity suite passed 28/28, including the exact field comparison."
+    },
+    "source_verification": {
+      "pe008_bootstrap": "33/33 PASS",
+      "product_contribution_integrity": "28/28 PASS",
+      "pe008_protected_state": "PASS from fixed captured fixtures",
+      "runtime_mutation_core": "74 PASS",
+      "runtime_mutation_session": "19/19 PASS",
+      "runtime_mutation_policy": "32 PASS",
+      "static_mutation_policy": "133 tracked PHP files; 34 mutation API files; PASS",
+      "fcm_integration": "3/3 PASS",
+      "platform_core_dashboard": "127/127 PASS",
+      "check_source": "PASS",
+      "platform_core_check": "PASS",
+      "canonical_artifact_tree_and_archive": "55 files; tree 5816b80ac4355782523aa4baa82bd9e55dd87326f15972f287ff1afa7567482a; archive 22d998019e3fe3d93d675250a26eba5be3dbc248badd9be4d7507fbdf9cffdb9",
+      "published_artifact_exact_output": "PASS under CPython 3.14.4 for source de90ff061c20b164c127aa97e845e3f192429543",
+      "manifest_transition_regression": "PASS; only source_commit and source_ref_requested differ between exact published manifests",
+      "php_lint": "PASS via check-source.sh",
+      "json_validation": "PASS via check-source.sh and integrity tests",
+      "python_syntax_ast": "PASS via check-source.sh",
+      "bash_syntax": "PASS via check-source.sh",
+      "shellcheck": "PASS via check-source.sh",
+      "actionlint": "PASS with actionlint 1.7.12 through mise",
+      "git_diff_check": "PASS after evidence changes",
+      "live_product_contribution_qa": "NOT RUN"
+    },
+    "runtime_mutation_counts": {
+      "platform_core_deployments": 0,
+      "persistent_wordpress_writes": 0,
+      "successful_live_qa_runs": 0,
+      "aborted_pre_mutation_qa_invocations": 1
+    },
+    "runtime_access": "No Local runtime inspection, mutation-session acquisition, WP-CLI command, or persistent write occurred during PE-008T.",
+    "pr_checks": "Must pass on final exact PE-008T head before independent review."
+  },
+  "pe008u": {
+    "status": "BLOCKED_PRE_GUARD_PRODUCTION_WIRING",
+    "reviewed_tooling_head": "9d6d3f123217f31edf449c4a80288de59b5c8170",
+    "base_sha": "de90ff061c20b164c127aa97e845e3f192429543",
+    "authorized_artifact_id": "12659772564",
+    "coordinator": {
+      "launched": true,
+      "target": "vgnova-local-10039",
+      "session_acquired": true,
+      "session_id": "f306cb4da79628f1be1aeb21f9b263a5",
+      "helper_launched": true,
+      "guard_callback_entered": true,
+      "wp_cli_guard_subprocess_started": false,
+      "child_exit_code": 1,
+      "host_lock_after": "free",
+      "database_lock_a_after": "free",
+      "database_lock_b_after": "free"
+    },
+    "failure": {
+      "classification": "BLOCKED_PRE_GUARD_PRODUCTION_WIRING",
+      "reason": "Production guard closure read $base_environment without capturing it; the subprocess wrapper received null instead of array.",
+      "failed_tree_reservation_created": false,
+      "active_to_backup_rename": false,
+      "stage_to_active_rename": false
+    },
+    "runtime_after_attempt": {
+      "active_classification": "OLD_AUTHORITY_EXACT",
+      "active_file_count": 54,
+      "active_tree_sha256": "856a3e5978559bfb2572b4b1ff4b34df916743f9e72d6b18220ee64e98af5f56",
+      "active_missing": 0,
+      "active_extra": 0,
+      "active_content_mismatch": 0,
+      "active_mode_mismatch": 0,
+      "active_symlinks": 0,
+      "active_unsupported": 0,
+      "stage_path": "/home/jcschoeman96/Local Sites/voelgoed-novamira/app/voelgoed-platform-core.pe008-stage-20261026T194240Z",
+      "stage_file_count": 55,
+      "stage_tree_sha256": "5816b80ac4355782523aa4baa82bd9e55dd87326f15972f287ff1afa7567482a",
+      "stage_exact": true,
+      "backup_path": "/home/jcschoeman96/Local Sites/voelgoed-novamira/app/voelgoed-platform-core.pe008-backup-20261026T194240Z",
+      "backup_exists": false
+    },
+    "mutation_counts": {
+      "platform_core_deployments": 0,
+      "persistent_wordpress_writes": 0,
+      "successful_live_qa_runs": 0,
+      "aborted_pre_mutation_qa_invocations": 1,
+      "blocked_pre_guard_deployment_attempts": 1
+    },
+    "authorization_for_current_head": false
+  },
+  "pe008v": {
+    "status": "SOURCE_ONLY_REMEDIATION",
+    "failing_head": "9d6d3f123217f31edf449c4a80288de59b5c8170",
+    "origin_main_at_start": "de90ff061c20b164c127aa97e845e3f192429543",
+    "source_changes": [
+      "capture the existing $base_environment snapshot in the production guard closure",
+      "add a production-wiring regression for lexical captures",
+      "record the blocked PE-008U attempt"
+    ],
+    "tdd": {
+      "red": "The production-wiring regression failed with production guard does not capture base_environment; the other 33 PE-008 bootstrap cases passed.",
+      "green": "The PE-008 bootstrap suite passed 34/34 after adding the existing environment snapshot to the guard capture list."
+    },
+    "sibling_callback_audit": {
+      "guard": "All outer variables are captured after the fix; expected is a parameter and report/socket/command values are local.",
+      "verify": "old/new manifests and authorities are captured; path/which are parameters and authority/manifest/report are local.",
+      "smoke": "target/wp_cli/base_environment/smoke_library are captured; root/require_guard are parameters and plugin/socket/command values are local.",
+      "rename": "The static arrow callback uses only its a/b parameters; no outer variables are used.",
+      "other_uncaptured_dependencies": false
+    },
+    "source_verification": {
+      "check_source": "PASS",
+      "platform_core_check": "PASS",
+      "product_contribution_integrity": "28/28 PASS",
+      "pe008_protected_state": "PASS",
+      "pe008_bootstrap": "34/34 PASS",
+      "runtime_mutation_core": "74 PASS",
+      "runtime_mutation_session": "19/19 PASS",
+      "runtime_mutation_policy": "32/32 PASS",
+      "static_mutation_policy": "133 tracked PHP files; 34 mutation API files; PASS",
+      "fcm_integration": "3/3 PASS",
+      "platform_core_dashboard": "127/127 PASS",
+      "php_lint": "PASS",
+      "json_validation": "PASS",
+      "python_syntax_ast": "PASS",
+      "bash_syntax": "PASS",
+      "shellcheck": "PASS",
+      "actionlint": "PASS with actionlint 1.7.12",
+      "git_diff_check": "PASS",
+      "canonical_tree_and_archive": "55 files; tree 5816b80ac4355782523aa4baa82bd9e55dd87326f15972f287ff1afa7567482a; archive 22d998019e3fe3d93d675250a26eba5be3dbc248badd9be4d7507fbdf9cffdb9",
+      "live_product_contribution_qa": "NOT RUN"
+    },
+    "runtime_access": "None. PE-008V did not inspect the Local runtime, access the stage, acquire a mutation session, run live QA, or write WordPress data.",
+    "deployment_authorized": false,
+    "live_product_contribution_qa": "NOT RUN"
+  },
+  "pe008w": {
+    "status": "BLOCKED_PRE_RENAME_MUTATION_SESSION_GUARD",
+    "deployment_authorized_for_this_attempt": true,
+    "next_retry_authorized": false,
+    "tooling_head": "0094319e96a8d4610adf4229cba75d1e7d4abcfa",
+    "origin_main": "de90ff061c20b164c127aa97e845e3f192429543",
+    "artifact": {
+      "workflow_id": "40342642997",
+      "artifact_id": "12659772564",
+      "source_commit": "de90ff061c20b164c127aa97e845e3f192429543",
+      "manifest_sha256": "7cd38e758babddf495e484013d9345750af6f39689bc428f67d89a814949a932",
+      "archive_sha256": "22d998019e3fe3d93d675250a26eba5be3dbc248badd9be4d7507fbdf9cffdb9",
+      "tree_sha256": "5816b80ac4355782523aa4baa82bd9e55dd87326f15972f287ff1afa7567482a",
+      "file_count": 55,
+      "transport_zip_sha256": "22128391bfb1c9ee040b929cc47385db71980d4d8dcacc0171d8b03fef413d7f"
+    },
+    "freshness_and_worktree": {
+      "origin_main_verified": "de90ff061c20b164c127aa97e845e3f192429543",
+      "head_verified": "0094319e96a8d4610adf4229cba75d1e7d4abcfa",
+      "worktree_clean": true
+    },
+    "stage": {
+      "path": "/home/jcschoeman96/Local Sites/voelgoed-novamira/app/voelgoed-platform-core.pe008-stage-20261026T194240Z",
+      "fresh_integrity": "EXACT_NEW_AUTHORITY",
+      "file_count": 55,
+      "tree_sha256": "5816b80ac4355782523aa4baa82bd9e55dd87326f15972f287ff1afa7567482a",
+      "missing": 0,
+      "extra": 0,
+      "content_mismatch": 0,
+      "mode_mismatch": 0,
+      "symlinks": 0,
+      "unsupported": 0,
+      "world_writable": 0,
+      "device_id": 66306,
+      "max_file_ctime_utc": "2026-10-26T19:43:26.868965189Z",
+      "max_file_mtime_utc": "2026-10-26T19:43:26.868965189Z",
+      "unchanged_by_blocked_attempt": true
+    },
+    "backup": {
+      "path": "/home/jcschoeman96/Local Sites/voelgoed-novamira/app/voelgoed-platform-core.pe008-backup-20261027T045227Z",
+      "existed_before": false,
+      "exists_after": false
+    },
+    "predeployment_runtime": {
+      "classification": "OLD_AUTHORITY_EXACT",
+      "file_count": 54,
+      "tree_sha256": "856a3e5978559bfb2572b4b1ff4b34df916743f9e72d6b18220ee64e98af5f56",
+      "missing": 0,
+      "extra": 0,
+      "content_mismatch": 0,
+      "mode_mismatch": 0,
+      "symlinks": 0,
+      "unsupported": 0,
+      "wordpress_version": "7.1.3",
+      "runtime_php_version": "8.5.12",
+      "wp_cli_php_version": "8.5.4",
+      "acf_pro_version": "6.8.1",
+      "woocommerce_version": "11.2.1",
+      "platform_core_active": true,
+      "platform_core_version": "0.1.0"
+    },
+    "coordinator": {
+      "target": "vgnova-local-10039",
+      "session_acquired": true,
+      "session_id": "fd5999ac793624d9b5cc726d91606d1a",
+      "helper_launched": true,
+      "guard_callback_entered": true,
+      "guard_callback_result": false,
+      "guard_child_started": "NOT_CONFIRMED_FROM_HELPER_RESULT",
+      "guard_child_exit_code": null,
+      "helper_result": {
+        "status": "BLOCKED",
+        "reason": "mutation_session_invalid"
+      },
+      "coordinator_child_exit_code": 1,
+      "host_lock_before": "free",
+      "database_lock_a_before": "free",
+      "database_lock_b_before": "free",
+      "host_lock_after": "free",
+      "database_lock_a_after": "free",
+      "database_lock_b_after": "free",
+      "database_lock_a_name": "vgnova.mutation.a.f9d63fbcd072e54005ff68365e36e040fbf11b93",
+      "database_lock_b_name": "vgnova.mutation.b.f9d63fbcd072e54005ff68365e36e040fbf11b93",
+      "database_connection_ids_after": {
+        "a": null,
+        "b": null
+      }
+    },
+    "filesystem_after": {
+      "active_classification": "OLD_AUTHORITY_EXACT",
+      "active_file_count": 54,
+      "active_tree_sha256": "856a3e5978559bfb2572b4b1ff4b34df916743f9e72d6b18220ee64e98af5f56",
+      "stage_exact_new": true,
+      "backup_exists": false,
+      "failed_tree_reservation_created": false,
+      "active_to_backup_rename": false,
+      "stage_to_active_rename": false,
+      "post_swap_smoke_run": false,
+      "deployed_guard_handshake": false
+    },
+    "protected_state": {
+      "pre_snapshot": "/home/jcschoeman96/.cache/vgnova/pe008-20261027/runtime-predeployment-20261027T045227Z.json",
+      "pre_snapshot_sha256": "4d3c4cbd1470e163cf45061699cb0f1aea11321a699e2f15988fd4552ef8c6f1",
+      "post_snapshot": "/home/jcschoeman96/.cache/vgnova/pe008-20261027/runtime-postblocked-20261027T045227Z.json",
+      "post_snapshot_sha256": "d50dff3bbebc1e5b0c0ee8328a6395e4314ab4040297fec44f508a6d41d70798",
+      "protected_summaries_equal": true,
+      "person_1705": {
+        "post_count": 1,
+        "postmeta_count": 1,
+        "relationship_count": 2,
+        "post_sha256": "f2a980eb64045700dc3a4ca07a7950ec3cb1daea14e4a400ac48e6837b2e9b5b",
+        "postmeta_sha256": "0d043dd56c404e0ddb6d7ad496249b770d296a6cd72290bfd7774189e5c820e5",
+        "relationships_sha256": "1d347313f990ba8063fe34926ef537e85d2dc4bdc575e5369338be45b9bdf7fb"
+      },
+      "approved_products_count": 20,
+      "approved_product_ids_match": true,
+      "acf_database_definitions_match": true,
+      "protected_groups_match": true,
+      "bricks_match": true,
+      "fluent_snippets_match": true
+    },
+    "incident_counters": {
+      "aborted_pre_mutation_qa_invocations": 1,
+      "blocked_pre_guard_production_wiring_attempts": 1,
+      "blocked_pre_rename_mutation_session_guard_attempts": 1,
+      "successful_live_product_contribution_qa_runs": 0,
+      "successful_platform_core_deployments": 0,
+      "persistent_wordpress_writes": 0
+    },
+    "runtime_mutation_counts": {
+      "acf_sync": 0,
+      "taxonomy_writes": 0,
+      "post_writes": 0,
+      "persistent_database_writes": 0,
+      "bricks_writes": 0,
+      "fluentsnippet_writes": 0,
+      "rewrite_flushes": 0,
+      "plugin_activation_deactivation_writes": 0,
+      "live_qa_runs": 0
+    }
+  },
+  "pe008x": {
+    "status": "ROOT_CAUSE_IDENTIFIED_NO_DEPLOYMENT_RETRY_AUTHORIZED",
+    "diagnostic_classification": "PE008_SESSION_DIAGNOSTIC",
+    "diagnostic_invocations": 1,
+    "tooling_head": "2363b02b0640307e1768c283adef4ff2d60e639a",
+    "origin_main": "de90ff061c20b164c127aa97e845e3f192429543",
+    "workflow_id": "40460036669",
+    "workflow_checks": {
+      "dashboard": "success",
+      "canonical_source": "success",
+      "platform_gate": "success",
+      "artifact_publication": "skipped"
+    },
+    "coordinator": {
+      "target": "vgnova-local-10039",
+      "purpose": "PE-008 nested session guard diagnostic",
+      "session_acquired": true,
+      "diagnostic_parent_started": true,
+      "host_lock_after": "free",
+      "database_lock_a_after": "free",
+      "database_lock_b_after": "free"
+    },
+    "process_result": {
+      "probe_started": true,
+      "child_exit_code": 1,
+      "child_stderr_empty": false,
+      "stdout_bytes": 0,
+      "stderr_bytes": 49,
+      "diagnostic_json_parsed": false,
+      "process_error_code": "child_nonzero_exit",
+      "sanitized_stderr": "Error: Error establishing a database connection.",
+      "failure_layer": "WP_CLI_BOOTSTRAP_OR_COMMAND"
+    },
+    "session_report": {
+      "executed": false,
+      "session_valid": null,
+      "errors": null,
+      "filesystem_lock_held": null,
+      "database_lock_a_owner_matches": null,
+      "database_lock_b_owner_matches": null
+    },
+    "raw_capture": {
+      "directory": "/home/jcschoeman96/.cache/vgnova/pe008-session-diagnostic-20261027T071500Z",
+      "stdout_file": "pe008-session-diagnostic-20261027T062915Z-18d20688.stdout.txt",
+      "stderr_file": "pe008-session-diagnostic-20261027T062915Z-18d20688.stderr.txt",
+      "file_mode": "0600",
+      "committed": false
+    },
+    "runtime_after": {
+      "active_classification": "OLD_AUTHORITY_EXACT",
+      "active_file_count": 54,
+      "active_tree_sha256": "856a3e5978559bfb2572b4b1ff4b34df916743f9e72d6b18220ee64e98af5f56",
+      "stage_path": "/home/jcschoeman96/Local Sites/voelgoed-novamira/app/voelgoed-platform-core.pe008-stage-20261026T194240Z",
+      "stage_exact_new": true,
+      "stage_file_count": 55,
+      "stage_tree_sha256": "5816b80ac4355782523aa4baa82bd9e55dd87326f15972f287ff1afa7567482a",
+      "backup_exists": false,
+      "failed_tree_reservation_created": false,
+      "directory_renames": 0
+    },
+    "runtime_mutation_counts": {
+      "platform_core_deployments": 0,
+      "persistent_wordpress_writes": 0,
+      "successful_live_product_contribution_qa_runs": 0,
+      "aborted_pre_mutation_qa_invocations": 1,
+      "blocked_pre_guard_production_wiring_attempts": 1,
+      "blocked_pre_rename_mutation_session_guard_attempts": 1
+    },
+    "live_product_contribution_qa": "NOT RUN",
+    "deployment_retry_authorized": false
+  }
+}

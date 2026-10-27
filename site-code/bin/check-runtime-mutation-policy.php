@@ -1487,6 +1487,12 @@ function vg_runtime_mutation_policy_validate_entry(array $entry, string $path, a
             || ! in_array($entry['purpose'], VG_RUNTIME_MUTATION_POLICY_PURPOSES, true)) {
             $errors[] = "{$path}: mutating entry has no registered purpose.";
         }
+        if (array_key_exists('session_guard_boundary', $entry)
+            && (($entry['session_guard_boundary'] ?? null) !== 'isolated_wp_cli_child'
+                || $path !== 'site-code/bin/pe008-bootstrap-platform-core-runtime.php'
+                || ($entry['guard_verifier_path'] ?? null) !== 'site-code/runtime-tools/pe008-wp-cli-session-guard.php')) {
+            $errors[] = "{$path}: isolated WP-CLI session guard is restricted to the PE-008 helper and verifier.";
+        }
     }
 
     if ($classification === 'explicit_exemption') {
@@ -1508,6 +1514,75 @@ function vg_runtime_mutation_policy_validate_entry(array $entry, string $path, a
             }
         }
     }
+}
+
+/**
+ * Validate the one filesystem mutator whose session assertion must run in a
+ * short-lived WordPress child. This is deliberately bound to PE-008 paths and
+ * its specific command, descriptor, wait, and pre-rename call chain.
+ *
+ * @param array<string,mixed> $entry
+ * @param array<string,array<string,mixed>> $entries_by_path
+ */
+function vg_runtime_mutation_policy_isolated_child_guard_valid(
+    string $repository_root,
+    string $path,
+    array $entry,
+    array $entries_by_path
+): bool {
+    $expected_mutator = 'site-code/bin/pe008-bootstrap-platform-core-runtime.php';
+    $expected_verifier = 'site-code/runtime-tools/pe008-wp-cli-session-guard.php';
+    if ($path !== $expected_mutator
+        || ($entry['session_guard_boundary'] ?? null) !== 'isolated_wp_cli_child'
+        || ($entry['guard_verifier_path'] ?? null) !== $expected_verifier
+        || ! is_array($entries_by_path[$expected_verifier] ?? null)
+        || ($entries_by_path[$expected_verifier]['classification'] ?? null) !== 'library') {
+        return false;
+    }
+    $mutator_source = @file_get_contents($repository_root . '/' . $expected_mutator);
+    $verifier_source = @file_get_contents($repository_root . '/' . $expected_verifier);
+    if (! is_string($mutator_source) || ! is_string($verifier_source)) {
+        return false;
+    }
+    foreach ([
+        'vg_pe008_guard_command(',
+        'vg_pe008_run_subprocess(',
+        'descriptorSafeCommand($command, [3])',
+        'proc_close($process)',
+        'pe008-wp-cli-session-guard.php',
+        'WP_CLI_CONFIG_PATH',
+        'WP_CLI_SYSTEM_SETTINGS_PATH',
+        'WP_CLI_REQUIRE',
+        'vg_pe008_run_subprocess($command, $base_environment, $command_library)',
+        'vg_pe008_run_subprocess($command, $base_environment, $smoke_library)',
+    ] as $required) {
+        if (! str_contains($mutator_source, $required)) {
+            return false;
+        }
+    }
+    if (str_contains($mutator_source, 'wp-load.php') || str_contains($mutator_source, 'wp-settings.php')) {
+        return false;
+    }
+    $guard_call = strpos($mutator_source, '$guard($config[\'target\'])');
+    $reservation = strpos($mutator_source, '@mkdir($failed_reservation, 0700)');
+    $first_rename = strpos($mutator_source, 'if (! $rename($active, $backup))');
+    if (! is_int($guard_call) || ! is_int($reservation) || ! is_int($first_rename)
+        || ! ($guard_call < $reservation && $reservation < $first_rename)) {
+        return false;
+    }
+    foreach ([
+        "WP_CLI::add_hook('before_wp_load'",
+        'DISABLE_WP_CRON',
+        "define('WPMU_PLUGIN_DIR', '/dev/null')",
+        "WP_CLI::add_command('pe008 session-guard'",
+        "'when' => 'after_wp_load'",
+        'vg_runtime_mutation_assert_session($target)',
+    ] as $required) {
+        if (! str_contains($verifier_source, $required)) {
+            return false;
+        }
+    }
+    return true;
 }
 
 /**
@@ -1596,7 +1671,13 @@ function vg_runtime_mutation_policy_check(
             if (($entries_by_path[$path]['classification'] ?? null) === 'mutating') {
                 $entry = $entries_by_path[$path];
                 $guard = (string) ($entry['guard_function'] ?? '');
-                if (vg_runtime_mutation_policy_call_index($source, $guard) === null) {
+                $child_guard_valid = vg_runtime_mutation_policy_isolated_child_guard_valid(
+                    $repository_root,
+                    $path,
+                    $entry,
+                    $entries_by_path
+                );
+                if (vg_runtime_mutation_policy_call_index($source, $guard) === null && ! $child_guard_valid) {
                     $errors[] = "{$path}: declared session guard is absent from source.";
                 }
             }
@@ -1612,9 +1693,15 @@ function vg_runtime_mutation_policy_check(
         if ($classification === 'mutating') {
             $guard = (string) ($entry['guard_function'] ?? '');
             $guard_indexes = vg_runtime_mutation_policy_call_indexes($source, $guard);
-            if ($guard_indexes === []) {
+            $child_guard_valid = vg_runtime_mutation_policy_isolated_child_guard_valid(
+                $repository_root,
+                $path,
+                $entry,
+                $entries_by_path
+            );
+            if ($guard_indexes === [] && ! $child_guard_valid) {
                 $errors[] = "{$path}: declared session guard is absent from source.";
-            } else {
+            } elseif ($guard_indexes !== []) {
                 foreach ($mutation_calls as $mutation_call) {
                     $mutation_context = vg_runtime_mutation_policy_enclosing_function($source, $mutation_call['index']);
                     if (! vg_runtime_mutation_policy_position_is_guarded(

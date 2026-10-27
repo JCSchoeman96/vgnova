@@ -629,6 +629,30 @@ $test('child environment excludes database credentials and keeps only session pr
     );
 });
 
+$test('child environment passes only an explicit validated Local DB socket override', static function (): void {
+    $proof = [
+        'session_id' => str_repeat('a', 32), 'target' => 'vgnova-local-10039',
+        'db_locks' => [
+            'a' => ['name' => 'vgnova.mutation.a.' . str_repeat('a', 40), 'connection_id' => 42],
+            'b' => ['name' => 'vgnova.mutation.b.' . str_repeat('a', 40), 'connection_id' => 43],
+        ],
+        'lock_file' => '/state/vgnova-local-10039.lock',
+    ];
+    $base = ['PATH' => '/usr/bin', 'VGNOVA_DB_SOCKET' => '/stale/socket', 'MYSQL_PWD' => 'hidden'];
+    $default = VgRuntimeMutationCore::childEnvironment($base, $proof);
+    vg_runtime_mutation_core_test(! isset($default['VGNOVA_DB_SOCKET']), 'An absent coordinator override inherited stale socket state.');
+    vg_runtime_mutation_core_test(! isset($default['MYSQL_PWD']), 'A database credential reached the child.');
+
+    $override = VgRuntimeMutationCore::childEnvironment($base, $proof, '/tmp/local-mysql.sock');
+    vg_runtime_mutation_core_test(($override['VGNOVA_DB_SOCKET'] ?? null) === '/tmp/local-mysql.sock', 'Explicit socket override did not reach the child.');
+    vg_runtime_mutation_core_test(! isset($override['MYSQL_PWD']), 'A database credential reached the overridden child.');
+    $coordinator = file_get_contents(dirname(__DIR__, 2) . '/bin/vgnova-runtime-mutate.php');
+    vg_runtime_mutation_core_test(is_string($coordinator)
+        && str_contains($coordinator, 'use ($childArguments, $resolvedRoot, $socketOverride)')
+        && str_contains($coordinator, 'childEnvironment($baseEnvironment, $proof, $socketOverride)'),
+        'Coordinator did not forward its explicit socket override into the guarded child environment.');
+});
+
 $test('metadata and command summary omit secret values', static function (): void {
     $metadata = VgRuntimeMutationCore::metadata([
         'target' => 'vgnova-local-10039', 'purpose' => 'password=do-not-store',

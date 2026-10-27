@@ -1,0 +1,100 @@
+{
+  "schema_version": 1,
+  "capture_authority": {
+    "record": "Task 10A predeployment full-state capture for Person 1705",
+    "captured_text_sha256": "acba754272b709d5088474acde4bd9733f91744988a16b812bacfdea5dc68fbd",
+    "post_query": "SELECT * FROM {posts} WHERE post_type = 'person' ORDER BY ID ASC",
+    "postmeta_query": "SELECT * FROM {postmeta} WHERE post_id = 1705 ORDER BY meta_id ASC",
+    "taxonomy_query": "SELECT r.object_id,r.term_taxonomy_id,r.term_order,tt.taxonomy,tt.term_id,t.slug,t.name,tt.parent,tt.count FROM {term_relationships} r JOIN {term_taxonomy} tt ON tt.term_taxonomy_id = r.term_taxonomy_id JOIN {terms} t ON t.term_id = tt.term_id WHERE r.object_id = 1705 ORDER BY r.term_taxonomy_id ASC,r.term_order ASC,tt.taxonomy ASC,tt.term_id ASC,t.slug ASC",
+    "taxonomy_projection": [
+      "object_id",
+      "term_taxonomy_id",
+      "term_order",
+      "taxonomy",
+      "term_id",
+      "slug",
+      "name",
+      "parent",
+      "count"
+    ],
+    "canonicalization": "hash('sha256', serialize($value)); PHP serialize_precision=-1"
+  },
+  "product_contribution_group_contract": {
+    "post_query": "SELECT * FROM {posts} WHERE ID IN (1705) ORDER BY ID ASC",
+    "postmeta_query": "SELECT * FROM {postmeta} WHERE post_id IN (1705) ORDER BY post_id ASC, meta_key ASC, meta_id ASC",
+    "canonicalization": "hash('sha256', serialize($value)); PHP serialize_precision=-1",
+    "term_relationships_query": "SELECT r.object_id,r.term_taxonomy_id,r.term_order,tt.taxonomy,tt.term_id,t.slug FROM {term_relationships} r JOIN {term_taxonomy} tt ON tt.term_taxonomy_id=r.term_taxonomy_id JOIN {terms} t ON t.term_id=tt.term_id WHERE r.object_id IN (1705) ORDER BY r.object_id ASC,r.term_taxonomy_id ASC,r.term_order ASC,tt.taxonomy ASC,tt.term_id ASC,t.slug ASC",
+    "term_relationship_projection": [
+      "object_id",
+      "term_taxonomy_id",
+      "term_order",
+      "taxonomy",
+      "term_id",
+      "slug"
+    ]
+  },
+  "task10a_hashes": {
+    "post_row": "792654d2d6a47aec75ef635e4bc51e3a67d35f621dfef021f1dcd4f97e6e080f",
+    "postmeta_rows": "0d043dd56c404e0ddb6d7ad496249b770d296a6cd72290bfd7774189e5c820e5",
+    "taxonomy_relationship_rows": "220c90c6c8838738030fe3ae3c3011446cd9d6b6b0162cba8c6597d438ab13b6"
+  },
+  "captured_rows": {
+    "post": {
+      "ID": "1705",
+      "post_author": "0",
+      "post_date": "2026-10-26 09:05:12",
+      "post_date_gmt": "2026-10-26 09:05:12",
+      "post_content": "",
+      "post_title": "Lynette Beer",
+      "post_excerpt": "",
+      "post_status": "publish",
+      "comment_status": "closed",
+      "ping_status": "closed",
+      "post_password": "",
+      "post_name": "lynette-beer",
+      "to_ping": "",
+      "pinged": "",
+      "post_modified": "2026-10-26 09:05:12",
+      "post_modified_gmt": "2026-10-26 09:05:12",
+      "post_content_filtered": "",
+      "post_parent": "0",
+      "guid": "http://localhost:10039/mense/lynette-beer/",
+      "menu_order": "0",
+      "post_type": "person",
+      "post_mime_type": "",
+      "comment_count": "0"
+    },
+    "postmeta": [
+      {
+        "meta_id": "8629",
+        "post_id": "1705",
+        "meta_key": "_masteriyo_has_content",
+        "meta_value": "0"
+      }
+    ],
+    "taxonomy_relationships_task10a_projection": [
+      {
+        "object_id": "1705",
+        "term_taxonomy_id": "410",
+        "term_order": "0",
+        "taxonomy": "person_type",
+        "term_id": "410",
+        "slug": "mentor",
+        "name": "Mentor",
+        "parent": "0",
+        "count": "1"
+      },
+      {
+        "object_id": "1705",
+        "term_taxonomy_id": "419",
+        "term_order": "0",
+        "taxonomy": "person_type",
+        "term_id": "419",
+        "slug": "kenner",
+        "name": "Kenner",
+        "parent": "0",
+        "count": "1"
+      }
+    ]
+  }
+}

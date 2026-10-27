@@ -146,7 +146,7 @@ function vg_pc_integrity_test_report(array $fixture, ?callable $read_file = null
 }
 
 $passed = 0;
-$total = 24;
+$total = 28;
 $run_case = static function (string $name, callable $test) use (&$passed): void {
     try {
         $test();
@@ -169,20 +169,178 @@ $run_case('exact temporary tree is accepted with the canonical tree hash', stati
     }
 });
 
+$run_case('Person 1705 group fingerprint reproduces from the preserved Task 10A capture', static function (): void {
+    if (! function_exists('vg_product_contribution_qa_person_baseline_matches')) {
+        throw new RuntimeException('The exact Task 10A Person baseline guard is missing.');
+    }
+    $fixture_path = dirname(__DIR__) . '/fixtures/person-1705-fingerprint-capture.json';
+    $fixture_bytes = file_get_contents($fixture_path);
+    vg_pc_integrity_test_assert(is_string($fixture_bytes), 'The captured Person 1705 fixture could not be read');
+    $fixture = json_decode($fixture_bytes, true, 512, JSON_THROW_ON_ERROR);
+    $capture = $fixture['captured_rows'];
+    $post = $capture['post'];
+    $postmeta = $capture['postmeta'];
+    $task10a_relationships = $capture['taxonomy_relationships_task10a_projection'];
+    $relationship_fields = ['object_id', 'term_taxonomy_id', 'term_order', 'taxonomy', 'term_id', 'slug'];
+    $group_relationships = array_map(
+        static fn (array $row): array => array_intersect_key($row, array_flip($relationship_fields)),
+        $task10a_relationships
+    );
+    $previous_precision = ini_get('serialize_precision');
+    vg_pc_integrity_test_assert(is_string($previous_precision) && ini_set('serialize_precision', '-1') !== false, 'Stable serialization precision could not be set');
+    try {
+        $fingerprint = [
+            'post_count' => 1,
+            'postmeta_count' => count($postmeta),
+            'term_relationship_count' => count($group_relationships),
+            'posts_sha256' => hash('sha256', serialize([$post])),
+            'postmeta_sha256' => hash('sha256', serialize($postmeta)),
+            'term_relationships_sha256' => hash('sha256', serialize($group_relationships)),
+        ];
+        vg_pc_integrity_test_assert($fingerprint['posts_sha256'] === 'f2a980eb64045700dc3a4ca07a7950ec3cb1daea14e4a400ac48e6837b2e9b5b', 'The preserved row did not reproduce the Product Contribution post-list digest');
+        vg_pc_integrity_test_assert($fingerprint['postmeta_sha256'] === '0d043dd56c404e0ddb6d7ad496249b770d296a6cd72290bfd7774189e5c820e5', 'Postmeta control digest differs');
+        vg_pc_integrity_test_assert($fingerprint['term_relationships_sha256'] === '1d347313f990ba8063fe34926ef537e85d2dc4bdc575e5369338be45b9bdf7fb', 'The six-column relationship projection digest differs');
+    } finally {
+        ini_set('serialize_precision', $previous_precision);
+    }
+    $inventory = [[
+        'id' => 1705,
+        'post_type' => 'person',
+        'post_status' => 'publish',
+        'post_name' => 'lynette-beer',
+        'post_date_gmt' => '2026-10-26 09:05:12',
+        'post_modified_gmt' => '2026-10-26 09:05:12',
+    ]];
+    vg_pc_integrity_test_assert(
+        vg_product_contribution_qa_person_baseline_matches($inventory, $fingerprint),
+        'The source guard rejects the deterministic Product Contribution fingerprint reproduced from captured Person 1705 rows.'
+    );
+    foreach ([[], [...$inventory, [...$inventory[0], 'id' => 1706]], [[...$inventory[0], 'post_status' => 'draft']], [[...$inventory[0], 'post_name' => 'other-slug']]] as $changed_inventory) {
+        vg_pc_integrity_test_assert(
+            ! vg_product_contribution_qa_person_baseline_matches($changed_inventory, $fingerprint),
+            'A missing, additional, or changed Person inventory was accepted.'
+        );
+    }
+    $changed_fingerprint = $fingerprint;
+    $changed_fingerprint['postmeta_sha256'] = str_repeat('f', 64);
+    vg_pc_integrity_test_assert(
+        ! vg_product_contribution_qa_person_baseline_matches($inventory, $changed_fingerprint),
+        'A changed Person postmeta fingerprint was accepted.'
+    );
+});
+
 $run_case('published manifest fixture is pinned to the downloaded artifact bytes', static function (): void {
     $path = dirname(__DIR__) . '/fixtures/voelgoed-platform-core-pe005.manifest.json';
     $bytes = file_get_contents($path);
     vg_pc_integrity_test_assert(is_string($bytes), 'Published manifest fixture could not be read');
-    vg_pc_integrity_test_assert(hash('sha256', $bytes) === 'c87d339ebe83203a82a3f02b27de9854be9e360835da9893077af9c9c318c1ee', 'Published manifest fixture digest differs');
+    vg_pc_integrity_test_assert(hash('sha256', $bytes) === '7cd38e758babddf495e484013d9345750af6f39689bc428f67d89a814949a932', 'Published manifest fixture digest differs');
     $manifest = json_decode($bytes, true, 512, JSON_THROW_ON_ERROR);
+    $runtime_guard_paths = array_values(array_filter(
+        array_column($manifest['files'], 'path'),
+        static fn (string $path): bool => $path === 'includes/Runtime/RuntimeMutationSession.php'
+    ));
     vg_pc_integrity_test_assert(
         $manifest['schema_version'] === 3
-            && $manifest['source_commit'] === '7af938ac6f4422b1fa779b52444121e7a9293995'
-            && $manifest['file_count'] === 54
-            && $manifest['tree_sha256'] === '856a3e5978559bfb2572b4b1ff4b34df916743f9e72d6b18220ee64e98af5f56'
-            && $manifest['archive_sha256'] === '9d5fd288025703fe4f71ed1f3ee264cd3fc9c0b61cf74d137b40e941bc2e2243',
-        'Published manifest fixture does not match the PE-005 authority'
+            && $manifest['source_commit'] === 'de90ff061c20b164c127aa97e845e3f192429543'
+            && $manifest['source_ref_requested'] === 'de90ff061c20b164c127aa97e845e3f192429543'
+            && $manifest['file_count'] === 55
+            && count($manifest['files']) === 55
+            && $manifest['tree_sha256'] === '5816b80ac4355782523aa4baa82bd9e55dd87326f15972f287ff1afa7567482a'
+            && $manifest['archive_sha256'] === '22d998019e3fe3d93d675250a26eba5be3dbc248badd9be4d7507fbdf9cffdb9'
+            && $runtime_guard_paths === ['includes/Runtime/RuntimeMutationSession.php'],
+        'Published manifest fixture does not match the PE-008 authority and required session guard'
     );
+    vg_pc_integrity_test_assert(
+        VG_PRODUCT_CONTRIBUTION_QA_PLATFORM_CORE_AUTHORITY === [
+            'artifact_name' => 'voelgoed-platform-core-de90ff061c20b164c127aa97e845e3f192429543',
+            'source_commit' => 'de90ff061c20b164c127aa97e845e3f192429543',
+            'schema_version' => 3,
+            'file_count' => 55,
+            'tree_sha256' => '5816b80ac4355782523aa4baa82bd9e55dd87326f15972f287ff1afa7567482a',
+            'archive_sha256' => '22d998019e3fe3d93d675250a26eba5be3dbc248badd9be4d7507fbdf9cffdb9',
+            'manifest_sha256' => '7cd38e758babddf495e484013d9345750af6f39689bc428f67d89a814949a932',
+        ],
+        'Product Contribution QA authority constant differs from the published artifact'
+    );
+});
+
+$run_case('50ee and de90ff published manifests differ only by release provenance', static function (): void {
+    $fixture_dir = dirname(__DIR__) . '/fixtures';
+    $historical_bytes = file_get_contents($fixture_dir . '/voelgoed-platform-core-pe008-50ee.manifest.json');
+    $active_bytes = file_get_contents($fixture_dir . '/voelgoed-platform-core-pe005.manifest.json');
+    vg_pc_integrity_test_assert(is_string($historical_bytes) && is_string($active_bytes), 'Both published manifest fixtures must be readable');
+    vg_pc_integrity_test_assert(
+        hash('sha256', $historical_bytes) === 'b728e69d1488a28601982bfb5e84b4104b11cab5f6c9ae1dcd2a38192ef696a7'
+            && hash('sha256', $active_bytes) === '7cd38e758babddf495e484013d9345750af6f39689bc428f67d89a814949a932',
+        'The historical and current fixtures must retain their exact published bytes'
+    );
+    $historical = json_decode($historical_bytes, true, 512, JSON_THROW_ON_ERROR);
+    $active = json_decode($active_bytes, true, 512, JSON_THROW_ON_ERROR);
+    $changed_fields = [];
+    foreach (array_unique(array_merge(array_keys($historical), array_keys($active))) as $key) {
+        if (($historical[$key] ?? null) !== ($active[$key] ?? null)) {
+            $changed_fields[] = $key;
+        }
+    }
+    sort($changed_fields);
+    vg_pc_integrity_test_assert(
+        $changed_fields === ['source_commit', 'source_ref_requested']
+            && $historical['source_commit'] === '50ee4bee1ae1405522df7b67634b8935d4e9d9ed'
+            && $historical['source_ref_requested'] === '50ee4bee1ae1405522df7b67634b8935d4e9d9ed'
+            && $active['source_commit'] === 'de90ff061c20b164c127aa97e845e3f192429543'
+            && $active['source_ref_requested'] === 'de90ff061c20b164c127aa97e845e3f192429543'
+            && $historical['schema_version'] === $active['schema_version']
+            && $historical['file_count'] === $active['file_count']
+            && $historical['files'] === $active['files']
+            && $historical['tree_sha256'] === $active['tree_sha256']
+            && $historical['archive_sha256'] === $active['archive_sha256']
+            && hash('sha256', $historical_bytes) !== hash('sha256', $active_bytes),
+        'The two exact-main publications must preserve identical artifact bytes while recording distinct source provenance'
+    );
+});
+
+$run_case('previous 54-file authority is preserved byte-for-byte for rollback classification', static function (): void {
+    $path = dirname(__DIR__) . '/fixtures/voelgoed-platform-core-pe008-old.manifest.json';
+    $bytes = file_get_contents($path);
+    vg_pc_integrity_test_assert(is_string($bytes), 'Previous published manifest could not be read');
+    vg_pc_integrity_test_assert(hash('sha256', $bytes) === 'c87d339ebe83203a82a3f02b27de9854be9e360835da9893077af9c9c318c1ee', 'Previous manifest digest differs');
+    $manifest = json_decode($bytes, true, 512, JSON_THROW_ON_ERROR);
+    vg_pc_integrity_test_assert(
+        $manifest['source_commit'] === '7af938ac6f4422b1fa779b52444121e7a9293995'
+            && $manifest['file_count'] === 54
+            && $manifest['tree_sha256'] === '856a3e5978559bfb2572b4b1ff4b34df916743f9e72d6b18220ee64e98af5f56',
+        'Previous manifest no longer identifies the exact predeployment authority'
+    );
+});
+
+$run_case('previous 54-file authority rejects the exact published 55-file manifest', static function (): void {
+    $fixture = vg_pc_integrity_test_fixture();
+    try {
+        $old_authority = [
+            'artifact_name' => 'voelgoed-platform-core-7af938ac6f4422b1fa779b52444121e7a9293995',
+            'source_commit' => '7af938ac6f4422b1fa779b52444121e7a9293995',
+            'schema_version' => 3,
+            'file_count' => 54,
+            'tree_sha256' => '856a3e5978559bfb2572b4b1ff4b34df916743f9e72d6b18220ee64e98af5f56',
+            'archive_sha256' => '9d5fd288025703fe4f71ed1f3ee264cd3fc9c0b61cf74d137b40e941bc2e2243',
+            'manifest_sha256' => 'c87d339ebe83203a82a3f02b27de9854be9e360835da9893077af9c9c318c1ee',
+        ];
+        $report = vg_product_contribution_qa_platform_core_integrity_report(
+            $fixture['plugin_root'],
+            dirname(__DIR__) . '/fixtures/voelgoed-platform-core-pe005.manifest.json',
+            $old_authority
+        );
+        vg_pc_integrity_test_assert(
+            $report['exact'] === false
+                && $report['expected_file_count'] === 54
+                && $report['observed_manifest_sha256'] === '7cd38e758babddf495e484013d9345750af6f39689bc428f67d89a814949a932'
+                && in_array('Pinned Platform Core manifest SHA-256 differs from the expected artifact manifest.', $report['manifest_errors'], true),
+            'Previous 54-file authority accepted the exact published 55-file manifest',
+            $report
+        );
+    } finally {
+        vg_pc_integrity_test_remove_tree($fixture['root']);
+    }
 });
 
 $run_case('modified file content is rejected', static function (): void {
