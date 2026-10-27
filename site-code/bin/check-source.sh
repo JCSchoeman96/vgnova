@@ -22,6 +22,7 @@ php site-code/runtime-tests/tests/run-product-contribution-qa-cleanup-tests.php
 php site-code/runtime-tests/tests/run-product-contribution-qa-platform-core-integrity-tests.php
 php site-code/runtime-tests/tests/run-pe008-protected-state-tests.php
 php site-code/runtime-tests/tests/run-pe008-bootstrap-platform-core-runtime-tests.php
+php site-code/runtime-tests/tests/run-pe008-session-diagnostic-tests.php
 php site-code/runtime-tests/tests/run-runtime-mutation-core-tests.php
 php site-code/runtime-tests/tests/run-runtime-mutation-session-tests.php
 php site-code/runtime-tests/tests/run-runtime-mutation-policy-tests.php
