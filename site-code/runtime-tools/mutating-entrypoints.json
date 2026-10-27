@@ -522,6 +522,10 @@
             "classification": "test_only"
         },
         {
+            "path": "site-code/voelgoed-platform-core/tests/run-person-relationship-rest-repair-tests.php",
+            "classification": "test_only"
+        },
+        {
             "path": "site-code/voelgoed-platform-core/tests/run-person-relationship-source-tests.php",
             "classification": "test_only"
         },

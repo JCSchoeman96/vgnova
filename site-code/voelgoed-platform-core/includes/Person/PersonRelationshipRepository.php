@@ -24,6 +24,34 @@ final class PersonRelationshipRepository
         return array_map(static fn ($row) => ['person_id' => (int) $row['person_id'], 'role_key' => (string) $row['role_key'], 'position' => (int) $row['position']], $rows);
     }
 
+    /** @return list<array{source_post_id:int,source_post_type:string,current_post_type:?string}>|\WP_Error */
+    public function index_source_anomalies(): array|\WP_Error
+    {
+        if (! $this->schema->is_ready()) return new \WP_Error('index_unavailable', 'The relationship index is unavailable.');
+        global $wpdb;
+        $sql = "SELECT DISTINCT i.source_post_id, i.source_post_type, p.post_type AS current_post_type
+            FROM {$this->schema->table_name()} AS i
+            LEFT JOIN {$wpdb->posts} AS p ON p.ID = i.source_post_id
+            ORDER BY i.source_post_id ASC";
+        try { $rows = $wpdb->get_results($wpdb->prepare($sql), ARRAY_A); }
+        catch (\Throwable) { return new \WP_Error('index_read_failed', 'Could not inspect indexed source types.'); }
+        if (! is_array($rows) || (string) ($wpdb->last_error ?? '') !== '') return new \WP_Error('index_read_failed', 'Could not inspect indexed source types.');
+        $anomalies = [];
+        foreach ($rows as $row) {
+            if (! is_array($row) || ! array_key_exists('source_post_id', $row) || ! array_key_exists('source_post_type', $row)) continue;
+            $stored_type = (string) ($row['source_post_type'] ?? '');
+            $current_type = isset($row['current_post_type']) ? (string) $row['current_post_type'] : null;
+            if ($current_type === null || ! PersonRelationshipContract::supported_source_type($current_type) || $stored_type !== $current_type) {
+                $anomalies[] = [
+                    'source_post_id' => (int) $row['source_post_id'],
+                    'source_post_type' => $stored_type,
+                    'current_post_type' => $current_type,
+                ];
+            }
+        }
+        return $anomalies;
+    }
+
     public function source_ids_for_person(int $person_id, string $source_post_type, array $role_keys = []): array
     {
         if ($person_id < 1 || ! PersonRelationshipContract::supported_source_type($source_post_type) || ! $this->schema->is_ready()) return [];

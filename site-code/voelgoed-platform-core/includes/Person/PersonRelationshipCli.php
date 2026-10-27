@@ -13,6 +13,7 @@ final class PersonRelationshipCli
     private PersonRelationshipSchema $schema;
     private PersonRelationshipIndexer $indexer;
     private PersonRelationshipReconciler $reconciler;
+    private PersonRelationshipRepository $repository;
     private mixed $mutation_guard;
 
     /** @param null|callable():mixed $mutation_guard */
@@ -34,6 +35,7 @@ final class PersonRelationshipCli
             new PersonRelationshipRepository($this->schema),
             new PersonRelationshipValidator(),
         );
+        $this->repository = new PersonRelationshipRepository($this->schema);
         $this->mutation_guard = $mutation_guard ?? static function (): void {
             vg_runtime_mutation_assert_session('vgnova-local-10039');
         };
@@ -76,6 +78,15 @@ final class PersonRelationshipCli
             }
             $rebuilt++;
         }
+        if (($assoc_args['source'] ?? null) === null || ($assoc_args['source'] ?? '') === '') {
+            $anomalies = $this->reconciler->inspect_index();
+            if (is_wp_error($anomalies)) \WP_CLI::error($anomalies->get_error_message());
+            foreach ($anomalies as $anomaly) {
+                if (! in_array($anomaly['code'], ['orphan_index_source', 'unsupported_index_source'], true)) continue;
+                $deleted = $this->repository->delete_source($anomaly['source_post_id']);
+                if (is_wp_error($deleted)) \WP_CLI::error(sprintf('Could not remove stale index rows for source %d.', $anomaly['source_post_id']));
+            }
+        }
         \WP_CLI::success(sprintf('Rebuilt Person relationship index for %d supported source(s).', $rebuilt));
     }
 
@@ -116,6 +127,28 @@ final class PersonRelationshipCli
                 }
             }
             $sources[] = ['source_post_id' => $source_id, 'issues' => $issues];
+        }
+
+        if (($assoc_args['source'] ?? null) === null || ($assoc_args['source'] ?? '') === '') {
+            $index_issues = $this->reconciler->inspect_index();
+            if (is_wp_error($index_issues)) {
+                $sources[] = ['source_post_id' => 0, 'error' => $this->error_details($index_issues)];
+            } else {
+                foreach ($index_issues as $issue) {
+                    $source_id = $issue['source_post_id'];
+                    $repair_error = null;
+                    if ($repair && $issue['code'] === 'wrong_source_post_type' && PersonRelationshipContract::supported_source_type((string) $issue['details']['current_source_post_type'])) {
+                        $repair_result = $this->indexer->rebuild_source($source_id);
+                        if (is_wp_error($repair_result)) $repair_error = $this->error_details($repair_result);
+                        else $repaired[] = $source_id;
+                    } elseif ($repair && in_array($issue['code'], ['orphan_index_source', 'unsupported_index_source'], true)) {
+                        $repair_result = $this->repository->delete_source($source_id);
+                        if (is_wp_error($repair_result)) $repair_error = $this->error_details($repair_result);
+                        else $repaired[] = $source_id;
+                    }
+                    $sources[] = ['source_post_id' => $source_id, 'issues' => [$issue], ...($repair_error === null ? [] : ['repair_error' => $repair_error])];
+                }
+            }
         }
 
         $report = [

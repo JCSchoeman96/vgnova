@@ -48,6 +48,16 @@ final class PersonRelationshipReconciler
         }
 
         $expected = $projection['relationships'];
+        $source_type_rows = $this->repository->index_source_anomalies();
+        if (is_wp_error($source_type_rows)) return $source_type_rows;
+        foreach ($source_type_rows as $type_row) {
+            if ($type_row['source_post_id'] === $source_post_id) {
+                $issues[] = ['code' => 'wrong_source_post_type', 'source_post_id' => $source_post_id, 'details' => [
+                    'stored_source_post_type' => $type_row['source_post_type'],
+                    'current_source_post_type' => $type_row['current_post_type'],
+                ]];
+            }
+        }
         $actual = $this->repository->relationships_for_source_checked($source_post_id);
         if (is_wp_error($actual)) return $actual;
         $expected_by_person = [];
@@ -91,6 +101,26 @@ final class PersonRelationshipReconciler
                 if ((int) $actual_row['person_id'] === (int) $person_id && (string) $actual_row['role_key'] !== $row['role_key']) $has_wrong_role = true;
             }
             if (! $has_wrong_role) $issues[] = ['code' => 'missing_index_row', 'source_post_id' => $source_post_id, 'details' => ['person_id' => (int) $person_id, 'role_key' => $row['role_key']]];
+        }
+        return $issues;
+    }
+
+    /** @return list<array{code:string,source_post_id:int,details:array}>|\WP_Error */
+    public function inspect_index(): array|\WP_Error
+    {
+        $anomalies = $this->repository->index_source_anomalies();
+        if (is_wp_error($anomalies)) return $anomalies;
+        $issues = [];
+        foreach ($anomalies as $row) {
+            $code = $row['current_post_type'] === null
+                ? 'orphan_index_source'
+                : (! PersonRelationshipContract::supported_source_type($row['current_post_type'])
+                    ? 'unsupported_index_source'
+                    : 'wrong_source_post_type');
+            $issues[] = ['code' => $code, 'source_post_id' => $row['source_post_id'], 'details' => [
+                'stored_source_post_type' => $row['source_post_type'],
+                'current_source_post_type' => $row['current_post_type'],
+            ]];
         }
         return $issues;
     }

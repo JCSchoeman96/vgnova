@@ -44,6 +44,30 @@ final class PersonRelationshipQueryTest
         vgpc_test_same([], $this->service()->articles_for_person(21), 'Unpublished Persons must have no public reverse results.');
     }
 
+    public function test_reverse_read_fails_closed_when_dirty_marker_write_failed(): void
+    {
+        $this->ready_schema();
+        $this->register_fields();
+        $this->post(20, 'person', 'publish');
+        $this->post(21, 'person', 'publish');
+        $this->post(30, 'post', 'publish');
+        $GLOBALS['vgpc_test_meta'][30]['primary_author'] = 21;
+        $GLOBALS['vgpc_update_post_meta_handler'] = static fn (): bool => false;
+        $GLOBALS['wpdb']->get_var_handler = static fn (string $query): string => str_contains($query, 'SHOW TABLES') ? 'wp_vg_person_relationship_index' : (str_contains($query, 'GET_LOCK') ? '0' : '1');
+        $GLOBALS['wpdb']->get_col_handler = static fn (): array => [30];
+        $indexer = new \Voelgoed\PlatformCore\Person\PersonRelationshipIndexer(
+            new \Voelgoed\PlatformCore\Person\PersonRelationshipSourceLock(),
+            new PersonRelationshipSourceReader(),
+            new PersonRelationshipValidator(),
+            new PersonRelationshipRepository(new PersonRelationshipSchema()),
+        );
+        vgpc_test_true(is_wp_error($indexer->rebuild_source(30)), 'Contended save should fail and attempt to persist dirty state.');
+        vgpc_test_true(! $indexer->is_dirty(30), 'This case models failure to persist the marker itself.');
+        vgpc_test_same([], $this->service()->articles_for_person(20), 'A stale index candidate must be hidden when the dirty marker could not persist.');
+        vgpc_test_same([30], $this->service()->articles_for_person(21), 'A source-authoritative matching Person may still appear when the index candidate matches.');
+        $GLOBALS['vgpc_update_post_meta_handler'] = null;
+    }
+
     public function test_reconciler_reports_missing_index_rows_and_dirty_source(): void
     {
         $this->ready_schema();
@@ -116,6 +140,19 @@ final class PersonRelationshipQueryTest
         vgpc_test_true(is_wp_error($issues), 'A database read failure must be returned to the caller.');
         vgpc_test_same('index_read_failed', $issues->get_error_code(), 'A failed read must identify the repository read failure.');
         vgpc_test_same([], (new PersonRelationshipRepository(new PersonRelationshipSchema()))->relationships_for_source(13), 'The existing repository method must retain its fail-closed array interface.');
+    }
+
+    public function test_global_reconciliation_reports_orphan_unsupported_and_wrong_type_sources(): void
+    {
+        $this->ready_schema();
+        $GLOBALS['wpdb']->get_results_handler = static fn (string $query): array => str_contains($query, 'LEFT JOIN wp_posts') ? [
+            ['source_post_id' => 501, 'source_post_type' => 'post', 'current_post_type' => null],
+            ['source_post_id' => 502, 'source_post_type' => 'post', 'current_post_type' => 'product'],
+            ['source_post_id' => 503, 'source_post_type' => 'post', 'current_post_type' => 'mto-course'],
+        ] : [];
+        $issues = (new PersonRelationshipReconciler(new PersonRelationshipSourceReader(), new PersonRelationshipRepository(new PersonRelationshipSchema()), new PersonRelationshipValidator()))->inspect_index();
+        vgpc_test_same(['orphan_index_source', 'unsupported_index_source', 'wrong_source_post_type'], array_column($issues, 'code'), 'Global inspection must surface deleted, unsupported and retyped sources.');
+        vgpc_test_same([501, 502, 503], array_column($issues, 'source_post_id'), 'Global anomalies must retain the affected source IDs.');
     }
 
     public function test_reconciler_returns_malformed_reader_errors_without_mislabeling_them_as_person_issues(): void

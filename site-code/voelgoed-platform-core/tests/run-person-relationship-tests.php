@@ -10,6 +10,7 @@ $runners = [
     'run-person-relationship-query-tests.php',
     'run-person-relationship-indexer-tests.php',
     'run-person-relationship-admin-tests.php',
+    'run-person-relationship-rest-repair-tests.php',
     'run-person-relationship-cli-tests.php',
 ];
 

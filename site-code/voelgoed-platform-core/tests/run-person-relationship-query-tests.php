@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 require_once __DIR__ . '/bootstrap.php';
-foreach (['PersonRelationshipContract', 'PersonRelationshipSchema', 'PersonRelationshipRepository', 'PersonRelationshipSourceReader', 'PersonRelationshipValidator', 'PersonRelationshipService', 'PersonRelationshipReconciler'] as $class) {
+foreach (['PersonRelationshipContract', 'PersonRelationshipSchema', 'PersonRelationshipSourceLock', 'PersonRelationshipRepository', 'PersonRelationshipSourceReader', 'PersonRelationshipValidator', 'PersonRelationshipIndexer', 'PersonRelationshipService', 'PersonRelationshipReconciler'] as $class) {
     require_once __DIR__ . '/../includes/Person/' . $class . '.php';
 }
 vgpc_test_reset();

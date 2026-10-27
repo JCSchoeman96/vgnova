@@ -33,7 +33,7 @@ final class PersonRelationshipCliTest
         $cli = $this->cli(static function (): void {});
         $cli->reconcile_command([], ['source' => '81', 'format' => 'table']);
         $output = implode("\n", array_column(WP_CLI::$messages, 'message'));
-        vgpc_test_true(str_contains($output, 'inspect failed: malformed_relationship: The primary_author field must contain a single Person value.'), 'Table output must expose inspection error code and message.');
+        vgpc_test_true(str_contains($output, 'inspect failed: malformed_relationship: The primary_author field must contain a single Person value.'), 'Table output must expose inspection error code and message. Output: ' . $output);
         vgpc_test_true(str_contains($output, 'with issues: 1'), 'Inspection errors must count as unresolved issues.');
     }
 
@@ -79,6 +79,23 @@ final class PersonRelationshipCliTest
         vgpc_test_same(['post', 'mto-course'], array_column($queries, 'post_type'), 'A full rebuild must query only approved source types.');
         vgpc_test_true(in_array('trash', $queries[0]['post_status'], true), 'Full rebuild must include trashed supported sources.');
         vgpc_test_same('success', WP_CLI::$messages[0]['type'], 'An empty supported-source set is a successful idempotent rebuild.');
+    }
+
+    public function test_full_rebuild_prunes_orphan_and_unsupported_source_rows(): void
+    {
+        vgpc_test_reset();
+        $GLOBALS['vgpc_test_options'][\Voelgoed\PlatformCore\Person\PersonRelationshipSchema::VERSION_OPTION] = 1;
+        $GLOBALS['wpdb']->get_var_handler = static fn (string $query, array $args): mixed => str_contains($query, 'SHOW TABLES') ? ($args[0] ?? '') : '1';
+        $GLOBALS['wpdb']->get_results_handler = static fn (string $query): array => str_contains($query, 'LEFT JOIN wp_posts') ? [
+            ['source_post_id' => 601, 'source_post_type' => 'post', 'current_post_type' => null],
+            ['source_post_id' => 602, 'source_post_type' => 'post', 'current_post_type' => 'product'],
+        ] : [];
+        $this->cli(static function (): void {})->rebuild_command([], []);
+        $deleted_ids = [];
+        foreach ($GLOBALS['wpdb']->queries as $query) {
+            if (str_contains($query['query'], 'DELETE FROM wp_vg_person_relationship_index WHERE source_post_id = %d')) $deleted_ids[] = $query['args'][0];
+        }
+        vgpc_test_same([601, 602], $deleted_ids, 'Full rebuild must prune orphan and unsupported derived rows after source enumeration.');
     }
 
     public function test_setup_requires_mutation_session_before_schema_install(): void
