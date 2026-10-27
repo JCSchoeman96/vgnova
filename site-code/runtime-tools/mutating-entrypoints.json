@@ -546,6 +546,10 @@
             "classification": "test_only"
         },
         {
+            "path": "site-code/voelgoed-platform-core/tests/run-person-relationship-tests.php",
+            "classification": "test_only"
+        },
+        {
             "path": "site-code/voelgoed-platform-core/tests/run-product-contribution-tests.php",
             "classification": "test_only"
         },
