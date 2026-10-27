@@ -1,11 +1,11 @@
 # VG Nova Simple Person Relationship Architecture Design
 
-**Version:** 0.1.0
-**Status:** APPROVED
-**Approval date:** 2026-10-27
-**Repository:** `JCSchoeman96/vgnova`
-**Baseline at approval:** `main` after merged PR #60 (`de90ff061c20b164c127aa97e845e3f192429543`)
-**Scope:** Canonical simple Person relationships for Articles and Masteriyo Courses
+**Version:** 0.1.0\
+**Status:** APPROVED\
+**Approval date:** 2026-10-27\
+**Repository:** `JCSchoeman96/vgnova`\
+**Baseline at approval:** `main` after merged PR #60 (`de90ff061c20b164c127aa97e845e3f192429543`)\
+**Scope:** Canonical simple Person relationships for Articles and Masteriyo Courses\
 **Target repository path:** `docs/superpowers/specs/2026-10-27-simple-person-relationship-architecture-design_v0.1.0.md`
 
 ## 1. Intent
