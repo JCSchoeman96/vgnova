@@ -1,6 +1,6 @@
 --- a/voelgoed-platform-core.php
 +++ b/voelgoed-platform-core.php
-@@ -25,0 +26,27 @@
+@@ -25,0 +26,28 @@
 +    'includes/Runtime/RuntimeMutationSession.php',
 +    'includes/Person/PersonRelationshipContract.php',
 +    'includes/Person/PersonRelationshipSchema.php',
@@ -8,6 +8,7 @@
 +    'includes/Person/PersonRelationshipRepository.php',
 +    'includes/Person/PersonRelationshipSourceReader.php',
 +    'includes/Person/PersonRelationshipValidator.php',
++    'includes/Person/PersonRelationshipIndexer.php',
 +    'includes/Taxonomy/ContentTopicTaxonomy.php',
 +    'includes/Taxonomy/ContentTopicMigration.php',
 +    'includes/Taxonomy/ContentTopicRoles.php',
