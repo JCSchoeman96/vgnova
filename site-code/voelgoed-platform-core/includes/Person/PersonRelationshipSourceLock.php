@@ -6,6 +6,7 @@ defined('ABSPATH') || exit;
 final class PersonRelationshipSourceLock
 {
     private array $held = [];
+    private array $release_failed = [];
     public function acquire(int $source_post_id): bool
     {
         if ($source_post_id < 1) return false;
@@ -24,6 +25,11 @@ final class PersonRelationshipSourceLock
         $this->release_name($name);
     }
 
+    public function release_succeeded(int $source_post_id): bool
+    {
+        return ! isset($this->release_failed['vg_person_rel_' . $source_post_id]);
+    }
+
     private function release_name(string $name): void
     {
         if (! isset($this->held[$name])) return;
@@ -31,13 +37,16 @@ final class PersonRelationshipSourceLock
         try {
             $released = $wpdb->get_var($wpdb->prepare('SELECT RELEASE_LOCK(%s)', $name));
         } catch (\Throwable) {
+            $this->release_failed[$name] = true;
             error_log('Person relationship source lock release failed.');
             return;
         }
         if ((string) $released === '1') {
             unset($this->held[$name]);
+            unset($this->release_failed[$name]);
             return;
         }
+        $this->release_failed[$name] = true;
         error_log('Person relationship source lock release failed.');
     }
     public function release_all(): void

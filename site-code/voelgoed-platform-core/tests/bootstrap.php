@@ -242,6 +242,8 @@ function vgpc_test_reset(): void
     $GLOBALS['vgpc_test_delete_post_calls'] = [];
     $GLOBALS['vgpc_test_relationships'] = [];
     $GLOBALS['vgpc_test_meta'] = [];
+    $GLOBALS['vgpc_update_post_meta_handler'] = null;
+    $GLOBALS['vgpc_delete_post_meta_handler'] = null;
     $GLOBALS['vgpc_test_field_groups'] = [];
     $GLOBALS['vgpc_test_update_field_calls'] = [];
     $GLOBALS['vgpc_test_fail_update_field_name'] = null;
@@ -705,12 +707,18 @@ function get_post_meta(int $post_id, string $meta_key = '', bool $single = false
 
 function update_post_meta(int $post_id, string $meta_key, mixed $value): bool
 {
+    if (isset($GLOBALS['vgpc_update_post_meta_handler'])) {
+        $result = ($GLOBALS['vgpc_update_post_meta_handler'])($post_id, $meta_key, $value);
+        if ($result === false) return false;
+    }
+    if (($GLOBALS['vgpc_test_meta'][$post_id][$meta_key] ?? null) === $value) return false;
     $GLOBALS['vgpc_test_meta'][$post_id][$meta_key] = $value;
     return true;
 }
 
 function delete_post_meta(int $post_id, string $meta_key, mixed $value = ''): bool
 {
+    if (isset($GLOBALS['vgpc_delete_post_meta_handler']) && ($GLOBALS['vgpc_delete_post_meta_handler'])($post_id, $meta_key, $value) === false) return false;
     if (func_num_args() >= 3 && ($GLOBALS['vgpc_test_meta'][$post_id][$meta_key] ?? null) !== $value) {
         return false;
     }

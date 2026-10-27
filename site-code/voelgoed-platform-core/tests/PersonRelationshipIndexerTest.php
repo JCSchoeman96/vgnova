@@ -83,13 +83,68 @@ final class PersonRelationshipIndexerTest
         $GLOBALS['wpdb']->fail_query = false;
         $GLOBALS['wpdb']->query_handler = static function (string $query): void {
             if (str_starts_with($query, 'DELETE FROM wp_vg_person_relationship_index')) {
-                update_post_meta(16, PersonRelationshipContract::DIRTY_META_KEY, 'dirty:new-save');
+                update_post_meta(16, PersonRelationshipContract::DIRTY_META_KEY, 1);
+                update_post_meta(16, '_vg_person_relationship_index_dirty_generation', 'new-save-generation');
             }
         };
 
         $indexer = $this->indexer();
         vgpc_test_same(true, $indexer->rebuild_source(16), 'Older rebuild may finish after newer save misses the lock.');
         vgpc_test_true($indexer->is_dirty(16), 'Newer save dirty marker must survive older rebuild completion.');
+    }
+
+    public function test_dirty_marker_is_exact_integer_one(): void
+    {
+        update_post_meta(60, PersonRelationshipContract::DIRTY_META_KEY, 'random-string');
+        $indexer = $this->indexer();
+        vgpc_test_true(! $indexer->is_dirty(60), 'Arbitrary marker values must not be treated as dirty.');
+        update_post_meta(60, PersonRelationshipContract::DIRTY_META_KEY, 1);
+        vgpc_test_true($indexer->is_dirty(60), 'Integer one must mark the source dirty.');
+    }
+
+    public function test_dirty_marker_persistence_failure_returns_error(): void
+    {
+        $this->add_source_and_person(61, 'draft', 62, 'draft');
+        $GLOBALS['wpdb']->get_var_handler = static fn (string $query): string => str_contains($query, 'GET_LOCK') ? '0' : '1';
+        $GLOBALS['vgpc_update_post_meta_handler'] = static fn (int $id, string $key): bool => $key !== PersonRelationshipContract::DIRTY_META_KEY;
+        $indexer = $this->indexer();
+        $result = $indexer->rebuild_source(61);
+        vgpc_test_true(is_wp_error($result), 'Failure to persist dirty state must be reported.');
+        vgpc_test_same('dirty_marker_persistence_failed', $result->get_error_code(), 'Dirty persistence failure must fail closed with a diagnostic code.');
+        vgpc_test_true(! $indexer->is_dirty(61), 'Failed persistence must not claim the marker was stored.');
+    }
+
+    public function test_unchanged_dirty_marker_is_confirmed_after_update_returns_false(): void
+    {
+        update_post_meta(63, PersonRelationshipContract::DIRTY_META_KEY, 1);
+        $GLOBALS['vgpc_test_posts'][63] = (object) ['ID' => 63, 'post_type' => 'post', 'post_status' => 'draft'];
+        $GLOBALS['wpdb']->get_var_handler = static fn (string $query): string => str_contains($query, 'GET_LOCK') ? '0' : '1';
+        $indexer = $this->indexer();
+        $result = $indexer->rebuild_source(63);
+        vgpc_test_true(is_wp_error($result), 'Lock failure remains an error.');
+        vgpc_test_true($indexer->is_dirty(63), 'Unchanged integer marker must count as persisted despite update_post_meta returning false.');
+        vgpc_test_same('source_lock_failed', $result->get_error_code(), 'Unchanged marker must not replace the original failure.');
+    }
+
+    public function test_release_failure_is_reported_and_can_be_retried(): void
+    {
+        $this->ready_schema();
+        $this->add_source_and_person(64, 'draft', 65, 'draft');
+        $attempts = 0;
+        $GLOBALS['wpdb']->get_var_handler = static function (string $query) use (&$attempts): mixed {
+            if (str_contains($query, 'SHOW TABLES')) return 'wp_vg_person_relationship_index';
+            if (str_contains($query, 'GET_LOCK')) return '1';
+            if (str_contains($query, 'RELEASE_LOCK')) return ++$attempts === 1 ? null : '1';
+            return '1';
+        };
+        $lock = new \Voelgoed\PlatformCore\Person\PersonRelationshipSourceLock();
+        $indexer = $this->indexer(null, $lock);
+        $result = $indexer->rebuild_source(64);
+        vgpc_test_true(is_wp_error($result), 'Failed lock release must turn projection success into an error.');
+        vgpc_test_same('source_lock_release_failed', $result->get_error_code(), 'Release failure must be diagnosable.');
+        vgpc_test_true($indexer->is_dirty(64), 'Release failure must leave the source marked dirty for reconciliation.');
+        $lock->release_all();
+        vgpc_test_same(2, $attempts, 'A failed release must remain tracked so release_all can retry it.');
     }
 
     public function test_remove_source_deletes_rows_and_clears_dirty_state(): void
@@ -121,12 +176,12 @@ final class PersonRelationshipIndexerTest
         ]]);
     }
 
-    private function indexer(?callable $logger = null): PersonRelationshipIndexer
+    private function indexer(?callable $logger = null, ?\Voelgoed\PlatformCore\Person\PersonRelationshipSourceLock $lock = null): PersonRelationshipIndexer
     {
         $schema = new PersonRelationshipSchema();
         $logger ??= static function (): void {};
         return new PersonRelationshipIndexer(
-            new \Voelgoed\PlatformCore\Person\PersonRelationshipSourceLock(),
+            $lock ?? new \Voelgoed\PlatformCore\Person\PersonRelationshipSourceLock(),
             new \Voelgoed\PlatformCore\Person\PersonRelationshipSourceReader(),
             new \Voelgoed\PlatformCore\Person\PersonRelationshipValidator(),
             new PersonRelationshipRepository($schema),
