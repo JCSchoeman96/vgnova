@@ -99,7 +99,7 @@ foreach ($expected_classifications as $class => $classification) {
 }
 $expected_exemptions = [
     'PersonRelationshipRepository' => [
-        'reason' => 'persists only the disposable Person relationship projection',
+        'reason' => 'The repository persists only the disposable Person relationship projection for the ordinary indexer and guarded maintenance commands.',
         'reviewed_scope' => 'Replace or delete index rows for one source without changing authoritative ACF values.',
     ],
     'PersonRelationshipSchema' => [
@@ -107,25 +107,25 @@ $expected_exemptions = [
         'reviewed_scope' => 'Create or verify the derived Person relationship index table and version option.',
     ],
     'PersonRelationshipIndexer' => [
-        'reason' => 'ordinary source saves',
+        'reason' => 'The indexer writes the disposable projection during ordinary source saves and through guarded maintenance commands.',
         'reviewed_scope' => 'Replace or remove derived rows and update the dirty marker for one supported Article or Course source.',
     ],
     'PersonRelationshipAdmin' => [
-        'reason' => 'Normal WordPress Article and Course editor callbacks',
+        'reason' => 'Normal WordPress Article and Course editor callbacks remain outside administrative runtime coordination.',
         'reviewed_scope' => 'ACF save, REST save, publication validation, and permanent-delete hooks that validate or project canonical Person relationships.',
     ],
 ];
 foreach ($expected_exemptions as $class => $required_text) {
     $entry = $entries["site-code/voelgoed-platform-core/includes/Person/{$class}.php"] ?? [];
+    foreach ($required_text as $field => $text) {
+        if (($entry[$field] ?? null) !== $text) {
+            fwrite(STDERR, "Mutation inventory {$field} for {$class} must exactly match the approved narrow scope.\n");
+            exit(1);
+        }
+    }
     if (($entry['classification'] ?? null) !== 'explicit_exemption') {
         fwrite(STDERR, "Mutation inventory exemption for {$class} is missing.\n");
         exit(1);
-    }
-    foreach ($required_text as $field => $text) {
-        if (! is_string($entry[$field] ?? null) || ! str_contains($entry[$field], $text)) {
-            fwrite(STDERR, "Mutation inventory {$field} for {$class} does not document its approved narrow scope.\n");
-            exit(1);
-        }
     }
 }
 $cli_entry = $entries['site-code/voelgoed-platform-core/includes/Person/PersonRelationshipCli.php'] ?? [];
