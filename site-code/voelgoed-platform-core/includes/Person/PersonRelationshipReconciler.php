@@ -28,11 +28,11 @@ final class PersonRelationshipReconciler
         }
         $projection = $this->reader->read($source_post_id);
         if (is_wp_error($projection)) {
-            $code = $projection->get_error_code() === 'unsupported_source'
-                ? 'unsupported_source_type'
-                : ($projection->get_error_code() === 'malformed_relationship' ? 'invalid_person_reference' : 'dirty_source');
-            $issues[] = ['code' => $code, 'source_post_id' => $source_post_id, 'details' => ['error' => $projection->get_error_code()]];
-            return $issues;
+            if ($projection->get_error_code() === 'unsupported_source') {
+                $issues[] = ['code' => 'unsupported_source_type', 'source_post_id' => $source_post_id];
+                return $issues;
+            }
+            return $projection;
         }
 
         $status = (string) ($source->post_status ?? '');
@@ -41,32 +41,56 @@ final class PersonRelationshipReconciler
         if (is_wp_error($valid)) {
             $code = match ($valid->get_error_code()) {
                 'invalid_person_id', 'person_not_found', 'wrong_person_type', 'invalid_person_status' => 'invalid_person_reference',
-                'invalid_relationship' => 'unsupported_role',
-                default => 'invalid_person_reference',
+                default => null,
             };
+            if ($code === null) return $valid;
             $issues[] = ['code' => $code, 'source_post_id' => $source_post_id, 'details' => ['error' => $valid->get_error_code()]];
         }
 
         $expected = $projection['relationships'];
-        $actual = $this->repository->relationships_for_source($source_post_id);
+        $actual = $this->repository->relationships_for_source_checked($source_post_id);
+        if (is_wp_error($actual)) return $actual;
         $expected_by_person = [];
         foreach ($expected as $row) $expected_by_person[$row['person_id']] = $row;
-        $actual_by_person = [];
-        foreach ($actual as $row) $actual_by_person[$row['person_id']] = $row;
-        foreach ($expected_by_person as $person_id => $row) {
-            if (! isset($actual_by_person[$person_id])) {
-                $issues[] = ['code' => 'missing_index_row', 'source_post_id' => $source_post_id, 'details' => ['person_id' => (int) $person_id, 'role_key' => $row['role_key']]];
-                continue;
+        $matched_expected = [];
+        $seen_actual = [];
+        foreach ($actual as $row) {
+            $person_id = (int) $row['person_id'];
+            $role_key = (string) $row['role_key'];
+            $position = (int) $row['position'];
+            $row_key = $person_id . ':' . $role_key . ':' . $position;
+            $duplicate = isset($seen_actual[$row_key]);
+            $seen_actual[$row_key] = true;
+
+            if (! in_array($role_key, PersonRelationshipContract::allowed_roles($source_type), true)) {
+                $issues[] = ['code' => 'unsupported_role', 'source_post_id' => $source_post_id, 'details' => ['person_id' => $person_id, 'role_key' => $role_key]];
             }
-            if ($actual_by_person[$person_id]['role_key'] !== $row['role_key']) $issues[] = ['code' => 'wrong_role', 'source_post_id' => $source_post_id, 'details' => ['person_id' => (int) $person_id]];
-            if ($actual_by_person[$person_id]['position'] !== $row['position']) $issues[] = ['code' => 'wrong_position', 'source_post_id' => $source_post_id, 'details' => ['person_id' => (int) $person_id]];
+            if ($duplicate) {
+                $issues[] = ['code' => 'stale_index_row', 'source_post_id' => $source_post_id, 'details' => ['person_id' => $person_id, 'role_key' => $role_key, 'reason' => 'duplicate_row']];
+            }
+
+            $expected_row = $expected_by_person[$person_id] ?? null;
+            if ($expected_row === null) {
+                if (! $duplicate) $issues[] = ['code' => 'stale_index_row', 'source_post_id' => $source_post_id, 'details' => ['person_id' => $person_id, 'role_key' => $role_key]];
+            } elseif (! $duplicate) {
+                if ($role_key !== $expected_row['role_key']) {
+                    $issues[] = ['code' => 'wrong_role', 'source_post_id' => $source_post_id, 'details' => ['person_id' => $person_id, 'role_key' => $role_key, 'expected_role_key' => $expected_row['role_key']]];
+                } else {
+                    $matched_expected[$person_id] = true;
+                }
+                if ($position !== $expected_row['position']) $issues[] = ['code' => 'wrong_position', 'source_post_id' => $source_post_id, 'details' => ['person_id' => $person_id, 'position' => $position, 'expected_position' => $expected_row['position']]];
+            }
+            if (is_wp_error($this->validator->validate_person($person_id, $validation_status === 'publish'))) {
+                $issues[] = ['code' => 'invalid_person_reference', 'source_post_id' => $source_post_id, 'details' => ['person_id' => $person_id]];
+            }
         }
-        foreach ($actual_by_person as $person_id => $row) {
-            if (! isset($expected_by_person[$person_id])) $issues[] = ['code' => 'stale_index_row', 'source_post_id' => $source_post_id, 'details' => ['person_id' => (int) $person_id, 'role_key' => $row['role_key']]];
-            if (! in_array($row['role_key'], PersonRelationshipContract::allowed_roles($source_type), true)) $issues[] = ['code' => 'unsupported_role', 'source_post_id' => $source_post_id, 'details' => ['person_id' => (int) $person_id, 'role_key' => $row['role_key']]];
-            if (is_wp_error($this->validator->validate_person((int) $person_id, $validation_status === 'publish'))) {
-                $issues[] = ['code' => 'invalid_person_reference', 'source_post_id' => $source_post_id, 'details' => ['person_id' => (int) $person_id]];
+        foreach ($expected_by_person as $person_id => $row) {
+            if (isset($matched_expected[$person_id])) continue;
+            $has_wrong_role = false;
+            foreach ($actual as $actual_row) {
+                if ((int) $actual_row['person_id'] === (int) $person_id && (string) $actual_row['role_key'] !== $row['role_key']) $has_wrong_role = true;
             }
+            if (! $has_wrong_role) $issues[] = ['code' => 'missing_index_row', 'source_post_id' => $source_post_id, 'details' => ['person_id' => (int) $person_id, 'role_key' => $row['role_key']]];
         }
         return $issues;
     }

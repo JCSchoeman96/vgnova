@@ -76,6 +76,55 @@ final class PersonRelationshipQueryTest
         vgpc_test_true(in_array('invalid_person_reference', $codes, true), 'Missing or invalid Person references must be reported.');
     }
 
+    public function test_reconciler_preserves_duplicate_and_unsupported_rows(): void
+    {
+        $this->ready_schema();
+        $this->register_fields();
+        $this->post(12, 'post', 'draft');
+        $this->post(22, 'person', 'draft');
+        $GLOBALS['vgpc_test_meta'][12]['additional_authors'] = [22];
+        $duplicate = ['person_id' => 22, 'role_key' => 'additional_authors', 'position' => 0];
+        $GLOBALS['wpdb']->get_results_handler = static fn (): array => [
+            $duplicate,
+            $duplicate,
+            ['person_id' => 22, 'role_key' => 'unapproved_role', 'position' => 0],
+            ['person_id' => 23, 'role_key' => 'reviewed_by', 'position' => 0],
+        ];
+
+        $issues = (new PersonRelationshipReconciler(new PersonRelationshipSourceReader(), new PersonRelationshipRepository(new PersonRelationshipSchema()), new PersonRelationshipValidator()))->inspect_source(12);
+        $duplicate_rows = array_filter($issues, static fn (array $issue): bool => ($issue['details']['reason'] ?? null) === 'duplicate_row');
+        $stale_people = array_column(array_filter($issues, static fn (array $issue): bool => $issue['code'] === 'stale_index_row'), 'details');
+        vgpc_test_same(1, count($duplicate_rows), 'Repeated database rows must be reported individually as duplicate stale rows.');
+        vgpc_test_true(in_array('unsupported_role', array_column($issues, 'code'), true), 'Unsupported rows must remain visible when another row has the same Person ID.');
+        vgpc_test_true(in_array(23, array_column($stale_people, 'person_id'), true), 'Additional rows must not be lost when several rows share one Person ID.');
+    }
+
+    public function test_reconciler_returns_read_error_instead_of_reporting_missing_rows(): void
+    {
+        $this->ready_schema();
+        $this->register_fields();
+        $this->post(13, 'post', 'draft');
+        $this->post(23, 'person', 'draft');
+        $GLOBALS['vgpc_test_meta'][13]['primary_author'] = 23;
+        $GLOBALS['wpdb']->get_results_handler = static function (): never { throw new RuntimeException('database unavailable'); };
+
+        $issues = (new PersonRelationshipReconciler(new PersonRelationshipSourceReader(), new PersonRelationshipRepository(new PersonRelationshipSchema()), new PersonRelationshipValidator()))->inspect_source(13);
+        vgpc_test_true(is_wp_error($issues), 'A database read failure must be returned to the caller.');
+        vgpc_test_same('index_read_failed', $issues->get_error_code(), 'A failed read must identify the repository read failure.');
+        vgpc_test_same([], (new PersonRelationshipRepository(new PersonRelationshipSchema()))->relationships_for_source(13), 'The existing repository method must retain its fail-closed array interface.');
+    }
+
+    public function test_reconciler_returns_malformed_reader_errors_without_mislabeling_them_as_person_issues(): void
+    {
+        $this->register_fields();
+        $this->post(14, 'post', 'draft');
+        $GLOBALS['vgpc_test_meta'][14]['primary_author'] = [24];
+
+        $issues = (new PersonRelationshipReconciler(new PersonRelationshipSourceReader(), new PersonRelationshipRepository(new PersonRelationshipSchema()), new PersonRelationshipValidator()))->inspect_source(14);
+        vgpc_test_true(is_wp_error($issues), 'Reader failures must be returned to the caller.');
+        vgpc_test_same('malformed_relationship', $issues->get_error_code(), 'Reader failures must retain their own code.');
+    }
+
     private function service(): PersonRelationshipService
     {
         return new PersonRelationshipService(new PersonRelationshipSourceReader(), new PersonRelationshipValidator(), new PersonRelationshipRepository(new PersonRelationshipSchema()));

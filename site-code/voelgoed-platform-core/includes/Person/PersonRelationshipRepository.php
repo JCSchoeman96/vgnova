@@ -9,11 +9,18 @@ final class PersonRelationshipRepository
 
     public function relationships_for_source(int $source_post_id): array
     {
-        if ($source_post_id < 1 || ! $this->schema->is_ready()) return [];
+        $rows = $this->relationships_for_source_checked($source_post_id);
+        return is_wp_error($rows) ? [] : $rows;
+    }
+
+    /** @return list<array{person_id:int,role_key:string,position:int}>|\WP_Error */
+    public function relationships_for_source_checked(int $source_post_id): array|\WP_Error
+    {
+        if ($source_post_id < 1 || ! $this->schema->is_ready()) return new \WP_Error('index_unavailable', 'The relationship index is unavailable.');
         global $wpdb;
         try { $rows = $wpdb->get_results($wpdb->prepare("SELECT person_id, role_key, position FROM {$this->schema->table_name()} WHERE source_post_id = %d ORDER BY role_key, position, person_id", $source_post_id), ARRAY_A); }
-        catch (\Throwable) { return []; }
-        if (! is_array($rows) || (string) ($wpdb->last_error ?? '') !== '') return [];
+        catch (\Throwable) { return new \WP_Error('index_read_failed', 'Could not read source relationship index rows.'); }
+        if (! is_array($rows) || (string) ($wpdb->last_error ?? '') !== '') return new \WP_Error('index_read_failed', 'Could not read source relationship index rows.');
         return array_map(static fn ($row) => ['person_id' => (int) $row['person_id'], 'role_key' => (string) $row['role_key'], 'position' => (int) $row['position']], $rows);
     }
 
