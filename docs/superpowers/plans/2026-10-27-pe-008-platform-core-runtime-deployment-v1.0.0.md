@@ -128,4 +128,4 @@
 - [x] Run `./site-code/bin/check-source.sh` and require every existing and new suite plus the exact artifact verifier to pass.
 - [x] Run `git diff --check`; inspect the final diff for scope leaks, unsafe archive APIs, sequential rename fallback, unbounded target behavior, or production crash switches.
 - [x] Confirm the test suite used only temporary fixture roots and source-controlled changes for WordPress business data, Bricks, ACF, and live runtime deployment are zero.
-- [ ] Update the ledger row with the final branch and PR state. Do not merge PE-008 in this implementation task.
+- [x] Update the ledger row with the final branch and PR state. PR #61 is open on `feat/pe-008-platform-core-runtime-deployment`; independent review is pending. Do not merge PE-008 in this implementation task.
