@@ -66,7 +66,11 @@ final class VGPC_TestWpdb
         return 1;
     }
 
-    public function get_results(array $statement, mixed $format = null): array { $this->queries[] = $statement; return []; }
+    public function get_results(array $statement, mixed $format = null): array
+    {
+        $this->queries[] = $statement;
+        return is_callable($this->get_results_handler ?? null) ? ($this->get_results_handler)($statement['query'], $statement['args']) : [];
+    }
 
     public function insert(string $table, array $data, array $format = []): int|false { $this->inserted[] = [$table, $data]; return $this->fail_insert ? false : 1; }
 
@@ -80,6 +84,9 @@ final class VGPC_TestWpdb
 
     /** @var callable|null */
     public $get_col_handler = null;
+
+    /** @var callable|null */
+    public $get_results_handler = null;
 
     /** @var callable|null */
     public $get_row_handler = null;
@@ -204,6 +211,10 @@ if (! defined('WP_CLI')) {
 
 if (! defined('ABSPATH')) {
     define('ABSPATH', __DIR__ . '/');
+}
+
+if (! defined('ARRAY_A')) {
+    define('ARRAY_A', 'ARRAY_A');
 }
 
 $GLOBALS['vgpc_test_taxonomies'] = [];

@@ -29,6 +29,7 @@ PATCH_PATH = "site-code/voelgoed-platform-core/integration.patch"
 BUILDER_PATH = "site-code/bin/build-platform-core.py"
 OVERLAY_PATHS = (
     "site-code/voelgoed-platform-core/includes/Runtime",
+    "site-code/voelgoed-platform-core/includes/Person",
     "site-code/voelgoed-platform-core/includes/Taxonomy",
     "site-code/voelgoed-platform-core/includes/Event",
     "site-code/voelgoed-platform-core/includes/Product",
