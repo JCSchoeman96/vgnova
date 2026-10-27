@@ -73,10 +73,11 @@ final class PersonRelationshipService
                 || (string) ($source->post_status ?? '') !== 'publish'
                 || (string) get_post_meta($id, PersonRelationshipContract::DIRTY_META_KEY, true) === '1'
             ) continue;
-            // Fail closed even if both dirty-marker writes failed. The source
-            // ACF fields remain authoritative, so require a matching row.
+            // A missing dirty marker cannot make an invalid source safe. Validate
+            // the full authoritative projection before returning an index match.
             $projection = $this->reader->read($id);
             if (is_wp_error($projection)) continue;
+            if (is_wp_error($this->validator->validate_projection($projection, 'publish'))) continue;
             $matches = false;
             foreach ($projection['relationships'] as $relationship) {
                 if ($relationship['person_id'] === $person_id

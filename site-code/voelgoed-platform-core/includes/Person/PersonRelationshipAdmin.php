@@ -13,6 +13,8 @@ final class PersonRelationshipAdmin
     private int $locked_source_id = 0;
     /** @var array<int, true> */
     private array $reported_publish_violations = [];
+    /** @var array<int, string> */
+    private array $pending_publish_checks = [];
 
     /** @var array<string, string> */
     private const FIELD_KEYS = [
@@ -51,6 +53,9 @@ final class PersonRelationshipAdmin
         // WordPress fires this after the status write. It detects unsupported
         // low-level publication bypasses; supported writes remain prevalidated.
         add_action('transition_post_status', [$this, 'detect_invalid_published_source'], 1000, 3);
+        // ACF persists editor fields after the WordPress status transition.
+        // Check at shutdown so the detector reads the final authoritative values.
+        add_action('shutdown', [$this, 'check_pending_published_sources'], 1000, 0);
         add_filter('rest_pre_insert_post', [$this, 'validate_rest_source'], 10, 2);
         add_filter('rest_pre_insert_mto-course', [$this, 'validate_rest_source'], 10, 2);
         add_action('rest_after_insert_post', [$this, 'project_after_rest_save'], 20, 3);
@@ -64,53 +69,71 @@ final class PersonRelationshipAdmin
         add_filter(self::FUTURE_PUBLISH_FILTER, [$this, 'future_post_can_publish'], 10, 3);
     }
 
-    /** Detect and quarantine an invalid relationship projection after a bypass publish. */
+    /** Queue a post-transition check for a supported source. */
     public function detect_invalid_published_source(mixed $new_status, mixed $old_status, mixed $post): void
     {
         if ($new_status !== 'publish' || $old_status === 'publish' || ! is_object($post)) return;
         $source_id = $this->normalize_id($post->ID ?? 0);
         $source_type = (string) ($post->post_type ?? '');
         if ($source_id < 1 || ! PersonRelationshipContract::supported_source_type($source_type)) return;
+        $this->pending_publish_checks[$source_id] = $source_type;
+    }
 
-        // transition_post_status runs after WordPress writes status. Drop cached
-        // post/meta values so validation sees the authoritative stored ACF data.
-        if (function_exists('clean_post_cache')) clean_post_cache($source_id);
-        if (function_exists('wp_cache_delete')) wp_cache_delete($source_id, 'post_meta');
-        if (function_exists('acf_flush_value_cache')) {
-            foreach (PersonRelationshipContract::allowed_roles($source_type) as $role) {
-                acf_flush_value_cache($source_id, $role);
+    /** Validate queued status transitions after WordPress and ACF finish the request. */
+    public function check_pending_published_sources(): void
+    {
+        $pending = $this->pending_publish_checks;
+        $this->pending_publish_checks = [];
+        foreach ($pending as $source_id => $source_type) {
+            $post = get_post($source_id);
+            if (! is_object($post)
+                || (string) ($post->post_status ?? '') !== 'publish'
+                || (string) ($post->post_type ?? '') !== $source_type
+            ) continue;
+
+            // Drop cached post/meta values so validation sees the authoritative
+            // stored ACF data after supported editor saves have finished.
+            if (function_exists('clean_post_cache')) clean_post_cache($source_id);
+            if (function_exists('wp_cache_delete')) wp_cache_delete($source_id, 'post_meta');
+            if (function_exists('acf_flush_value_cache')) {
+                foreach (PersonRelationshipContract::allowed_roles($source_type) as $role) {
+                    acf_flush_value_cache($source_id, $role);
+                }
             }
-        }
-        $projection = $this->reader->read($source_id);
-        if (is_array($projection) && function_exists('clean_post_cache')) {
-            foreach ($projection['relationships'] as $relationship) {
-                clean_post_cache($relationship['person_id']);
+            $projection = $this->reader->read($source_id);
+            if (is_array($projection) && function_exists('clean_post_cache')) {
+                foreach ($projection['relationships'] as $relationship) {
+                    clean_post_cache($relationship['person_id']);
+                }
             }
-        }
-        $result = is_wp_error($projection)
-            ? $projection
-            : $this->validate_projection($projection, 'publish');
-        if (! is_wp_error($result)) return;
+            $result = is_wp_error($projection)
+                ? $projection
+                : $this->validate_projection($projection, 'publish');
+            if (! is_wp_error($result) || isset($this->reported_publish_violations[$source_id])) continue;
+            $this->reported_publish_violations[$source_id] = true;
 
-        $dirty_key = PersonRelationshipContract::DIRTY_META_KEY;
-        if ((string) get_post_meta($source_id, $dirty_key, true) !== '1') {
-            update_post_meta($source_id, $dirty_key, 1);
-        }
-        if (isset($this->reported_publish_violations[$source_id])) return;
-        $this->reported_publish_violations[$source_id] = true;
+            $dirty_key = PersonRelationshipContract::DIRTY_META_KEY;
+            $marker_persisted = (string) get_post_meta($source_id, $dirty_key, true) === '1';
+            if (! $marker_persisted) {
+                update_post_meta($source_id, $dirty_key, 1);
+                $marker_persisted = (string) get_post_meta($source_id, $dirty_key, true) === '1';
+            }
 
-        $event = [
-            'severity' => 'high',
-            'code' => 'invalid_person_relationships_on_publish',
-            'source_id' => $source_id,
-            'source_type' => $source_type,
-        ];
-        error_log(sprintf(
-            '[HIGH] Person relationship integrity violation on published source %d (%s). Reverse relationships marked dirty.',
-            $source_id,
-            $source_type
-        ));
-        do_action('voelgoed/platform_core/person_relationship_integrity_violation', $event);
+            $event = [
+                'severity' => 'high',
+                'code' => 'invalid_person_relationships_on_publish',
+                'source_id' => $source_id,
+                'source_type' => $source_type,
+                'dirty_marker_persisted' => $marker_persisted,
+            ];
+            error_log(sprintf(
+                '[HIGH] Person relationship integrity violation on published source %d (%s). Dirty marker persistence: %s.',
+                $source_id,
+                $source_type,
+                $marker_persisted ? 'confirmed' : 'failed'
+            ));
+            do_action('voelgoed/platform_core/person_relationship_integrity_violation', $event);
+        }
     }
 
     public function validate_field(mixed $valid, mixed $value, array $field, string $input_name, string $role): mixed

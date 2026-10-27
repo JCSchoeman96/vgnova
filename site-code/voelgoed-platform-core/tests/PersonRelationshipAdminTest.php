@@ -76,11 +76,13 @@ final class PersonRelationshipAdminTest
         add_action('voelgoed/platform_core/person_relationship_integrity_violation', static function (array $event) use (&$diagnostics): void { $diagnostics[] = $event; }, 10, 1);
 
         do_action('transition_post_status', 'publish', 'draft', $GLOBALS['vgpc_test_posts'][701]);
+        do_action('shutdown');
         do_action('transition_post_status', 'publish', 'publish', $GLOBALS['vgpc_test_posts'][701]);
+        do_action('shutdown');
 
         vgpc_test_same('1', (string) get_post_meta(701, PersonRelationshipContract::DIRTY_META_KEY, true), 'A bypassed invalid publish must set dirty to exactly 1.');
         vgpc_test_same(1, count($diagnostics), 'Repeated transition callbacks must not duplicate diagnostics.');
-        vgpc_test_same(['severity' => 'high', 'code' => 'invalid_person_relationships_on_publish', 'source_id' => 701, 'source_type' => 'post'], $diagnostics[0] ?? null, 'The diagnostic must contain only sanitized integrity details.');
+        vgpc_test_same(['severity' => 'high', 'code' => 'invalid_person_relationships_on_publish', 'source_id' => 701, 'source_type' => 'post', 'dirty_marker_persisted' => true], $diagnostics[0] ?? null, 'The diagnostic must contain only sanitized integrity details and confirmed marker state.');
         vgpc_test_same('publish', $GLOBALS['vgpc_test_posts'][701]->post_status, 'The detector must leave the already-written status unchanged.');
         vgpc_test_same(702, get_field('primary_author', 701, false), 'The detector must leave authoritative ACF relationships unchanged.');
         vgpc_test_same([[701, 'post_meta']], $GLOBALS['vgpc_test_cache_deletes'], 'The detector must invalidate stored post metadata before rereading ACF.');
@@ -100,10 +102,77 @@ final class PersonRelationshipAdminTest
 
         do_action('transition_post_status', 'publish', 'draft', $GLOBALS['vgpc_test_posts'][703]);
         do_action('transition_post_status', 'publish', 'draft', $GLOBALS['vgpc_test_posts'][705]);
+        do_action('shutdown');
 
         vgpc_test_same('', (string) get_post_meta(703, PersonRelationshipContract::DIRTY_META_KEY, true), 'A valid publish must not mutate dirty metadata.');
         vgpc_test_same('', (string) get_post_meta(705, PersonRelationshipContract::DIRTY_META_KEY, true), 'Unsupported source types must not mutate dirty metadata.');
         vgpc_test_same([], $diagnostics, 'Valid and unsupported transitions must not report integrity violations.');
+    }
+
+    public function test_failed_dirty_marker_write_is_reported_without_claiming_quarantine(): void
+    {
+        $admin = $this->admin();
+        $admin->register();
+        $this->source_and_people(707, 'draft', [708]);
+        update_field('primary_author', 708, 707);
+        $GLOBALS['vgpc_test_posts'][707]->post_status = 'publish';
+        $GLOBALS['vgpc_test_posts'][708]->post_status = 'draft';
+        $GLOBALS['vgpc_update_post_meta_handler'] = static fn (int $id, string $key): bool => $key !== PersonRelationshipContract::DIRTY_META_KEY;
+        $diagnostics = [];
+        add_action('voelgoed/platform_core/person_relationship_integrity_violation', static function (array $event) use (&$diagnostics): void { $diagnostics[] = $event; }, 10, 1);
+
+        do_action('transition_post_status', 'publish', 'draft', $GLOBALS['vgpc_test_posts'][707]);
+        do_action('shutdown');
+
+        vgpc_test_same('', (string) get_post_meta(707, PersonRelationshipContract::DIRTY_META_KEY, true), 'A failed marker write must remain observable as absent.');
+        vgpc_test_same(false, $diagnostics[0]['dirty_marker_persisted'] ?? null, 'The integrity diagnostic must state that quarantine persistence failed.');
+        vgpc_test_same('publish', $GLOBALS['vgpc_test_posts'][707]->post_status, 'A failed marker write must not rewrite published status.');
+        vgpc_test_same(708, get_field('primary_author', 707, false), 'A failed marker write must not alter authoritative ACF fields.');
+        $GLOBALS['vgpc_update_post_meta_handler'] = null;
+    }
+
+    public function test_existing_dirty_marker_false_on_unchanged_counts_as_persisted(): void
+    {
+        $admin = $this->admin();
+        $admin->register();
+        $this->source_and_people(709, 'draft', [710]);
+        update_field('primary_author', 710, 709);
+        $GLOBALS['vgpc_test_posts'][709]->post_status = 'publish';
+        $GLOBALS['vgpc_test_posts'][710]->post_status = 'draft';
+        update_post_meta(709, PersonRelationshipContract::DIRTY_META_KEY, 1);
+        $GLOBALS['vgpc_update_post_meta_handler'] = static function (): never { throw new RuntimeException('An unchanged existing marker should not need a write.'); };
+        $diagnostics = [];
+        add_action('voelgoed/platform_core/person_relationship_integrity_violation', static function (array $event) use (&$diagnostics): void { $diagnostics[] = $event; }, 10, 1);
+
+        do_action('transition_post_status', 'publish', 'draft', $GLOBALS['vgpc_test_posts'][709]);
+        do_action('shutdown');
+
+        vgpc_test_same(true, $diagnostics[0]['dirty_marker_persisted'] ?? null, 'An already-persisted marker must count as successful despite WordPress false-on-unchanged semantics.');
+        $GLOBALS['vgpc_update_post_meta_handler'] = null;
+    }
+
+    public function test_supported_editor_relationship_save_finishes_before_deferred_bypass_check(): void
+    {
+        $admin = $this->admin();
+        $admin->register();
+        $this->source_and_people(711, 'draft', [712, 713]);
+        update_field('primary_author', 712, 711);
+        $GLOBALS['vgpc_test_posts'][711]->post_status = 'publish';
+        $GLOBALS['vgpc_test_posts'][712]->post_status = 'draft';
+        $GLOBALS['vgpc_test_posts'][713]->post_status = 'publish';
+        $_POST = ['post_ID' => 711, 'post_status' => 'publish', 'acf' => ['field_vg_article_primary_author' => 713]];
+        $diagnostics = [];
+        add_action('voelgoed/platform_core/person_relationship_integrity_violation', static function (array $event) use (&$diagnostics): void { $diagnostics[] = $event; }, 10, 1);
+
+        do_action('transition_post_status', 'publish', 'draft', $GLOBALS['vgpc_test_posts'][711]);
+        vgpc_test_same('', (string) get_post_meta(711, PersonRelationshipContract::DIRTY_META_KEY, true), 'The detector must wait until supported editor ACF writes finish.');
+        $valid = apply_filters('acf/validate_value/key=field_vg_article_primary_author', true, 713, ['key' => 'field_vg_article_primary_author', 'name' => 'primary_author'], 'acf[field_vg_article_primary_author]');
+        vgpc_test_same(true, $valid, 'The supported editor path must validate the submitted replacement before ACF persists it.');
+        update_field('primary_author', 713, 711);
+        do_action('shutdown');
+
+        vgpc_test_same(713, get_field('primary_author', 711, false), 'The supported editor save must persist its validated replacement relationship.');
+        vgpc_test_same([], $diagnostics, 'A supported editor save must not be misreported from the pre-ACF transition state.');
     }
 
     public function test_rejects_malformed_and_duplicate_field_submissions(): void

@@ -68,6 +68,21 @@ final class PersonRelationshipQueryTest
         $GLOBALS['vgpc_update_post_meta_handler'] = null;
     }
 
+    public function test_reverse_read_hides_invalid_source_when_dirty_marker_cannot_persist(): void
+    {
+        $this->ready_schema();
+        $this->register_fields();
+        $this->post(20, 'person', 'publish');
+        $this->post(30, 'post', 'publish');
+        $GLOBALS['vgpc_test_meta'][30]['primary_author'] = 20;
+        $GLOBALS['vgpc_test_meta'][30]['additional_authors'] = [20];
+        $GLOBALS['vgpc_update_post_meta_handler'] = static fn (): bool => false;
+        $GLOBALS['wpdb']->get_col_handler = static fn (): array => [30];
+
+        vgpc_test_same([], $this->service()->articles_for_person(20), 'Reverse reads must validate the whole authoritative projection if a failed dirty write leaves no marker.');
+        $GLOBALS['vgpc_update_post_meta_handler'] = null;
+    }
+
     public function test_reconciler_reports_missing_index_rows_and_dirty_source(): void
     {
         $this->ready_schema();
