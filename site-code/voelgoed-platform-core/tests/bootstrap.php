@@ -44,11 +44,13 @@ final class VGPC_TestWpdb
 
     public bool $fail_query = false;
 
-    public function query(array $statement): int|false { $this->queries[] = $statement; return $this->fail_query ? false : 1; }
+    public bool $fail_insert = false;
+
+    public function query(array|string $statement): int|false { $this->queries[] = is_array($statement) ? $statement : ['query' => $statement, 'args' => []]; return $this->fail_query && ! str_contains(is_array($statement) ? $statement['query'] : $statement, 'ROLLBACK') ? false : 1; }
 
     public function get_results(array $statement, mixed $format = null): array { $this->queries[] = $statement; return []; }
 
-    public function insert(string $table, array $data, array $format = []): int|false { $this->inserted[] = [$table, $data]; return 1; }
+    public function insert(string $table, array $data, array $format = []): int|false { $this->inserted[] = [$table, $data]; return $this->fail_insert ? false : 1; }
 
     public function get_charset_collate(): string { return 'DEFAULT CHARACTER SET utf8mb4'; }
 
@@ -254,10 +256,17 @@ $GLOBALS['vgpc_test_get_posts_handler'] = null;
     $GLOBALS['vgpc_test_get_post_cache'] = [];
     $GLOBALS['vgpc_test_get_field_cache'] = [];
     $GLOBALS['wpdb'] = new VGPC_TestWpdb();
+    $GLOBALS['vgpc_test_dbdelta_sql'] = [];
     WP_CLI::$commands = [];
     WP_CLI::$messages = [];
     $_POST = [];
     $_GET = [];
+}
+
+function dbDelta(string $sql): array
+{
+    $GLOBALS['vgpc_test_dbdelta_sql'][] = $sql;
+    return ['wp_vg_person_relationship_index' => 'Created'];
 }
 
 function vgpc_test_same(mixed $expected, mixed $actual, string $message): void

@@ -43,10 +43,25 @@ final class PersonRelationshipRepository
         }
         if (! $this->schema->is_ready()) return new \WP_Error('index_unavailable', 'The relationship index is unavailable.');
         global $wpdb;
+        $transaction_started = false;
         try {
-            if ($wpdb->query($wpdb->prepare("DELETE FROM {$this->schema->table_name()} WHERE source_post_id = %d", $source_post_id)) === false) return new \WP_Error('index_write_failed', 'Could not replace index rows.');
-            foreach ($rows as $row) if ($wpdb->insert($this->schema->table_name(), ['source_post_id'=>$source_post_id,'source_post_type'=>$source_post_type,'person_id'=>$row['person_id'],'role_key'=>$row['role_key'],'position'=>$row['position']], ['%d','%s','%d','%s','%d']) === false) return new \WP_Error('index_write_failed', 'Could not insert index rows.');
-        } catch (\Throwable) { return new \WP_Error('index_write_failed', 'Could not replace index rows.'); }
+            if ($wpdb->query('START TRANSACTION') === false) return new \WP_Error('index_write_failed', 'Could not start index replacement.');
+            $transaction_started = true;
+            if ($wpdb->query($wpdb->prepare("DELETE FROM {$this->schema->table_name()} WHERE source_post_id = %d", $source_post_id)) === false) {
+                throw new \RuntimeException('Could not replace index rows.');
+            }
+            foreach ($rows as $row) {
+                if ($wpdb->insert($this->schema->table_name(), ['source_post_id'=>$source_post_id,'source_post_type'=>$source_post_type,'person_id'=>$row['person_id'],'role_key'=>$row['role_key'],'position'=>$row['position']], ['%d','%s','%d','%s','%d']) === false) {
+                    throw new \RuntimeException('Could not insert index rows.');
+                }
+            }
+            if ($wpdb->query('COMMIT') === false) throw new \RuntimeException('Could not commit index replacement.');
+        } catch (\Throwable) {
+            if ($transaction_started) {
+                try { $wpdb->query('ROLLBACK'); } catch (\Throwable) {}
+            }
+            return new \WP_Error('index_write_failed', 'Could not replace index rows.');
+        }
         return true;
     }
 

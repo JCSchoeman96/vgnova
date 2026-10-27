@@ -17,8 +17,12 @@ final class PersonRelationshipSchema
     public function is_ready(): bool
     {
         global $wpdb;
-        return (int) get_option(self::VERSION_OPTION, 0) === self::SCHEMA_VERSION
-            && $wpdb->get_var($wpdb->prepare('SHOW TABLES LIKE %s', $this->table_name())) === $this->table_name();
+        try {
+            return (int) get_option(self::VERSION_OPTION, 0) === self::SCHEMA_VERSION
+                && $wpdb->get_var($wpdb->prepare('SHOW TABLES LIKE %s', $this->table_name())) === $this->table_name();
+        } catch (\Throwable) {
+            return false;
+        }
     }
 
     public function install(): true|\WP_Error
@@ -40,10 +44,14 @@ final class PersonRelationshipSchema
             . "KEY person_source_type (person_id,source_post_type),\n"
             . "KEY person_role (person_id,role_key),\n"
             . "KEY source_post (source_post_id)\n"
-            . ") {$collate};";
-        try { dbDelta($sql); } catch (\Throwable $e) { return new \WP_Error('person_relationship_schema_failed', $e->getMessage()); }
-        if (! $this->table_exists()) return new \WP_Error('person_relationship_schema_failed', 'The relationship index table was not created.');
-        update_option(self::VERSION_OPTION, self::SCHEMA_VERSION, false);
+            . ") ENGINE=InnoDB {$collate};";
+        try {
+            dbDelta($sql);
+            if (! $this->table_exists()) return new \WP_Error('person_relationship_schema_failed', 'The relationship index table was not created.');
+            update_option(self::VERSION_OPTION, self::SCHEMA_VERSION, false);
+        } catch (\Throwable $e) {
+            return new \WP_Error('person_relationship_schema_failed', $e->getMessage());
+        }
         return true;
     }
 
