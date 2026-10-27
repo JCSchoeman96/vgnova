@@ -1,0 +1,43 @@
+# Simple Person relationship source implementation
+
+**Version:** 1.0.0
+**Status:** Complete in source; runtime activation has not started
+**Verified preceding commit:** `5c879918e403ec0d8fbc6b70e92668c789d5d526`
+**Evidence commit:** This document is committed separately. Its exact commit is recorded in the SDD ledger after commit.
+
+## State
+
+```text
+SOURCE_IMPLEMENTATION=COMPLETE
+RUNTIME_ACTIVATION=NOT_STARTED
+RUNTIME_TABLE_CREATED=NO
+ACF_RUNTIME_SYNC=NO
+INDEX_REBUILD_RUN=NO
+WORDPRESS_BUSINESS_MUTATIONS=0
+BRICKS_MUTATIONS=0
+REPRESENTATIVE_DATA_MUTATIONS=0
+PLATFORM_CORE_DEPLOYMENTS=0
+ARTICLE_TO_PERSON_ARCHITECTURE=RESOLVED_IN_SOURCE
+PERSON_TO_COURSE_ARCHITECTURE=RESOLVED_IN_SOURCE
+VS1_MASTER_GATE=STILL_BLOCKED
+```
+
+## Source contracts
+
+Article source type `post` owns `primary_author` (optional, single), `additional_authors`, `expert_contributors`, and `reviewed_by`. Course source type `mto-course` owns `lead_instructor` (optional, single), `additional_instructors`, and `experts`. All fields reference canonical `person` posts. One Person may hold only one approved role per source object. Source relationships remain authoritative; the Person relationship index is disposable derived state.
+
+The index table is `{$wpdb->prefix}vg_person_relationship_index`. It stores source post ID and type, Person ID, role key, and role position. Its uniqueness and lookup indexes follow the approved architecture design. Reverse reads use Platform Core's repository/service boundary, with public eligibility checks on both Person and source. No serialized ACF-meta `LIKE` path supplies production reverse results, and no copied Article or Course lists are written onto Person.
+
+Ordinary editor-save projection remains an application writer with a narrow, reviewed mutation-inventory classification. Setup, full rebuild, and repair are administrative mutations protected by the PE-007 runtime-mutation session guard. The source mutation inventory and tests verify these classifications.
+
+## Verification evidence
+
+The full `./site-code/bin/check-source.sh` passed before and after this evidence document was added. The checker ran all existing source suites, PHP syntax checks, JSON and Python parsing, shell syntax and ShellCheck checks, the Platform Core integration patch check, runtime mutation inventory checks, and the exact-HEAD build verifier.
+
+Reported suite totals included 67 Content Topic tests, 69 Event Participation tests, 12 Event Participation Bricks tests, 13 Event Role Seeder tests, 142 Product Contribution tests, 101 Product People tests, 12 Person foundation tests, 14 Person migration tests, 3 Event Participation schema contract tests, 11 editorial dimension seeder tests, 73 runtime mutation core tests, 19 runtime mutation session tests, and 31 runtime mutation policy tests. Product Contribution QA suites passed at 12/12, 3/3, 1/1, 5/5, 9/9, and 24/24. The six Person relationship test runners all passed, including the mutation-inventory classification check.
+
+The exact-commit artifact was built and independently verified for `5c879918e403ec0d8fbc6b70e92668c789d5d526`. The artifact contains 66 files. Tree SHA-256: `0af6450b79ab252a2da848235b7f660796b7043cab6911cbe1b28717be2e0a39`. Archive SHA-256: `a83cdb55f0bff77cc8bc1048686c4e93a7b40d4d5325eaab08829d0fb3e1c972`. Manifest SHA-256: `5711f205b9e9430e556418b4963ab321175d52d2ce5117e67bce73bba26a1988`. The verifier reported two exact-commit builds, independent archive verification, negative cases, and cleanup passed.
+
+Targeted production searches found no `meta_value LIKE` or `LIKE ... meta_value` path in Platform Core includes or the plugin entrypoint. Person overlay searches found no serialized-meta reverse query. The only `update_post_meta` calls in the Person overlay set the internal dirty-generation and dirty-state markers on source objects; no Person reverse relationship list is written. The forward searches found `articles_for_person()` and `courses_for_person()` service methods.
+
+PR-range whitespace validation uses `BASE=$(git merge-base origin/main HEAD)` and `git diff --check "$BASE...HEAD"`. The exact result and final commit SHA are recorded in the Task 10 report and SDD ledger after the evidence commit. No push or PR was performed by this task.
