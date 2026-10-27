@@ -40,11 +40,21 @@ final class PersonRelationshipSourceTest
         vgpc_test_true(is_wp_error($reader->read(999)), 'Missing source must fail.');
     }
 
+    public function test_reader_rejects_scalar_multiple_values_and_associative_lists(): void
+    {
+        $this->register_fields();
+        $GLOBALS['vgpc_test_posts'][14] = (object) ['ID' => 14, 'post_type' => 'post', 'post_status' => 'draft'];
+        $GLOBALS['vgpc_test_meta'][14]['additional_authors'] = 24;
+        vgpc_test_true(is_wp_error((new PersonRelationshipSourceReader())->read(14)), 'Multiple fields must reject scalar values.');
+        $GLOBALS['vgpc_test_meta'][14]['additional_authors'] = ['first' => 24];
+        vgpc_test_true(is_wp_error((new PersonRelationshipSourceReader())->read(14)), 'Multiple fields must reject associative arrays without reindexing.');
+    }
+
     public function test_reader_supports_course_contract_and_preserves_course_role_positions(): void
     {
         $this->register_fields();
         $GLOBALS['vgpc_test_posts'][13] = (object) ['ID' => 13, 'post_type' => 'mto-course', 'post_status' => 'private'];
-        $GLOBALS['vgpc_test_meta'][13] = ['additional_instructors' => [31, 32], 'experts' => 33];
+        $GLOBALS['vgpc_test_meta'][13] = ['additional_instructors' => [31, 32], 'experts' => [33]];
         $projection = (new PersonRelationshipSourceReader())->read(13);
         vgpc_test_same([
             'source_post_id' => 13,
@@ -69,6 +79,9 @@ final class PersonRelationshipSourceTest
         vgpc_test_same(true, $validator->validate_projection($base, 'publish'), 'Published sources may use published Persons.');
         vgpc_test_same(true, $validator->validate_projection(['source_post_id'=>10,'source_post_type'=>'post','relationships'=>[]], 'draft'), 'Primary author remains optional.');
         vgpc_test_same(true, $validator->validate_projection($base, 'private'), 'Private sources may reference published Persons.');
+        vgpc_test_same(true, $validator->validate_projection($base, 'future'), 'Scheduled sources may reference published Persons without public-source rules.');
+        vgpc_test_same(true, $validator->validate_projection($base, 'pending'), 'Pending sources may reference published Persons without public-source rules.');
+        vgpc_test_true(is_wp_error($validator->validate_projection($base, 'custom-status')), 'Unknown source statuses must fail.');
         $duplicate = $base;
         $duplicate['relationships'][] = ['person_id' => 20, 'role_key' => 'reviewed_by', 'position' => 0];
         vgpc_test_true(is_wp_error($validator->validate_projection($duplicate, 'publish')), 'A Person cannot occupy two roles on one source.');
@@ -98,6 +111,24 @@ final class PersonRelationshipSourceTest
         vgpc_test_true(is_wp_error($validator->validate_projection($bad, 'draft')), 'Role from another source contract must fail.');
         $bad['relationships'] = [['person_id'=>'1', 'role_key'=>'primary_author', 'position'=>0]];
         vgpc_test_true(is_wp_error($validator->validate_projection($bad, 'draft')), 'Malformed row types must fail.');
+    }
+
+    public function test_validator_requires_contiguous_unique_positions_per_role(): void
+    {
+        $validator = new PersonRelationshipValidator();
+        foreach ([30, 31, 32] as $person_id) {
+            $GLOBALS['vgpc_test_posts'][$person_id] = (object) ['ID' => $person_id, 'post_type' => 'person', 'post_status' => 'publish'];
+        }
+        $projection = ['source_post_id'=>10, 'source_post_type'=>'post', 'relationships'=>[
+            ['person_id'=>30, 'role_key'=>'additional_authors', 'position'=>0],
+            ['person_id'=>31, 'role_key'=>'additional_authors', 'position'=>2],
+        ]];
+        vgpc_test_true(is_wp_error($validator->validate_projection($projection, 'publish')), 'Gapped role positions must fail.');
+        $projection['relationships'][1]['position'] = 0;
+        vgpc_test_true(is_wp_error($validator->validate_projection($projection, 'publish')), 'Duplicate role positions must fail.');
+        $projection['relationships'][1]['position'] = 1;
+        $projection['relationships'][] = ['person_id'=>32, 'role_key'=>'expert_contributors', 'position'=>0];
+        vgpc_test_same(true, $validator->validate_projection($projection, 'publish'), 'Each role has its own position sequence.');
     }
 
     private function register_fields(): void

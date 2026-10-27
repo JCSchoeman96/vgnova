@@ -8,6 +8,10 @@ final class PersonRelationshipValidator
 {
     public function validate_projection(array $projection, string $target_source_status): true|\WP_Error
     {
+        $allowed_source_statuses = ['publish', 'future', 'draft', 'pending', 'private', 'auto-draft'];
+        if (! in_array($target_source_status, $allowed_source_statuses, true)) {
+            return new \WP_Error('invalid_source_status', 'Source status is not a recognized WordPress publication state.');
+        }
         $source_id = $projection['source_post_id'] ?? null;
         $source_type = $projection['source_post_type'] ?? null;
         $relationships = $projection['relationships'] ?? null;
@@ -21,6 +25,7 @@ final class PersonRelationshipValidator
         $roles = PersonRelationshipContract::allowed_roles($source_type);
         $seen_people = [];
         $seen_role_people = [];
+        $role_positions = [];
         foreach ($relationships as $row) {
             if (! is_array($row)
                 || ! isset($row['person_id'], $row['role_key'], $row['position'])
@@ -41,10 +46,18 @@ final class PersonRelationshipValidator
             }
             $seen_role_people[$role_key][$person_id] = true;
             $seen_people[$person_id] = true;
+            $role_positions[$role_key][] = $row['position'];
 
             $person_valid = $this->validate_person($person_id, $target_source_status === 'publish');
             if ($person_valid !== true) {
                 return $person_valid;
+            }
+        }
+
+        foreach ($role_positions as $positions) {
+            sort($positions, SORT_NUMERIC);
+            if ($positions !== range(0, count($positions) - 1)) {
+                return new \WP_Error('invalid_relationship_positions', 'Relationship positions must be unique and contiguous within each role.');
             }
         }
 

@@ -37,7 +37,18 @@ final class PersonRelationshipSourceReader
             if ($value === null || $value === false || $value === '') {
                 continue;
             }
-            $values = is_array($value) ? array_values($value) : [$value];
+            $is_single_value_role = in_array($role, ['primary_author', 'lead_instructor'], true);
+            if ($is_single_value_role) {
+                if (is_array($value)) {
+                    return new \WP_Error('malformed_relationship', sprintf('The %s field must contain a single Person value.', $role));
+                }
+                $values = [$value];
+            } else {
+                if (! is_array($value) || ! array_is_list($value)) {
+                    return new \WP_Error('malformed_relationship', sprintf('The %s field must contain an ordered list of Person values.', $role));
+                }
+                $values = $value;
+            }
             foreach ($values as $position => $person_value) {
                 $person_id = $this->person_id($person_value);
                 if ($person_id === null) {
