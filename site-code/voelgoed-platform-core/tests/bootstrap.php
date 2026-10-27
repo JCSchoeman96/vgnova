@@ -33,11 +33,24 @@ if (! class_exists('WP_Error')) {
 
 final class VGPC_TestWpdb
 {
+    public string $prefix = 'wp_';
     public string $posts = 'wp_posts';
 
     public string $postmeta = 'wp_postmeta';
 
     public string $last_error = '';
+
+    public array $inserted = [];
+
+    public bool $fail_query = false;
+
+    public function query(array $statement): int|false { $this->queries[] = $statement; return $this->fail_query ? false : 1; }
+
+    public function get_results(array $statement, mixed $format = null): array { $this->queries[] = $statement; return []; }
+
+    public function insert(string $table, array $data, array $format = []): int|false { $this->inserted[] = [$table, $data]; return 1; }
+
+    public function get_charset_collate(): string { return 'DEFAULT CHARACTER SET utf8mb4'; }
 
     /** @var list<array{query:string,args:list<mixed>}> */
     public array $queries = [];
