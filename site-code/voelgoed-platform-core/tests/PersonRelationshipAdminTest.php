@@ -573,10 +573,10 @@ final class PersonRelationshipAdminTest
         $GLOBALS['vgpc_test_suppress_after_insert_post'] = true;
         vgpc_test_same(7570, wp_update_post(['ID' => 7570, 'post_title' => 'A'], true, false), 'First bulk source update must complete with fire_after_hooks=false.');
         vgpc_test_same(7571, wp_update_post(['ID' => 7571, 'post_title' => 'B'], true, false), 'Second bulk source update must acquire its own lock while the first remains held.');
-        vgpc_test_same([7570 => true, 7571 => true], $lock_held, 'Suppressed hooks must retain each lock until shutdown releases them safely.');
+        vgpc_test_same([], $lock_held, 'save_post must release each no-ACF lock even when after hooks are suppressed.');
         $GLOBALS['vgpc_test_wp_update_post_hooks'] = true;
         vgpc_test_same(7572, wp_update_post(['ID' => 7572, 'post_title' => 'C'], true), 'A normal no-ACF save must complete.');
-        vgpc_test_same([7570 => true, 7571 => true], $lock_held, 'A normal post save must release its lock without releasing other source locks.');
+        vgpc_test_same([], $lock_held, 'A normal post save must release only its own lock.');
         do_action('shutdown');
         vgpc_test_same([], $lock_held, 'No-ACF post saves must release each source lock even when wp_after_insert_post is suppressed.');
     }
@@ -882,6 +882,65 @@ final class PersonRelationshipAdminTest
         do_action('shutdown');
     }
 
+    public function test_type_transition_recovers_when_global_acf_payload_is_unrelated_or_skipped(): void
+    {
+        foreach ([
+            'unrelated_post' => ['post_ID' => 7770],
+            'invalid_nonce' => ['post_ID' => 7771, 'nonce_invalid' => true],
+            'validation_failure' => ['post_ID' => 7772, 'validation_failed' => true],
+            'suppressed_after_hooks' => ['post_ID' => 7773, 'fire_after_hooks' => false],
+        ] as $case => $options) {
+            vgpc_test_reset();
+            $admin = $this->admin();
+            $admin->register();
+            $post_id = 7780 + count($GLOBALS['vgpc_test_posts']);
+            $person_id = $post_id + 1;
+            $this->source_and_people($post_id, 'draft', [$person_id], 'page');
+            $GLOBALS['vgpc_test_posts'][$person_id]->post_status = 'publish';
+            update_field('primary_author', $person_id, $post_id);
+            $GLOBALS['vgpc_test_options'][PersonRelationshipSchema::VERSION_OPTION] = PersonRelationshipSchema::SCHEMA_VERSION;
+            $GLOBALS['vgpc_test_apply_wp_update_filter'] = true;
+            $GLOBALS['vgpc_test_wp_update_post_hooks'] = true;
+            $GLOBALS['vgpc_test_acf_save_during_core_save'] = true;
+            $GLOBALS['vgpc_test_acf_nonce_invalid'] = (bool) ($options['nonce_invalid'] ?? false);
+            $GLOBALS['vgpc_test_acf_validation_failed'] = (bool) ($options['validation_failed'] ?? false);
+            $_POST = ['post_ID' => $case === 'unrelated_post' ? (int) $options['post_ID'] : $post_id, 'acf' => ['field_vg_article_primary_author' => $person_id]];
+            $GLOBALS['wpdb']->get_var_handler = static fn (string $query): string => str_contains($query, 'SHOW TABLES') ? 'wp_vg_person_relationship_index' : '1';
+
+            $fire_after_hooks = (bool) ($options['fire_after_hooks'] ?? true);
+            vgpc_test_same($post_id, wp_update_post(['ID' => $post_id, 'post_type' => 'post'], true, $fire_after_hooks), 'WordPress must persist the type transition for case ' . $case . '.');
+            vgpc_test_same('', (string) get_post_meta($post_id, PersonRelationshipContract::DIRTY_META_KEY, true), 'Transition recovery must finish for case ' . $case . '.');
+            vgpc_test_true(count(array_filter($GLOBALS['wpdb']->inserted, static fn (array $row): bool => ($row[1]['source_post_id'] ?? null) === $post_id && ($row[1]['source_post_type'] ?? null) === 'post')) > 0, 'Recovery must project the current source type for case ' . $case . '.');
+            do_action('shutdown');
+        }
+    }
+
+    public function test_shutdown_recovers_type_transition_when_acf_validation_aborts_save_post(): void
+    {
+        $admin = $this->admin();
+        $admin->register();
+        $this->source_and_people(7790, 'draft', [7791], 'page');
+        $GLOBALS['vgpc_test_posts'][7791]->post_status = 'publish';
+        update_field('primary_author', 7791, 7790);
+        $GLOBALS['vgpc_test_options'][PersonRelationshipSchema::VERSION_OPTION] = PersonRelationshipSchema::SCHEMA_VERSION;
+        $GLOBALS['vgpc_test_apply_wp_update_filter'] = true;
+        $GLOBALS['vgpc_test_wp_update_post_hooks'] = true;
+        $GLOBALS['vgpc_test_acf_save_during_core_save'] = true;
+        $GLOBALS['wpdb']->get_var_handler = static fn (string $query): string => str_contains($query, 'SHOW TABLES') ? 'wp_vg_person_relationship_index' : '1';
+        $_POST = ['post_ID' => 7790, 'post_status' => 'draft', 'acf' => ['field_vg_article_primary_author' => 'malformed']];
+
+        try {
+            wp_update_post(['ID' => 7790, 'post_type' => 'post'], true);
+            throw new RuntimeException('Malformed ACF validation must abort the nested save callback.');
+        } catch (RuntimeException $error) {
+            vgpc_test_true(str_starts_with($error->getMessage(), 'wp_die:'), 'The nested ACF validation failure must abort the core save_post callback.');
+        }
+        vgpc_test_same('post', get_post_type(7790), 'WordPress has already persisted the target source type before ACF validation aborts.');
+        do_action('shutdown');
+        vgpc_test_same('', (string) get_post_meta(7790, PersonRelationshipContract::DIRTY_META_KEY, true), 'Shutdown recovery must rebuild the source after the interrupted ACF callback.');
+        vgpc_test_true(count(array_filter($GLOBALS['wpdb']->inserted, static fn (array $row): bool => ($row[1]['source_post_id'] ?? null) === 7790 && ($row[1]['source_post_type'] ?? null) === 'post' && ($row[1]['person_id'] ?? null) === 7791)) > 0, 'Shutdown recovery must index the persisted target type using stored relationship values.');
+    }
+
     public function test_type_transition_projection_failure_keeps_the_dirty_marker(): void
     {
         $admin = $this->admin();
@@ -922,7 +981,7 @@ final class PersonRelationshipAdminTest
         $GLOBALS['wpdb']->get_var_handler = static fn (string $query): string => str_contains($query, 'SHOW TABLES') ? 'wp_vg_person_relationship_index' : '1';
 
         vgpc_test_same(120, wp_update_post(['ID' => 120, 'post_type' => 'mto-course'], true), 'WordPress must persist the source type transition.');
-        vgpc_test_same(['save_post', 'wp_after_insert_post', 'acf/save_post'], $GLOBALS['vgpc_test_wp_hook_order'], 'WordPress post hooks must finish before ACF persists relationship fields.');
+        vgpc_test_same(['save_post', 'acf/save_post', 'wp_after_insert_post'], $GLOBALS['vgpc_test_wp_hook_order'], 'ACF must run from its save_post priority 10 handler before wp_after_insert_post.');
         vgpc_test_same('', (string) get_post_meta(120, PersonRelationshipContract::DIRTY_META_KEY, true), 'wp_after_insert_post must not mark the successful save_post projection dirty again.');
         vgpc_test_true(count(array_filter($GLOBALS['wpdb']->inserted, static fn (array $row): bool => ($row[1]['source_post_id'] ?? null) === 120 && ($row[1]['source_post_type'] ?? null) === 'mto-course' && ($row[1]['person_id'] ?? null) === 121 && ($row[1]['role_key'] ?? null) === 'lead_instructor')) > 0, 'The index must reflect target-type ACF values written at priority 10 before projection at priority 20.');
         unset($GLOBALS['vgpc_test_acf_save_during_core_save']);

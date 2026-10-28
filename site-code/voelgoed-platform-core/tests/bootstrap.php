@@ -585,19 +585,27 @@ function wp_update_post(array $postarr, bool $wp_error = false, bool $fire_after
         }
     }
     $GLOBALS['vgpc_test_update_post_calls'][] = $postarr;
-    if ($fire_after_hooks && ! empty($GLOBALS['vgpc_test_wp_update_post_hooks'])) {
-        $GLOBALS['vgpc_test_wp_hook_order'][] = 'save_post';
-        do_action('save_post', $post_id, $post, true);
+    if (! empty($GLOBALS['vgpc_test_wp_update_post_hooks'])) {
         if ((string) ($before->post_status ?? '') !== (string) ($post->post_status ?? '')) {
             do_action('transition_post_status', (string) $post->post_status, (string) $before->post_status, $post);
         }
-        if (empty($GLOBALS['vgpc_test_suppress_after_insert_post'])) {
+        $GLOBALS['vgpc_test_wp_hook_order'][] = 'save_post';
+        $saved_save_post_actions = $GLOBALS['vgpc_test_actions']['save_post'] ?? [];
+        if (! empty($GLOBALS['vgpc_test_acf_save_during_core_save'])) {
+            add_action('save_post', static function (int $acf_post_id): void {
+                $expected_id = (int) ($_POST['post_ID'] ?? $acf_post_id);
+                if ($expected_id !== $acf_post_id
+                    || ! empty($GLOBALS['vgpc_test_acf_nonce_invalid'])
+                    || ! empty($GLOBALS['vgpc_test_acf_validation_failed'])) return;
+                $GLOBALS['vgpc_test_wp_hook_order'][] = 'acf/save_post';
+                do_action('acf/save_post', $acf_post_id);
+            }, 10, 1);
+        }
+        do_action('save_post', $post_id, $post, true);
+        $GLOBALS['vgpc_test_actions']['save_post'] = $saved_save_post_actions;
+        if ($fire_after_hooks && empty($GLOBALS['vgpc_test_suppress_after_insert_post'])) {
             $GLOBALS['vgpc_test_wp_hook_order'][] = 'wp_after_insert_post';
             do_action('wp_after_insert_post', $post_id, $post, true, $before);
-        }
-        if (! empty($GLOBALS['vgpc_test_acf_save_during_core_save'])) {
-            $GLOBALS['vgpc_test_wp_hook_order'][] = 'acf/save_post';
-            do_action('acf/save_post', $post_id);
         }
     }
     if (! empty($GLOBALS['vgpc_test_acf_save_during_update'])) {

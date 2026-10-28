@@ -15,6 +15,8 @@ final class PersonRelationshipAdmin
     private int $future_publish_lock_source_id = 0;
     /** @var array<int, string> Source type observed before a supported post save. */
     private array $pending_source_type_changes = [];
+    /** @var array<int, true> Sources whose ACF save callback actually completed. */
+    private array $completed_acf_saves = [];
     /** @var array<int, true> */
     private array $reported_publish_violations = [];
     /** @var array<int, string> */
@@ -62,6 +64,7 @@ final class PersonRelationshipAdmin
         // ACF persists editor fields after the WordPress status transition.
         // Check at shutdown so the detector reads the final authoritative values.
         add_action('shutdown', [$this, 'check_pending_published_sources'], 1000, 0);
+        add_action('shutdown', [$this, 'recover_incomplete_source_type_transitions'], 900, 0);
         add_filter('rest_pre_insert_post', [$this, 'validate_rest_source'], 10, 2);
         add_filter('rest_pre_insert_mto-course', [$this, 'validate_rest_source'], 10, 2);
         add_action('rest_after_insert_post', [$this, 'project_after_rest_save'], 20, 3);
@@ -82,7 +85,7 @@ final class PersonRelationshipAdmin
     public function mark_source_type_transition_dirty(mixed $post_id, mixed $post, mixed $update, mixed $post_before): void
     {
         $post_id = $this->normalize_id($post_id);
-        if ($post_id > 0 && $this->submitted_relationship_fields((string) get_post_type($post_id)) !== []) return;
+        if ($post_id > 0 && isset($this->completed_acf_saves[$post_id])) return;
         $this->process_source_type_transition($post_id, $post);
     }
 
@@ -90,7 +93,7 @@ final class PersonRelationshipAdmin
     public function handle_source_type_transition_on_save(mixed $post_id, mixed $post, mixed $update): void
     {
         $post_id = $this->normalize_id($post_id);
-        if ($post_id > 0 && $this->submitted_relationship_fields((string) get_post_type($post_id)) !== []) return;
+        if ($post_id > 0 && isset($this->completed_acf_saves[$post_id])) return;
         $this->process_source_type_transition($post_id, $post);
     }
 
@@ -98,7 +101,7 @@ final class PersonRelationshipAdmin
     public function release_source_lock_after_post_save(mixed $post_id, mixed $post, mixed $update): void
     {
         $post_id = $this->normalize_id($post_id);
-        if ($post_id < 1 || $this->submitted_relationship_fields((string) get_post_type($post_id)) !== []) return;
+        if ($post_id < 1 || isset($this->completed_acf_saves[$post_id])) return;
         $this->release_source_write_lock($post_id);
     }
 
@@ -123,6 +126,15 @@ final class PersonRelationshipAdmin
         }
         if (is_wp_error($recovery)) {
             error_log(sprintf('Person relationship index transition recovery failed for post %d (%s to %s, %s).', $post_id, $old_type, $current_type, $recovery->get_error_code()));
+        }
+    }
+
+    /** Recover transitions whose ACF handler stopped before save_post completion. */
+    public function recover_incomplete_source_type_transitions(): void
+    {
+        foreach (array_keys($this->pending_source_type_changes) as $source_id) {
+            $post = get_post((int) $source_id);
+            if (is_object($post)) $this->process_source_type_transition((int) $source_id, $post);
         }
     }
 
@@ -235,6 +247,7 @@ final class PersonRelationshipAdmin
         $source_type = (string) ($data['post_type'] ?? '');
         $status = (string) ($data['post_status'] ?? 'draft');
         $post_id = $this->normalize_id($postarr['ID'] ?? $data['ID'] ?? 0);
+        if ($post_id > 0) unset($this->completed_acf_saves[$post_id]);
         $current_type = $post_id > 0 ? (string) get_post_type($post_id) : '';
         if (! PersonRelationshipContract::supported_source_type($source_type)
             && ! PersonRelationshipContract::supported_source_type($current_type)) {
@@ -454,6 +467,7 @@ final class PersonRelationshipAdmin
     public function project_after_acf_save(mixed $post_id): void
     {
         $post_id = $this->normalize_id($post_id);
+        if ($post_id > 0) $this->completed_acf_saves[$post_id] = true;
         $post = $post_id > 0 ? get_post($post_id) : false;
         if (is_object($post)) $this->process_source_type_transition($post_id, $post);
         $this->release_source_write_lock($post_id);
