@@ -638,11 +638,11 @@ final class PersonRelationshipAdminTest
         vgpc_test_same('', (string) get_post_meta(718, PersonRelationshipContract::DIRTY_META_KEY, true), 'The deferred check must recognize the valid stored relationship and avoid false bypass reports.');
     }
 
-    public function test_published_preflight_ignores_acf_payload_for_another_post(): void
+    public function test_mismatched_governed_payload_blocks_publish_before_wordpress_writes_status(): void
     {
         $admin = $this->admin();
         $admin->register();
-        $this->source_and_people(7181, 'publish', [7182]);
+        $this->source_and_people(7181, 'draft', [7182]);
         $this->source_and_people(7183, 'publish', [7184]);
         $GLOBALS['vgpc_test_posts'][7182]->post_status = 'publish';
         $GLOBALS['vgpc_test_posts'][7184]->post_status = 'draft';
@@ -652,8 +652,29 @@ final class PersonRelationshipAdminTest
         $GLOBALS['vgpc_test_apply_wp_update_filter'] = true;
         $GLOBALS['vgpc_test_wp_update_post_hooks'] = true;
         $GLOBALS['vgpc_test_acf_save_during_core_save'] = true;
-        vgpc_test_same(7181, wp_update_post(['ID' => 7181, 'post_status' => 'publish'], true), 'The real WordPress post-save path must ignore source B\'s ACF payload while updating published source A.');
+        try {
+            wp_update_post(['ID' => 7181, 'post_status' => 'publish'], true);
+            throw new RuntimeException('A mismatched governed ACF payload must block publication before the post write.');
+        } catch (RuntimeException $error) {
+            vgpc_test_true(str_contains($error->getMessage(), 'wp_die:'), 'The ambiguous publish must stop at the pre-write boundary.');
+        }
+        vgpc_test_same('draft', $GLOBALS['vgpc_test_posts'][7181]->post_status, 'The rejected save must stop before WordPress writes publish status.');
         vgpc_test_same(7182, get_field('primary_author', 7181, false), 'The mismatched ACF payload must not be applied to source A.');
+    }
+
+    public function test_nested_draft_save_with_mismatched_acf_form_payload_does_not_apply_payload(): void
+    {
+        $admin = $this->admin();
+        $admin->register();
+        $this->source_and_people(7185, 'draft', [7186]);
+        $GLOBALS['vgpc_test_posts'][7186]->post_status = 'publish';
+        update_field('primary_author', null, 7185);
+        $_POST = ['post_ID' => 7187, 'post_status' => 'draft', 'acf' => ['field_vg_article_primary_author' => 7186]];
+        $GLOBALS['vgpc_test_apply_wp_update_filter'] = true;
+        $GLOBALS['vgpc_test_wp_update_post_hooks'] = true;
+        $GLOBALS['vgpc_test_acf_save_during_core_save'] = true;
+        vgpc_test_same(7185, wp_update_post(['ID' => 7185, 'post_status' => 'draft'], true), 'A nested non-public WordPress save may proceed when ACF form binding names another post.');
+        vgpc_test_same(null, get_field('primary_author', 7185, false), 'ACF_Form_Post must skip the mismatched payload for nested source B.');
     }
 
     public function test_preflight_resolves_acf_name_and_numeric_id_selectors_and_rejects_alias_duplicates(): void
@@ -714,6 +735,29 @@ final class PersonRelationshipAdminTest
         }, 10, 1);
         do_action('acf/save_post', 7905);
         vgpc_test_same(7907, get_field('primary_author', 7905, false), 'The test ACF writer must accept numeric IDs like acf_update_values.');
+    }
+
+    public function test_duplicate_governed_name_with_unapproved_key_or_id_is_rejected(): void
+    {
+        foreach (['key', 'numeric_id'] as $selector_type) {
+            vgpc_test_reset();
+            $admin = $this->admin();
+            $admin->register();
+            $this->source_and_people(7912, 'publish', [7913]);
+            $GLOBALS['vgpc_test_posts'][7913]->post_status = 'publish';
+            $collision = ['key' => 'field_unapproved_primary_author', 'name' => 'primary_author'];
+            if ($selector_type === 'numeric_id') $collision['ID'] = 987654;
+            acf_add_local_field_group(['key' => 'test_governed_name_collision', 'fields' => [$collision]]);
+            $selector = $selector_type === 'key' ? $collision['key'] : $collision['ID'];
+            $_POST = ['post_ID' => 7912, 'post_status' => 'publish', 'acf' => [$selector => 7913]];
+            $data = ['ID' => 7912, 'post_type' => 'post', 'post_status' => 'publish'];
+            try {
+                apply_filters('wp_insert_post_data', $data, ['ID' => 7912]);
+                throw new RuntimeException('A governed name resolved through a different ACF key must be rejected.');
+            } catch (RuntimeException $error) {
+                vgpc_test_true(str_contains($error->getMessage(), 'wp_die:'), 'The unapproved duplicate-name selector must fail before post write.');
+            }
+        }
     }
 
     public function test_actual_acf_callback_rejects_mixed_aliases_before_acf_update_values(): void
@@ -788,7 +832,7 @@ final class PersonRelationshipAdminTest
         }
     }
 
-    public function test_prewrite_preflight_uses_only_acf_handlers_post_id_binding(): void
+    public function test_prewrite_preflight_rejects_mismatched_post_id_even_when_acf_would_skip(): void
     {
         $admin = $this->admin();
         $admin->register();
@@ -798,7 +842,13 @@ final class PersonRelationshipAdminTest
         $_POST = ['post_ID' => 7394, '_acf_post_id' => 7392, 'post_status' => 'publish', 'acf' => ['field_vg_article_additional_authors' => [7393]]];
 
         $data = ['ID' => 7392, 'post_type' => 'post', 'post_status' => 'publish'];
-        vgpc_test_same($data, apply_filters('wp_insert_post_data', $data, ['ID' => 7392]), 'A positive post_ID for another source makes ACF skip this callback, regardless of _acf_post_id.');
+        try {
+            apply_filters('wp_insert_post_data', $data, ['ID' => 7392]);
+            throw new RuntimeException('A positive mismatched post_ID with governed ACF values must be rejected as ambiguous.');
+        } catch (RuntimeException $error) {
+            vgpc_test_true(str_contains($error->getMessage(), 'wp_die:'), 'Ambiguous governed payloads must fail before WordPress writes the source.');
+        }
+        vgpc_test_same('publish', $GLOBALS['vgpc_test_posts'][7392]->post_status, 'Preflight rejection must leave WordPress status unchanged.');
     }
 
     public function test_admin_retries_exceptional_source_lock_release_at_shutdown(): void
@@ -1121,7 +1171,7 @@ final class PersonRelationshipAdminTest
             do_action('acf/save_post', 140);
             throw new RuntimeException('Direct ACF callback must reject the unsafe payload ACF will persist for its actual source ID.');
         } catch (RuntimeException $error) {
-            vgpc_test_true(str_contains($error->getMessage(), 'possible partial relationship save'), 'Direct callback rejection must identify the unsafe partial state.');
+            vgpc_test_true(str_contains($error->getMessage(), 'wp_die:'), 'Direct callback must reject the mismatched payload before ACF writes the source.');
         }
         vgpc_test_same(null, get_field('expert_contributors', 140, false), 'Rejected direct callback must leave the duplicate role unwritten.');
         $admin->release_source_write_lock(140);

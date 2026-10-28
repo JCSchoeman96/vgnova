@@ -280,6 +280,20 @@ final class PersonRelationshipAdmin
             return $data;
         }
 
+        // ACF's normal post form skips a mismatched positive post_ID, but a
+        // direct acf_save_post($id) still writes the global payload to $id.
+        // We cannot prove which source owns a governed payload in that case.
+        $request_post_id = $this->request_post_id();
+        if ($request_post_id > 0 && $request_post_id !== $post_id) {
+            $ambiguous_fields = $this->submitted_relationship_fields($source_type, $post_id, false);
+            if (is_wp_error($ambiguous_fields)) {
+                wp_die($ambiguous_fields->get_error_message(), 'Person relationship validation failed', ['response' => 400]);
+            }
+            if ($ambiguous_fields !== []) {
+                wp_die('This source cannot be published while the request contains Person relationship fields for a different post.', 'Person relationship validation failed', ['response' => 400]);
+            }
+        }
+
         // A new post has no persisted source for the partial-write validator
         // to reread. Preserve the existing submitted-projection validation.
         if ($post_id < 1) {
@@ -327,6 +341,20 @@ final class PersonRelationshipAdmin
         if (! PersonRelationshipContract::supported_source_type($source_type)) return;
         if (! $this->acquire_source_write_lock($post_id)) {
             wp_die('Person relationship fields could not be saved because this source is being edited by another request. Retry the save.', 'Person relationship validation failed', ['response' => 409]);
+        }
+
+        // acf_save_post($id) does not apply ACF_Form_Post's post_ID gate.
+        // Reject mismatched governed payloads before ACF's value writer runs.
+        $request_post_id = $this->request_post_id();
+        if ($request_post_id > 0 && $request_post_id !== $post_id) {
+            $ambiguous_fields = $this->submitted_relationship_fields($source_type, $post_id, false);
+            if (is_wp_error($ambiguous_fields) || $ambiguous_fields !== []) {
+                $this->release_source_write_lock($post_id);
+                $message = is_wp_error($ambiguous_fields)
+                    ? $ambiguous_fields->get_error_message()
+                    : 'Person relationship fields for another post cannot be saved to this source.';
+                wp_die($message, 'Person relationship validation failed', ['response' => 400]);
+            }
         }
 
         $status = is_object($post) ? (string) ($post->post_status ?? 'draft') : 'draft';
@@ -414,9 +442,16 @@ final class PersonRelationshipAdmin
             if (function_exists('acf_get_field')) {
                 $field = acf_get_field($selector);
                 if (! $field) continue;
-                $resolved_role = $roles_by_key[(string) ($field['key'] ?? '')] ?? null;
-                if ($resolved_role === null || ($field['name'] ?? null) !== $resolved_role) continue;
-                $role = $resolved_role;
+                $resolved_key_role = $roles_by_key[(string) ($field['key'] ?? '')] ?? null;
+                $resolved_name = $field['name'] ?? null;
+                $resolved_name_role = is_string($resolved_name) ? ($roles_by_name[$resolved_name] ?? null) : null;
+                if ($resolved_name_role !== null && $resolved_key_role !== $resolved_name_role) {
+                    return new \WP_Error('governed_field_key_mismatch', 'A Person relationship field resolved to an unapproved ACF field key.');
+                }
+                if ($resolved_key_role !== null && $resolved_name_role !== $resolved_key_role) {
+                    return new \WP_Error('governed_field_name_mismatch', 'A governed Person relationship field resolved to an unexpected ACF field name.');
+                }
+                $role = $resolved_name_role ?? $resolved_key_role;
             } elseif (ctype_digit($selector_string)) {
                 // Without ACF, a numeric ID cannot be proven unrelated to a governed field.
                 return new \WP_Error('acf_field_resolution_unavailable', 'Person relationship fields could not be validated because ACF field resolution is unavailable.');
