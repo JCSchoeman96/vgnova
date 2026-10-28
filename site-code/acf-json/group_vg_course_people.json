@@ -1,0 +1,114 @@
+{
+    "key": "group_vg_course_people",
+    "title": "Course People",
+    "fields": [
+        {
+            "key": "field_vg_course_lead_instructor",
+            "label": "Course: Lead instructor",
+            "name": "lead_instructor",
+            "aria-label": "",
+            "type": "post_object",
+            "instructions": "Select canonical Person records. Draft and private People may be assigned while this source is not published.",
+            "required": 0,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "post_type": [
+                "person"
+            ],
+            "post_status": [
+                "publish",
+                "draft",
+                "private"
+            ],
+            "taxonomy": "",
+            "return_format": "id",
+            "multiple": 0,
+            "allow_null": 1,
+            "bidirectional_target": [],
+            "ui": 1
+        },
+        {
+            "key": "field_vg_course_additional_instructors",
+            "label": "Course: Additional instructors",
+            "name": "additional_instructors",
+            "aria-label": "",
+            "type": "post_object",
+            "instructions": "Select canonical Person records. Draft and private People may be assigned while this source is not published.",
+            "required": 0,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "post_type": [
+                "person"
+            ],
+            "post_status": [
+                "publish",
+                "draft",
+                "private"
+            ],
+            "taxonomy": "",
+            "return_format": "id",
+            "multiple": 1,
+            "allow_null": 1,
+            "bidirectional_target": [],
+            "ui": 1
+        },
+        {
+            "key": "field_vg_course_experts",
+            "label": "Course: Experts",
+            "name": "experts",
+            "aria-label": "",
+            "type": "post_object",
+            "instructions": "Select canonical Person records. Draft and private People may be assigned while this source is not published.",
+            "required": 0,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "post_type": [
+                "person"
+            ],
+            "post_status": [
+                "publish",
+                "draft",
+                "private"
+            ],
+            "taxonomy": "",
+            "return_format": "id",
+            "multiple": 1,
+            "allow_null": 1,
+            "bidirectional_target": [],
+            "ui": 1
+        }
+    ],
+    "location": [
+        [
+            {
+                "param": "post_type",
+                "operator": "==",
+                "value": "mto-course"
+            }
+        ]
+    ],
+    "menu_order": 0,
+    "position": "normal",
+    "style": "default",
+    "label_placement": "top",
+    "instruction_placement": "label",
+    "hide_on_screen": [],
+    "active": true,
+    "description": "Optional authoritative Person relationships for this source type.",
+    "show_in_rest": false,
+    "display_title": "",
+    "allow_ai_access": false,
+    "ai_description": ""
+}

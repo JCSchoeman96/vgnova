@@ -30,6 +30,7 @@ BUILDER_PATH = "site-code/bin/build-platform-core.py"
 PATCH_PATH = "site-code/voelgoed-platform-core/integration.patch"
 CANONICAL_OVERLAY_PATHS = (
     "site-code/voelgoed-platform-core/includes/Runtime",
+    "site-code/voelgoed-platform-core/includes/Person",
     "site-code/voelgoed-platform-core/includes/Taxonomy",
     "site-code/voelgoed-platform-core/includes/Event",
     "site-code/voelgoed-platform-core/includes/Product",
@@ -37,7 +38,7 @@ CANONICAL_OVERLAY_PATHS = (
 RUNTIME_GUARD_SOURCE_PATH = f"{CANONICAL_OVERLAY_PATHS[0]}/RuntimeMutationSession.php"
 RUNTIME_GUARD_PLUGIN_PATH = "includes/Runtime/RuntimeMutationSession.php"
 OVERLAY_PATHS = CANONICAL_OVERLAY_PATHS
-CANONICAL_LIFECYCLE_OVERLAY_MODULES = ("Taxonomy", "Event", "Product")
+CANONICAL_LIFECYCLE_OVERLAY_MODULES = ("Taxonomy", "Event", "Product", "Person")
 FIXTURE_PATHS = (ROOT_PLUGIN, *OVERLAY_PATHS, PATCH_PATH, BUILDER_PATH)
 ARCHIVE_NAME = "voelgoed-platform-core.tar.gz"
 MANIFEST_NAME = "voelgoed-platform-core.manifest.json"
@@ -74,7 +75,7 @@ class CheckFailure(RuntimeError):
 def require_canonical_overlay_paths(paths: object, *, context: str) -> None:
     if not isinstance(paths, (tuple, list)) or tuple(paths) != CANONICAL_OVERLAY_PATHS:
         raise CheckFailure(
-            f"{context} overlay paths differ from the exact ordered four-overlay contract."
+            f"{context} overlay paths differ from the exact ordered five-overlay contract."
         )
 
 
@@ -126,9 +127,9 @@ def run_overlay_contract_guard_case(repo_root: Path, commit: str) -> None:
     )
     if lifecycle_modules != CANONICAL_LIFECYCLE_OVERLAY_MODULES:
         raise CheckFailure(
-            "Committed builder lifecycle modules must remain Taxonomy, Event, and Product; Runtime is a dependency overlay."
+            "Committed builder lifecycle modules must include Taxonomy, Event, Product, and Person; Runtime is a dependency overlay."
         )
-    print("PASS source contract: builder and verifier use Runtime, Taxonomy, Event, Product in canonical order")
+    print("PASS source contract: builder and verifier use Runtime, Person, Taxonomy, Event, Product in canonical order")
     print("PASS source contract: Runtime overlay remains outside lifecycle component discovery")
 
 
@@ -755,23 +756,54 @@ def verify_runtime_overlay_proof(
     with tarfile.open(archive_path, mode="r:gz") as archive:
         guard_info = archive.getmember(f"{ROOT_PLUGIN}/{RUNTIME_GUARD_PLUGIN_PATH}")
         guard_stream = archive.extractfile(guard_info)
-        entrypoint_stream = archive.extractfile(f"{ROOT_PLUGIN}/voelgoed-platform-core.php")
-        plugin_stream = archive.extractfile(f"{ROOT_PLUGIN}/includes/Plugin.php")
-        if guard_stream is None or entrypoint_stream is None or plugin_stream is None:
+        if guard_stream is None:
             raise CheckFailure("Runtime overlay proof is missing an assembled bootstrap member.")
         guard_bytes = guard_stream.read()
-        entrypoint = entrypoint_stream.read().decode("utf-8", "strict")
-        plugin_class = plugin_stream.read().decode("utf-8", "strict")
+        proof_root = temporary_root / "executable-assembly-proof"
+        archive.extractall(path=proof_root, filter="data")
+        plugin_root = proof_root / ROOT_PLUGIN
 
     if guard_bytes != source_bytes:
         raise CheckFailure("RuntimeMutationSession.php archive bytes differ from the resolved Git blob.")
-    include_literal = "'includes/Runtime/RuntimeMutationSession.php'"
-    if entrypoint.count(include_literal) != 1 or "plugins_loaded" not in entrypoint:
-        raise CheckFailure("RuntimeMutationSession.php must be included exactly once before lifecycle dispatch.")
-    if entrypoint.index(include_literal) > entrypoint.index("plugins_loaded"):
-        raise CheckFailure("RuntimeMutationSession.php must load before Platform Core lifecycle dispatch.")
-    if "RuntimeMutationSession" in plugin_class:
-        raise CheckFailure("RuntimeMutationSession.php must remain a dependency overlay, not a lifecycle component.")
+
+    builder_path = repo_root / BUILDER_PATH
+    specification = importlib.util.spec_from_file_location("vgpc_builder_assembly_verifier", builder_path)
+    if specification is None or specification.loader is None:
+        raise CheckFailure("Cannot load the Platform Core assembly parser for artifact verification.")
+    builder_module = importlib.util.module_from_spec(specification)
+    sys.modules[specification.name] = builder_module
+    specification.loader.exec_module(builder_module)
+    runtime_php_paths = sorted(
+        path.relative_to(plugin_root).as_posix()
+        for overlay in CANONICAL_LIFECYCLE_OVERLAY_MODULES
+        for path in (plugin_root / "includes" / overlay).rglob("*.php")
+    )
+    runtime_php_paths.extend(
+        path.relative_to(plugin_root).as_posix()
+        for path in (plugin_root / "includes/Runtime").rglob("*.php")
+    )
+    patch_text = command(["git", "show", f"{commit}:{PATCH_PATH}"], cwd=repo_root).stdout.decode("utf-8", "strict")
+    try:
+        builder_module.validate_assembled_bootstrap(plugin_root, runtime_php_paths, patch_text)
+    except builder_module.BuildFailure as error:
+        raise CheckFailure(f"Assembled archive has invalid executable bootstrap wiring: {error}") from error
+    plugin_text = (plugin_root / "includes/Plugin.php").read_text(encoding="utf-8", errors="strict")
+    lifecycle_tokens = builder_module.php_method_body_tokens(
+        plugin_text,
+        "Plugin",
+        "register",
+        "assembled Plugin::register() schema-install check",
+    )
+    schema_install = [
+        ("T_STRING", "PersonRelationshipSchema"),
+        ("T_DOUBLE_COLON", "::"),
+        ("T_STRING", "install"),
+    ]
+    if any(
+        builder_module.token_matches(lifecycle_tokens, index, schema_install)
+        for index in range(len(lifecycle_tokens))
+    ):
+        raise CheckFailure("Assembled Plugin::register() must not install the Person relationship schema.")
 
     lint_path = temporary_root / "RuntimeMutationSession.php"
     lint_path.write_bytes(guard_bytes)
@@ -779,8 +811,8 @@ def verify_runtime_overlay_proof(
     if b"No syntax errors detected" not in lint.stdout:
         raise CheckFailure("PHP lint did not confirm RuntimeMutationSession.php syntax.")
     print(
-        "PASS runtime overlay: RuntimeMutationSession.php is source-bound, included once, "
-        "manifested, archived, tree-verified, and PHP-linted"
+        "PASS runtime overlay: RuntimeMutationSession.php is source-bound, and assembled includes "
+        "and lifecycle registrations pass the executable PHP parser"
     )
 
 
@@ -1254,6 +1286,50 @@ def run_negative_cases(
 ) -> None:
     cases = temporary_root / "negative-cases"
     cases.mkdir()
+
+    fixture = create_fixture(repo_root, commit, cases / "commented-person-include")
+    patch_file = fixture / PATCH_PATH
+    patch_text = patch_file.read_text(encoding="utf-8")
+    person_include = "+    'includes/Person/PersonRelationshipContract.php',"
+    if patch_text.count(person_include) != 1:
+        raise CheckFailure("Cannot prepare commented Person relationship include fixture.")
+    patch_file.write_text(
+        patch_text.replace(person_include, "+    // 'includes/Person/PersonRelationshipContract.php',", 1),
+        encoding="utf-8",
+    )
+    commit_fixture_changes(fixture, "fixture: comment out Person relationship include")
+    expect_build_failure(
+        label="commented Person relationship bootstrap include",
+        builder=builder,
+        fixture=fixture,
+        ref="HEAD",
+        output=cases / "commented-person-include-output",
+        expected_text="Canonical runtime module must appear exactly once in the bootstrap",
+    )
+
+    fixture = create_fixture(repo_root, commit, cases / "commented-person-lifecycle")
+    patch_file = fixture / PATCH_PATH
+    patch_text = patch_file.read_text(encoding="utf-8")
+    person_registration = "+        $this->register_component('person_relationship_admin', PersonRelationshipAdmin::class);"
+    if patch_text.count(person_registration) != 1:
+        raise CheckFailure("Cannot prepare commented Person relationship lifecycle fixture.")
+    patch_file.write_text(
+        patch_text.replace(
+            person_registration,
+            "+        /* $this->register_component('person_relationship_admin', PersonRelationshipAdmin::class); */",
+            1,
+        ),
+        encoding="utf-8",
+    )
+    commit_fixture_changes(fixture, "fixture: comment out Person relationship lifecycle registration")
+    expect_build_failure(
+        label="commented Person relationship lifecycle registration",
+        builder=builder,
+        fixture=fixture,
+        ref="HEAD",
+        output=cases / "commented-person-lifecycle-output",
+        expected_text="Integration lifecycle registration must be executable PHP code",
+    )
 
     fixture = create_fixture(repo_root, commit, cases / "entrypoint-return-before-includes")
     entrypoint = fixture / ROOT_PLUGIN / "voelgoed-platform-core.php"
@@ -1729,7 +1805,12 @@ def run_negative_cases(
     fixture = create_fixture(repo_root, commit, cases / "patch-fails")
     patch_file = fixture / PATCH_PATH
     patch = patch_file.read_text(encoding="utf-8")
-    patch = re.sub(r"@@ -25,0 \+26,21 @@", "@@ -25,0 +26,999 @@", patch, count=1)
+    patch = re.sub(
+        r"@@ -25,0 \+26,\d+ @@",
+        "@@ -25,0 +26,999 @@",
+        patch,
+        count=1,
+    )
     patch_file.write_text(patch, encoding="utf-8")
     commit_fixture_changes(fixture, "fixture: make integration patch fail")
     expect_build_failure(
@@ -1804,7 +1885,7 @@ def run_negative_cases(
         (
             index
             for index, line in enumerate(patch_lines)
-            if re.match(r"\+\s*'includes/(?:Runtime|Taxonomy|Event|Product)/[^']+',$", line.rstrip("\n"))
+            if re.match(r"\+\s*'includes/(?:Runtime|Person|Taxonomy|Event|Product)/[^']+',$", line.rstrip("\n"))
         ),
         None,
     )
@@ -2698,7 +2779,7 @@ def main() -> int:
             manifest_b.get("overlay_source_paths"),
             context="Build B manifest",
         )
-        print("PASS manifest contract: generated manifests report the exact ordered four-overlay paths")
+        print("PASS manifest contract: generated manifests report the exact ordered five-overlay paths")
         if manifest_a != manifest_b:
             raise CheckFailure("Build A and B manifest semantic content differs.")
         if archive_path_a.read_bytes() != archive_path_b.read_bytes():

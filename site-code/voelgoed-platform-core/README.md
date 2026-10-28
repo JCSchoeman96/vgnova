@@ -5,10 +5,13 @@ This directory contains the canonical Platform Core domain modules in the
 the assembly base; this module owns the runtime mutation session guard,
 `content_topic`, Event Participation, Product People, and Product Contribution
 overlays. The tracked
-`integration.patch` is an assembly input that adds the four overlay includes
-and the Taxonomy, Event, and Product lifecycle registrations to a disposable
-build tree. Runtime supplies a bootstrap dependency and has no lifecycle
-registration.
+`integration.patch` is an assembly input that adds the five overlay includes
+and the Taxonomy, Event, Product, and Person lifecycle registrations to a
+disposable build tree. Runtime supplies a bootstrap dependency and has no
+lifecycle registration. Person relationship classes load through this patch;
+the Admin and CLI components register through Platform Core. Schema setup does
+not run during bootstrap and remains available through the guarded maintenance
+command.
 
 Build the plugin from an exact committed revision with:
 
@@ -22,7 +25,7 @@ stored-DEFLATE encoders define the archive bytes; host `tarfile` and zlib are
 used only to inspect the result. The verifier checks the existing output
 against the exact Git commit, manifest, patch, and assembled source inventory
 without rebuilding those files. See
-`docs/architecture/PLATFORM_CORE_ASSEMBLY_CONTRACT_v1.3.0.md` for the format
+`docs/architecture/PLATFORM_CORE_ASSEMBLY_CONTRACT_v1.4.0.md` for the format
 and provenance contract.
 
 The build writes `voelgoed-platform-core.tar.gz` and its provenance manifest.
@@ -134,6 +137,42 @@ setup failure boundary has a standalone regression check at
 `site-code/runtime-tests/tests/run-event-participation-qa-setup-tests.php`.
 Created-record ownership and failure-safe cleanup have focused regressions at
 `site-code/runtime-tests/tests/run-event-participation-qa-cleanup-tests.php`.
+
+## Simple Person relationships for Articles and Courses
+
+Article and Masteriyo Course ACF fields are the authoritative relationship
+source. The supported fields are `primary_author`, `additional_authors`,
+`expert_contributors`, and `reviewed_by` on Articles, and `lead_instructor`,
+`additional_instructors`, and `experts` on Courses. Platform Core validates
+those values and projects them into the disposable
+`vg_person_relationship_index` table for reverse Person reads. The index can be
+rebuilt from source fields; it does not own publication access or membership
+entitlement. Person records do not store copied Article or Course lists.
+
+The source module classes are assembled only through
+`site-code/voelgoed-platform-core/integration.patch`. That patch loads all
+Person relationship classes and registers the editor lifecycle and WP-CLI
+component. It does not install the index schema at plugin load. Schema setup,
+full rebuild, and repair require the guarded maintenance commands:
+
+```sh
+wp vg-person-relationship-index setup
+wp vg-person-relationship-index rebuild
+wp vg-person-relationship-index reconcile --format=json
+wp vg-person-relationship-index reconcile --repair --format=json
+```
+
+Run the source-only relationship tests with:
+
+```sh
+php site-code/voelgoed-platform-core/tests/run-person-relationship-tests.php
+```
+
+These checks do not access or mutate the Local WordPress runtime. Runtime
+setup, rebuild, reconciliation repair, and deployment are separate guarded
+operations. Do not derive Course people from WordPress or Masteriyo authors,
+Woo Products, Product Contribution, Topics, FCM, legacy `medewerker` records,
+or QA fixtures.
 
 ## Product People, Product Contribution, and Bricks adapters
 

@@ -1,0 +1,257 @@
+<?php
+declare(strict_types=1);
+
+namespace Voelgoed\PlatformCore\Person;
+
+defined('ABSPATH') || exit;
+
+/** Guarded maintenance commands for the derived Person relationship index. */
+final class PersonRelationshipCli
+{
+    private const COMMAND = 'vg-person-relationship-index';
+
+    private PersonRelationshipSchema $schema;
+    private PersonRelationshipIndexer $indexer;
+    private PersonRelationshipReconciler $reconciler;
+    private PersonRelationshipRepository $repository;
+    private mixed $mutation_guard;
+
+    /** @param null|callable():mixed $mutation_guard */
+    public function __construct(
+        ?PersonRelationshipSchema $schema = null,
+        ?PersonRelationshipIndexer $indexer = null,
+        ?PersonRelationshipReconciler $reconciler = null,
+        ?callable $mutation_guard = null,
+    ) {
+        $this->schema = $schema ?? new PersonRelationshipSchema();
+        $this->indexer = $indexer ?? new PersonRelationshipIndexer(
+            new PersonRelationshipSourceLock(),
+            new PersonRelationshipSourceReader(),
+            new PersonRelationshipValidator(),
+            new PersonRelationshipRepository($this->schema),
+        );
+        $this->reconciler = $reconciler ?? new PersonRelationshipReconciler(
+            new PersonRelationshipSourceReader(),
+            new PersonRelationshipRepository($this->schema),
+            new PersonRelationshipValidator(),
+        );
+        $this->repository = new PersonRelationshipRepository($this->schema);
+        $this->mutation_guard = $mutation_guard ?? static function (): void {
+            vg_runtime_mutation_assert_session('vgnova-local-10039');
+        };
+    }
+
+    public function register(): void
+    {
+        if (defined('WP_CLI') && WP_CLI && class_exists('WP_CLI')) {
+            \WP_CLI::add_command(self::COMMAND . ' setup', [$this, 'setup_command']);
+            \WP_CLI::add_command(self::COMMAND . ' rebuild', [$this, 'rebuild_command']);
+            \WP_CLI::add_command(self::COMMAND . ' reconcile', [$this, 'reconcile_command']);
+        }
+    }
+
+    /** Install the derived index schema. */
+    public function setup_command(array $args, array $assoc_args): void
+    {
+        $this->assert_mutation_session();
+        $result = $this->schema->install();
+        if (is_wp_error($result)) {
+            \WP_CLI::error($result->get_error_message());
+        }
+        \WP_CLI::success('Person relationship index schema is ready.');
+    }
+
+    /** Rebuild all supported sources or one explicitly selected source. */
+    public function rebuild_command(array $args, array $assoc_args): void
+    {
+        $this->assert_mutation_session();
+        if (! $this->schema->is_ready()) {
+            \WP_CLI::error('Person relationship index schema is not ready. Run setup first.');
+        }
+
+        $source_ids = $this->source_ids($assoc_args['source'] ?? null);
+        $rebuilt = 0;
+        $failures = [];
+        foreach ($source_ids as $source_id) {
+            $result = $this->indexer->rebuild_source($source_id);
+            if (is_wp_error($result)) {
+                $failures[] = ['source_post_id' => $source_id, 'code' => $result->get_error_code(), 'message' => $result->get_error_message()];
+                continue;
+            }
+            $rebuilt++;
+        }
+        if (($assoc_args['source'] ?? null) === null || ($assoc_args['source'] ?? '') === '') {
+            $anomalies = $this->reconciler->inspect_index();
+            if (is_wp_error($anomalies)) \WP_CLI::error($anomalies->get_error_message());
+            foreach ($anomalies as $anomaly) {
+                if (! in_array($anomaly['code'], ['orphan_index_source', 'unsupported_index_source'], true)) continue;
+                $deleted = $this->indexer->remove_stale_source($anomaly['source_post_id']);
+                if (is_wp_error($deleted)) $failures[] = ['source_post_id' => $anomaly['source_post_id'], 'code' => $deleted->get_error_code(), 'message' => $deleted->get_error_message()];
+            }
+        }
+        if ($failures !== []) {
+            foreach ($failures as $failure) \WP_CLI::line(sprintf('FAILED %d | %s | %s', $failure['source_post_id'], $failure['code'], $failure['message']));
+            \WP_CLI::error(sprintf('Rebuilt %d source(s); %d source(s) need attention.', $rebuilt, count($failures)));
+        }
+        \WP_CLI::success(sprintf('Rebuilt Person relationship index for %d supported source(s).', $rebuilt));
+    }
+
+    /** Inspect source/index agreement and optionally repair the derived index. */
+    public function reconcile_command(array $args, array $assoc_args): void
+    {
+        $format = (string) ($assoc_args['format'] ?? 'table');
+        if (! in_array($format, ['table', 'json'], true)) {
+            \WP_CLI::error('Format must be table or json.');
+        }
+        $repair = array_key_exists('repair', $assoc_args) && $assoc_args['repair'] !== false;
+        if ($repair) {
+            $this->assert_mutation_session();
+            if (! $this->schema->is_ready()) {
+                \WP_CLI::error('Person relationship index schema is not ready. Run setup first.');
+            }
+        }
+
+        $sources = [];
+        $repaired = [];
+        foreach ($this->source_ids($assoc_args['source'] ?? null) as $source_id) {
+            $issues = $this->reconciler->inspect_source($source_id);
+            if (is_wp_error($issues)) {
+                $sources[] = ['source_post_id' => $source_id, 'error' => $this->error_details($issues)];
+                continue;
+            }
+            if ($repair && $issues !== []) {
+                $result = $this->indexer->rebuild_source($source_id);
+                if (is_wp_error($result)) {
+                    $sources[] = ['source_post_id' => $source_id, 'issues' => $issues, 'repair_error' => $this->error_details($result)];
+                    continue;
+                }
+                $repaired[] = $source_id;
+                $issues = $this->reconciler->inspect_source($source_id);
+                if (is_wp_error($issues)) {
+                    $sources[] = ['source_post_id' => $source_id, 'error' => $this->error_details($issues), 'repaired' => true];
+                    continue;
+                }
+            }
+            $sources[] = ['source_post_id' => $source_id, 'issues' => $issues];
+        }
+
+        if (($assoc_args['source'] ?? null) === null || ($assoc_args['source'] ?? '') === '') {
+            $index_issues = $this->reconciler->inspect_index();
+            if (is_wp_error($index_issues)) {
+                $sources[] = ['source_post_id' => 0, 'error' => $this->error_details($index_issues)];
+            } else {
+                $index_rows = [];
+                $successful_index_repairs = [];
+                foreach ($index_issues as $issue) {
+                    $source_id = $issue['source_post_id'];
+                    $repair_error = null;
+                    if ($repair && $issue['code'] === 'wrong_source_post_type' && PersonRelationshipContract::supported_source_type((string) $issue['details']['current_source_post_type'])) {
+                        $repair_result = $this->indexer->rebuild_source($source_id);
+                        if (is_wp_error($repair_result)) $repair_error = $this->error_details($repair_result);
+                        else { $repaired[] = $source_id; $successful_index_repairs[] = $source_id; }
+                    } elseif ($repair && in_array($issue['code'], ['orphan_index_source', 'unsupported_index_source'], true)) {
+                        $repair_result = $this->indexer->remove_stale_source($source_id);
+                        if (is_wp_error($repair_result)) $repair_error = $this->error_details($repair_result);
+                        else { $repaired[] = $source_id; $successful_index_repairs[] = $source_id; }
+                    }
+                    $index_rows[] = ['source_post_id' => $source_id, 'issues' => [$issue], ...($repair_error === null ? [] : ['repair_error' => $repair_error])];
+                }
+                if ($successful_index_repairs !== []) {
+                    $post_repair_index = $this->reconciler->inspect_index();
+                    if (is_wp_error($post_repair_index)) {
+                        $error = $this->error_details($post_repair_index);
+                        foreach ($index_rows as &$row) {
+                            if (in_array($row['source_post_id'], $successful_index_repairs, true)) {
+                                $row = ['source_post_id' => $row['source_post_id'], 'error' => $error, 'repaired' => true];
+                            }
+                        }
+                        unset($row);
+                    } else {
+                        foreach ($index_rows as &$row) {
+                            if (! in_array($row['source_post_id'], $successful_index_repairs, true)) continue;
+                            $row['issues'] = array_values(array_filter(
+                                $post_repair_index,
+                                static fn (array $remaining_issue): bool => (int) $remaining_issue['source_post_id'] === (int) $row['source_post_id']
+                            ));
+                        }
+                        unset($row);
+                    }
+                }
+                array_push($sources, ...$index_rows);
+            }
+        }
+
+        $report = [
+            'summary' => [
+                'sources' => count($sources),
+                'with_issues' => count(array_filter($sources, static fn (array $source): bool => ! empty($source['issues']) || isset($source['error']) || isset($source['repair_error']))),
+                'repaired' => count($repaired),
+            ],
+            'sources' => $sources,
+        ];
+        if ($format === 'json') {
+            \WP_CLI::line((string) wp_json_encode($report, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+            return;
+        }
+        \WP_CLI::line('Source ID | Issues | Repair');
+        foreach ($sources as $source) {
+            $issue_count = count($source['issues'] ?? []);
+            $status = isset($source['error']) && isset($source['repaired']) ? 'reindexed, follow-up inspect failed: ' . $this->format_error($source['error'])
+                : (isset($source['error']) ? 'inspect failed: ' . $this->format_error($source['error'])
+                : (isset($source['repair_error']) ? 'repair failed: ' . $this->format_error($source['repair_error'])
+                : (in_array($source['source_post_id'], $repaired, true) ? ($issue_count > 0 ? 'reindexed, issues remain' : 'reindexed') : ($issue_count > 0 ? 'issues remain' : 'unchanged'))));
+            \WP_CLI::line(sprintf('%d | %d | %s', $source['source_post_id'], $issue_count, $status));
+        }
+        \WP_CLI::line(sprintf('Sources: %d, with issues: %d, repaired: %d', $report['summary']['sources'], $report['summary']['with_issues'], $report['summary']['repaired']));
+    }
+
+    /** @return list<int> */
+    private function source_ids(mixed $requested_source): array
+    {
+        if ($requested_source !== null && $requested_source !== '') {
+            $source_id = filter_var($requested_source, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+            $source = $source_id === false ? null : get_post($source_id);
+            if (! is_object($source) || ! PersonRelationshipContract::supported_source_type((string) ($source->post_type ?? ''))) {
+                \WP_CLI::error('Source must be an existing Article or Masteriyo Course.');
+            }
+            return [(int) $source_id];
+        }
+
+        $source_ids = [];
+        $post_statuses = function_exists('get_post_stati')
+            ? array_values(get_post_stati([], 'names'))
+            : ['publish', 'future', 'draft', 'pending', 'private', 'trash'];
+        foreach ([PersonRelationshipContract::ARTICLE_POST_TYPE, PersonRelationshipContract::COURSE_POST_TYPE] as $post_type) {
+            $ids = get_posts([
+                'post_type' => $post_type,
+                'post_status' => $post_statuses,
+                'posts_per_page' => -1,
+                'orderby' => 'ID',
+                'order' => 'ASC',
+                'fields' => 'ids',
+                'no_found_rows' => true,
+            ]);
+            foreach ($ids as $source_id) {
+                $source_ids[] = (int) $source_id;
+            }
+        }
+        return $source_ids;
+    }
+
+    private function assert_mutation_session(): void
+    {
+        ($this->mutation_guard)();
+    }
+
+    /** @return array{code:string,message:string} */
+    private function error_details(\WP_Error $error): array
+    {
+        return ['code' => (string) $error->get_error_code(), 'message' => (string) $error->get_error_message()];
+    }
+
+    /** @param array{code:string,message:string} $error */
+    private function format_error(array $error): string
+    {
+        return sprintf('%s: %s', $error['code'], $error['message']);
+    }
+}

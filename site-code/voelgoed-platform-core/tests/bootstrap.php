@@ -10,6 +10,16 @@ if (! function_exists('vg_runtime_mutation_assert_session')) {
     }
 }
 
+if (! function_exists('get_transient')) {
+    function get_transient(string $key): mixed { return $GLOBALS['vgpc_test_transients'][$key] ?? false; }
+    function set_transient(string $key, mixed $value, int $expiration = 0): bool { $GLOBALS['vgpc_test_transients'][$key] = $value; return true; }
+    function delete_transient(string $key): bool { unset($GLOBALS['vgpc_test_transients'][$key]); return true; }
+}
+if (! function_exists('wp_next_scheduled')) {
+    function wp_next_scheduled(string $hook, array $args = []): int|false { return false; }
+    function wp_schedule_single_event(int $timestamp, string $hook, array $args = []): bool { $GLOBALS['vgpc_test_scheduled_events'][] = [$timestamp, $hook, $args]; return true; }
+}
+
 if (! class_exists('WP_Error')) {
     class WP_Error
     {
@@ -33,11 +43,79 @@ if (! class_exists('WP_Error')) {
 
 final class VGPC_TestWpdb
 {
+    public string $prefix = 'wp_';
     public string $posts = 'wp_posts';
 
     public string $postmeta = 'wp_postmeta';
 
     public string $last_error = '';
+
+    public array $inserted = [];
+
+    public bool $fail_query = false;
+
+    public bool $fail_insert = false;
+
+    /** @var callable|null */
+    public $query_handler = null;
+
+    public function query(array|string $statement): int|false
+    {
+        $statement = is_array($statement) ? $statement : ['query' => $statement, 'args' => []];
+        $this->queries[] = $statement;
+        if (is_callable($this->query_handler)) ($this->query_handler)($statement['query'], $statement['args']);
+        if ($this->fail_query && ! str_contains($statement['query'], 'ROLLBACK')) return false;
+        if (str_contains($statement['query'], 'DELETE dirty FROM wp_postmeta')) {
+            [$generation_key, $snapshot, $post_id, $dirty_key] = $statement['args'];
+            $meta = &$GLOBALS['vgpc_test_meta'][(int) $post_id];
+            if (($meta[$dirty_key] ?? null) === 1
+                && (! array_key_exists($generation_key, $meta) || (string) $meta[$generation_key] === (string) $snapshot)) {
+                unset($meta[$dirty_key]);
+            }
+        }
+        return 1;
+    }
+
+    public function get_results(array|string $statement, mixed $format = null): array
+    {
+        $statement = is_array($statement) ? $statement : ['query' => $statement, 'args' => []];
+        $this->queries[] = $statement;
+        $is_schema_query = str_contains($statement['query'], 'SHOW FULL COLUMNS') || str_contains($statement['query'], 'SHOW INDEX');
+        if ($is_schema_query && is_callable($this->get_schema_results_handler ?? null)) {
+            $rows = ($this->get_schema_results_handler)($statement['query'], $statement['args']);
+        } elseif (is_callable($this->get_results_handler ?? null) && ! $is_schema_query) {
+            $rows = ($this->get_results_handler)($statement['query'], $statement['args']);
+        } elseif (str_contains($statement['query'], 'SHOW FULL COLUMNS')) {
+            $rows = [
+                ['Field' => 'id', 'Type' => 'bigint(20) unsigned', 'Null' => 'NO', 'Default' => null, 'Extra' => 'auto_increment'],
+                ['Field' => 'source_post_id', 'Type' => 'bigint(20) unsigned', 'Null' => 'NO', 'Default' => null, 'Extra' => ''],
+                ['Field' => 'source_post_type', 'Type' => 'varchar(32)', 'Null' => 'NO', 'Default' => null, 'Extra' => ''],
+                ['Field' => 'person_id', 'Type' => 'bigint(20) unsigned', 'Null' => 'NO', 'Default' => null, 'Extra' => ''],
+                ['Field' => 'role_key', 'Type' => 'varchar(64)', 'Null' => 'NO', 'Default' => null, 'Extra' => ''],
+                ['Field' => 'position', 'Type' => 'int(10) unsigned', 'Null' => 'NO', 'Default' => '0', 'Extra' => ''],
+            ];
+        } elseif (str_contains($statement['query'], 'SHOW INDEX')) {
+            $rows = [
+                ['Key_name' => 'PRIMARY', 'Column_name' => 'id', 'Non_unique' => 0, 'Seq_in_index' => 1],
+                ['Key_name' => 'source_person_role', 'Column_name' => 'source_post_id', 'Non_unique' => 0, 'Seq_in_index' => 1],
+                ['Key_name' => 'source_person_role', 'Column_name' => 'person_id', 'Non_unique' => 0, 'Seq_in_index' => 2],
+                ['Key_name' => 'source_person_role', 'Column_name' => 'role_key', 'Non_unique' => 0, 'Seq_in_index' => 3],
+                ['Key_name' => 'person_source_type', 'Column_name' => 'person_id', 'Non_unique' => 1, 'Seq_in_index' => 1],
+                ['Key_name' => 'person_source_type', 'Column_name' => 'source_post_type', 'Non_unique' => 1, 'Seq_in_index' => 2],
+                ['Key_name' => 'person_role', 'Column_name' => 'person_id', 'Non_unique' => 1, 'Seq_in_index' => 1],
+                ['Key_name' => 'person_role', 'Column_name' => 'role_key', 'Non_unique' => 1, 'Seq_in_index' => 2],
+                ['Key_name' => 'source_post', 'Column_name' => 'source_post_id', 'Non_unique' => 1, 'Seq_in_index' => 1],
+            ];
+        } else {
+            $rows = [];
+        }
+        $this->last_error = '';
+        return $rows;
+    }
+
+    public function insert(string $table, array $data, array $format = []): int|false { $this->inserted[] = [$table, $data]; return $this->fail_insert ? false : 1; }
+
+    public function get_charset_collate(): string { return 'DEFAULT CHARACTER SET utf8mb4'; }
 
     /** @var list<array{query:string,args:list<mixed>}> */
     public array $queries = [];
@@ -47,6 +125,15 @@ final class VGPC_TestWpdb
 
     /** @var callable|null */
     public $get_col_handler = null;
+
+    /** @var callable|null */
+    public $get_results_handler = null;
+
+    /** @var callable|null */
+    public $get_schema_results_handler = null;
+
+    /** @var callable|null */
+    public $get_schema_status_handler = null;
 
     /** @var callable|null */
     public $get_row_handler = null;
@@ -61,6 +148,7 @@ final class VGPC_TestWpdb
     public function get_var(array $statement): mixed
     {
         $this->queries[] = $statement;
+        if (str_contains($statement['query'], 'GET_LOCK')) $GLOBALS['vgpc_test_database_sequence'][] = 'get_lock';
         if (is_callable($this->get_var_handler)) {
             return ($this->get_var_handler)($statement['query'], $statement['args']);
         }
@@ -117,6 +205,11 @@ final class VGPC_TestWpdb
     /** @param array{query:string,args:list<mixed>} $statement */
     public function get_row(array $statement): object|null
     {
+        if (str_contains($statement['query'], 'SHOW TABLE STATUS')) {
+            return is_callable($this->get_schema_status_handler ?? null)
+                ? ($this->get_schema_status_handler)($statement['query'], $statement['args'])
+                : (object) ['Engine' => 'InnoDB'];
+        }
         if (is_callable($this->get_row_handler)) {
             return ($this->get_row_handler)($statement['query'], $statement['args']);
         }
@@ -173,6 +266,10 @@ if (! defined('ABSPATH')) {
     define('ABSPATH', __DIR__ . '/');
 }
 
+if (! defined('ARRAY_A')) {
+    define('ARRAY_A', 'ARRAY_A');
+}
+
 $GLOBALS['vgpc_test_taxonomies'] = [];
 $GLOBALS['vgpc_test_terms'] = [];
 $GLOBALS['vgpc_test_options'] = [];
@@ -205,9 +302,12 @@ $GLOBALS['vgpc_test_get_posts_cache'] = [];
 $GLOBALS['vgpc_test_get_posts_handler'] = null;
 $GLOBALS['vgpc_test_get_post_cache'] = [];
 $GLOBALS['vgpc_test_get_field_cache'] = [];
+$GLOBALS['vgpc_test_database_sequence'] = [];
 
 function vgpc_test_reset(): void
 {
+    $GLOBALS['vgpc_test_transients'] = [];
+    $GLOBALS['vgpc_test_scheduled_events'] = [];
     $GLOBALS['vgpc_test_taxonomies'] = [];
     $GLOBALS['vgpc_test_terms'] = [];
     $GLOBALS['vgpc_test_options'] = [];
@@ -224,6 +324,8 @@ function vgpc_test_reset(): void
     $GLOBALS['vgpc_test_delete_post_calls'] = [];
     $GLOBALS['vgpc_test_relationships'] = [];
     $GLOBALS['vgpc_test_meta'] = [];
+    $GLOBALS['vgpc_update_post_meta_handler'] = null;
+    $GLOBALS['vgpc_delete_post_meta_handler'] = null;
     $GLOBALS['vgpc_test_field_groups'] = [];
     $GLOBALS['vgpc_test_update_field_calls'] = [];
     $GLOBALS['vgpc_test_fail_update_field_name'] = null;
@@ -240,11 +342,31 @@ $GLOBALS['vgpc_test_apply_wp_update_filter'] = false;
 $GLOBALS['vgpc_test_get_posts_handler'] = null;
     $GLOBALS['vgpc_test_get_post_cache'] = [];
     $GLOBALS['vgpc_test_get_field_cache'] = [];
+    $GLOBALS['vgpc_test_database_sequence'] = [];
     $GLOBALS['wpdb'] = new VGPC_TestWpdb();
+    $GLOBALS['vgpc_test_dbdelta_sql'] = [];
     WP_CLI::$commands = [];
     WP_CLI::$messages = [];
     $_POST = [];
     $_GET = [];
+    $GLOBALS['vgpc_test_transients'] = [];
+    $GLOBALS['vgpc_test_current_user_id'] = 1;
+}
+
+if (! defined('HOUR_IN_SECONDS')) {
+    define('HOUR_IN_SECONDS', 3600);
+}
+
+function get_current_user_id(): int { return (int) ($GLOBALS['vgpc_test_current_user_id'] ?? 1); }
+function current_user_can(string $capability, int $object_id = 0): bool { return true; }
+function set_transient(string $key, mixed $value, int $expiration = 0): bool { $GLOBALS['vgpc_test_transients'][$key] = $value; return true; }
+function get_transient(string $key): mixed { return $GLOBALS['vgpc_test_transients'][$key] ?? false; }
+function delete_transient(string $key): bool { unset($GLOBALS['vgpc_test_transients'][$key]); return true; }
+
+function dbDelta(string $sql): array
+{
+    $GLOBALS['vgpc_test_dbdelta_sql'][] = $sql;
+    return ['wp_vg_person_relationship_index' => 'Created'];
 }
 
 function vgpc_test_same(mixed $expected, mixed $actual, string $message): void
@@ -411,10 +533,19 @@ function clean_post_cache(int $post_id): void
     unset($GLOBALS['vgpc_test_get_post_cache'][$post_id]);
 }
 
-function acf_flush_value_cache(int|string $post_id = 0, string $field_name = ''): void
+function wp_cache_delete(int|string $key, string $group = ''): bool
 {
-    $cache_key = $field_name . ':' . (string) $post_id;
-    unset($GLOBALS['vgpc_test_get_field_cache'][$cache_key]);
+    $GLOBALS['vgpc_test_cache_deletes'][] = [$key, $group];
+    return true;
+}
+
+function acf_flush_value_cache(int|string $post_id, string $field_name): void
+{
+    $GLOBALS['vgpc_test_database_sequence'][] = 'acf_flush:' . $field_name;
+    if ($field_name === '') {
+        return;
+    }
+    unset($GLOBALS['vgpc_test_get_field_cache'][$field_name . ':' . (string) $post_id]);
 }
 
 function wp_insert_post(array $postarr, bool $wp_error = false): int|WP_Error
@@ -435,7 +566,7 @@ function wp_insert_post(array $postarr, bool $wp_error = false): int|WP_Error
     return $post_id;
 }
 
-function wp_update_post(array $postarr, bool $wp_error = false): int|WP_Error
+function wp_update_post(array $postarr, bool $wp_error = false, bool $fire_after_hooks = true): int|WP_Error
 {
     $post_id = (int) ($postarr['ID'] ?? 0);
     $post = get_post($post_id);
@@ -454,6 +585,40 @@ function wp_update_post(array $postarr, bool $wp_error = false): int|WP_Error
         }
     }
     $GLOBALS['vgpc_test_update_post_calls'][] = $postarr;
+    if (! empty($GLOBALS['vgpc_test_wp_update_post_hooks'])) {
+        if ((string) ($before->post_status ?? '') !== (string) ($post->post_status ?? '')) {
+            do_action('transition_post_status', (string) $post->post_status, (string) $before->post_status, $post);
+        }
+        $GLOBALS['vgpc_test_wp_hook_order'][] = 'save_post';
+        $saved_save_post_actions = $GLOBALS['vgpc_test_actions']['save_post'] ?? [];
+        if (! empty($GLOBALS['vgpc_test_acf_save_during_core_save'])) {
+            add_action('save_post', static function (int $acf_post_id): void {
+                $expected_id = (int) ($_POST['post_ID'] ?? $acf_post_id);
+                if ($expected_id !== $acf_post_id
+                    || ! empty($GLOBALS['vgpc_test_acf_nonce_invalid'])
+                    || ! empty($GLOBALS['vgpc_test_acf_validation_failed'])
+                    || empty($_POST['acf']) || ! is_array($_POST['acf'])) return;
+                $previous_acf_actions = $GLOBALS['vgpc_test_actions']['acf/save_post'] ?? [];
+                add_action('acf/save_post', static function (int $actual_post_id): void {
+                    foreach (($_POST['acf'] ?? []) as $selector => $value) {
+                        update_field((string) $selector, $value, $actual_post_id);
+                    }
+                }, 10, 1);
+                $GLOBALS['vgpc_test_wp_hook_order'][] = 'acf/save_post';
+                try {
+                    do_action('acf/save_post', $acf_post_id);
+                } finally {
+                    $GLOBALS['vgpc_test_actions']['acf/save_post'] = $previous_acf_actions;
+                }
+            }, 10, 1);
+        }
+        do_action('save_post', $post_id, $post, true);
+        $GLOBALS['vgpc_test_actions']['save_post'] = $saved_save_post_actions;
+        if ($fire_after_hooks && empty($GLOBALS['vgpc_test_suppress_after_insert_post'])) {
+            $GLOBALS['vgpc_test_wp_hook_order'][] = 'wp_after_insert_post';
+            do_action('wp_after_insert_post', $post_id, $post, true, $before);
+        }
+    }
     if (! empty($GLOBALS['vgpc_test_acf_save_during_update'])) {
         $release_count_before = count(array_filter(
             $GLOBALS['wpdb']->queries,
@@ -487,10 +652,12 @@ function wp_delete_post(int $post_id, bool $force_delete = false): object|false
         return $post;
     }
 
+    do_action('before_delete_post', $post_id, $post);
     unset($GLOBALS['vgpc_test_posts'][$post_id], $GLOBALS['vgpc_test_meta'][$post_id]);
     foreach ($GLOBALS['vgpc_test_relationships'] as $taxonomy => $relationships) {
         unset($GLOBALS['vgpc_test_relationships'][$taxonomy][$post_id]);
     }
+    do_action('deleted_post', $post_id, $post);
 
     return $post;
 }
@@ -680,26 +847,66 @@ function get_post_meta(int $post_id, string $meta_key = '', bool $single = false
 
 function update_post_meta(int $post_id, string $meta_key, mixed $value): bool
 {
+    if (isset($GLOBALS['vgpc_update_post_meta_handler'])) {
+        $result = ($GLOBALS['vgpc_update_post_meta_handler'])($post_id, $meta_key, $value);
+        if ($result === false) return false;
+    }
+    if (! get_post($post_id)) {
+        return false;
+    }
+    if (($GLOBALS['vgpc_test_meta'][$post_id][$meta_key] ?? null) === $value) return false;
     $GLOBALS['vgpc_test_meta'][$post_id][$meta_key] = $value;
     return true;
 }
 
-function delete_post_meta(int $post_id, string $meta_key): bool
+function delete_post_meta(int $post_id, string $meta_key, mixed $value = ''): bool
 {
+    if (isset($GLOBALS['vgpc_delete_post_meta_handler']) && ($GLOBALS['vgpc_delete_post_meta_handler'])($post_id, $meta_key, $value) === false) return false;
+    if (func_num_args() >= 3 && ($GLOBALS['vgpc_test_meta'][$post_id][$meta_key] ?? null) !== $value) {
+        return false;
+    }
     unset($GLOBALS['vgpc_test_meta'][$post_id][$meta_key]);
     return true;
 }
 
 function acf_add_local_field_group(array $field_group): void
 {
+    $fields = $field_group['fields'] ?? [];
+    foreach ($fields as &$field) {
+        $field['ID'] ??= (int) sprintf('%u', crc32((string) ($field['key'] ?? $field['name'] ?? '')));
+    }
+    unset($field);
+    $field_group['fields'] = $fields;
     $GLOBALS['vgpc_test_field_groups'][$field_group['key']] = $field_group;
+}
+
+function acf_get_field(string|int $selector): array|false
+{
+    foreach ($GLOBALS['vgpc_test_field_groups'] as $field_group) {
+        foreach ($field_group['fields'] ?? [] as $field) {
+            if ((string) ($field['key'] ?? '') === (string) $selector
+                || (string) ($field['name'] ?? '') === (string) $selector
+                || (string) ($field['ID'] ?? '') === (string) $selector
+            ) return $field;
+        }
+    }
+    return false;
+}
+
+/** Faithful test double for ACF's acf_update_values() selector resolution loop. */
+function acf_update_values(array $values, int|string $post_id): void
+{
+    foreach ($values as $selector => $value) {
+        $field = acf_get_field($selector);
+        if ($field) update_field((string) $field['name'], $value, $post_id);
+    }
 }
 
 function vgpc_test_acf_field(string $selector): ?array
 {
     foreach ($GLOBALS['vgpc_test_field_groups'] as $field_group) {
         foreach ($field_group['fields'] ?? [] as $field) {
-            if (($field['key'] ?? null) === $selector || ($field['name'] ?? null) === $selector) {
+            if (($field['key'] ?? null) === $selector || ($field['name'] ?? null) === $selector || (string) ($field['ID'] ?? '') === $selector) {
                 return $field;
             }
         }
@@ -868,6 +1075,9 @@ function get_option(string $option, mixed $default = false): mixed
 
 function update_option(string $option, mixed $value, mixed $autoload = null): bool
 {
+    if (is_callable($GLOBALS['vgpc_update_option_handler'] ?? null) && ! ($GLOBALS['vgpc_update_option_handler'])($option, $value, $autoload)) {
+        return false;
+    }
     $GLOBALS['vgpc_test_options'][$option] = $value;
 
     return true;

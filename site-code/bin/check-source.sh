@@ -10,6 +10,7 @@ php site-code/voelgoed-platform-core/tests/run-event-participation-bricks-tests.
 php site-code/voelgoed-platform-core/tests/run-event-role-seeder-tests.php
 php site-code/voelgoed-platform-core/tests/run-product-contribution-tests.php
 php site-code/voelgoed-platform-core/tests/run-product-people-tests.php
+php site-code/voelgoed-platform-core/tests/run-person-relationship-tests.php
 php site-code/person-foundation/tests/run-person-foundation-tests.php
 php site-code/person-foundation/tests/run-person-profile-migration-tests.php
 php site-code/event-participation/tests/run-event-participation-foundation-tests.php
@@ -23,8 +24,10 @@ php site-code/runtime-tests/tests/run-product-contribution-qa-platform-core-inte
 php site-code/runtime-tests/tests/run-runtime-mutation-core-tests.php
 php site-code/runtime-tests/tests/run-runtime-mutation-session-tests.php
 php site-code/runtime-tests/tests/run-runtime-mutation-policy-tests.php
+php site-code/bin/tests/test-person-publication-source-policy.php
 python3 site-code/runtime-tests/tests/test_fcm_self_featured_integration.py
 php site-code/bin/check-runtime-mutation-policy.php
+php site-code/bin/check-person-publication-source.php
 
 tracked_inventory="$(mktemp)"
 trap 'rm -f "$tracked_inventory"' EXIT

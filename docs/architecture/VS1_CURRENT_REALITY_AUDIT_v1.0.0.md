@@ -29,7 +29,7 @@ The historical status sentence in `POST_TASK_10A_CURRENT_STATE_v1.0.0.md` that s
 
 ## Platform Core source and deployment
 
-The source authority is `site-code/voelgoed-platform-core/`. The current assembly contract is `docs/architecture/PLATFORM_CORE_ASSEMBLY_CONTRACT_v1.3.0.md`, which is present in the verified `origin/main` history. The assembly build and verifier were run against this audit HEAD:
+The source authority is `site-code/voelgoed-platform-core/`. The current assembly contract is `docs/architecture/PLATFORM_CORE_ASSEMBLY_CONTRACT_v1.4.0.md`. The assembly build and verifier were run against this audit HEAD:
 
 ```text
 python3 site-code/bin/build-platform-core.py --ref <audit-HEAD> --output dist

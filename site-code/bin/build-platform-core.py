@@ -29,12 +29,13 @@ PATCH_PATH = "site-code/voelgoed-platform-core/integration.patch"
 BUILDER_PATH = "site-code/bin/build-platform-core.py"
 OVERLAY_PATHS = (
     "site-code/voelgoed-platform-core/includes/Runtime",
+    "site-code/voelgoed-platform-core/includes/Person",
     "site-code/voelgoed-platform-core/includes/Taxonomy",
     "site-code/voelgoed-platform-core/includes/Event",
     "site-code/voelgoed-platform-core/includes/Product",
 )
 # Runtime is a bootstrap dependency overlay, not a lifecycle component namespace.
-LIFECYCLE_OVERLAY_MODULES = ("Taxonomy", "Event", "Product")
+LIFECYCLE_OVERLAY_MODULES = ("Taxonomy", "Event", "Product", "Person")
 ARCHIVE_NAME = "voelgoed-platform-core.tar.gz"
 MANIFEST_NAME = "voelgoed-platform-core.manifest.json"
 SUPPORTED_FILE_MODES = {"100644": 0o644, "100755": 0o755}
@@ -311,9 +312,9 @@ def clean_bootstrap_guard(
     plugin_class: str,
     module_classes: set[str],
 ) -> None:
-    if re.search(r"['\"]includes/(?:Runtime|Taxonomy|Event|Product)/[^'\"]+\.php['\"]", entrypoint):
+    if re.search(r"['\"]includes/(?:Runtime|Taxonomy|Event|Product|Person)/[^'\"]+\.php['\"]", entrypoint):
         fail("Root bootstrap is already integrated: it contains an overlay include path.")
-    if re.search(r"^\s*use\s+Voelgoed\\PlatformCore\\(?:Taxonomy|Event|Product)\\", plugin_class, re.M):
+    if re.search(r"^\s*use\s+Voelgoed\\PlatformCore\\(?:Taxonomy|Event|Product|Person)\\", plugin_class, re.M):
         fail("Root bootstrap is already integrated: includes/Plugin.php imports an overlay class.")
     registration_lines = re.findall(r"^.*register_component\s*\(.*$", plugin_class, re.M)
     module_short_names = {value.rsplit("\\", 1)[-1] for value in module_classes}
@@ -361,7 +362,7 @@ def patch_integration_markers(patch_text: str) -> tuple[list[str], list[str]]:
     imports = [
         line.strip()
         for line in additions
-        if re.fullmatch(r"\s*use\s+Voelgoed\\PlatformCore\\(?:Taxonomy|Event|Product)\\[A-Za-z_][A-Za-z0-9_]*;\s*", line)
+        if re.fullmatch(r"\s*use\s+Voelgoed\\PlatformCore\\(?:Taxonomy|Event|Product|Person)\\[A-Za-z_][A-Za-z0-9_]*;\s*", line)
     ]
     registrations = [
         line.strip()
@@ -1241,7 +1242,7 @@ def validate_assembled_bootstrap(
         if sum(existing.strip() == line for existing in import_lines) != 1:
             fail(f"Integration lifecycle import must appear exactly once: {line}")
         match = re.fullmatch(
-            r"use\s+Voelgoed\\PlatformCore\\(?:Taxonomy|Event|Product)\\[A-Za-z_][A-Za-z0-9_]*;",
+            r"use\s+Voelgoed\\PlatformCore\\(?:Taxonomy|Event|Product|Person)\\[A-Za-z_][A-Za-z0-9_]*;",
             line,
         )
         if match is None:

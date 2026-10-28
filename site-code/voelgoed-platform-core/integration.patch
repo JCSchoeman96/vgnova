@@ -1,7 +1,18 @@
 --- a/voelgoed-platform-core.php
 +++ b/voelgoed-platform-core.php
-@@ -25,0 +26,21 @@
+@@ -25,0 +26,32 @@
 +    'includes/Runtime/RuntimeMutationSession.php',
++    'includes/Person/PersonRelationshipContract.php',
++    'includes/Person/PersonRelationshipSchema.php',
++    'includes/Person/PersonRelationshipSourceLock.php',
++    'includes/Person/PersonRelationshipRepository.php',
++    'includes/Person/PersonRelationshipSourceReader.php',
++    'includes/Person/PersonRelationshipValidator.php',
++    'includes/Person/PersonRelationshipIndexer.php',
++    'includes/Person/PersonRelationshipReconciler.php',
++    'includes/Person/PersonRelationshipService.php',
++    'includes/Person/PersonRelationshipAdmin.php',
++    'includes/Person/PersonRelationshipCli.php',
 +    'includes/Taxonomy/ContentTopicTaxonomy.php',
 +    'includes/Taxonomy/ContentTopicMigration.php',
 +    'includes/Taxonomy/ContentTopicRoles.php',
@@ -24,7 +35,7 @@
 +    'includes/Product/PersonProductsBricks.php',
 --- a/includes/Plugin.php
 +++ b/includes/Plugin.php
-@@ -12,0 +13,12 @@
+@@ -12,0 +13,14 @@
 +use Voelgoed\PlatformCore\Taxonomy\ContentTopicTaxonomy;
 +use Voelgoed\PlatformCore\Taxonomy\ContentTopicMigration;
 +use Voelgoed\PlatformCore\Taxonomy\ContentTopicRoles;
@@ -37,7 +48,9 @@
 +use Voelgoed\PlatformCore\Product\ProductContributionAdmin;
 +use Voelgoed\PlatformCore\Product\ProductRoleSeeder;
 +use Voelgoed\PlatformCore\Product\PersonProductsBricks;
-@@ -47,0 +60,12 @@
++use Voelgoed\PlatformCore\Person\PersonRelationshipAdmin;
++use Voelgoed\PlatformCore\Person\PersonRelationshipCli;
+@@ -47,0 +60,15 @@
 +        $this->register_component('content_topic_taxonomy', ContentTopicTaxonomy::class);
 +        $this->register_component('content_topic_migration', ContentTopicMigration::class);
 +        $this->register_component('content_topic_roles', ContentTopicRoles::class);
@@ -50,3 +63,6 @@
 +        $this->register_component('product_contribution_admin', ProductContributionAdmin::class);
 +        $this->register_component('product_role_seeder', ProductRoleSeeder::class);
 +        $this->register_component('person_products_bricks', PersonProductsBricks::class);
++        // Schema setup remains an explicit guarded WP-CLI operation.
++        $this->register_component('person_relationship_admin', PersonRelationshipAdmin::class);
++        $this->register_component('person_relationship_cli', PersonRelationshipCli::class);
