@@ -110,23 +110,31 @@ final class PersonRelationshipIndexer
     {
         if ($source_post_id < 1) return new \WP_Error('invalid_source_id', 'Source post ID must be positive.');
         if (! $this->lock->acquire($source_post_id)) return new \WP_Error('source_lock_failed', 'Could not acquire the source relationship lock.');
+        $result = new \WP_Error('projection_failed', 'Could not remove stale source relationships.');
         try {
             // Eligibility must reflect the database state after lock acquisition,
             // not a post object cached before a concurrent type transition.
             clean_post_cache($source_post_id);
             $source = get_post($source_post_id);
             if (is_object($source) && PersonRelationshipContract::supported_source_type((string) ($source->post_type ?? ''))) {
-                return new \WP_Error('source_cleanup_not_eligible', 'The source is now supported and must not be pruned.');
+                $result = new \WP_Error('source_cleanup_not_eligible', 'The source is now supported and must not be pruned.');
+            } else {
+                $result = $this->repository->delete_source($source_post_id);
+                if (! is_wp_error($result)
+                    && ! $this->clear_dirty_if_unchanged($source_post_id, get_post_meta($source_post_id, self::DIRTY_GENERATION_META_KEY, true))
+                ) {
+                    $result = new \WP_Error('dirty_marker_clear_failed', 'Could not clear the dirty marker.');
+                }
             }
-            $result = $this->repository->delete_source($source_post_id);
-            if (is_wp_error($result)) return $result;
-            if (! $this->clear_dirty_if_unchanged($source_post_id, get_post_meta($source_post_id, self::DIRTY_GENERATION_META_KEY, true))) {
-                return new \WP_Error('dirty_marker_clear_failed', 'Could not clear the dirty marker.');
-            }
-            return true;
+        } catch (\Throwable) {
+            $result = new \WP_Error('projection_failed', 'Could not remove stale source relationships.');
         } finally {
             $this->lock->release($source_post_id);
         }
+        if ($result === true && ! $this->lock->release_succeeded($source_post_id)) {
+            return $this->fail($source_post_id, new \WP_Error('source_lock_release_failed', 'Could not release the source relationship lock.'));
+        }
+        return $result;
     }
 
     private function perform_remove(int $source_post_id): true|\WP_Error

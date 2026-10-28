@@ -251,6 +251,26 @@ final class PersonRelationshipIndexerTest
         vgpc_test_true(in_array('SELECT RELEASE_LOCK(%s)', array_column($GLOBALS['wpdb']->queries, 'query'), true), 'Source removal must release lock.');
     }
 
+    public function test_remove_stale_source_fails_and_marks_dirty_when_both_release_attempts_throw(): void
+    {
+        $this->ready_schema();
+        $this->add_source_and_person(6410, 'draft', 6411, 'draft');
+        $GLOBALS['vgpc_test_posts'][6410]->post_type = 'page';
+        $releases = 0;
+        $GLOBALS['wpdb']->get_var_handler = static function (string $query) use (&$releases): mixed {
+            if (str_contains($query, 'SHOW TABLES')) return 'wp_vg_person_relationship_index';
+            if (str_contains($query, 'GET_LOCK')) return '1';
+            if (str_contains($query, 'RELEASE_LOCK')) { ++$releases; throw new RuntimeException('connection failure'); }
+            return '1';
+        };
+
+        $result = $this->indexer()->remove_stale_source(6410);
+        vgpc_test_true(is_wp_error($result), 'Stale-source cleanup must not report success when lock release remains unconfirmed.');
+        vgpc_test_same('source_lock_release_failed', $result->get_error_code(), 'Stale cleanup must expose the lock release failure.');
+        vgpc_test_same(2, $releases, 'Cleanup must make only the bounded same-callback retry.');
+        vgpc_test_same('1', (string) get_post_meta(6410, PersonRelationshipContract::DIRTY_META_KEY, true), 'Release failure must leave a dirty marker for reconciliation.');
+    }
+
     private function ready_schema(): void
     {
         $GLOBALS['vgpc_test_options'][PersonRelationshipSchema::VERSION_OPTION] = PersonRelationshipSchema::SCHEMA_VERSION;

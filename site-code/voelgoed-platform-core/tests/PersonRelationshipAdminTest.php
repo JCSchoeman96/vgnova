@@ -1010,6 +1010,28 @@ final class PersonRelationshipAdminTest
         vgpc_test_same([], $GLOBALS['vgpc_test_meta'][135] ?? [], 'Invalid draft ACF values must fail before ACF persistence.');
     }
 
+    public function test_direct_acf_save_callback_validates_payload_for_actual_source_despite_post_form_mismatch(): void
+    {
+        $admin = $this->admin();
+        $admin->register();
+        $this->source_and_people(140, 'publish', [141]);
+        $GLOBALS['vgpc_test_posts'][141]->post_status = 'publish';
+        update_field('primary_author', 141, 140);
+        // acf_save_post($id) dispatches this callback even if ACF_Form_Post's
+        // post_ID gate would have skipped its ordinary save_post callback.
+        $_POST = ['post_ID' => 999, 'post_status' => 'publish', 'acf' => [
+            'field_vg_article_expert_contributors' => [141],
+        ]];
+        try {
+            do_action('acf/save_post', 140);
+            throw new RuntimeException('Direct ACF callback must reject the unsafe payload ACF will persist for its actual source ID.');
+        } catch (RuntimeException $error) {
+            vgpc_test_true(str_contains($error->getMessage(), 'possible partial relationship save'), 'Direct callback rejection must identify the unsafe partial state.');
+        }
+        vgpc_test_same(null, get_field('expert_contributors', 140, false), 'Rejected direct callback must leave the duplicate role unwritten.');
+        $admin->release_source_write_lock(140);
+    }
+
     public function test_acf_form_callback_skips_nested_save_for_another_explicit_post_id(): void
     {
         $admin = $this->admin();

@@ -326,7 +326,7 @@ final class PersonRelationshipAdmin
         $status = is_object($post) ? (string) ($post->post_status ?? 'draft') : 'draft';
         // A status-only demotion is the first step in repairing malformed
         // published data. Do not validate the old relationships as a publish.
-        $submitted_fields = $this->submitted_relationship_fields($source_type, $post_id);
+        $submitted_fields = $this->submitted_relationship_fields($source_type, $post_id, false);
         if ($status !== 'publish' && $submitted_fields !== []) {
             $unchanged = $this->validator->submitted_fields_match_persisted($post_id, $submitted_fields, $source_type);
             if ($unchanged === true) {
@@ -384,13 +384,17 @@ final class PersonRelationshipAdmin
     }
 
     /** @return array<string, mixed> */
-    private function submitted_relationship_fields(string $source_type, int $source_id): array
+    private function submitted_relationship_fields(string $source_type, int $source_id, bool $respect_form_gate = true): array
     {
         $submitted = [];
-        // ACF_Form_Post::allow_save_post() checks only post_ID. It accepts a
-        // missing/zero value and then saves against each actual save_post ID.
-        $request_post_id = $this->request_post_id();
-        if ($request_post_id > 0 && $request_post_id !== $source_id) return $submitted;
+        // The preflight runs before ACF_Form_Post::allow_save_post() and must
+        // honor its post_ID gate. The acf/save_post callback runs only when an
+        // ACF writer has already dispatched this actual source ID, so it must
+        // validate the payload ACF will persist even when post_ID mismatches.
+        if ($respect_form_gate) {
+            $request_post_id = $this->request_post_id();
+            if ($request_post_id > 0 && $request_post_id !== $source_id) return $submitted;
+        }
         if (! isset($_POST['acf']) || ! is_array($_POST['acf'])) return $submitted;
         foreach (PersonRelationshipContract::allowed_roles($source_type) as $role) {
             $field_key = self::FIELD_KEYS[$role];
