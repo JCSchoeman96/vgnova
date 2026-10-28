@@ -62,6 +62,9 @@ final class PersonRelationshipAdmin
         add_action('rest_after_insert_mto-course', [$this, 'project_after_rest_save'], 20, 3);
         add_action('acf/save_post', [$this, 'project_after_acf_save'], 20, 1);
         add_action('acf/save_post', [$this, 'validate_actual_acf_save'], 1, 1);
+        // Core may return from a scheduled publication without changing status
+        // (for example, when the event is stale or fires too early).
+        add_action('publish_future_post', [$this, 'release_future_publish_lock_after_core'], PHP_INT_MAX, 1);
         add_action('shutdown', [$this, 'release_source_write_lock'], PHP_INT_MAX, 0);
         add_action('before_delete_post', [$this, 'remove_after_permanent_delete'], 10, 2);
         add_action('deleted_post', [$this, 'retry_delete_cleanup_after_meta_removal'], 10, 2);
@@ -239,12 +242,35 @@ final class PersonRelationshipAdmin
             wp_die('Person relationship fields could not be saved because this source is being edited by another request. Retry the save.', 'Person relationship validation failed', ['response' => 409]);
         }
 
-        $projection = $this->projection_for_source($post_id, [], $source_type);
+        $status = is_object($post) ? (string) ($post->post_status ?? 'draft') : 'draft';
+        // A status-only demotion is the first step in repairing malformed
+        // published data. Do not validate the old relationships as a publish.
+        $submitted_fields = $this->submitted_relationship_fields($source_type);
+        if ($status !== 'publish' && $submitted_fields === []) {
+            update_post_meta($post_id, PersonRelationshipContract::DIRTY_META_KEY, 1);
+            if ((string) get_post_meta($post_id, PersonRelationshipContract::DIRTY_META_KEY, true) !== '1') {
+                $this->release_source_write_lock($post_id);
+                wp_die('Person relationship fields could not be saved because the reverse index could not be marked for repair.', 'Person relationship validation failed', ['response' => 500]);
+            }
+            return;
+        }
+
+        // wp_insert_post_data runs before a new post has an ID and therefore
+        // cannot lock or reread it. At this callback the row exists. Acquire
+        // the source lock, reread authority, and prove every partial field
+        // write safe before ACF persists any relationship field.
+        if (in_array($status, ['publish', 'future'], true)) {
+            $result = $this->validator->validate_publish_partial_write_safety($post_id, $submitted_fields, $source_type);
+            if (is_wp_error($result)) {
+                $this->release_source_write_lock($post_id);
+                wp_die($result->get_error_message(), 'Person relationship validation failed', ['response' => 400]);
+            }
+        }
+
+        $projection = $this->projection_for_source($post_id, $submitted_fields, $source_type, false);
         if (is_wp_error($projection)) {
             wp_die($projection->get_error_message(), 'Person relationship validation failed', ['response' => 400]);
         }
-        $status = $this->request_status($post_id, $post);
-        if ($status === 'future') $status = 'publish';
         $result = $this->validate_projection($projection, $status);
         if (is_wp_error($result)) {
             wp_die($result->get_error_message(), 'Person relationship validation failed', ['response' => 400]);
@@ -254,6 +280,27 @@ final class PersonRelationshipAdmin
             $this->release_source_write_lock($post_id);
             wp_die('Person relationship fields could not be saved because the reverse index could not be marked for repair.', 'Person relationship validation failed', ['response' => 500]);
         }
+    }
+
+    /** Release a scheduled source lock after the core publisher returns, even without a transition. */
+    public function release_future_publish_lock_after_core(mixed $post_id): void
+    {
+        $post_id = $this->normalize_id($post_id);
+        if ($post_id > 0 && $this->future_publish_lock_source_id === $post_id) {
+            $this->release_source_write_lock($post_id);
+        }
+    }
+
+    /** @return array<string, mixed> */
+    private function submitted_relationship_fields(string $source_type): array
+    {
+        $submitted = [];
+        if (! isset($_POST['acf']) || ! is_array($_POST['acf'])) return $submitted;
+        foreach (PersonRelationshipContract::allowed_roles($source_type) as $role) {
+            $field_key = self::FIELD_KEYS[$role];
+            if (array_key_exists($field_key, $_POST['acf'])) $submitted[$role] = $_POST['acf'][$field_key];
+        }
+        return $submitted;
     }
 
     /** Reject unpersisted REST overrides and validate stored relationships before core writes the source. */
@@ -296,11 +343,19 @@ final class PersonRelationshipAdmin
         }
         $this->flush_source_field_caches($post_id, $source_type);
         $projection = $this->projection_for_source($post_id, [], $source_type, false);
+        $status = (string) ($prepared_post->post_status ?? ($post_id > 0 ? get_post_status($post_id) : 'draft'));
+        // REST has no relationship writes for these non-REST-enabled fields.
+        // Permit a status-only demotion so an invalid published source can be
+        // repaired while non-public.
+        if ($post_id > 0 && in_array($status, ['draft', 'pending', 'private'], true)
+            && (string) get_post_status($post_id) === 'publish'
+        ) {
+            return $prepared_post;
+        }
         if (is_wp_error($projection)) {
             $this->release_source_write_lock($post_id);
             return new \WP_Error($projection->get_error_code(), $projection->get_error_message(), ['status' => 400]);
         }
-        $status = (string) ($prepared_post->post_status ?? ($post_id > 0 ? get_post_status($post_id) : 'draft'));
         if (in_array($status, ['publish', 'future'], true)) {
             $status = 'publish';
         }

@@ -116,6 +116,30 @@ final class PersonRelationshipCliTest
         vgpc_test_true(str_contains($output, '83 | 1 | reindexed'), 'CLI reconciliation must report successful trash repair.');
     }
 
+    public function test_global_reconcile_rechecks_repaired_index_anomaly(): void
+    {
+        vgpc_test_reset();
+        $this->register_fields();
+        $GLOBALS['vgpc_test_options'][\Voelgoed\PlatformCore\Person\PersonRelationshipSchema::VERSION_OPTION] = 1;
+        $GLOBALS['wpdb']->get_var_handler = static fn (string $query, array $args): mixed => str_contains($query, 'SHOW TABLES') ? ($args[0] ?? '') : '1';
+        $GLOBALS['vgpc_test_posts'][85] = (object) ['ID' => 85, 'post_type' => 'post', 'post_status' => 'draft'];
+        $GLOBALS['vgpc_test_posts'][86] = (object) ['ID' => 86, 'post_type' => 'person', 'post_status' => 'draft'];
+        $GLOBALS['vgpc_test_meta'][85]['primary_author'] = 86;
+        $GLOBALS['vgpc_test_get_posts_handler'] = static fn (): array => [];
+        $anomaly_reads = 0;
+        $GLOBALS['wpdb']->get_results_handler = static function (string $query, array $args = []) use (&$anomaly_reads): array {
+            if (str_contains($query, 'SELECT DISTINCT i.source_post_id') && ! str_contains($query, 'WHERE i.source_post_id')) {
+                $anomaly_reads++;
+                return $anomaly_reads === 1 ? [['source_post_id' => 85, 'source_post_type' => 'mto-course', 'current_post_type' => 'post']] : [];
+            }
+            return [];
+        };
+        $this->cli(static function (): void {})->reconcile_command([], ['repair' => true, 'format' => 'table']);
+        $output = implode("\n", array_column(WP_CLI::$messages, 'message'));
+        vgpc_test_true(str_contains($output, '85 | 0 | reindexed'), 'Global reconciliation must report the post-repair index state, not repeat a repaired anomaly. Output: ' . $output);
+        vgpc_test_true(str_contains($output, 'with issues: 0, repaired: 1'), 'A fully repaired global anomaly must not count as remaining. Output: ' . $output);
+    }
+
     public function test_setup_requires_mutation_session_before_schema_install(): void
     {
         vgpc_test_reset();

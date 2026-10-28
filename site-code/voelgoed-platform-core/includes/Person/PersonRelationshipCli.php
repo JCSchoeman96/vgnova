@@ -152,7 +152,19 @@ final class PersonRelationshipCli
                         if (is_wp_error($repair_result)) $repair_error = $this->error_details($repair_result);
                         else $repaired[] = $source_id;
                     }
-                    $sources[] = ['source_post_id' => $source_id, 'issues' => [$issue], ...($repair_error === null ? [] : ['repair_error' => $repair_error])];
+                    $remaining = [$issue];
+                    if ($repair && $repair_error === null && in_array($source_id, $repaired, true)) {
+                        $post_repair_index = $this->reconciler->inspect_index();
+                        if (is_wp_error($post_repair_index)) {
+                            $repair_error = $this->error_details($post_repair_index);
+                        } else {
+                            $remaining = array_values(array_filter(
+                                $post_repair_index,
+                                static fn (array $remaining_issue): bool => (int) $remaining_issue['source_post_id'] === (int) $source_id
+                            ));
+                        }
+                    }
+                    $sources[] = ['source_post_id' => $source_id, 'issues' => $remaining, ...($repair_error === null ? [] : ['repair_error' => $repair_error])];
                 }
             }
         }

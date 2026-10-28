@@ -57,6 +57,7 @@ final class PersonRelationshipAdminTest
         vgpc_test_true(isset($GLOBALS['vgpc_test_actions']['rest_after_insert_mto-course']), 'REST Course saves must project after REST metadata persistence.');
         vgpc_test_true(isset($GLOBALS['vgpc_test_actions']['before_delete_post']), 'Permanent deletion must clean derived rows.');
         vgpc_test_true(isset($GLOBALS['vgpc_test_filters']['voelgoed/platform_core/future_post_can_publish']), 'Scheduled publication must use the shared filter seam.');
+        vgpc_test_true(isset($GLOBALS['vgpc_test_actions']['publish_future_post']), 'Scheduled publication locks must release after core returns, including no-transition returns.');
         vgpc_test_true(! isset($GLOBALS['vgpc_test_filters']['query']), 'Person publication validation must not register a global SQL query interception filter.');
     }
 
@@ -240,6 +241,83 @@ final class PersonRelationshipAdminTest
         $_POST = ['post_ID' => 742, 'post_status' => 'draft', 'acf' => []];
         $data = ['ID' => 742, 'post_type' => 'post', 'post_status' => 'draft'];
         vgpc_test_same($data, apply_filters('wp_insert_post_data', $data, ['ID' => 742]), 'Demotion must proceed so the source can be repaired.');
+    }
+
+    public function test_status_only_acf_demotion_skips_invalid_relationship_validation(): void
+    {
+        $admin = $this->admin();
+        $this->source_and_people(743, 'draft', [744]);
+        $GLOBALS['vgpc_test_posts'][743]->post_status = 'draft';
+        update_field('primary_author', 744, 743);
+        update_field('additional_authors', [744], 743);
+        $_POST = ['post_ID' => 743, 'post_status' => 'draft', 'acf' => []];
+        $admin->validate_actual_acf_save(743);
+        vgpc_test_same('1', (string) get_post_meta(743, PersonRelationshipContract::DIRTY_META_KEY, true), 'A status-only demotion must mark the derived projection for repair without validating malformed published relationships.');
+        $admin->release_source_write_lock(743);
+    }
+
+    public function test_rest_status_only_demotion_accepts_invalid_published_relationships(): void
+    {
+        $admin = $this->admin();
+        $this->source_and_people(750, 'publish', [751]);
+        update_field('primary_author', 751, 750);
+        update_field('additional_authors', [751], 750);
+        $prepared = (object) ['ID' => 750, 'post_type' => 'post', 'post_status' => 'draft'];
+        $result = $admin->validate_rest_source($prepared, new VGPC_TestRestRequest([]));
+        vgpc_test_same($prepared, $result, 'REST must allow status-only demotion so an invalid published source can enter the repair workflow.');
+        $admin->release_source_write_lock(750);
+    }
+
+    public function test_new_source_is_reread_under_lock_before_acf_field_writes(): void
+    {
+        $admin = $this->admin();
+        $admin->register();
+        $this->source_and_people(0, 'publish', [746, 747]);
+        $GLOBALS['vgpc_test_posts'][746]->post_status = 'publish';
+        $GLOBALS['vgpc_test_posts'][747]->post_status = 'publish';
+        $_POST = ['post_status' => 'future', 'post_type' => 'post', 'acf' => ['field_vg_article_expert_contributors' => [746]]];
+        $get_lock_calls = 0;
+        $lock_held = false;
+        $GLOBALS['wpdb']->get_var_handler = static function (string $query) use (&$lock_held, &$get_lock_calls): string {
+            if (str_contains($query, 'GET_LOCK')) { $get_lock_calls++; if ($lock_held) return '0'; $lock_held = true; return '1'; }
+            if (str_contains($query, 'RELEASE_LOCK')) { $lock_held = false; return '1'; }
+            return '1';
+        };
+        $pre_insert = ['post_type' => 'post', 'post_status' => 'future'];
+        vgpc_test_same($pre_insert, apply_filters('wp_insert_post_data', $pre_insert, []), 'A new source may pass the pre-insert validation before WordPress assigns its ID.');
+        vgpc_test_same(0, $get_lock_calls, 'The pre-insert phase has no source ID to lock.');
+        // WordPress inserts the post row, then another writer persists a
+        // primary author before this request reaches ACF save_post priority 1.
+        $this->source_and_people(745, 'future', [746, 747]);
+        update_field('primary_author', 746, 745);
+        $_POST['post_ID'] = 745;
+        try {
+            $admin->validate_actual_acf_save(745);
+            throw new RuntimeException('The post-ID callback must catch a relationship added after the pre-insert check.');
+        } catch (RuntimeException $error) {
+            vgpc_test_true(str_contains($error->getMessage(), 'possible partial relationship save'), 'The post-ID callback must enumerate fresh old/new states before ACF writes.');
+        }
+        vgpc_test_same(746, get_field('primary_author', 745, false), 'Rejected callback validation must preserve the concurrent writer relationship.');
+        vgpc_test_true(! $lock_held, 'A rejected actual-save validation must release the source lock.');
+    }
+
+    public function test_scheduled_event_releases_lock_when_core_returns_without_transition(): void
+    {
+        $admin = $this->admin();
+        $this->source_and_people(748, 'future', [749]);
+        $GLOBALS['vgpc_test_posts'][749]->post_status = 'publish';
+        update_field('primary_author', 749, 748);
+        $lock_held = false;
+        $GLOBALS['wpdb']->get_var_handler = static function (string $query) use (&$lock_held): string {
+            if (str_contains($query, 'GET_LOCK')) { if ($lock_held) return '0'; $lock_held = true; return '1'; }
+            if (str_contains($query, 'RELEASE_LOCK')) { $lock_held = false; return '1'; }
+            return '1';
+        };
+        vgpc_test_same(true, $admin->future_post_can_publish(true, 748, get_post(748)), 'The first event may acquire and validate the future source.');
+        $admin->release_future_publish_lock_after_core(748);
+        $other_writer = new PersonRelationshipSourceLock();
+        vgpc_test_true($other_writer->acquire(748), 'A stale or early core return must release the source lock for later cron events.');
+        $other_writer->release(748);
     }
 
     public function test_supported_article_to_course_transition_validates_target_fields_and_holds_lock(): void
