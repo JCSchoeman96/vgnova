@@ -668,6 +668,44 @@ final class PersonRelationshipAdminTest
         vgpc_test_same($data, apply_filters('wp_insert_post_data', $data, []), 'A new source form with post_ID 0 may validate its submitted relationship before WordPress assigns an ID.');
     }
 
+    public function test_prewrite_preflight_validates_acf_payload_with_missing_or_zero_post_id(): void
+    {
+        foreach ([[], ['post_ID' => 0], ['_acf_post_id' => 7399]] as $form_binding) {
+            vgpc_test_reset();
+            $admin = $this->admin();
+            $admin->register();
+            $this->source_and_people(7390, 'publish', [7391]);
+            $GLOBALS['vgpc_test_posts'][7391]->post_status = 'publish';
+            update_field('primary_author', 7391, 7390);
+            $_POST = $form_binding + [
+                'post_status' => 'publish',
+                'acf' => ['field_vg_article_additional_authors' => [7391]],
+            ];
+
+            try {
+                apply_filters('wp_insert_post_data', ['ID' => 7390, 'post_type' => 'post', 'post_status' => 'publish'], ['ID' => 7390]);
+                throw new RuntimeException('ACF-accepted missing/zero post_ID payload must fail partial-state validation before the post write.');
+            } catch (RuntimeException $error) {
+                vgpc_test_true(str_contains($error->getMessage(), 'possible partial relationship save'), 'The pre-write rejection must identify the unsafe partial projection.');
+            }
+            vgpc_test_same('publish', $GLOBALS['vgpc_test_posts'][7390]->post_status, 'Rejected payload must not reach the WordPress post write.');
+            vgpc_test_same(null, get_field('additional_authors', 7390, false), 'Rejected payload must not reach ACF field persistence.');
+        }
+    }
+
+    public function test_prewrite_preflight_uses_only_acf_handlers_post_id_binding(): void
+    {
+        $admin = $this->admin();
+        $admin->register();
+        $this->source_and_people(7392, 'publish', [7393]);
+        $GLOBALS['vgpc_test_posts'][7393]->post_status = 'publish';
+        update_field('primary_author', 7393, 7392);
+        $_POST = ['post_ID' => 7394, '_acf_post_id' => 7392, 'post_status' => 'publish', 'acf' => ['field_vg_article_additional_authors' => [7393]]];
+
+        $data = ['ID' => 7392, 'post_type' => 'post', 'post_status' => 'publish'];
+        vgpc_test_same($data, apply_filters('wp_insert_post_data', $data, ['ID' => 7392]), 'A positive post_ID for another source makes ACF skip this callback, regardless of _acf_post_id.');
+    }
+
     public function test_admin_retries_exceptional_source_lock_release_at_shutdown(): void
     {
         $admin = $this->admin();

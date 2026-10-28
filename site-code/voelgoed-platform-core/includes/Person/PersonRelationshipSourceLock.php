@@ -7,6 +7,7 @@ final class PersonRelationshipSourceLock
 {
     private array $held = [];
     private array $release_failed = [];
+    private bool $shutdown_retry_registered = false;
     public function acquire(int $source_post_id): bool
     {
         if ($source_post_id < 1) return false;
@@ -21,6 +22,12 @@ final class PersonRelationshipSourceLock
         catch (\Throwable) { return false; }
         if ((string) $ok !== '1') return false;
         $this->held[$name] = true;
+        if (! $this->shutdown_retry_registered) {
+            // PHP shutdown functions run after WordPress's shutdown WP_Hook,
+            // so this cleanup still runs if a release fails at PHP_INT_MAX.
+            register_shutdown_function([$this, 'release_all']);
+            $this->shutdown_retry_registered = true;
+        }
         return true;
     }
     public function release(int $source_post_id): void

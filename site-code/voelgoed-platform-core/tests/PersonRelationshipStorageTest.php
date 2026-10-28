@@ -163,6 +163,45 @@ final class PersonRelationshipStorageTest
         $GLOBALS['wpdb']->get_var_handler = null;
     }
 
+    public function test_indexer_lock_cleanup_runs_after_wp_shutdown_reaches_max_priority(): void
+    {
+        $attempts = 0;
+        $held = false;
+        $GLOBALS['wpdb']->get_var_handler = static function (string $query) use (&$attempts, &$held): string {
+            if (str_contains($query, 'GET_LOCK')) { $held = true; return '1'; }
+            if (str_contains($query, 'RELEASE_LOCK')) {
+                if (++$attempts <= 4) throw new RuntimeException('temporary release failure');
+                $held = false;
+                return '1';
+            }
+            return '1';
+        };
+        $lock = new \Voelgoed\PlatformCore\Person\PersonRelationshipSourceLock();
+        vgpc_test_true($lock->acquire(590), 'Expected indexer source lock acquisition.');
+        $lock->release(590);
+        vgpc_test_true($lock->release_pending(590), 'Two active release failures must retain the lock for cleanup.');
+
+        $shutdown = new class {
+            private array $callbacks = [];
+            public function add(callable $callback, int $priority): void { $this->callbacks[$priority][] = $callback; ksort($this->callbacks, SORT_NUMERIC); }
+            public function run(): void { foreach ($this->callbacks as $callbacks) foreach ($callbacks as $callback) $callback(); }
+        };
+        $late_priority_retry = false;
+        $shutdown->add(static function () use ($lock, $shutdown, &$late_priority_retry): void {
+            $lock->release_all();
+            $shutdown->add(static function () use (&$late_priority_retry): void { $late_priority_retry = true; }, PHP_INT_MAX - 1);
+        }, PHP_INT_MAX);
+        $shutdown->run();
+        vgpc_test_true(! $late_priority_retry, 'WP_Hook must skip a callback added at an already-passed priority.');
+        vgpc_test_true($lock->release_pending(590), 'The max-priority hook failure must leave the lock tracked.');
+
+        // The registered PHP shutdown function runs after WordPress's shutdown hook.
+        $lock->release_all();
+        vgpc_test_same(5, $attempts, 'Post-hook cleanup must retry the tracked release once.');
+        vgpc_test_true(! $held, 'Post-hook cleanup must release the held indexer lock.');
+        $GLOBALS['wpdb']->get_var_handler = null;
+    }
+
     public function test_repository_rejects_malformed_rows_and_fails_closed_when_table_unavailable(): void
     {
         $schema = new \Voelgoed\PlatformCore\Person\PersonRelationshipSchema();

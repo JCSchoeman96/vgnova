@@ -294,15 +294,10 @@ final class PersonRelationshipAdmin
 
         // Core writes post_status before ACF's independent field writes. Check
         // every old/new field combination while the source lock is held.
-        $submitted_fields = [];
-        if ($this->request_post_id() === $post_id && isset($_POST['acf']) && is_array($_POST['acf'])) {
-            foreach (PersonRelationshipContract::allowed_roles($source_type) as $role) {
-                $field_key = self::FIELD_KEYS[$role];
-                if (array_key_exists($field_key, $_POST['acf'])) {
-                    $submitted_fields[$role] = $_POST['acf'][$field_key];
-                }
-            }
-        }
+        // ACF accepts a missing/zero post_ID for every save_post callback.
+        // Bind a positive post_ID exactly, and otherwise preflight the payload
+        // for each supported source WordPress may save in this request.
+        $submitted_fields = $this->submitted_relationship_fields($source_type, $post_id);
         if ($current_type !== $source_type && PersonRelationshipContract::supported_source_type($current_type)) {
             // Validate the old source projection before interpreting target-type fields.
             $old_type_result = $this->validator->validate_publish_partial_write_safety($post_id, [], $current_type);
@@ -392,9 +387,8 @@ final class PersonRelationshipAdmin
     private function submitted_relationship_fields(string $source_type, int $source_id): array
     {
         $submitted = [];
-        // ACF_Form_Post::allow_save_post() accepts post_ID when it is missing
-        // or zero. In that case acf/save_post still receives the actual post
-        // ID from save_post and persists the payload against that ID.
+        // ACF_Form_Post::allow_save_post() checks only post_ID. It accepts a
+        // missing/zero value and then saves against each actual save_post ID.
         $request_post_id = $this->request_post_id();
         if ($request_post_id > 0 && $request_post_id !== $source_id) return $submitted;
         if (! isset($_POST['acf']) || ! is_array($_POST['acf'])) return $submitted;
@@ -706,7 +700,7 @@ final class PersonRelationshipAdmin
 
     private function request_post_id(): int
     {
-        return $this->normalize_id($_POST['post_ID'] ?? $_POST['_acf_post_id'] ?? 0);
+        return $this->normalize_id($_POST['post_ID'] ?? 0);
     }
 
     private function validate_projection(array $projection, string $status): true|\WP_Error
