@@ -210,6 +210,38 @@ final class PersonRelationshipAdminTest
         vgpc_test_same(716, get_field('primary_author', 715, false), 'Preflight must not rewrite stored ACF authority.');
     }
 
+    public function test_editor_publish_rejects_unsafe_partial_role_move_before_post_write(): void
+    {
+        $admin = $this->admin();
+        $admin->register();
+        $this->source_and_people(740, 'publish', [741]);
+        $GLOBALS['vgpc_test_posts'][741]->post_status = 'publish';
+        update_field('primary_author', 741, 740);
+        $_POST = ['post_ID' => 740, 'post_status' => 'publish', 'acf' => [
+            'field_vg_article_primary_author' => null,
+            'field_vg_article_expert_contributors' => [741],
+        ]];
+        try {
+            apply_filters('wp_insert_post_data', ['ID' => 740, 'post_type' => 'post', 'post_status' => 'publish'], ['ID' => 740]);
+            throw new RuntimeException('An unsafe partial role move must fail before WordPress writes the post.');
+        } catch (RuntimeException $error) {
+            vgpc_test_true(str_contains($error->getMessage(), 'possible partial relationship save'), 'The partial-state validator must reject the cross-role overlap.');
+        }
+        vgpc_test_same(741, get_field('primary_author', 740, false), 'Rejected preflight must leave persisted ACF data unchanged.');
+    }
+
+    public function test_invalid_published_source_can_demote_without_publish_subset_validation(): void
+    {
+        $admin = $this->admin();
+        $admin->register();
+        $this->source_and_people(742, 'publish', [743]);
+        update_field('primary_author', 743, 742);
+        update_field('additional_authors', [743], 742);
+        $_POST = ['post_ID' => 742, 'post_status' => 'draft', 'acf' => []];
+        $data = ['ID' => 742, 'post_type' => 'post', 'post_status' => 'draft'];
+        vgpc_test_same($data, apply_filters('wp_insert_post_data', $data, ['ID' => 742]), 'Demotion must proceed so the source can be repaired.');
+    }
+
     public function test_acf_validation_failure_after_core_write_leaves_only_valid_stored_relationship_published(): void
     {
         $admin = $this->admin();
@@ -256,7 +288,7 @@ final class PersonRelationshipAdminTest
         vgpc_test_same([732], get_field('additional_authors', 731, false), 'The submitted repair must not be partially applied by preflight.');
     }
 
-    public function test_acf_field_write_failure_can_leave_a_duplicate_after_valid_submission(): void
+    public function test_editor_preflight_rejects_a_role_swap_that_acf_could_persist_partially(): void
     {
         $admin = $this->admin();
         $admin->register();
@@ -271,18 +303,14 @@ final class PersonRelationshipAdminTest
         ]];
 
         $data = ['ID' => 733, 'post_type' => 'post', 'post_status' => 'publish'];
-        vgpc_test_same($data, apply_filters('wp_insert_post_data', $data, ['ID' => 733]), 'The old and submitted complete projections are both valid.');
-        $admin->validate_actual_acf_save(733);
-        // ACF validates the submitted fields before its save loop, then writes
-        // each field independently. Model the first successful update and a
-        // later per-field persistence failure, without a cross-field rollback.
-        update_field('primary_author', 735, 733);
-        $projection = (new PersonRelationshipSourceReader())->read(733);
-        vgpc_test_true(is_array($projection), 'The first independently persisted ACF field must be readable.');
-        $partial = (new PersonRelationshipValidator())->validate_projection($projection, 'publish');
-        vgpc_test_true(is_wp_error($partial), 'A later ACF field write failure can leave the published stored projection invalid.');
-        vgpc_test_same(735, get_field('primary_author', 733, false), 'The successful first field write remains authoritative.');
-        vgpc_test_same([735], get_field('additional_authors', 733, false), 'The failed later field retains its prior value and creates a cross-role duplicate.');
+        try {
+            apply_filters('wp_insert_post_data', $data, ['ID' => 733]);
+            throw new RuntimeException('A possible partial ACF write must be rejected before WordPress saves the post.');
+        } catch (RuntimeException $error) {
+            vgpc_test_true(str_contains($error->getMessage(), 'possible partial relationship save'), 'The old/new subset overlap must cause rejection.');
+        }
+        vgpc_test_same(734, get_field('primary_author', 733, false), 'Preflight must leave the old primary author in place.');
+        vgpc_test_same([735], get_field('additional_authors', 733, false), 'Preflight must leave the old additional authors in place.');
         $admin->release_source_write_lock(733);
     }
 

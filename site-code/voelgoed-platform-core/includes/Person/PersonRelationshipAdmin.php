@@ -192,25 +192,31 @@ final class PersonRelationshipAdmin
             return $data;
         }
 
-        // Core writes post_status before ACF validates or persists submitted fields.
-        // Publication preflight must therefore validate the persisted authority.
-        $projection = $this->projection_for_source($post_id, [], $source_type, false);
-        if (is_wp_error($projection)) {
-            wp_die($projection->get_error_message(), 'Person relationship validation failed', ['response' => 400]);
+        // A new post has no persisted source for the partial-write validator
+        // to reread. Preserve the existing submitted-projection validation.
+        if ($post_id < 1) {
+            $projection = $this->projection_for_source(0, [], $source_type);
+            $result = is_wp_error($projection) ? $projection : $this->validate_projection($projection, 'publish');
+            if (is_wp_error($result)) {
+                wp_die($result->get_error_message(), 'Person relationship validation failed', ['response' => 400]);
+            }
+            return $data;
         }
-        $result = $this->validate_projection($projection, 'publish');
+
+        // Core writes post_status before ACF's independent field writes. Check
+        // every old/new field combination while the source lock is held.
+        $submitted_fields = [];
+        if (isset($_POST['acf']) && is_array($_POST['acf'])) {
+            foreach (PersonRelationshipContract::allowed_roles($source_type) as $role) {
+                $field_key = self::FIELD_KEYS[$role];
+                if (array_key_exists($field_key, $_POST['acf'])) {
+                    $submitted_fields[$role] = $_POST['acf'][$field_key];
+                }
+            }
+        }
+        $result = $this->validator->validate_publish_partial_write_safety($post_id, $submitted_fields);
         if (is_wp_error($result)) {
             wp_die($result->get_error_message(), 'Person relationship validation failed', ['response' => 400]);
-        }
-        if (isset($_POST['acf']) && is_array($_POST['acf'])) {
-            $submitted_projection = $this->projection_for_source($post_id, [], $source_type);
-            if (is_wp_error($submitted_projection)) {
-                wp_die($submitted_projection->get_error_message(), 'Person relationship validation failed', ['response' => 400]);
-            }
-            $submitted_result = $this->validate_projection($submitted_projection, 'publish');
-            if (is_wp_error($submitted_result)) {
-                wp_die($submitted_result->get_error_message(), 'Person relationship validation failed', ['response' => 400]);
-            }
         }
         return $data;
     }
