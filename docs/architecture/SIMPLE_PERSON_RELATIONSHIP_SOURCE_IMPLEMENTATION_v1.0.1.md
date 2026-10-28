@@ -4,7 +4,7 @@
 **Status:** Complete in source; runtime activation has not started
 **Historical source verification commit:** `5c879918e403ec0d8fbc6b70e92668c789d5d526`
 **Evidence commit:** Recorded in Git history. This document does not embed its own commit SHA.
-**Publication-validity authority:** [Architecture amendment v0.1.1](../superpowers/specs/2026-10-27-simple-person-relationship-architecture-amendment_v0.1.1.md)
+**Publication-validity authority:** [Architecture amendment v0.1.2](../superpowers/specs/2026-10-27-simple-person-relationship-architecture-amendment_v0.1.2.md)
 
 ## State
 
@@ -33,13 +33,13 @@ Ordinary editor-save projection remains an application writer with a narrow, rev
 
 ## Publication validity
 
-Architecture amendment v0.1.1 supersedes only the publication-validity wording in design v0.1.0. Platform Core guarantees pre-publication Person relationship validation on supported Voelgoed publication paths: normal editor saves, supported REST/API updates, Platform Core-governed scheduled publication, and repository-owned Platform Core publication operations. Invalid Article/Course Person relationships must block publication on those paths.
+Architecture amendment v0.1.2 supersedes the supported editor-save publication-validity mechanics in v0.1.0/v0.1.1 only. On supported editor saves that leave a source published, the pre-write validator checks the fresh persisted projection, the submitted final projection, and every old/new combination of changed governed fields. This supports publication-valid partial writes if ACF later fails to persist some submitted fields; it does not make ACF persistence atomic. The amendment also preserves the v0.1.1 pre-publication validation requirement for supported REST/API updates, Platform Core-governed scheduled publication, and repository-owned Platform Core publication operations.
 
 Repository-owned production code must not call `wp_publish_post()` directly for governed Articles or Courses unless an approved pre-publication validation boundary has run. Unsupported low-level direct publication bypasses cannot be claimed to have a pre-write veto. If Platform Core observes an invalid governed Article/Course transition into `publish`, it logs a sanitized high-severity diagnostic, marks the source dirty, and makes reverse consumers fail safely. It does not undo the write or rewrite authoritative ACF relationships. No global SQL interception is used.
 
 ## Task D source verification
 
-Task D aligns the source evidence with architecture amendment v0.1.1. Focused tests exercise the supported editor pre-save validator and the scheduled publication gate. The low-level bypass fixture begins with `post_status = publish`; its detector test confirms the status stays published, reports the integrity violation, persists the dirty marker, and leaves authoritative ACF relationships unchanged. A source test scans Platform Core production includes and rejects registration of the global WordPress `query` filter. The separate publication source policy test rejects `wp_publish_post()` references in repository-owned production PHP, including dynamic-dispatch forms, while excluding tests and vendor code.
+Task D source evidence covers the editor pre-save validator and scheduled publication gate. Architecture amendment v0.1.2 defines the editor-save guarantee as publication-valid partial-write safety, not atomic ACF persistence. The low-level bypass fixture begins with `post_status = publish`; its detector test confirms the status stays published, reports the integrity violation, persists the dirty marker, and leaves authoritative ACF relationships unchanged. A source test scans Platform Core production includes and rejects registration of the global WordPress `query` filter. The separate publication source policy test rejects `wp_publish_post()` references in repository-owned production PHP, including dynamic-dispatch forms, while excluding tests and vendor code.
 
 The aggregate `php site-code/voelgoed-platform-core/tests/run-person-relationship-tests.php` run passed 84 test records. `php site-code/bin/tests/test-person-publication-source-policy.php` passed, and `php site-code/bin/check-person-publication-source.php` scanned 80 repository-owned production PHP files successfully. These are source-level checks only. They do not establish live WordPress runtime behavior or universal prevention of unsupported low-level publication.
 
