@@ -12,6 +12,8 @@ final class PersonRelationshipAdmin
     private PersonRelationshipSourceLock $writer_lock;
     private int $locked_source_id = 0;
     private int $future_publish_lock_source_id = 0;
+    /** @var array<int, string> Source type observed before a supported post save. */
+    private array $pending_source_type_changes = [];
     /** @var array<int, true> */
     private array $reported_publish_violations = [];
     /** @var array<int, string> */
@@ -50,6 +52,7 @@ final class PersonRelationshipAdmin
             add_filter('acf/validate_value/key=' . $field_key, fn (mixed $valid, mixed $value, array $field, string $input_name): mixed => $this->validate_field($valid, $value, $field, $input_name, $role), 10, 4);
         }
         add_filter('wp_insert_post_data', [$this, 'validate_source_before_save'], 10, 2);
+        add_action('wp_after_insert_post', [$this, 'mark_source_type_transition_dirty'], 1000, 4);
         // WordPress fires this after the status write. It detects unsupported
         // low-level publication bypasses; supported writes remain prevalidated.
         add_action('transition_post_status', [$this, 'detect_invalid_published_source'], 1000, 3);
@@ -70,6 +73,29 @@ final class PersonRelationshipAdmin
         add_action('deleted_post', [$this, 'retry_delete_cleanup_after_meta_removal'], 10, 2);
         add_action('admin_notices', [$this, 'render_projection_failure_notice']);
         add_filter(self::FUTURE_PUBLISH_FILTER, [$this, 'future_post_can_publish'], 10, 3);
+    }
+
+    /** Mark the derived index for recovery after WordPress persists a source type change. */
+    public function mark_source_type_transition_dirty(mixed $post_id, mixed $post, mixed $update, mixed $post_before): void
+    {
+        $post_id = $this->normalize_id($post_id);
+        if ($post_id < 1 || ! isset($this->pending_source_type_changes[$post_id])) return;
+        $old_type = $this->pending_source_type_changes[$post_id];
+        unset($this->pending_source_type_changes[$post_id]);
+
+        $current = get_post($post_id);
+        $current_type = is_object($current) ? (string) ($current->post_type ?? '') : '';
+        if ($current_type === $old_type) return;
+        $marker_saved = update_post_meta($post_id, PersonRelationshipContract::DIRTY_META_KEY, 1);
+        if (! $marker_saved && (string) get_post_meta($post_id, PersonRelationshipContract::DIRTY_META_KEY, true) !== '1') {
+            $this->release_source_write_lock($post_id);
+            $recovery = PersonRelationshipContract::supported_source_type($current_type)
+                ? $this->indexer->rebuild_source($post_id)
+                : $this->indexer->remove_stale_source($post_id);
+            if (is_wp_error($recovery)) {
+                error_log(sprintf('Person relationship index transition recovery failed for post %d (%s to %s, %s).', $post_id, $old_type, $current_type, $recovery->get_error_code()));
+            }
+        }
     }
 
     /** Queue a post-transition check for a supported source. */
@@ -202,6 +228,11 @@ final class PersonRelationshipAdmin
 
         if ($post_id > 0 && ! $this->acquire_source_write_lock($post_id)) {
             wp_die('This source is being edited by another request. Retry the save.', 'Person relationship validation failed', ['response' => 409]);
+        }
+        if ($post_id > 0 && $current_type !== $source_type
+            && (PersonRelationshipContract::supported_source_type($current_type) || PersonRelationshipContract::supported_source_type($source_type))
+        ) {
+            $this->pending_source_type_changes[$post_id] = $current_type;
         }
         $this->flush_source_field_caches($post_id, $source_type);
         if (! PersonRelationshipContract::supported_source_type($source_type) || ! in_array($status, ['publish', 'future'], true)) {

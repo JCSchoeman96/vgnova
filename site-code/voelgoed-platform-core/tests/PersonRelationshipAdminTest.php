@@ -8,6 +8,7 @@ use Voelgoed\PlatformCore\Person\PersonRelationshipRepository;
 use Voelgoed\PlatformCore\Person\PersonRelationshipSchema;
 use Voelgoed\PlatformCore\Person\PersonRelationshipSourceLock;
 use Voelgoed\PlatformCore\Person\PersonRelationshipSourceReader;
+use Voelgoed\PlatformCore\Person\PersonRelationshipService;
 use Voelgoed\PlatformCore\Person\PersonRelationshipValidator;
 use Voelgoed\PlatformCore\Product\ProductContributionAdmin;
 
@@ -308,6 +309,27 @@ final class PersonRelationshipAdminTest
         $publish = ['ID' => 757, 'post_type' => 'post', 'post_status' => 'publish'];
         vgpc_test_same($publish, apply_filters('wp_insert_post_data', $publish, ['ID' => 757]), 'The repaired relationship state must pass the normal publish preflight.');
         $admin->release_source_write_lock(757);
+    }
+
+    public function test_status_only_editor_demotion_ignores_malformed_omitted_relationships(): void
+    {
+        $admin = $this->admin();
+        $admin->register();
+        $this->source_and_people(7590, 'publish', [7591]);
+        update_field('primary_author', 7591, 7590);
+        update_field('additional_authors', 'malformed-stored-value', 7590);
+        $GLOBALS['vgpc_test_apply_wp_update_filter'] = true;
+        $GLOBALS['vgpc_test_wp_update_post_hooks'] = true;
+        $_POST = ['post_ID' => 7590, 'post_status' => 'draft', 'acf' => [
+            'field_vg_article_primary_author' => 7591,
+        ]];
+
+        vgpc_test_same(7590, wp_update_post(['ID' => 7590, 'post_status' => 'draft'], true), 'The WordPress status write must finish before ACF processes the demotion payload.');
+        do_action('acf/save_post', 7590);
+        vgpc_test_same('malformed-stored-value', get_field('additional_authors', 7590, false), 'Demotion must leave malformed omitted relationships untouched.');
+        vgpc_test_same(7591, get_field('primary_author', 7590, false), 'An unchanged submitted primary author must remain untouched.');
+        vgpc_test_same('1', (string) get_post_meta(7590, PersonRelationshipContract::DIRTY_META_KEY, true), 'Demotion must leave the derived index marked for recovery.');
+        $admin->release_source_write_lock(7590);
     }
 
     public function test_changed_invalid_relationships_do_not_use_the_unchanged_demotion_exception(): void
@@ -696,15 +718,55 @@ final class PersonRelationshipAdminTest
             return '1';
         };
 
-        $data = ['ID' => 114, 'post_type' => 'page', 'post_status' => 'draft'];
-        vgpc_test_same($data, apply_filters('wp_insert_post_data', $data, ['ID' => 114]), 'A source type transition must pass while holding its source lock.');
+        $GLOBALS['vgpc_test_apply_wp_update_filter'] = true;
+        $GLOBALS['vgpc_test_wp_update_post_hooks'] = true;
+        $GLOBALS['vgpc_test_meta'][114][PersonRelationshipContract::DIRTY_META_KEY] = '0';
+        vgpc_test_same(114, wp_update_post(['ID' => 114, 'post_type' => 'page', 'post_status' => 'draft'], true), 'The supported WordPress API must save the source type transition.');
+        vgpc_test_same('page', get_post_type(114), 'The transition hook must observe the post type WordPress actually persisted.');
+        vgpc_test_same('1', (string) get_post_meta(114, PersonRelationshipContract::DIRTY_META_KEY, true), 'The post-save transition hook must mark the old index for recovery.');
         $cleanup = $this->indexer()->remove_stale_source(114);
         vgpc_test_true(is_wp_error($cleanup) && $cleanup->get_error_code() === 'source_lock_failed', 'Anomaly cleanup must wait while the source type transition owns the lock.');
 
-        $GLOBALS['vgpc_test_posts'][114]->post_type = 'page';
         do_action('shutdown');
+        $GLOBALS['wpdb']->get_col_handler = static fn (): array => [114];
+        $service = new PersonRelationshipService(new PersonRelationshipSourceReader(), new PersonRelationshipValidator(), new PersonRelationshipRepository(new PersonRelationshipSchema()));
+        vgpc_test_same([], $service->articles_for_person(115), 'Reverse Article queries must suppress stale rows after the actual type change.');
+        vgpc_test_same([], $service->courses_for_person(115), 'Reverse Course queries must suppress rows until reconciliation rebuilds them.');
         $cleanup = $this->indexer()->remove_stale_source(114);
         vgpc_test_same(true, $cleanup, 'After the transition finishes, cleanup may recheck and remove rows for the unsupported source.');
+    }
+
+    public function test_supported_wordpress_type_transition_marks_dirty_and_reverse_query_uses_current_type(): void
+    {
+        $admin = $this->admin();
+        $admin->register();
+        $this->source_and_people(116, 'publish', [117], 'post');
+        $GLOBALS['vgpc_test_posts'][117]->post_status = 'publish';
+        update_field('primary_author', 117, 116);
+        update_field('lead_instructor', 117, 116);
+        $GLOBALS['vgpc_test_options'][PersonRelationshipSchema::VERSION_OPTION] = PersonRelationshipSchema::SCHEMA_VERSION;
+        $GLOBALS['vgpc_test_apply_wp_update_filter'] = true;
+        $GLOBALS['vgpc_test_wp_update_post_hooks'] = true;
+        $GLOBALS['wpdb']->get_var_handler = static function (string $query): string {
+            if (str_contains($query, 'SHOW TABLES')) return 'wp_vg_person_relationship_index';
+            return '1';
+        };
+        vgpc_test_same(116, wp_update_post(['ID' => 116, 'post_type' => 'mto-course', 'post_status' => 'publish'], true), 'WordPress must persist a supported source type transition without an ACF payload.');
+        vgpc_test_same('mto-course', get_post_type(116), 'The saved post must expose its current source type.');
+        vgpc_test_same('1', (string) get_post_meta(116, PersonRelationshipContract::DIRTY_META_KEY, true), 'The transitioned source must remain hidden until its index is rebuilt.');
+
+        $queried_types = [];
+        $GLOBALS['wpdb']->get_col_handler = static function (string $query, array $args) use (&$queried_types): array {
+            $queried_types[] = $args[1] ?? null;
+            return [116];
+        };
+        $service = new PersonRelationshipService(new PersonRelationshipSourceReader(), new PersonRelationshipValidator(), new PersonRelationshipRepository(new PersonRelationshipSchema()));
+        vgpc_test_same([], $service->articles_for_person(117), 'Article reverse results must disappear after the actual transition.');
+        vgpc_test_same([], $service->courses_for_person(117), 'Dirty Course reverse results must remain hidden until rebuild.');
+        delete_post_meta(116, PersonRelationshipContract::DIRTY_META_KEY);
+        vgpc_test_same([116], $service->courses_for_person(117), 'A rebuilt current-type index row must be visible through Course reverse queries.');
+        vgpc_test_true(in_array('mto-course', $queried_types, true), 'Reverse lookup must query using the source post type WordPress persisted.');
+        do_action('shutdown');
     }
 
     public function test_scheduled_publish_filter_blocks_invalid_and_allows_valid_sources(): void

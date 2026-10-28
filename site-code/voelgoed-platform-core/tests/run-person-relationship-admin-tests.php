@@ -4,7 +4,7 @@ require_once __DIR__ . '/bootstrap.php';
 foreach ([
     'PersonRelationshipContract', 'PersonRelationshipSchema', 'PersonRelationshipSourceLock',
     'PersonRelationshipRepository', 'PersonRelationshipSourceReader', 'PersonRelationshipValidator',
-    'PersonRelationshipIndexer', 'PersonRelationshipAdmin',
+    'PersonRelationshipIndexer', 'PersonRelationshipService', 'PersonRelationshipAdmin',
 ] as $class) {
     require_once __DIR__ . '/../includes/Person/' . $class . '.php';
 }

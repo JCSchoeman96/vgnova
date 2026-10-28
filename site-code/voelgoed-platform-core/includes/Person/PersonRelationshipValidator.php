@@ -17,22 +17,14 @@ final class PersonRelationshipValidator
         if (! PersonRelationshipContract::supported_source_type($source_type)) {
             return new \WP_Error('unsupported_source', 'The source post type has no approved Person relationship contract.');
         }
-        if (function_exists('acf_flush_value_cache')) {
-            foreach (PersonRelationshipContract::allowed_roles($source_type) as $role) acf_flush_value_cache($source_post_id, $role);
-        }
-        $projection = (new PersonRelationshipSourceReader())->read_for_source_type($source_post_id, $source_type);
-        if (is_wp_error($projection)) return $projection;
-
-        $persisted = array_fill_keys(PersonRelationshipContract::allowed_roles($source_type), []);
-        foreach ($projection['relationships'] as $row) $persisted[$row['role_key']][] = $row['person_id'];
-        foreach (['primary_author', 'lead_instructor'] as $single_role) {
-            if (isset($persisted[$single_role])) $persisted[$single_role] = $persisted[$single_role][0] ?? null;
-        }
         foreach ($submitted_fields as $role => $value) {
-            if (! is_string($role) || ! array_key_exists($role, $persisted)) return false;
+            if (! is_string($role) || ! in_array($role, PersonRelationshipContract::allowed_roles($source_type), true)) return false;
+            if (function_exists('acf_flush_value_cache')) acf_flush_value_cache($source_post_id, $role);
             $normalized = $this->normalize_submitted_role($role, $value);
             if (is_wp_error($normalized)) return $normalized;
-            if ($normalized !== $persisted[$role]) return false;
+            $stored_value = get_field($role, $source_post_id, false);
+            $persisted = $this->normalize_submitted_role($role, $stored_value);
+            if (is_wp_error($persisted) || $normalized !== $persisted) return false;
         }
         return true;
     }
