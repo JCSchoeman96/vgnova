@@ -64,13 +64,15 @@ final class PersonRelationshipRepository
         try { $rows = $wpdb->get_results($wpdb->prepare($sql, $source_post_id), ARRAY_A); }
         catch (\Throwable) { return new \WP_Error('index_read_failed', 'Could not inspect indexed source type.'); }
         if (! is_array($rows) || (string) ($wpdb->last_error ?? '') !== '') return new \WP_Error('index_read_failed', 'Could not inspect indexed source type.');
-        $row = $rows[0] ?? null;
-        if ($row === null) return null;
-        if (! is_array($row)) return new \WP_Error('index_read_failed', 'Could not inspect indexed source type.');
-        $stored = (string) ($row['source_post_type'] ?? '');
-        $current = isset($row['current_post_type']) ? (string) $row['current_post_type'] : null;
-        if ($current !== null && $stored === $current) return null;
-        return ['source_post_id' => $source_post_id, 'source_post_type' => $stored, 'current_post_type' => $current];
+        foreach ($rows as $row) {
+            if (! is_array($row)) return new \WP_Error('index_read_failed', 'Could not inspect indexed source type.');
+            $stored = (string) ($row['source_post_type'] ?? '');
+            $current = isset($row['current_post_type']) ? (string) $row['current_post_type'] : null;
+            if ($current === null || ! PersonRelationshipContract::supported_source_type($current) || $stored !== $current) {
+                return ['source_post_id' => $source_post_id, 'source_post_type' => $stored, 'current_post_type' => $current];
+            }
+        }
+        return null;
     }
 
     public function source_ids_for_person(int $person_id, string $source_post_type, array $role_keys = []): array

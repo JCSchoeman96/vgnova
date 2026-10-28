@@ -50,6 +50,8 @@ final class PersonRelationshipAdminTest
             vgpc_test_true(isset($GLOBALS['vgpc_test_filters']['acf/validate_value/key=' . $key]), 'Every approved field key must have validation.');
         }
         vgpc_test_true(isset($GLOBALS['vgpc_test_filters']['wp_insert_post_data']), 'Source publication must be checked before save.');
+        vgpc_test_true(isset($GLOBALS['vgpc_test_actions']['save_post']), 'Supported source type transitions must recover when wp_after_insert_post is suppressed.');
+        vgpc_test_true(isset($GLOBALS['vgpc_test_actions']['wp_after_insert_post']), 'The post-insert transition callback must remain registered as a fallback.');
         vgpc_test_true(isset($GLOBALS['vgpc_test_actions']['acf/save_post']), 'ACF saves must project at priority 20.');
         vgpc_test_same(1, min(array_column($GLOBALS['vgpc_test_actions']['acf/save_post'], 'priority')), 'Actual ACF saves must validate before ACF writes its fields.');
         vgpc_test_true(isset($GLOBALS['vgpc_test_actions']['shutdown']), 'Source write locks must release after editor and REST persistence has completed.');
@@ -705,7 +707,7 @@ final class PersonRelationshipAdminTest
         vgpc_test_same([], $GLOBALS['vgpc_test_meta'][112] ?? [], 'Invalid draft data must stop before ACF field persistence.');
     }
 
-    public function test_source_type_change_serializes_anomaly_cleanup_until_after_insert(): void
+    public function test_source_type_change_keeps_dirty_state_when_projection_cannot_acquire_lock(): void
     {
         $admin = $this->admin();
         $admin->register();
@@ -725,7 +727,7 @@ final class PersonRelationshipAdminTest
         vgpc_test_same('page', get_post_type(114), 'The transition hook must observe the post type WordPress actually persisted.');
         vgpc_test_same('1', (string) get_post_meta(114, PersonRelationshipContract::DIRTY_META_KEY, true), 'The post-save transition hook must mark the old index for recovery.');
         $cleanup = $this->indexer()->remove_stale_source(114);
-        vgpc_test_true(is_wp_error($cleanup) && $cleanup->get_error_code() === 'source_lock_failed', 'Anomaly cleanup must wait while the source type transition owns the lock.');
+        vgpc_test_same(true, $cleanup, 'A failed transition projection must release its writer lock so reconciliation can retry.');
 
         do_action('shutdown');
         $GLOBALS['wpdb']->get_col_handler = static fn (): array => [114];
@@ -733,7 +735,7 @@ final class PersonRelationshipAdminTest
         vgpc_test_same([], $service->articles_for_person(115), 'Reverse Article queries must suppress stale rows after the actual type change.');
         vgpc_test_same([], $service->courses_for_person(115), 'Reverse Course queries must suppress rows until reconciliation rebuilds them.');
         $cleanup = $this->indexer()->remove_stale_source(114);
-        vgpc_test_same(true, $cleanup, 'After the transition finishes, cleanup may recheck and remove rows for the unsupported source.');
+        vgpc_test_same(true, $cleanup, 'Repeated cleanup remains safe after the unsupported source has no index rows.');
     }
 
     public function test_supported_wordpress_type_transition_marks_dirty_and_reverse_query_uses_current_type(): void
@@ -747,13 +749,18 @@ final class PersonRelationshipAdminTest
         $GLOBALS['vgpc_test_options'][PersonRelationshipSchema::VERSION_OPTION] = PersonRelationshipSchema::SCHEMA_VERSION;
         $GLOBALS['vgpc_test_apply_wp_update_filter'] = true;
         $GLOBALS['vgpc_test_wp_update_post_hooks'] = true;
+        $GLOBALS['vgpc_test_suppress_after_insert_post'] = true;
+        $GLOBALS['wpdb']->fail_insert = false;
+        $GLOBALS['vgpc_test_wp_hook_order'] = [];
         $GLOBALS['wpdb']->get_var_handler = static function (string $query): string {
             if (str_contains($query, 'SHOW TABLES')) return 'wp_vg_person_relationship_index';
             return '1';
         };
         vgpc_test_same(116, wp_update_post(['ID' => 116, 'post_type' => 'mto-course', 'post_status' => 'publish'], true), 'WordPress must persist a supported source type transition without an ACF payload.');
         vgpc_test_same('mto-course', get_post_type(116), 'The saved post must expose its current source type.');
-        vgpc_test_same('1', (string) get_post_meta(116, PersonRelationshipContract::DIRTY_META_KEY, true), 'The transitioned source must remain hidden until its index is rebuilt.');
+        vgpc_test_same(['save_post'], $GLOBALS['vgpc_test_wp_hook_order'], 'save_post must handle the transition when fire_after_hooks suppresses wp_after_insert_post.');
+        vgpc_test_same('', (string) get_post_meta(116, PersonRelationshipContract::DIRTY_META_KEY, true), 'save_post must rebuild a supported transition when wp_after_insert_post is suppressed.');
+        vgpc_test_true(count(array_filter($GLOBALS['wpdb']->inserted, static fn (array $row): bool => ($row[1]['source_post_id'] ?? null) === 116 && ($row[1]['source_post_type'] ?? null) === 'mto-course')) > 0, 'The save_post transition path must project the target source type.');
 
         $queried_types = [];
         $GLOBALS['wpdb']->get_col_handler = static function (string $query, array $args) use (&$queried_types): array {
@@ -762,11 +769,50 @@ final class PersonRelationshipAdminTest
         };
         $service = new PersonRelationshipService(new PersonRelationshipSourceReader(), new PersonRelationshipValidator(), new PersonRelationshipRepository(new PersonRelationshipSchema()));
         vgpc_test_same([], $service->articles_for_person(117), 'Article reverse results must disappear after the actual transition.');
-        vgpc_test_same([], $service->courses_for_person(117), 'Dirty Course reverse results must remain hidden until rebuild.');
-        delete_post_meta(116, PersonRelationshipContract::DIRTY_META_KEY);
-        vgpc_test_same([116], $service->courses_for_person(117), 'A rebuilt current-type index row must be visible through Course reverse queries.');
+        vgpc_test_same([116], $service->courses_for_person(117), 'The rebuilt current-type index row must be visible through Course reverse queries.');
         vgpc_test_true(in_array('mto-course', $queried_types, true), 'Reverse lookup must query using the source post type WordPress persisted.');
         do_action('shutdown');
+    }
+
+    public function test_type_transition_projection_failure_keeps_the_dirty_marker(): void
+    {
+        $admin = $this->admin();
+        $admin->register();
+        $this->source_and_people(118, 'draft', [119], 'post');
+        $GLOBALS['vgpc_test_meta'][118]['primary_author'] = 119;
+        $GLOBALS['vgpc_test_meta'][118]['lead_instructor'] = 119;
+        $GLOBALS['vgpc_test_posts'][119]->post_status = 'publish';
+        $GLOBALS['vgpc_test_options'][PersonRelationshipSchema::VERSION_OPTION] = PersonRelationshipSchema::SCHEMA_VERSION;
+        $GLOBALS['vgpc_test_apply_wp_update_filter'] = true;
+        $GLOBALS['vgpc_test_wp_update_post_hooks'] = true;
+        unset($GLOBALS['vgpc_test_suppress_after_insert_post']);
+        $GLOBALS['wpdb']->fail_insert = false;
+        $GLOBALS['wpdb']->fail_insert = true;
+        $GLOBALS['wpdb']->get_var_handler = static fn (string $query): string => str_contains($query, 'SHOW TABLES') ? 'wp_vg_person_relationship_index' : '1';
+
+        vgpc_test_same(118, wp_update_post(['ID' => 118, 'post_type' => 'mto-course'], true), 'WordPress must persist the supported type transition.');
+        vgpc_test_same('1', (string) get_post_meta(118, PersonRelationshipContract::DIRTY_META_KEY, true), 'A failed projection must retain dirty state after the source type changes.');
+    }
+
+    public function test_wp_after_insert_does_not_redirty_a_fresh_save_post_projection(): void
+    {
+        $admin = $this->admin();
+        $admin->register();
+        $this->source_and_people(120, 'draft', [121], 'post');
+        $GLOBALS['vgpc_test_meta'][120]['primary_author'] = 121;
+        $GLOBALS['vgpc_test_meta'][120]['lead_instructor'] = 121;
+        $GLOBALS['vgpc_test_posts'][121]->post_status = 'publish';
+        $GLOBALS['vgpc_test_options'][PersonRelationshipSchema::VERSION_OPTION] = PersonRelationshipSchema::SCHEMA_VERSION;
+        $GLOBALS['vgpc_test_apply_wp_update_filter'] = true;
+        $GLOBALS['vgpc_test_wp_update_post_hooks'] = true;
+        $GLOBALS['vgpc_test_wp_hook_order'] = [];
+        $GLOBALS['vgpc_test_acf_save_during_core_save'] = true;
+        $GLOBALS['wpdb']->get_var_handler = static fn (string $query): string => str_contains($query, 'SHOW TABLES') ? 'wp_vg_person_relationship_index' : '1';
+
+        vgpc_test_same(120, wp_update_post(['ID' => 120, 'post_type' => 'mto-course'], true), 'WordPress must persist the source type transition.');
+        vgpc_test_same(['save_post', 'acf/save_post', 'wp_after_insert_post'], $GLOBALS['vgpc_test_wp_hook_order'], 'ACF persistence must run during save_post before wp_after_insert_post.');
+        vgpc_test_same('', (string) get_post_meta(120, PersonRelationshipContract::DIRTY_META_KEY, true), 'wp_after_insert_post must not mark the successful save_post projection dirty again.');
+        unset($GLOBALS['vgpc_test_acf_save_during_core_save']);
     }
 
     public function test_scheduled_publish_filter_blocks_invalid_and_allows_valid_sources(): void

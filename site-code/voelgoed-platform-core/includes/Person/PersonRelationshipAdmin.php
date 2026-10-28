@@ -52,6 +52,7 @@ final class PersonRelationshipAdmin
             add_filter('acf/validate_value/key=' . $field_key, fn (mixed $valid, mixed $value, array $field, string $input_name): mixed => $this->validate_field($valid, $value, $field, $input_name, $role), 10, 4);
         }
         add_filter('wp_insert_post_data', [$this, 'validate_source_before_save'], 10, 2);
+        add_action('save_post', [$this, 'handle_source_type_transition_on_save'], 1000, 3);
         add_action('wp_after_insert_post', [$this, 'mark_source_type_transition_dirty'], 1000, 4);
         // WordPress fires this after the status write. It detects unsupported
         // low-level publication bypasses; supported writes remain prevalidated.
@@ -75,26 +76,39 @@ final class PersonRelationshipAdmin
         add_filter(self::FUTURE_PUBLISH_FILTER, [$this, 'future_post_can_publish'], 10, 3);
     }
 
-    /** Mark the derived index for recovery after WordPress persists a source type change. */
+    /** Fallback for environments that reach wp_after_insert_post without save_post handling. */
     public function mark_source_type_transition_dirty(mixed $post_id, mixed $post, mixed $update, mixed $post_before): void
+    {
+        $this->process_source_type_transition($post_id, $post);
+    }
+
+    /** save_post still fires when callers suppress wp_after_insert_post. */
+    public function handle_source_type_transition_on_save(mixed $post_id, mixed $post, mixed $update): void
+    {
+        $this->process_source_type_transition($post_id, $post);
+    }
+
+    private function process_source_type_transition(mixed $post_id, mixed $post): void
     {
         $post_id = $this->normalize_id($post_id);
         if ($post_id < 1 || ! isset($this->pending_source_type_changes[$post_id])) return;
         $old_type = $this->pending_source_type_changes[$post_id];
-        unset($this->pending_source_type_changes[$post_id]);
-
-        $current = get_post($post_id);
-        $current_type = is_object($current) ? (string) ($current->post_type ?? '') : '';
+        $current_type = is_object($post) ? (string) ($post->post_type ?? '') : (string) get_post_type($post_id);
         if ($current_type === $old_type) return;
+        // Mark before releasing the pre-write lock. The later wp_after_insert_post
+        // callback sees this transition consumed and cannot stale a fresh projection.
+        unset($this->pending_source_type_changes[$post_id]);
         $marker_saved = update_post_meta($post_id, PersonRelationshipContract::DIRTY_META_KEY, 1);
         if (! $marker_saved && (string) get_post_meta($post_id, PersonRelationshipContract::DIRTY_META_KEY, true) !== '1') {
+            $recovery = new \WP_Error('dirty_marker_persistence_failed', 'Could not mark the transitioned source dirty.');
+        } else {
             $this->release_source_write_lock($post_id);
             $recovery = PersonRelationshipContract::supported_source_type($current_type)
                 ? $this->indexer->rebuild_source($post_id)
                 : $this->indexer->remove_stale_source($post_id);
-            if (is_wp_error($recovery)) {
-                error_log(sprintf('Person relationship index transition recovery failed for post %d (%s to %s, %s).', $post_id, $old_type, $current_type, $recovery->get_error_code()));
-            }
+        }
+        if (is_wp_error($recovery)) {
+            error_log(sprintf('Person relationship index transition recovery failed for post %d (%s to %s, %s).', $post_id, $old_type, $current_type, $recovery->get_error_code()));
         }
     }
 

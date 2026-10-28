@@ -586,10 +586,19 @@ function wp_update_post(array $postarr, bool $wp_error = false): int|WP_Error
     }
     $GLOBALS['vgpc_test_update_post_calls'][] = $postarr;
     if (! empty($GLOBALS['vgpc_test_wp_update_post_hooks'])) {
+        $GLOBALS['vgpc_test_wp_hook_order'][] = 'save_post';
+        if (! empty($GLOBALS['vgpc_test_acf_save_during_core_save'])) {
+            $GLOBALS['vgpc_test_wp_hook_order'][] = 'acf/save_post';
+            do_action('acf/save_post', $post_id);
+        }
+        do_action('save_post', $post_id, $post, true);
         if ((string) ($before->post_status ?? '') !== (string) ($post->post_status ?? '')) {
             do_action('transition_post_status', (string) $post->post_status, (string) $before->post_status, $post);
         }
-        do_action('wp_after_insert_post', $post_id, $post, true, $before);
+        if (empty($GLOBALS['vgpc_test_suppress_after_insert_post'])) {
+            $GLOBALS['vgpc_test_wp_hook_order'][] = 'wp_after_insert_post';
+            do_action('wp_after_insert_post', $post_id, $post, true, $before);
+        }
     }
     if (! empty($GLOBALS['vgpc_test_acf_save_during_update'])) {
         $release_count_before = count(array_filter(

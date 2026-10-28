@@ -170,6 +170,27 @@ final class PersonRelationshipQueryTest
         vgpc_test_same([501, 502, 503], array_column($issues, 'source_post_id'), 'Global anomalies must retain the affected source IDs.');
     }
 
+    public function test_single_source_type_anomaly_checks_all_stored_type_rows_in_either_order(): void
+    {
+        $this->ready_schema();
+        $repository = new PersonRelationshipRepository(new PersonRelationshipSchema());
+        foreach ([
+            [
+                ['source_post_id' => 510, 'source_post_type' => 'post', 'current_post_type' => 'post'],
+                ['source_post_id' => 510, 'source_post_type' => 'mto-course', 'current_post_type' => 'post'],
+            ],
+            [
+                ['source_post_id' => 510, 'source_post_type' => 'mto-course', 'current_post_type' => 'post'],
+                ['source_post_id' => 510, 'source_post_type' => 'post', 'current_post_type' => 'post'],
+            ],
+        ] as $rows) {
+            $GLOBALS['wpdb']->get_results_handler = static fn (): array => $rows;
+            $anomaly = $repository->source_type_anomaly(510);
+            vgpc_test_true(is_array($anomaly), 'A mismatch in any stored source type row must be reported.');
+            vgpc_test_same('mto-course', $anomaly['source_post_type'], 'The mismatched row must be returned regardless of row order.');
+        }
+    }
+
     public function test_reconciler_returns_malformed_reader_errors_without_mislabeling_them_as_person_issues(): void
     {
         $this->register_fields();
