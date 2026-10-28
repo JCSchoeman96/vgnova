@@ -43,7 +43,7 @@ final class PersonRelationshipValidator
         }
         $persisted_source_type = (string) ($source->post_type ?? '');
         $source_type = $target_source_type ?? $persisted_source_type;
-        if (! PersonRelationshipContract::supported_source_type($persisted_source_type)) {
+        if ($target_source_type === null && ! PersonRelationshipContract::supported_source_type($persisted_source_type)) {
             return new \WP_Error('unsupported_source', 'The persisted source post type has no approved Person relationship contract.');
         }
         $roles = PersonRelationshipContract::allowed_roles($source_type);

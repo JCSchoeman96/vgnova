@@ -51,6 +51,7 @@ final class PersonRelationshipAdminTest
         }
         vgpc_test_true(isset($GLOBALS['vgpc_test_filters']['wp_insert_post_data']), 'Source publication must be checked before save.');
         vgpc_test_true(isset($GLOBALS['vgpc_test_actions']['save_post']), 'Supported source type transitions must recover when wp_after_insert_post is suppressed.');
+        vgpc_test_true(in_array(1001, array_column($GLOBALS['vgpc_test_actions']['save_post'], 'priority'), true), 'No-ACF post saves must release their source lock after the type-transition callback.');
         vgpc_test_true(isset($GLOBALS['vgpc_test_actions']['wp_after_insert_post']), 'The post-insert transition callback must remain registered as a fallback.');
         vgpc_test_true(isset($GLOBALS['vgpc_test_actions']['acf/save_post']), 'ACF saves must project at priority 20.');
         vgpc_test_same(1, min(array_column($GLOBALS['vgpc_test_actions']['acf/save_post'], 'priority')), 'Actual ACF saves must validate before ACF writes its fields.');
@@ -473,6 +474,113 @@ final class PersonRelationshipAdminTest
         $admin->release_source_write_lock(755);
     }
 
+    public function test_supported_type_entry_from_page_validates_target_projection(): void
+    {
+        $admin = $this->admin();
+        $admin->register();
+        $this->source_and_people(7560, 'page', [7561, 7562], 'page');
+        $lock_held = false;
+        $GLOBALS['wpdb']->get_var_handler = static function (string $query) use (&$lock_held): string {
+            if (str_contains($query, 'GET_LOCK')) { if ($lock_held) return '0'; $lock_held = true; return '1'; }
+            if (str_contains($query, 'RELEASE_LOCK')) { $lock_held = false; return '1'; }
+            return '1';
+        };
+        $GLOBALS['vgpc_test_posts'][7561]->post_status = 'publish';
+        $GLOBALS['vgpc_test_posts'][7562]->post_status = 'publish';
+        $_POST = ['acf' => ['field_vg_article_primary_author' => 7561]];
+        $data = ['ID' => 7560, 'post_type' => 'post', 'post_status' => 'publish'];
+        vgpc_test_same($data, apply_filters('wp_insert_post_data', $data, ['ID' => 7560]), 'Entering the Article contract from page must validate the target projection.');
+        $admin->release_source_write_lock(7560);
+
+        $GLOBALS['vgpc_test_posts'][7560]->post_type = 'page';
+        $_POST = ['acf' => ['field_vg_course_lead_instructor' => 7561]];
+        $data = ['ID' => 7560, 'post_type' => 'mto-course', 'post_status' => 'publish'];
+        vgpc_test_same($data, apply_filters('wp_insert_post_data', $data, ['ID' => 7560]), 'Entering the Course contract from page must validate the target projection.');
+        $admin->release_source_write_lock(7560);
+
+        $GLOBALS['vgpc_test_posts'][7562]->post_status = 'draft';
+        $_POST = ['acf' => ['field_vg_article_primary_author' => 7562]];
+        $data = ['ID' => 7560, 'post_type' => 'post', 'post_status' => 'publish'];
+        try {
+            apply_filters('wp_insert_post_data', $data, ['ID' => 7560]);
+            throw new RuntimeException('An unpublished target Person must reject the published source transition.');
+        } catch (RuntimeException $error) {
+            vgpc_test_true(str_contains($error->getMessage(), 'Person 7562'), 'Target publication validation must inspect the target projection.');
+        }
+        vgpc_test_same('page', get_post_type(7560), 'An invalid target must be rejected before WordPress changes the type.');
+        $other_writer = new PersonRelationshipSourceLock();
+        vgpc_test_true(! $other_writer->acquire(7560), 'The pre-write lock must remain held until request cleanup after rejection.');
+        $admin->release_source_write_lock(7560);
+        $GLOBALS['vgpc_test_posts'][7562]->post_status = 'publish';
+
+        $_POST = ['acf' => ['field_vg_article_primary_author' => ['bad']]];
+        $data = ['ID' => 7560, 'post_type' => 'post', 'post_status' => 'publish'];
+        try {
+            apply_filters('wp_insert_post_data', $data, ['ID' => 7560]);
+            throw new RuntimeException('Malformed target fields must fail before a supported type transition.');
+        } catch (RuntimeException $error) {
+            vgpc_test_true(str_contains($error->getMessage(), 'primary_author'), 'Malformed target input must report the target relationship field.');
+        }
+        $admin->release_source_write_lock(7560);
+
+        $_POST = ['acf' => ['field_vg_course_lead_instructor' => ['bad']]];
+        $data = ['ID' => 7560, 'post_type' => 'mto-course', 'post_status' => 'publish'];
+        try {
+            apply_filters('wp_insert_post_data', $data, ['ID' => 7560]);
+            throw new RuntimeException('Malformed Course target fields must fail before the type transition.');
+        } catch (RuntimeException $error) {
+            vgpc_test_true(str_contains($error->getMessage(), 'lead_instructor'), 'Malformed Course input must identify the target field.');
+        }
+        $admin->release_source_write_lock(7560);
+    }
+
+    public function test_published_wp_api_can_enter_each_supported_type_from_page_with_hooks_suppressed(): void
+    {
+        $admin = $this->admin();
+        $admin->register();
+        $this->source_and_people(7580, 'publish', [7581], 'page');
+        $this->source_and_people(7582, 'publish', [7583], 'page');
+        $GLOBALS['vgpc_test_posts'][7581]->post_status = 'publish';
+        $GLOBALS['vgpc_test_posts'][7583]->post_status = 'publish';
+        update_field('primary_author', 7581, 7580);
+        update_field('lead_instructor', 7583, 7582);
+        $GLOBALS['vgpc_test_apply_wp_update_filter'] = true;
+        $_POST = [];
+
+        vgpc_test_same(7580, wp_update_post(['ID' => 7580, 'post_type' => 'post', 'post_status' => 'publish'], true, false), 'WordPress must accept a valid published page-to-Article transition with after hooks disabled.');
+        vgpc_test_same('post', get_post_type(7580), 'The API must persist the supported Article target type.');
+        do_action('shutdown');
+        vgpc_test_same(7582, wp_update_post(['ID' => 7582, 'post_type' => 'mto-course', 'post_status' => 'publish'], true, false), 'WordPress must accept a valid published page-to-Course transition with after hooks disabled.');
+        vgpc_test_same('mto-course', get_post_type(7582), 'The API must persist the supported Course target type.');
+        do_action('shutdown');
+    }
+
+    public function test_batch_source_saves_release_no_acf_locks_per_post_and_allow_suppressed_hooks(): void
+    {
+        $admin = $this->admin();
+        $admin->register();
+        $this->source_and_people(7570, 'draft', [], 'post');
+        $this->source_and_people(7571, 'draft', [], 'post');
+        $this->source_and_people(7572, 'draft', [], 'post');
+        $lock_held = [];
+        $GLOBALS['wpdb']->get_var_handler = static function (string $query, array $args) use (&$lock_held): string {
+            if (str_contains($query, 'GET_LOCK')) { $id = (int) str_replace('vg_person_rel_', '', (string) ($args[0] ?? '')); if (isset($lock_held[$id])) return '0'; $lock_held[$id] = true; return '1'; }
+            if (str_contains($query, 'RELEASE_LOCK')) { $id = (int) str_replace('vg_person_rel_', '', (string) ($args[0] ?? '')); unset($lock_held[$id]); return '1'; }
+            return '1';
+        };
+        $GLOBALS['vgpc_test_apply_wp_update_filter'] = true;
+        $GLOBALS['vgpc_test_wp_update_post_hooks'] = true;
+        $GLOBALS['vgpc_test_suppress_after_insert_post'] = true;
+        vgpc_test_same(7570, wp_update_post(['ID' => 7570, 'post_title' => 'A'], true, false), 'First bulk source update must complete with fire_after_hooks=false.');
+        vgpc_test_same(7571, wp_update_post(['ID' => 7571, 'post_title' => 'B'], true, false), 'Second bulk source update must acquire its own lock while the first remains held.');
+        vgpc_test_same([7570 => true, 7571 => true], $lock_held, 'Suppressed hooks must retain each lock until shutdown releases them safely.');
+        $GLOBALS['vgpc_test_wp_update_post_hooks'] = true;
+        vgpc_test_same(7572, wp_update_post(['ID' => 7572, 'post_title' => 'C'], true), 'A normal no-ACF save must complete.');
+        vgpc_test_same([7570 => true, 7571 => true], $lock_held, 'A normal post save must release its lock without releasing other source locks.');
+        do_action('shutdown');
+        vgpc_test_same([], $lock_held, 'No-ACF post saves must release each source lock even when wp_after_insert_post is suppressed.');
+    }
+
     public function test_acf_validation_failure_after_core_write_leaves_only_valid_stored_relationship_published(): void
     {
         $admin = $this->admin();
@@ -807,11 +915,16 @@ final class PersonRelationshipAdminTest
         $GLOBALS['vgpc_test_wp_update_post_hooks'] = true;
         $GLOBALS['vgpc_test_wp_hook_order'] = [];
         $GLOBALS['vgpc_test_acf_save_during_core_save'] = true;
+        $_POST = ['post_ID' => 120, 'post_status' => 'draft', 'acf' => ['field_vg_course_lead_instructor' => 121]];
+        add_action('acf/save_post', static function (int $post_id): void {
+            update_field('lead_instructor', 121, $post_id);
+        }, 10, 1);
         $GLOBALS['wpdb']->get_var_handler = static fn (string $query): string => str_contains($query, 'SHOW TABLES') ? 'wp_vg_person_relationship_index' : '1';
 
         vgpc_test_same(120, wp_update_post(['ID' => 120, 'post_type' => 'mto-course'], true), 'WordPress must persist the source type transition.');
-        vgpc_test_same(['save_post', 'acf/save_post', 'wp_after_insert_post'], $GLOBALS['vgpc_test_wp_hook_order'], 'ACF persistence must run during save_post before wp_after_insert_post.');
+        vgpc_test_same(['save_post', 'wp_after_insert_post', 'acf/save_post'], $GLOBALS['vgpc_test_wp_hook_order'], 'WordPress post hooks must finish before ACF persists relationship fields.');
         vgpc_test_same('', (string) get_post_meta(120, PersonRelationshipContract::DIRTY_META_KEY, true), 'wp_after_insert_post must not mark the successful save_post projection dirty again.');
+        vgpc_test_true(count(array_filter($GLOBALS['wpdb']->inserted, static fn (array $row): bool => ($row[1]['source_post_id'] ?? null) === 120 && ($row[1]['source_post_type'] ?? null) === 'mto-course' && ($row[1]['person_id'] ?? null) === 121 && ($row[1]['role_key'] ?? null) === 'lead_instructor')) > 0, 'The index must reflect target-type ACF values written at priority 10 before projection at priority 20.');
         unset($GLOBALS['vgpc_test_acf_save_during_core_save']);
     }
 

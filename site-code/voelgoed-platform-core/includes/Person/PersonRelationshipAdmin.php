@@ -10,7 +10,8 @@ final class PersonRelationshipAdmin
 {
     public const FUTURE_PUBLISH_FILTER = 'voelgoed/platform_core/future_post_can_publish';
     private PersonRelationshipSourceLock $writer_lock;
-    private int $locked_source_id = 0;
+    /** @var array<int, true> */
+    private array $locked_source_ids = [];
     private int $future_publish_lock_source_id = 0;
     /** @var array<int, string> Source type observed before a supported post save. */
     private array $pending_source_type_changes = [];
@@ -53,6 +54,7 @@ final class PersonRelationshipAdmin
         }
         add_filter('wp_insert_post_data', [$this, 'validate_source_before_save'], 10, 2);
         add_action('save_post', [$this, 'handle_source_type_transition_on_save'], 1000, 3);
+        add_action('save_post', [$this, 'release_source_lock_after_post_save'], 1001, 3);
         add_action('wp_after_insert_post', [$this, 'mark_source_type_transition_dirty'], 1000, 4);
         // WordPress fires this after the status write. It detects unsupported
         // low-level publication bypasses; supported writes remain prevalidated.
@@ -79,13 +81,25 @@ final class PersonRelationshipAdmin
     /** Fallback for environments that reach wp_after_insert_post without save_post handling. */
     public function mark_source_type_transition_dirty(mixed $post_id, mixed $post, mixed $update, mixed $post_before): void
     {
+        $post_id = $this->normalize_id($post_id);
+        if ($post_id > 0 && $this->submitted_relationship_fields((string) get_post_type($post_id)) !== []) return;
         $this->process_source_type_transition($post_id, $post);
     }
 
     /** save_post still fires when callers suppress wp_after_insert_post. */
     public function handle_source_type_transition_on_save(mixed $post_id, mixed $post, mixed $update): void
     {
+        $post_id = $this->normalize_id($post_id);
+        if ($post_id > 0 && $this->submitted_relationship_fields((string) get_post_type($post_id)) !== []) return;
         $this->process_source_type_transition($post_id, $post);
+    }
+
+    /** Release ordinary post-save locks when this request has no pending ACF relationship writes. */
+    public function release_source_lock_after_post_save(mixed $post_id, mixed $post, mixed $update): void
+    {
+        $post_id = $this->normalize_id($post_id);
+        if ($post_id < 1 || $this->submitted_relationship_fields((string) get_post_type($post_id)) !== []) return;
+        $this->release_source_write_lock($post_id);
     }
 
     private function process_source_type_transition(mixed $post_id, mixed $post): void
@@ -440,6 +454,8 @@ final class PersonRelationshipAdmin
     public function project_after_acf_save(mixed $post_id): void
     {
         $post_id = $this->normalize_id($post_id);
+        $post = $post_id > 0 ? get_post($post_id) : false;
+        if (is_object($post)) $this->process_source_type_transition($post_id, $post);
         $this->release_source_write_lock($post_id);
         if ($post_id < 1 || ! PersonRelationshipContract::supported_source_type((string) get_post_type($post_id))) {
             return;
@@ -460,22 +476,27 @@ final class PersonRelationshipAdmin
     private function acquire_source_write_lock(int $post_id): bool
     {
         if ($post_id < 1) return true;
-        if ($this->locked_source_id === $post_id) return true;
-        if ($this->locked_source_id > 0 || ! $this->writer_lock->acquire($post_id)) return false;
-        $this->locked_source_id = $post_id;
+        if (isset($this->locked_source_ids[$post_id])) return true;
+        if (! $this->writer_lock->acquire($post_id)) return false;
+        $this->locked_source_ids[$post_id] = true;
         return true;
     }
 
     public function release_source_write_lock(mixed $post_id = null): void
     {
         $post_id = $this->normalize_id($post_id);
-        if ($this->locked_source_id < 1 || ($post_id > 0 && $post_id !== $this->locked_source_id)) return;
-        $source_id = $this->locked_source_id;
-        $this->locked_source_id = 0;
-        if ($this->future_publish_lock_source_id === $source_id) {
-            $this->future_publish_lock_source_id = 0;
+        if ($post_id > 0) {
+            if (! isset($this->locked_source_ids[$post_id])) return;
+            unset($this->locked_source_ids[$post_id]);
+            if ($this->future_publish_lock_source_id === $post_id) $this->future_publish_lock_source_id = 0;
+            $this->writer_lock->release($post_id);
+            return;
         }
-        $this->writer_lock->release($source_id);
+        foreach (array_keys($this->locked_source_ids) as $source_id) {
+            unset($this->locked_source_ids[$source_id]);
+            if ($this->future_publish_lock_source_id === $source_id) $this->future_publish_lock_source_id = 0;
+            $this->writer_lock->release($source_id);
+        }
     }
 
     /** REST meta fields, including ACF REST fields, are persisted before this action. */
