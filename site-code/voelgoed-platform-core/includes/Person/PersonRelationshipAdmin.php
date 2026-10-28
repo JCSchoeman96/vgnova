@@ -214,7 +214,14 @@ final class PersonRelationshipAdmin
                 }
             }
         }
-        $result = $this->validator->validate_publish_partial_write_safety($post_id, $submitted_fields);
+        if ($current_type !== $source_type && PersonRelationshipContract::supported_source_type($current_type)) {
+            // Validate the old source projection before interpreting target-type fields.
+            $old_type_result = $this->validator->validate_publish_partial_write_safety($post_id, [], $current_type);
+            if (is_wp_error($old_type_result)) {
+                wp_die($old_type_result->get_error_message(), 'Person relationship validation failed', ['response' => 400]);
+            }
+        }
+        $result = $this->validator->validate_publish_partial_write_safety($post_id, $submitted_fields, $source_type);
         if (is_wp_error($result)) {
             wp_die($result->get_error_message(), 'Person relationship validation failed', ['response' => 400]);
         }

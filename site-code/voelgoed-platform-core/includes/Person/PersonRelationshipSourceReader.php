@@ -8,6 +8,12 @@ final class PersonRelationshipSourceReader
 {
     public function read(int $source_post_id): array|\WP_Error
     {
+        return $this->read_for_source_type($source_post_id, null);
+    }
+
+    /** Read the governed fields for a supported target type before a type transition is written. */
+    public function read_for_source_type(int $source_post_id, ?string $source_type): array|\WP_Error
+    {
         if ($source_post_id < 1) {
             return new \WP_Error('invalid_source_id', 'Source post ID must be positive.');
         }
@@ -17,7 +23,7 @@ final class PersonRelationshipSourceReader
             return new \WP_Error('source_not_found', 'The source post does not exist.');
         }
 
-        $source_type = (string) ($source->post_type ?? '');
+        $source_type ??= (string) ($source->post_type ?? '');
         $roles = PersonRelationshipContract::allowed_roles($source_type);
         if ($roles === []) {
             return new \WP_Error('unsupported_source', 'The source post type has no approved Person relationship contract.');

@@ -6,7 +6,7 @@ defined('ABSPATH') || exit;
 /** Validates normalized Person relationship projections before they are used or written. */
 final class PersonRelationshipValidator
 {
-    public function validate_publish_partial_write_safety(int $source_post_id, array $submitted_fields): true|\WP_Error
+    public function validate_publish_partial_write_safety(int $source_post_id, array $submitted_fields, ?string $target_source_type = null): true|\WP_Error
     {
         if (function_exists('clean_post_cache')) {
             clean_post_cache($source_post_id);
@@ -18,7 +18,11 @@ final class PersonRelationshipValidator
         if (! is_object($source)) {
             return new \WP_Error('source_not_found', 'The source post does not exist.');
         }
-        $source_type = (string) ($source->post_type ?? '');
+        $persisted_source_type = (string) ($source->post_type ?? '');
+        $source_type = $target_source_type ?? $persisted_source_type;
+        if (! PersonRelationshipContract::supported_source_type($persisted_source_type)) {
+            return new \WP_Error('unsupported_source', 'The persisted source post type has no approved Person relationship contract.');
+        }
         $roles = PersonRelationshipContract::allowed_roles($source_type);
         if ($roles === []) {
             return new \WP_Error('unsupported_source', 'The source post type has no approved Person relationship contract.');
@@ -29,7 +33,8 @@ final class PersonRelationshipValidator
             }
         }
 
-        $persisted_projection = (new PersonRelationshipSourceReader())->read($source_post_id);
+        $reader = new PersonRelationshipSourceReader();
+        $persisted_projection = $reader->read_for_source_type($source_post_id, $source_type);
         if (is_wp_error($persisted_projection)) {
             return $persisted_projection;
         }

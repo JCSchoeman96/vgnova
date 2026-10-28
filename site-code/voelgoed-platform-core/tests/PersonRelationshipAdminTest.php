@@ -242,6 +242,65 @@ final class PersonRelationshipAdminTest
         vgpc_test_same($data, apply_filters('wp_insert_post_data', $data, ['ID' => 742]), 'Demotion must proceed so the source can be repaired.');
     }
 
+    public function test_supported_article_to_course_transition_validates_target_fields_and_holds_lock(): void
+    {
+        $admin = $this->admin();
+        $admin->register();
+        $this->source_and_people(750, 'publish', [751, 752, 753, 754]);
+        $GLOBALS['vgpc_test_posts'][751]->post_status = 'publish';
+        $GLOBALS['vgpc_test_posts'][752]->post_status = 'publish';
+        $GLOBALS['vgpc_test_posts'][753]->post_status = 'publish';
+        $GLOBALS['vgpc_test_posts'][754]->post_status = 'publish';
+        update_field('primary_author', 751, 750);
+        update_field('lead_instructor', 752, 750);
+        update_field('experts', [753], 750);
+        $_POST = ['post_ID' => 750, 'post_status' => 'publish', 'acf' => ['field_vg_course_lead_instructor' => 754]];
+        $lock_held = false;
+        $GLOBALS['wpdb']->get_var_handler = static function (string $query) use (&$lock_held): string {
+            if (str_contains($query, 'GET_LOCK')) {
+                if ($lock_held) return '0';
+                $lock_held = true;
+                return '1';
+            }
+            if (str_contains($query, 'RELEASE_LOCK')) {
+                $lock_held = false;
+                return '1';
+            }
+            return '1';
+        };
+
+        $data = ['ID' => 750, 'post_type' => 'mto-course', 'post_status' => 'publish'];
+        vgpc_test_same($data, apply_filters('wp_insert_post_data', $data, ['ID' => 750]), 'The transition must validate target-type fields before WordPress writes the new type.');
+        vgpc_test_same(752, get_field('lead_instructor', 750, false), 'Preflight must leave target fields unchanged until ACF writes them.');
+        vgpc_test_same([753], get_field('experts', 750, false), 'An omitted target field must retain its persisted value during the projection.');
+
+        $other_writer = new PersonRelationshipSourceLock();
+        vgpc_test_true(! $other_writer->acquire(750), 'The transition must retain the source lock while later ACF field writes run.');
+        $admin->release_source_write_lock(750);
+        vgpc_test_true($other_writer->acquire(750), 'The source lock must become available after the transition save completes.');
+        $other_writer->release(750);
+    }
+
+    public function test_supported_course_to_article_transition_uses_submitted_target_fields(): void
+    {
+        $admin = $this->admin();
+        $admin->register();
+        $this->source_and_people(755, 'publish', [756, 757, 758]);
+        $GLOBALS['vgpc_test_posts'][756]->post_status = 'publish';
+        $GLOBALS['vgpc_test_posts'][757]->post_status = 'publish';
+        $GLOBALS['vgpc_test_posts'][758]->post_status = 'publish';
+        update_field('lead_instructor', 756, 755);
+        update_field('primary_author', 757, 755);
+        update_field('reviewed_by', [758], 755);
+        $_POST = ['post_ID' => 755, 'post_status' => 'publish', 'acf' => ['field_vg_article_primary_author' => 756]];
+
+        $data = ['ID' => 755, 'post_type' => 'post', 'post_status' => 'publish'];
+        vgpc_test_same($data, apply_filters('wp_insert_post_data', $data, ['ID' => 755]), 'The reverse transition must validate submitted Article fields before the post row write.');
+        vgpc_test_same(757, get_field('primary_author', 755, false), 'Article target values must remain unchanged until ACF persistence.');
+        vgpc_test_same([758], get_field('reviewed_by', 755, false), 'Omitted Article fields must be included from persisted target values.');
+        $admin->release_source_write_lock(755);
+    }
+
     public function test_acf_validation_failure_after_core_write_leaves_only_valid_stored_relationship_published(): void
     {
         $admin = $this->admin();
