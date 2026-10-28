@@ -85,6 +85,7 @@ final class PersonRelationshipAdminTest
         }
         vgpc_test_true(isset($GLOBALS['vgpc_test_filters']['wp_insert_post_data']), 'Source publication must be checked before save.');
         vgpc_test_true(isset($GLOBALS['vgpc_test_actions']['save_post']), 'Supported source type transitions must recover when wp_after_insert_post is suppressed.');
+        vgpc_test_true(in_array(PHP_INT_MIN, array_column($GLOBALS['vgpc_test_actions']['save_post'], 'priority'), true), 'Same-source save nesting must be tracked before other save_post callbacks run.');
         vgpc_test_true(in_array(1001, array_column($GLOBALS['vgpc_test_actions']['save_post'], 'priority'), true), 'No-ACF post saves must release their source lock after the type-transition callback.');
         vgpc_test_true(isset($GLOBALS['vgpc_test_actions']['wp_after_insert_post']), 'The post-insert transition callback must remain registered as a fallback.');
         vgpc_test_true(isset($GLOBALS['vgpc_test_actions']['acf/save_post']), 'ACF saves must project at priority 20.');
@@ -1021,6 +1022,111 @@ final class PersonRelationshipAdminTest
         $admin->release_source_write_lock(726);
         vgpc_test_true($other_writer->acquire(726), 'The editor save lock must release after ACF persistence completes.');
         $other_writer->release(726);
+    }
+
+    public function test_nested_same_source_save_keeps_outer_lock_until_outer_acf_projection(): void
+    {
+        $admin = $this->admin();
+        $admin->register();
+        $this->source_and_people(727, 'draft', [728, 729]);
+        $GLOBALS['vgpc_test_apply_wp_update_filter'] = true;
+        $GLOBALS['vgpc_test_wp_update_post_hooks'] = true;
+        $GLOBALS['vgpc_test_acf_save_during_core_save'] = true;
+        $_POST = ['post_ID' => 727, 'post_status' => 'draft', 'acf' => ['field_vg_article_primary_author' => 728]];
+        $nested = false;
+        $contender_results = [];
+        $outer_pending_values = [];
+        $competing_probe = false;
+        add_action('save_post', static function (int $post_id) use (&$nested, &$competing_probe, &$contender_results, &$outer_pending_values): void {
+            if ($post_id !== 727 || $nested) return;
+            $nested = true;
+            $outer_fields = $_POST['acf'];
+            $_POST['acf'] = ['field_vg_article_primary_author' => 729];
+            wp_update_post(['ID' => 727, 'post_status' => 'draft'], true);
+            $_POST['acf'] = $outer_fields;
+            $outer_pending_values[] = get_field('primary_author', 727, false);
+            $competitor = new PersonRelationshipSourceLock();
+            $competing_probe = true;
+            $contender_results[] = $competitor->acquire(727);
+            $competing_probe = false;
+            $competitor->release(727);
+        }, 5, 1);
+        $lock_held = false;
+        $lock_depth = 0;
+        $successful_lock_acquisitions = 0;
+        $GLOBALS['wpdb']->get_var_handler = static function (string $query, array $args) use (&$lock_held, &$lock_depth, &$competing_probe, &$successful_lock_acquisitions): string {
+            if (str_contains($query, 'GET_LOCK')) {
+                if ($competing_probe && $lock_held) return '0';
+                $lock_held = true;
+                ++$lock_depth;
+                ++$successful_lock_acquisitions;
+                return '1';
+            }
+            if (str_contains($query, 'RELEASE_LOCK')) {
+                --$lock_depth;
+                $lock_held = $lock_depth > 0;
+                return '1';
+            }
+            return '1';
+        };
+
+        wp_update_post(['ID' => 727, 'post_status' => 'draft'], true);
+
+        vgpc_test_same([false], $contender_results, 'A different writer must remain blocked while the outer ACF payload is pending.');
+        vgpc_test_same([729], $outer_pending_values, 'The nested ACF write must finish while the outer requested value is still pending.');
+        vgpc_test_same(728, get_field('primary_author', 727, false), 'The outer ACF write must persist after the nested save returns.');
+        $queries = array_column($GLOBALS['wpdb']->queries, 'query');
+        $get_lock_count = count(array_filter($queries, static fn (string $query): bool => $query === 'SELECT GET_LOCK(%s, %d)'));
+        $release_lock_count = count(array_filter($queries, static fn (string $query): bool => $query === 'SELECT RELEASE_LOCK(%s)'));
+        vgpc_test_true($get_lock_count > 0, 'The test must observe named-lock acquisition and the competing writer attempt.');
+        vgpc_test_same($successful_lock_acquisitions, $release_lock_count, 'Every successful named-lock acquisition must be released after outer ACF projection.');
+        $competitor = new PersonRelationshipSourceLock();
+        $competing_probe = true;
+        vgpc_test_true($competitor->acquire(727), 'A competitor may enter after the outer ACF projection completes.');
+        $competitor->release(727);
+    }
+
+    public function test_nested_same_source_failure_releases_lock_at_shutdown(): void
+    {
+        $admin = $this->admin();
+        $admin->register();
+        $this->source_and_people(730, 'draft', [731]);
+        $GLOBALS['vgpc_test_apply_wp_update_filter'] = true;
+        $GLOBALS['vgpc_test_wp_update_post_hooks'] = true;
+        $GLOBALS['vgpc_test_acf_save_during_core_save'] = true;
+        $_POST = ['post_ID' => 730, 'post_status' => 'draft', 'acf' => ['field_vg_article_primary_author' => 'malformed']];
+        $nested = false;
+        add_action('save_post', static function (int $post_id) use (&$nested): void {
+            if ($post_id !== 730 || $nested) return;
+            $nested = true;
+            wp_update_post(['ID' => 730, 'post_status' => 'draft'], true);
+        }, 5, 1);
+        $lock_held = false;
+        $GLOBALS['wpdb']->get_var_handler = static function (string $query) use (&$lock_held): string {
+            if (str_contains($query, 'GET_LOCK')) {
+                if ($lock_held) return '0';
+                $lock_held = true;
+                return '1';
+            }
+            if (str_contains($query, 'RELEASE_LOCK')) {
+                $lock_held = false;
+                return '1';
+            }
+            return '1';
+        };
+        try {
+            wp_update_post(['ID' => 730, 'post_status' => 'draft'], true);
+            throw new RuntimeException('Malformed nested ACF data must abort the save.');
+        } catch (RuntimeException $error) {
+            vgpc_test_true(str_starts_with($error->getMessage(), 'wp_die:'), 'Nested ACF validation must abort before field persistence.');
+        }
+        do_action('shutdown');
+        $shutdown_releases = count(array_filter($GLOBALS['wpdb']->queries, static fn (array $query): bool => $query['query'] === 'SELECT RELEASE_LOCK(%s)'));
+        vgpc_test_same(1, $shutdown_releases, 'The failed nested save must release the held source lock at shutdown.');
+        $competitor = new PersonRelationshipSourceLock();
+        vgpc_test_true($competitor->acquire(730), 'Shutdown cleanup must release the outer lock after nested ACF failure.');
+        $competitor->release(730);
+        vgpc_test_same(null, get_field('primary_author', 730, false), 'A failed nested save must not persist malformed relationship data.');
     }
 
     public function test_rejects_malformed_and_duplicate_field_submissions(): void

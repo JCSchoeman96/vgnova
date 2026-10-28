@@ -12,6 +12,8 @@ final class PersonRelationshipAdmin
     private PersonRelationshipSourceLock $writer_lock;
     /** @var array<int, true> */
     private array $locked_source_ids = [];
+    /** @var array<int, int> Same-source WordPress save_post nesting. */
+    private array $source_save_depth = [];
     private int $future_publish_lock_source_id = 0;
     /** @var array<int, string> Source type observed before a supported post save. */
     private array $pending_source_type_changes = [];
@@ -55,6 +57,7 @@ final class PersonRelationshipAdmin
             add_filter('acf/validate_value/key=' . $field_key, fn (mixed $valid, mixed $value, array $field, string $input_name): mixed => $this->validate_field($valid, $value, $field, $input_name, $role), 10, 4);
         }
         add_filter('wp_insert_post_data', [$this, 'validate_source_before_save'], 10, 2);
+        add_action('save_post', [$this, 'begin_source_post_save'], PHP_INT_MIN, 3);
         add_action('save_post', [$this, 'handle_source_type_transition_on_save'], 1000, 3);
         add_action('save_post', [$this, 'release_source_lock_after_post_save'], 1001, 3);
         add_action('wp_after_insert_post', [$this, 'mark_source_type_transition_dirty'], 1000, 4);
@@ -74,7 +77,7 @@ final class PersonRelationshipAdmin
         // Core may return from a scheduled publication without changing status
         // (for example, when the event is stale or fires too early).
         add_action('publish_future_post', [$this, 'release_future_publish_lock_after_core'], PHP_INT_MAX, 1);
-        add_action('shutdown', [$this, 'release_source_write_lock'], PHP_INT_MAX, 0);
+        add_action('shutdown', [$this, 'release_source_write_locks_at_shutdown'], PHP_INT_MAX, 0);
         add_action('before_delete_post', [$this, 'remove_after_permanent_delete'], 10, 2);
         add_action('deleted_post', [$this, 'retry_delete_cleanup_after_meta_removal'], 10, 2);
         add_action('admin_notices', [$this, 'render_projection_failure_notice']);
@@ -97,11 +100,23 @@ final class PersonRelationshipAdmin
         $this->process_source_type_transition($post_id, $post);
     }
 
+    /** Record nesting before other save_post callbacks can start another save. */
+    public function begin_source_post_save(mixed $post_id, mixed $post = null, mixed $update = null): void
+    {
+        $post_id = $this->normalize_id($post_id);
+        $source_type = is_object($post) ? (string) ($post->post_type ?? '') : (string) get_post_type($post_id);
+        if ($post_id < 1 || ! PersonRelationshipContract::supported_source_type($source_type)) return;
+        $this->source_save_depth[$post_id] = ($this->source_save_depth[$post_id] ?? 0) + 1;
+    }
+
     /** Release ordinary post-save locks when this request has no pending ACF relationship writes. */
     public function release_source_lock_after_post_save(mixed $post_id, mixed $post, mixed $update): void
     {
         $post_id = $this->normalize_id($post_id);
-        if ($post_id < 1 || isset($this->completed_acf_saves[$post_id])) return;
+        if ($post_id < 1) return;
+        if (($this->source_save_depth[$post_id] ?? 0) > 0) --$this->source_save_depth[$post_id];
+        if (($this->source_save_depth[$post_id] ?? 0) > 0) return;
+        unset($this->source_save_depth[$post_id]);
         $this->release_source_write_lock($post_id);
     }
 
@@ -536,8 +551,8 @@ final class PersonRelationshipAdmin
         if ($post_id > 0) $this->completed_acf_saves[$post_id] = true;
         $post = $post_id > 0 ? get_post($post_id) : false;
         if (is_object($post)) $this->process_source_type_transition($post_id, $post);
-        $this->release_source_write_lock($post_id);
         if ($post_id < 1 || ! PersonRelationshipContract::supported_source_type((string) get_post_type($post_id))) {
+            $this->release_source_write_lock($post_id);
             return;
         }
 
@@ -549,6 +564,8 @@ final class PersonRelationshipAdmin
             }
         } catch (\Throwable $error) {
             $this->report_operator_failure($post_id, 'unexpected_' . strtolower((new \ReflectionClass($error))->getShortName()));
+        } finally {
+            $this->release_source_write_lock($post_id);
         }
     }
 
@@ -566,6 +583,7 @@ final class PersonRelationshipAdmin
     {
         $post_id = $this->normalize_id($post_id);
         if ($post_id > 0) {
+            if (($this->source_save_depth[$post_id] ?? 0) > 0) return;
             if (! isset($this->locked_source_ids[$post_id])) return;
             $this->writer_lock->release($post_id);
             if ($this->writer_lock->release_pending($post_id)) return;
@@ -576,6 +594,13 @@ final class PersonRelationshipAdmin
         foreach (array_keys($this->locked_source_ids) as $source_id) {
             $this->release_source_write_lock($source_id);
         }
+    }
+
+    /** Release locks if a callback aborted before the outer save_post tail. */
+    public function release_source_write_locks_at_shutdown(): void
+    {
+        $this->source_save_depth = [];
+        $this->release_source_write_lock();
     }
 
     /** REST meta fields, including ACF REST fields, are persisted before this action. */

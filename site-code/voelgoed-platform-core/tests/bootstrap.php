@@ -598,8 +598,18 @@ function wp_update_post(array $postarr, bool $wp_error = false, bool $fire_after
                     || ! empty($GLOBALS['vgpc_test_acf_nonce_invalid'])
                     || ! empty($GLOBALS['vgpc_test_acf_validation_failed'])
                     || empty($_POST['acf']) || ! is_array($_POST['acf'])) return;
+                $previous_acf_actions = $GLOBALS['vgpc_test_actions']['acf/save_post'] ?? [];
+                add_action('acf/save_post', static function (int $actual_post_id): void {
+                    foreach (($_POST['acf'] ?? []) as $selector => $value) {
+                        update_field((string) $selector, $value, $actual_post_id);
+                    }
+                }, 10, 1);
                 $GLOBALS['vgpc_test_wp_hook_order'][] = 'acf/save_post';
-                do_action('acf/save_post', $acf_post_id);
+                try {
+                    do_action('acf/save_post', $acf_post_id);
+                } finally {
+                    $GLOBALS['vgpc_test_actions']['acf/save_post'] = $previous_acf_actions;
+                }
             }, 10, 1);
         }
         do_action('save_post', $post_id, $post, true);
