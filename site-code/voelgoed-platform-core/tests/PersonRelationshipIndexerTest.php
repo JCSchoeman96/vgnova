@@ -199,7 +199,7 @@ final class PersonRelationshipIndexerTest
         vgpc_test_same(1, $attempts, 'An unconfirmed release must not be retried.');
     }
 
-    public function test_indexer_retries_exceptional_release_at_shutdown(): void
+    public function test_indexer_retries_exceptional_release_inside_active_cleanup(): void
     {
         $this->ready_schema();
         $this->add_source_and_person(641, 'draft', 642, 'draft');
@@ -214,10 +214,8 @@ final class PersonRelationshipIndexerTest
         };
         $indexer = $this->indexer();
         $result = $indexer->rebuild_source(641);
-        vgpc_test_true(is_wp_error($result), 'The original rebuild must report an indeterminate release.');
-        vgpc_test_same(1, $attempts, 'The indexer must leave the release queued until shutdown.');
-        do_action('shutdown');
-        vgpc_test_same(2, $attempts, 'The registered shutdown lifecycle must retry and release the indexer lock.');
+        vgpc_test_same(true, $result, 'The bounded same-callback retry must let the rebuild report success after confirmed release.');
+        vgpc_test_same(2, $attempts, 'Cleanup must retry the exceptional release before the original callback returns.');
     }
 
     public function test_new_operation_does_not_inherit_previous_release_failure(): void

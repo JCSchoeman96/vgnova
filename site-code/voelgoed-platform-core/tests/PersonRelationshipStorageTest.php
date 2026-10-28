@@ -148,7 +148,7 @@ final class PersonRelationshipStorageTest
     {
         $attempts = 0;
         $GLOBALS['wpdb']->get_var_handler = static function (string $query) use (&$attempts): string {
-            if (str_contains($query, 'RELEASE_LOCK') && ++$attempts === 1) throw new RuntimeException('release failed');
+            if (str_contains($query, 'RELEASE_LOCK') && ++$attempts <= 2) throw new RuntimeException('release failed');
             return '1';
         };
         $lock = new \Voelgoed\PlatformCore\Person\PersonRelationshipSourceLock();
@@ -156,9 +156,10 @@ final class PersonRelationshipStorageTest
         $lock->release(59);
         vgpc_test_true(! $lock->acquire(59), 'A failed release must block a new operation.');
         $lock->release_all();
-        vgpc_test_same(2, $attempts, 'Cleanup must retry an indeterminate release.');
+        vgpc_test_same(3, $attempts, 'The active release gets one bounded retry, and later cleanup retries the still-tracked lock.');
         vgpc_test_true($lock->acquire(59), 'Acquisition may resume after confirmed cleanup.');
         $lock->release(59);
+        vgpc_test_same(4, $attempts, 'The newly acquired lock must receive its own confirmed release.');
         $GLOBALS['wpdb']->get_var_handler = null;
     }
 

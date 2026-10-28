@@ -12,6 +12,40 @@ use Voelgoed\PlatformCore\Person\PersonRelationshipService;
 use Voelgoed\PlatformCore\Person\PersonRelationshipValidator;
 use Voelgoed\PlatformCore\Product\ProductContributionAdmin;
 
+if (! class_exists('WP_Hook')) {
+    /** Test shim for the WP_Hook priority iteration used in this regression. */
+    final class WP_Hook
+    {
+        private array $callbacks = [];
+
+        public function add_filter(string $hook_name, callable $callback, int $priority, int $accepted_args): void
+        {
+            $this->callbacks[$priority][] = ['callback' => $callback, 'accepted_args' => $accepted_args];
+            ksort($this->callbacks, SORT_NUMERIC);
+        }
+
+        public function do_action(array $args): void
+        {
+            // WP_Hook snapshots active priorities. A newly added lower priority
+            // cannot run after iteration has already reached PHP_INT_MAX.
+            $priorities = array_keys($this->callbacks);
+            foreach ($priorities as $priority) {
+                foreach ($this->callbacks[$priority] as $entry) {
+                    ($entry['callback'])(...array_slice($args, 0, $entry['accepted_args']));
+                }
+            }
+        }
+    }
+}
+if (! function_exists('_wp_filter_build_unique_id')) {
+    function _wp_filter_build_unique_id(string $hook_name, mixed $callback, int $priority): string
+    {
+        if (is_string($callback)) return $callback;
+        if (is_array($callback)) return (is_object($callback[0]) ? spl_object_hash($callback[0]) : (string) $callback[0]) . '::' . $callback[1];
+        return spl_object_hash($callback);
+    }
+}
+
 if (! function_exists('check_and_publish_future_post')) {
     function check_and_publish_future_post(int $post_id): void
     {
@@ -651,11 +685,23 @@ final class PersonRelationshipAdminTest
             return '1';
         };
         $admin->validate_source_before_save(['ID' => 7187, 'post_type' => 'post', 'post_status' => 'draft'], ['ID' => 7187]);
-        $admin->release_source_write_lock(7187);
-        vgpc_test_true($held, 'An indeterminate release must keep the host lock held before shutdown retry.');
-        do_action('shutdown');
-        vgpc_test_same(2, $release_attempts, 'Shutdown must retry an exceptional release through the real registered lifecycle hook.');
-        vgpc_test_true(! $held, 'The shutdown retry must release the tracked source lock.');
+        $shutdown = new WP_Hook();
+        $shutdown->add_filter('shutdown', static function () use ($admin): void {
+            $admin->release_source_write_lock(7187);
+            // This reproduces the rejected design: WP_Hook will not revisit
+            // PHP_INT_MAX - 1 after its active iteration has reached max.
+            $GLOBALS['vgpc_test_late_retry_runs'] = 0;
+            $GLOBALS['vgpc_test_active_shutdown_hook']->add_filter('shutdown', static function (): void {
+                ++$GLOBALS['vgpc_test_late_retry_runs'];
+            }, PHP_INT_MAX - 1, 0);
+        }, PHP_INT_MAX, 0);
+        $GLOBALS['vgpc_test_late_retry_runs'] = 0;
+        $GLOBALS['vgpc_test_active_shutdown_hook'] = $shutdown;
+        $shutdown->do_action([]);
+        vgpc_test_same(2, $release_attempts, 'A release that first fails at PHP_INT_MAX must retry within its active WP_Hook callback.');
+        vgpc_test_true(! $held, 'The bounded retry must release the tracked source lock.');
+        vgpc_test_same(0, $GLOBALS['vgpc_test_late_retry_runs'], 'WP_Hook must skip a retry registered at an earlier priority after shutdown reaches PHP_INT_MAX.');
+        unset($GLOBALS['vgpc_test_active_shutdown_hook'], $GLOBALS['vgpc_test_late_retry_runs']);
     }
 
     public function test_editor_cannot_repair_published_duplicate_roles_in_one_acf_save(): void
@@ -867,6 +913,75 @@ final class PersonRelationshipAdminTest
             vgpc_test_true(str_contains($error->getMessage(), 'may hold only one role'), 'Actual save validation must report the duplicate role invariant.');
         }
         vgpc_test_same([], $GLOBALS['vgpc_test_meta'][112] ?? [], 'Invalid draft data must stop before ACF field persistence.');
+    }
+
+    public function test_actual_acf_form_callback_uses_actual_post_id_when_post_id_is_missing_or_zero(): void
+    {
+        foreach ([
+            ['post_id' => [], 'new' => false],
+            ['post_id' => ['post_ID' => 0], 'new' => false],
+            ['post_id' => [], 'new' => true],
+            ['post_id' => ['post_ID' => 0], 'new' => true],
+        ] as $case) {
+            vgpc_test_reset();
+            $admin = $this->admin();
+            $admin->register();
+            $source_id = $case['new']
+                ? wp_insert_post(['post_type' => 'post', 'post_status' => 'draft'], true)
+                : ($case['post_id'] === [] ? 130 : 131);
+            vgpc_test_true(is_int($source_id) && $source_id > 0, 'A new form must use the ID WordPress assigned to its inserted post.');
+            $person_id = $source_id + 1;
+            $this->source_and_people($source_id, 'draft', [$person_id]);
+            $GLOBALS['vgpc_test_posts'][$person_id]->post_status = 'publish';
+            $_POST = $case['post_id'] + ['post_status' => 'draft', 'acf' => ['field_vg_article_primary_author' => $person_id]];
+
+            vgpc_test_true($this->acf_form_post_save($source_id), 'ACF accepts a missing or zero post_ID and saves against its actual save_post ID.');
+            vgpc_test_same($person_id, get_field('primary_author', $source_id, false), 'The actual ACF callback must persist the submitted relationship to the callback post ID.');
+        }
+    }
+
+    public function test_actual_acf_callback_rejects_published_partial_and_invalid_draft_relationship_states(): void
+    {
+        $admin = $this->admin();
+        $admin->register();
+        $this->source_and_people(133, 'publish', [134]);
+        $GLOBALS['vgpc_test_posts'][134]->post_status = 'publish';
+        update_field('primary_author', 134, 133);
+        $_POST = ['post_ID' => 133, 'post_status' => 'publish', 'acf' => ['field_vg_article_additional_authors' => [134]]];
+        try {
+            $this->acf_form_post_save(133);
+            throw new RuntimeException('The actual published ACF callback must reject an invalid partial projection.');
+        } catch (RuntimeException $error) {
+            vgpc_test_true(str_contains($error->getMessage(), 'possible partial relationship save'), 'Published ACF partial validation must report the unsafe intermediate state.');
+        }
+        vgpc_test_same(null, get_field('additional_authors', 133, false), 'Rejected published ACF writes must not persist the invalid role overlap.');
+
+        $draft_admin = $this->admin();
+        $draft_admin->register();
+        $this->source_and_people(135, 'draft', [136]);
+        $_POST = ['post_ID' => 135, 'post_status' => 'draft', 'acf' => [
+            'field_vg_article_primary_author' => 136,
+            'field_vg_article_additional_authors' => [136],
+        ]];
+        try {
+            $this->acf_form_post_save(135);
+            throw new RuntimeException('The actual draft ACF callback must reject invalid relationship data.');
+        } catch (RuntimeException $error) {
+            vgpc_test_true(str_contains($error->getMessage(), 'may hold only one role'), 'Draft callback validation must enforce the same role uniqueness rule.');
+        }
+        vgpc_test_same([], $GLOBALS['vgpc_test_meta'][135] ?? [], 'Invalid draft ACF values must fail before ACF persistence.');
+    }
+
+    public function test_acf_form_callback_skips_nested_save_for_another_explicit_post_id(): void
+    {
+        $admin = $this->admin();
+        $admin->register();
+        $this->source_and_people(137, 'draft', [138]);
+        $GLOBALS['vgpc_test_posts'][138]->post_status = 'publish';
+        $_POST = ['post_ID' => 139, 'post_status' => 'draft', 'acf' => ['field_vg_article_primary_author' => 138]];
+
+        vgpc_test_same(false, $this->acf_form_post_save(137), 'ACF must skip a nested save when a positive explicit post_ID names another post.');
+        vgpc_test_same(null, get_field('primary_author', 137, false), 'A nested unrelated ACF payload must not be persisted against the callback post.');
     }
 
     public function test_source_type_change_keeps_dirty_state_when_projection_cannot_acquire_lock(): void
@@ -1260,5 +1375,36 @@ final class PersonRelationshipAdminTest
         foreach ($person_ids as $person_id) {
             $GLOBALS['vgpc_test_posts'][$person_id] = (object) ['ID' => $person_id, 'post_type' => 'person', 'post_status' => 'draft'];
         }
+    }
+
+    /** Model ACF_Form_Post::save_post(), acf_save_post(), and ACF's priority-10 value write. */
+    private function acf_form_post_save(int $post_id): bool
+    {
+        if (! isset($GLOBALS['vgpc_test_posts'][$post_id])) return false;
+        $form_post_id = (int) ($_POST['post_ID'] ?? 0);
+        if ($form_post_id > 0 && $form_post_id !== $post_id) return false;
+        if (empty($_POST['acf']) || ! is_array($_POST['acf'])) return false;
+
+        $previous_actions = $GLOBALS['vgpc_test_actions']['acf/save_post'] ?? [];
+        add_action('acf/save_post', static function (int $actual_post_id): void {
+            $field_names = [
+                'field_vg_article_primary_author' => 'primary_author',
+                'field_vg_article_additional_authors' => 'additional_authors',
+                'field_vg_article_expert_contributors' => 'expert_contributors',
+                'field_vg_article_reviewed_by' => 'reviewed_by',
+                'field_vg_course_lead_instructor' => 'lead_instructor',
+                'field_vg_course_additional_instructors' => 'additional_instructors',
+                'field_vg_course_experts' => 'experts',
+            ];
+            foreach ($_POST['acf'] ?? [] as $key => $value) {
+                if (isset($field_names[$key])) update_field($field_names[$key], $value, $actual_post_id);
+            }
+        }, 10, 1);
+        try {
+            do_action('acf/save_post', $post_id);
+        } finally {
+            $GLOBALS['vgpc_test_actions']['acf/save_post'] = $previous_actions;
+        }
+        return true;
     }
 }

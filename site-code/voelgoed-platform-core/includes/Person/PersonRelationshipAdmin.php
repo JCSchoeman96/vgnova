@@ -392,7 +392,11 @@ final class PersonRelationshipAdmin
     private function submitted_relationship_fields(string $source_type, int $source_id): array
     {
         $submitted = [];
-        if ($this->request_post_id() !== $source_id) return $submitted;
+        // ACF_Form_Post::allow_save_post() accepts post_ID when it is missing
+        // or zero. In that case acf/save_post still receives the actual post
+        // ID from save_post and persists the payload against that ID.
+        $request_post_id = $this->request_post_id();
+        if ($request_post_id > 0 && $request_post_id !== $source_id) return $submitted;
         if (! isset($_POST['acf']) || ! is_array($_POST['acf'])) return $submitted;
         foreach (PersonRelationshipContract::allowed_roles($source_type) as $role) {
             $field_key = self::FIELD_KEYS[$role];
