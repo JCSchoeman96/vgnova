@@ -656,6 +656,101 @@ final class PersonRelationshipAdminTest
         vgpc_test_same(7182, get_field('primary_author', 7181, false), 'The mismatched ACF payload must not be applied to source A.');
     }
 
+    public function test_preflight_resolves_acf_name_and_numeric_id_selectors_and_rejects_alias_duplicates(): void
+    {
+        foreach (['primary_author', 'numeric_id'] as $selector) {
+            vgpc_test_reset();
+            $admin = $this->admin();
+            $admin->register();
+            $this->source_and_people(7901, 'publish', [7902]);
+            $GLOBALS['vgpc_test_posts'][7902]->post_status = 'publish';
+            if ($selector === 'numeric_id') {
+                $field_group = $GLOBALS['vgpc_test_field_groups']['test_person_relationship_admin_fields'];
+                $numeric_id = 0;
+                foreach ($field_group['fields'] as $field) {
+                    if ($field['key'] === 'field_vg_article_primary_author') $numeric_id = (int) $field['ID'];
+                }
+                vgpc_test_true($numeric_id > 0, 'The test ACF field must have a numeric ID.');
+                $selector = $numeric_id;
+            }
+            update_field('primary_author', null, 7901);
+            $_POST = ['post_ID' => 7901, 'post_status' => 'publish', 'acf' => [$selector => 7902]];
+            $data = ['ID' => 7901, 'post_type' => 'post', 'post_status' => 'publish'];
+            vgpc_test_same($data, apply_filters('wp_insert_post_data', $data, ['ID' => 7901]), 'Name and numeric ACF selectors must be normalized before publication preflight.');
+        }
+
+        vgpc_test_reset();
+        $admin = $this->admin();
+        $admin->register();
+        $this->source_and_people(7903, 'publish', [7904]);
+        $GLOBALS['vgpc_test_posts'][7904]->post_status = 'publish';
+        update_field('primary_author', null, 7903);
+        $_POST = ['post_ID' => 7903, 'post_status' => 'publish', 'acf' => [
+            'field_vg_article_primary_author' => 7904,
+            'primary_author' => null,
+        ]];
+        try {
+            apply_filters('wp_insert_post_data', ['ID' => 7903, 'post_type' => 'post', 'post_status' => 'publish'], ['ID' => 7903]);
+            throw new RuntimeException('Mixed aliases must be rejected before the WordPress post write.');
+        } catch (RuntimeException $error) {
+            vgpc_test_true(str_contains($error->getMessage(), 'more than one ACF selector'), 'Duplicate alias rejection must explain the conflict.');
+        }
+    }
+
+    public function test_actual_acf_callback_resolves_numeric_id_before_any_field_write(): void
+    {
+        vgpc_test_reset();
+        $admin = $this->admin();
+        $admin->register();
+        $this->source_and_people(7905, 'publish', [7906, 7907]);
+        $GLOBALS['vgpc_test_posts'][7906]->post_status = 'publish';
+        $GLOBALS['vgpc_test_posts'][7907]->post_status = 'publish';
+        update_field('primary_author', 7906, 7905);
+        $numeric_selector = (int) acf_get_field('field_vg_article_primary_author')['ID'];
+        vgpc_test_same('primary_author', acf_get_field($numeric_selector)['name'] ?? null, 'The ACF test double must resolve numeric IDs.');
+        $_POST = ['acf' => [$numeric_selector => 7907]];
+        add_action('acf/save_post', static function (int $post_id): void {
+            acf_update_values($_POST['acf'], $post_id);
+        }, 10, 1);
+        do_action('acf/save_post', 7905);
+        vgpc_test_same(7907, get_field('primary_author', 7905, false), 'The test ACF writer must accept numeric IDs like acf_update_values.');
+    }
+
+    public function test_actual_acf_callback_rejects_mixed_aliases_before_acf_update_values(): void
+    {
+        vgpc_test_reset();
+        $admin = $this->admin();
+        $admin->register();
+        $this->source_and_people(7908, 'publish', [7909]);
+        $GLOBALS['vgpc_test_posts'][7909]->post_status = 'publish';
+        update_field('primary_author', null, 7908);
+        $_POST = ['acf' => ['field_vg_article_primary_author' => 7909, 'primary_author' => null]];
+        add_action('acf/save_post', static function (int $post_id): void { acf_update_values($_POST['acf'], $post_id); }, 10, 1);
+        try {
+            do_action('acf/save_post', 7908);
+            throw new RuntimeException('The direct ACF callback must reject duplicate field aliases before ACF writes.');
+        } catch (RuntimeException $error) {
+            vgpc_test_true(str_contains($error->getMessage(), 'more than one ACF selector'), 'Direct callback must reject duplicate aliases at priority 1.');
+        }
+        vgpc_test_same(null, get_field('primary_author', 7908, false), 'No ACF value may be written when mixed aliases are ambiguous.');
+    }
+
+    public function test_non_governed_acf_field_continues_through_the_same_save(): void
+    {
+        vgpc_test_reset();
+        $admin = $this->admin();
+        $admin->register();
+        $this->source_and_people(7910, 'publish', [7911]);
+        $GLOBALS['vgpc_test_posts'][7911]->post_status = 'publish';
+        update_field('primary_author', 7911, 7910);
+        $_POST = ['post_ID' => 7910, 'post_status' => 'publish', 'acf' => ['field_unrelated_notes' => 'kept']];
+        $data = ['ID' => 7910, 'post_type' => 'post', 'post_status' => 'publish'];
+        vgpc_test_same($data, apply_filters('wp_insert_post_data', $data, ['ID' => 7910]), 'Unrelated fields must not enter Person relationship preflight.');
+        $this->acf_form_post_save(7910);
+        vgpc_test_same('kept', get_field('unrelated_notes', 7910, false), 'ACF must still persist a non-governed field.');
+        vgpc_test_same(7911, get_field('primary_author', 7910, false), 'The unrelated write must leave governed relationships unchanged.');
+    }
+
     public function test_new_source_preflight_uses_only_matching_new_post_form_payload(): void
     {
         $admin = $this->admin();
@@ -1430,6 +1525,7 @@ final class PersonRelationshipAdminTest
             ['key' => 'field_vg_course_lead_instructor', 'name' => 'lead_instructor'],
             ['key' => 'field_vg_course_additional_instructors', 'name' => 'additional_instructors'],
             ['key' => 'field_vg_course_experts', 'name' => 'experts'],
+            ['key' => 'field_unrelated_notes', 'name' => 'unrelated_notes'],
         ]]);
         $GLOBALS['vgpc_test_posts'][$source_id] = (object) ['ID' => $source_id, 'post_type' => $source_type, 'post_status' => $status];
         foreach ($person_ids as $person_id) {
@@ -1447,18 +1543,7 @@ final class PersonRelationshipAdminTest
 
         $previous_actions = $GLOBALS['vgpc_test_actions']['acf/save_post'] ?? [];
         add_action('acf/save_post', static function (int $actual_post_id): void {
-            $field_names = [
-                'field_vg_article_primary_author' => 'primary_author',
-                'field_vg_article_additional_authors' => 'additional_authors',
-                'field_vg_article_expert_contributors' => 'expert_contributors',
-                'field_vg_article_reviewed_by' => 'reviewed_by',
-                'field_vg_course_lead_instructor' => 'lead_instructor',
-                'field_vg_course_additional_instructors' => 'additional_instructors',
-                'field_vg_course_experts' => 'experts',
-            ];
-            foreach ($_POST['acf'] ?? [] as $key => $value) {
-                if (isset($field_names[$key])) update_field($field_names[$key], $value, $actual_post_id);
-            }
+            acf_update_values($_POST['acf'] ?? [], $actual_post_id);
         }, 10, 1);
         try {
             do_action('acf/save_post', $post_id);

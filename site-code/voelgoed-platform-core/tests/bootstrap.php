@@ -861,14 +861,42 @@ function delete_post_meta(int $post_id, string $meta_key, mixed $value = ''): bo
 
 function acf_add_local_field_group(array $field_group): void
 {
+    $fields = $field_group['fields'] ?? [];
+    foreach ($fields as &$field) {
+        $field['ID'] ??= (int) sprintf('%u', crc32((string) ($field['key'] ?? $field['name'] ?? '')));
+    }
+    unset($field);
+    $field_group['fields'] = $fields;
     $GLOBALS['vgpc_test_field_groups'][$field_group['key']] = $field_group;
+}
+
+function acf_get_field(string|int $selector): array|false
+{
+    foreach ($GLOBALS['vgpc_test_field_groups'] as $field_group) {
+        foreach ($field_group['fields'] ?? [] as $field) {
+            if ((string) ($field['key'] ?? '') === (string) $selector
+                || (string) ($field['name'] ?? '') === (string) $selector
+                || (string) ($field['ID'] ?? '') === (string) $selector
+            ) return $field;
+        }
+    }
+    return false;
+}
+
+/** Faithful test double for ACF's acf_update_values() selector resolution loop. */
+function acf_update_values(array $values, int|string $post_id): void
+{
+    foreach ($values as $selector => $value) {
+        $field = acf_get_field($selector);
+        if ($field) update_field((string) $field['name'], $value, $post_id);
+    }
 }
 
 function vgpc_test_acf_field(string $selector): ?array
 {
     foreach ($GLOBALS['vgpc_test_field_groups'] as $field_group) {
         foreach ($field_group['fields'] ?? [] as $field) {
-            if (($field['key'] ?? null) === $selector || ($field['name'] ?? null) === $selector) {
+            if (($field['key'] ?? null) === $selector || ($field['name'] ?? null) === $selector || (string) ($field['ID'] ?? '') === $selector) {
                 return $field;
             }
         }
