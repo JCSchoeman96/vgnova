@@ -283,7 +283,8 @@ final class PersonRelationshipAdmin
         // A new post has no persisted source for the partial-write validator
         // to reread. Preserve the existing submitted-projection validation.
         if ($post_id < 1) {
-            $projection = $this->projection_for_source(0, [], $source_type);
+            $new_post_fields = $this->submitted_relationship_fields($source_type, 0);
+            $projection = $this->projection_for_source(0, $new_post_fields, $source_type, false);
             $result = is_wp_error($projection) ? $projection : $this->validate_projection($projection, 'publish');
             if (is_wp_error($result)) {
                 wp_die($result->get_error_message(), 'Person relationship validation failed', ['response' => 400]);
@@ -294,7 +295,7 @@ final class PersonRelationshipAdmin
         // Core writes post_status before ACF's independent field writes. Check
         // every old/new field combination while the source lock is held.
         $submitted_fields = [];
-        if (isset($_POST['acf']) && is_array($_POST['acf'])) {
+        if ($this->request_post_id() === $post_id && isset($_POST['acf']) && is_array($_POST['acf'])) {
             foreach (PersonRelationshipContract::allowed_roles($source_type) as $role) {
                 $field_key = self::FIELD_KEYS[$role];
                 if (array_key_exists($field_key, $_POST['acf'])) {
@@ -330,7 +331,7 @@ final class PersonRelationshipAdmin
         $status = is_object($post) ? (string) ($post->post_status ?? 'draft') : 'draft';
         // A status-only demotion is the first step in repairing malformed
         // published data. Do not validate the old relationships as a publish.
-        $submitted_fields = $this->submitted_relationship_fields($source_type);
+        $submitted_fields = $this->submitted_relationship_fields($source_type, $post_id);
         if ($status !== 'publish' && $submitted_fields !== []) {
             $unchanged = $this->validator->submitted_fields_match_persisted($post_id, $submitted_fields, $source_type);
             if ($unchanged === true) {
@@ -388,9 +389,10 @@ final class PersonRelationshipAdmin
     }
 
     /** @return array<string, mixed> */
-    private function submitted_relationship_fields(string $source_type): array
+    private function submitted_relationship_fields(string $source_type, int $source_id): array
     {
         $submitted = [];
+        if ($this->request_post_id() !== $source_id) return $submitted;
         if (! isset($_POST['acf']) || ! is_array($_POST['acf'])) return $submitted;
         foreach (PersonRelationshipContract::allowed_roles($source_type) as $role) {
             $field_key = self::FIELD_KEYS[$role];
@@ -501,15 +503,14 @@ final class PersonRelationshipAdmin
         $post_id = $this->normalize_id($post_id);
         if ($post_id > 0) {
             if (! isset($this->locked_source_ids[$post_id])) return;
+            $this->writer_lock->release($post_id);
+            if ($this->writer_lock->release_pending($post_id)) return;
             unset($this->locked_source_ids[$post_id]);
             if ($this->future_publish_lock_source_id === $post_id) $this->future_publish_lock_source_id = 0;
-            $this->writer_lock->release($post_id);
             return;
         }
         foreach (array_keys($this->locked_source_ids) as $source_id) {
-            unset($this->locked_source_ids[$source_id]);
-            if ($this->future_publish_lock_source_id === $source_id) $this->future_publish_lock_source_id = 0;
-            $this->writer_lock->release($source_id);
+            $this->release_source_write_lock($source_id);
         }
     }
 

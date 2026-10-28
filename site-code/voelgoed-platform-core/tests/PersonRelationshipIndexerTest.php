@@ -199,6 +199,27 @@ final class PersonRelationshipIndexerTest
         vgpc_test_same(1, $attempts, 'An unconfirmed release must not be retried.');
     }
 
+    public function test_indexer_retries_exceptional_release_at_shutdown(): void
+    {
+        $this->ready_schema();
+        $this->add_source_and_person(641, 'draft', 642, 'draft');
+        $GLOBALS['vgpc_test_meta'][641]['primary_author'] = 642;
+        $attempts = 0;
+        $GLOBALS['wpdb']->get_var_handler = static function (string $query) use (&$attempts): mixed {
+            if (str_contains($query, 'SHOW TABLES')) return 'wp_vg_person_relationship_index';
+            if (str_contains($query, 'GET_LOCK')) return '1';
+            if (str_contains($query, 'RELEASE_LOCK') && ++$attempts === 1) throw new RuntimeException('temporary connection error');
+            if (str_contains($query, 'RELEASE_LOCK')) return '1';
+            return '1';
+        };
+        $indexer = $this->indexer();
+        $result = $indexer->rebuild_source(641);
+        vgpc_test_true(is_wp_error($result), 'The original rebuild must report an indeterminate release.');
+        vgpc_test_same(1, $attempts, 'The indexer must leave the release queued until shutdown.');
+        do_action('shutdown');
+        vgpc_test_same(2, $attempts, 'The registered shutdown lifecycle must retry and release the indexer lock.');
+    }
+
     public function test_new_operation_does_not_inherit_previous_release_failure(): void
     {
         $this->ready_schema();

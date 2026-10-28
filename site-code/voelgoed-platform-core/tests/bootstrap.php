@@ -596,7 +596,8 @@ function wp_update_post(array $postarr, bool $wp_error = false, bool $fire_after
                 $expected_id = (int) ($_POST['post_ID'] ?? $acf_post_id);
                 if ($expected_id !== $acf_post_id
                     || ! empty($GLOBALS['vgpc_test_acf_nonce_invalid'])
-                    || ! empty($GLOBALS['vgpc_test_acf_validation_failed'])) return;
+                    || ! empty($GLOBALS['vgpc_test_acf_validation_failed'])
+                    || empty($_POST['acf']) || ! is_array($_POST['acf'])) return;
                 $GLOBALS['vgpc_test_wp_hook_order'][] = 'acf/save_post';
                 do_action('acf/save_post', $acf_post_id);
             }, 10, 1);

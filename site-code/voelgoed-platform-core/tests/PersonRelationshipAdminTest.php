@@ -487,19 +487,19 @@ final class PersonRelationshipAdminTest
         };
         $GLOBALS['vgpc_test_posts'][7561]->post_status = 'publish';
         $GLOBALS['vgpc_test_posts'][7562]->post_status = 'publish';
-        $_POST = ['acf' => ['field_vg_article_primary_author' => 7561]];
+        $_POST = ['post_ID' => 7560, 'acf' => ['field_vg_article_primary_author' => 7561]];
         $data = ['ID' => 7560, 'post_type' => 'post', 'post_status' => 'publish'];
         vgpc_test_same($data, apply_filters('wp_insert_post_data', $data, ['ID' => 7560]), 'Entering the Article contract from page must validate the target projection.');
         $admin->release_source_write_lock(7560);
 
         $GLOBALS['vgpc_test_posts'][7560]->post_type = 'page';
-        $_POST = ['acf' => ['field_vg_course_lead_instructor' => 7561]];
+        $_POST = ['post_ID' => 7560, 'acf' => ['field_vg_course_lead_instructor' => 7561]];
         $data = ['ID' => 7560, 'post_type' => 'mto-course', 'post_status' => 'publish'];
         vgpc_test_same($data, apply_filters('wp_insert_post_data', $data, ['ID' => 7560]), 'Entering the Course contract from page must validate the target projection.');
         $admin->release_source_write_lock(7560);
 
         $GLOBALS['vgpc_test_posts'][7562]->post_status = 'draft';
-        $_POST = ['acf' => ['field_vg_article_primary_author' => 7562]];
+        $_POST = ['post_ID' => 7560, 'acf' => ['field_vg_article_primary_author' => 7562]];
         $data = ['ID' => 7560, 'post_type' => 'post', 'post_status' => 'publish'];
         try {
             apply_filters('wp_insert_post_data', $data, ['ID' => 7560]);
@@ -513,7 +513,7 @@ final class PersonRelationshipAdminTest
         $admin->release_source_write_lock(7560);
         $GLOBALS['vgpc_test_posts'][7562]->post_status = 'publish';
 
-        $_POST = ['acf' => ['field_vg_article_primary_author' => ['bad']]];
+        $_POST = ['post_ID' => 7560, 'acf' => ['field_vg_article_primary_author' => ['bad']]];
         $data = ['ID' => 7560, 'post_type' => 'post', 'post_status' => 'publish'];
         try {
             apply_filters('wp_insert_post_data', $data, ['ID' => 7560]);
@@ -523,7 +523,7 @@ final class PersonRelationshipAdminTest
         }
         $admin->release_source_write_lock(7560);
 
-        $_POST = ['acf' => ['field_vg_course_lead_instructor' => ['bad']]];
+        $_POST = ['post_ID' => 7560, 'acf' => ['field_vg_course_lead_instructor' => ['bad']]];
         $data = ['ID' => 7560, 'post_type' => 'mto-course', 'post_status' => 'publish'];
         try {
             apply_filters('wp_insert_post_data', $data, ['ID' => 7560]);
@@ -602,6 +602,60 @@ final class PersonRelationshipAdminTest
         vgpc_test_same('publish', $GLOBALS['vgpc_test_posts'][718]->post_status, 'The test models WordPress writing status before ACF validation fails.');
         vgpc_test_same(719, get_field('primary_author', 718, false), 'Failed ACF validation must leave the prior stored value intact.');
         vgpc_test_same('', (string) get_post_meta(718, PersonRelationshipContract::DIRTY_META_KEY, true), 'The deferred check must recognize the valid stored relationship and avoid false bypass reports.');
+    }
+
+    public function test_published_preflight_ignores_acf_payload_for_another_post(): void
+    {
+        $admin = $this->admin();
+        $admin->register();
+        $this->source_and_people(7181, 'publish', [7182]);
+        $this->source_and_people(7183, 'publish', [7184]);
+        $GLOBALS['vgpc_test_posts'][7182]->post_status = 'publish';
+        $GLOBALS['vgpc_test_posts'][7184]->post_status = 'draft';
+        update_field('primary_author', 7182, 7181);
+        update_field('primary_author', 7184, 7183);
+        $_POST = ['post_ID' => 7183, 'post_status' => 'publish', 'acf' => ['field_vg_article_primary_author' => 7184]];
+        $GLOBALS['vgpc_test_apply_wp_update_filter'] = true;
+        $GLOBALS['vgpc_test_wp_update_post_hooks'] = true;
+        $GLOBALS['vgpc_test_acf_save_during_core_save'] = true;
+        vgpc_test_same(7181, wp_update_post(['ID' => 7181, 'post_status' => 'publish'], true), 'The real WordPress post-save path must ignore source B\'s ACF payload while updating published source A.');
+        vgpc_test_same(7182, get_field('primary_author', 7181, false), 'The mismatched ACF payload must not be applied to source A.');
+    }
+
+    public function test_new_source_preflight_uses_only_matching_new_post_form_payload(): void
+    {
+        $admin = $this->admin();
+        $admin->register();
+        $this->source_and_people(7185, 'publish', [7186]);
+        $GLOBALS['vgpc_test_posts'][7186]->post_status = 'publish';
+        $_POST = ['post_ID' => 0, 'post_status' => 'publish', 'acf' => ['field_vg_article_primary_author' => 7186]];
+
+        $data = ['post_type' => 'post', 'post_status' => 'publish'];
+        vgpc_test_same($data, apply_filters('wp_insert_post_data', $data, []), 'A new source form with post_ID 0 may validate its submitted relationship before WordPress assigns an ID.');
+    }
+
+    public function test_admin_retries_exceptional_source_lock_release_at_shutdown(): void
+    {
+        $admin = $this->admin();
+        $admin->register();
+        $this->source_and_people(7187, 'draft', [], 'post');
+        $release_attempts = 0;
+        $held = false;
+        $GLOBALS['wpdb']->get_var_handler = static function (string $query) use (&$release_attempts, &$held): string {
+            if (str_contains($query, 'GET_LOCK')) { $held = true; return '1'; }
+            if (str_contains($query, 'RELEASE_LOCK')) {
+                if (++$release_attempts === 1) throw new RuntimeException('temporary connection error');
+                $held = false;
+                return '1';
+            }
+            return '1';
+        };
+        $admin->validate_source_before_save(['ID' => 7187, 'post_type' => 'post', 'post_status' => 'draft'], ['ID' => 7187]);
+        $admin->release_source_write_lock(7187);
+        vgpc_test_true($held, 'An indeterminate release must keep the host lock held before shutdown retry.');
+        do_action('shutdown');
+        vgpc_test_same(2, $release_attempts, 'Shutdown must retry an exceptional release through the real registered lifecycle hook.');
+        vgpc_test_true(! $held, 'The shutdown retry must release the tracked source lock.');
     }
 
     public function test_editor_cannot_repair_published_duplicate_roles_in_one_acf_save(): void
