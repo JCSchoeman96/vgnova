@@ -105,6 +105,32 @@ final class PersonRelationshipIndexer
         return $result;
     }
 
+    /** Remove derived rows after the source and its metadata have been permanently deleted. */
+    public function remove_deleted_source(int $source_post_id): true|\WP_Error
+    {
+        if ($source_post_id < 1) {
+            return new \WP_Error('invalid_source_id', 'Source post ID must be positive.');
+        }
+        $locked = false;
+        try {
+            if (! $this->lock->acquire($source_post_id)) {
+                return new \WP_Error('source_lock_failed', 'Could not acquire the source relationship lock.');
+            }
+            $locked = true;
+            $result = $this->repository->delete_source($source_post_id);
+        } catch (\Throwable) {
+            $result = new \WP_Error('projection_failed', 'Could not remove deleted source relationships.');
+        } finally {
+            if ($locked) {
+                $this->lock->release($source_post_id);
+            }
+        }
+        if ($result === true && ! $this->lock->release_succeeded($source_post_id)) {
+            return new \WP_Error('source_lock_release_failed', 'Could not release the source relationship lock.');
+        }
+        return $result;
+    }
+
     /** Remove anomalous rows only while holding the source lock and after a fresh eligibility check. */
     public function remove_stale_source(int $source_post_id): true|\WP_Error
     {

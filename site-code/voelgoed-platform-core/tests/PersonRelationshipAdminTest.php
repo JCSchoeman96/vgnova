@@ -1595,6 +1595,24 @@ final class PersonRelationshipAdminTest
         vgpc_test_true(count(array_filter($GLOBALS['wpdb']->queries, static fn (array $query): bool => str_contains($query['query'], 'DELETE FROM wp_vg_person_relationship_index'))) >= 3, 'The post-meta deletion hook must retry derived-row cleanup after an earlier cleanup failure.');
     }
 
+    public function test_failed_post_delete_retry_never_attempts_metadata_writes(): void
+    {
+        $admin = $this->admin();
+        $this->source_and_people(151, 'draft', [251]);
+        $deleted_post = get_post(151);
+        unset($GLOBALS['vgpc_test_posts'][151], $GLOBALS['vgpc_test_meta'][151]);
+        $attempts = [];
+        $GLOBALS['vgpc_update_post_meta_handler'] = static function (int $id, string $key) use (&$attempts): bool {
+            $attempts[] = [$id, $key];
+            return true;
+        };
+        $GLOBALS['wpdb']->fail_query = true;
+
+        $admin->retry_delete_cleanup_after_meta_removal(151, $deleted_post);
+
+        vgpc_test_same([], $attempts, 'Post-delete cleanup failure must not attempt metadata writes for a deleted source.');
+    }
+
     public function test_rest_publication_validates_persisted_acf_fields_before_core_save(): void
     {
         $admin = $this->admin();

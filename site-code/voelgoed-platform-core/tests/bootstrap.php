@@ -847,12 +847,12 @@ function get_post_meta(int $post_id, string $meta_key = '', bool $single = false
 
 function update_post_meta(int $post_id, string $meta_key, mixed $value): bool
 {
-    if (! get_post($post_id)) {
-        return false;
-    }
     if (isset($GLOBALS['vgpc_update_post_meta_handler'])) {
         $result = ($GLOBALS['vgpc_update_post_meta_handler'])($post_id, $meta_key, $value);
         if ($result === false) return false;
+    }
+    if (! get_post($post_id)) {
+        return false;
     }
     if (($GLOBALS['vgpc_test_meta'][$post_id][$meta_key] ?? null) === $value) return false;
     $GLOBALS['vgpc_test_meta'][$post_id][$meta_key] = $value;

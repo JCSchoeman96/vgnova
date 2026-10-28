@@ -634,7 +634,7 @@ final class PersonRelationshipAdmin
         if (! PersonRelationshipContract::supported_source_type($post_type)) {
             return;
         }
-        $result = $this->indexer->remove_source($post_id);
+        $result = $this->indexer->remove_deleted_source($post_id);
         if (is_wp_error($result)) {
             error_log(sprintf('Person relationship post-delete cleanup retry failed for source %d (%s).', $post_id, $result->get_error_code()));
         }
