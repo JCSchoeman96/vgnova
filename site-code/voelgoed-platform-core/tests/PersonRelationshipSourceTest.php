@@ -131,6 +131,98 @@ final class PersonRelationshipSourceTest
         vgpc_test_same(true, $validator->validate_projection($projection, 'publish'), 'Each role has its own position sequence.');
     }
 
+    public function test_partial_write_boundary_rejects_cross_role_move_but_allows_two_step_move(): void
+    {
+        $this->register_fields();
+        $this->published_article([10 => ['primary_author' => 20]], [20, 21]);
+        $validator = new PersonRelationshipValidator();
+        vgpc_test_true(is_wp_error($validator->validate_publish_partial_write_safety(10, [
+            'primary_author' => null,
+            'expert_contributors' => [20],
+        ])), 'A one-save cross-role move must fail on the mixed old/new projection.');
+
+        $GLOBALS['vgpc_test_meta'][10] = ['primary_author' => null, 'expert_contributors' => null];
+        vgpc_test_same(true, $validator->validate_publish_partial_write_safety(10, ['expert_contributors' => [20]]), 'The second save of a two-step role move must pass.');
+    }
+
+    public function test_partial_write_boundary_uses_persisted_omitted_and_normalized_equal_fields(): void
+    {
+        $this->register_fields();
+        $this->published_article([10 => ['primary_author' => '20', 'additional_authors' => ['21', '22']]], [20, 21, 22]);
+        $validator = new PersonRelationshipValidator();
+        vgpc_test_same(true, $validator->validate_publish_partial_write_safety(10, [
+            'primary_author' => 20,
+        ]), 'An omitted role stays persisted and an equal normalized field does not create a dangerous delta.');
+        vgpc_test_same(true, $validator->validate_publish_partial_write_safety(10, [
+            'additional_authors' => [22, 21],
+        ]), 'A reordered multi-value field must remain ordered and pass when each partial projection is valid.');
+    }
+
+    public function test_partial_write_boundary_requires_valid_old_state_and_rejects_malformed_submission(): void
+    {
+        $this->register_fields();
+        $this->published_article([10 => ['primary_author' => 20, 'expert_contributors' => [20]]], [20, 21]);
+        $validator = new PersonRelationshipValidator();
+        vgpc_test_true(is_wp_error($validator->validate_publish_partial_write_safety(10, ['primary_author' => 21])), 'An already-invalid published projection must fail even when the final state repairs it.');
+        vgpc_test_true(is_wp_error($validator->validate_publish_partial_write_safety(10, ['additional_authors' => 'bad'])), 'Malformed submitted values must fail before subset enumeration.');
+        vgpc_test_same(['primary_author' => 20, 'expert_contributors' => [20]], $GLOBALS['vgpc_test_meta'][10], 'Partial-write validation must not persist relationship fields.');
+        vgpc_test_same([], $GLOBALS['vgpc_test_update_field_calls'], 'Partial-write validation must not write ACF fields.');
+    }
+
+    public function test_partial_write_boundary_checks_course_combinations_and_article_upper_bound(): void
+    {
+        $this->register_fields();
+        $this->published_article([10 => []], [20, 21, 22, 23]);
+        $validator = new PersonRelationshipValidator();
+        vgpc_test_same(true, $validator->validate_publish_partial_write_safety(10, [
+            'primary_author' => 20,
+            'additional_authors' => [21],
+            'expert_contributors' => [22],
+            'reviewed_by' => [23],
+        ]), 'Four changed Article roles must remain within the 16-projection contract.');
+
+        $GLOBALS['vgpc_test_posts'][11] = (object) ['ID' => 11, 'post_type' => 'mto-course', 'post_status' => 'publish'];
+        $GLOBALS['vgpc_test_meta'][11] = [];
+        vgpc_test_same(true, $validator->validate_publish_partial_write_safety(11, [
+            'lead_instructor' => 20,
+            'additional_instructors' => [21],
+            'experts' => [22],
+        ]), 'Three changed Course roles must remain within the 8-projection contract.');
+    }
+
+    public function test_partial_write_boundary_allows_removing_one_role_then_adding_another(): void
+    {
+        $this->register_fields();
+        $this->published_article([10 => ['primary_author' => 20]], [20]);
+        $validator = new PersonRelationshipValidator();
+        vgpc_test_same(true, $validator->validate_publish_partial_write_safety(10, ['primary_author' => null]), 'Removing one role while the source stays published must pass.');
+        $GLOBALS['vgpc_test_meta'][10] = ['primary_author' => null];
+        vgpc_test_same(true, $validator->validate_publish_partial_write_safety(10, ['expert_contributors' => [20]]), 'Adding the same Person to another role after persisted removal must pass.');
+    }
+
+    public function test_partial_write_boundary_requires_draft_repair_before_publish(): void
+    {
+        $this->register_fields();
+        $GLOBALS['vgpc_test_posts'][10] = (object) ['ID' => 10, 'post_type' => 'post', 'post_status' => 'draft'];
+        $GLOBALS['vgpc_test_meta'][10] = ['primary_author' => 20, 'expert_contributors' => [20]];
+        foreach ([20, 21] as $person_id) {
+            $GLOBALS['vgpc_test_posts'][$person_id] = (object) ['ID' => $person_id, 'post_type' => 'person', 'post_status' => 'publish'];
+        }
+        $validator = new PersonRelationshipValidator();
+        vgpc_test_true(is_wp_error($validator->validate_publish_partial_write_safety(10, ['primary_author' => 21])), 'A draft cannot repair an invalid old projection and publish in the same save.');
+        $GLOBALS['vgpc_test_meta'][10] = ['primary_author' => 21, 'expert_contributors' => null];
+        vgpc_test_same(true, $validator->validate_publish_partial_write_safety(10, []), 'A repaired draft can pass a later publish with no dangerous relationship delta.');
+    }
+
+    private function published_article(array $meta_by_id, array $person_ids): void
+    {
+        $GLOBALS['vgpc_test_posts'][10] = (object) ['ID' => 10, 'post_type' => 'post', 'post_status' => 'publish'];
+        $GLOBALS['vgpc_test_meta'] = $meta_by_id;
+        foreach ($person_ids as $person_id) {
+            $GLOBALS['vgpc_test_posts'][$person_id] = (object) ['ID' => $person_id, 'post_type' => 'person', 'post_status' => 'publish'];
+        }
+    }
+
     private function register_fields(): void
     {
         acf_add_local_field_group(['key'=>'test_person_relationships', 'fields'=>array_map(static fn (string $field): array => ['key'=>'field_' . $field, 'name'=>$field], ['primary_author', 'additional_authors', 'expert_contributors', 'reviewed_by', 'lead_instructor', 'additional_instructors', 'experts'])]);

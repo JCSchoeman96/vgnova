@@ -6,6 +6,138 @@ defined('ABSPATH') || exit;
 /** Validates normalized Person relationship projections before they are used or written. */
 final class PersonRelationshipValidator
 {
+    public function validate_publish_partial_write_safety(int $source_post_id, array $submitted_fields): true|\WP_Error
+    {
+        if (function_exists('clean_post_cache')) {
+            clean_post_cache($source_post_id);
+        }
+        if (function_exists('wp_cache_delete')) {
+            wp_cache_delete($source_post_id, 'post_meta');
+        }
+        $source = get_post($source_post_id);
+        if (! is_object($source)) {
+            return new \WP_Error('source_not_found', 'The source post does not exist.');
+        }
+        $source_type = (string) ($source->post_type ?? '');
+        $roles = PersonRelationshipContract::allowed_roles($source_type);
+        if ($roles === []) {
+            return new \WP_Error('unsupported_source', 'The source post type has no approved Person relationship contract.');
+        }
+        if (function_exists('acf_flush_value_cache')) {
+            foreach ($roles as $role) {
+                acf_flush_value_cache($source_post_id, $role);
+            }
+        }
+
+        $persisted_projection = (new PersonRelationshipSourceReader())->read($source_post_id);
+        if (is_wp_error($persisted_projection)) {
+            return $persisted_projection;
+        }
+        $old_values = array_fill_keys($roles, []);
+        foreach ($persisted_projection['relationships'] as $row) {
+            $old_values[$row['role_key']][] = $row['person_id'];
+        }
+        foreach (['primary_author', 'lead_instructor'] as $single_role) {
+            if (isset($old_values[$single_role])) {
+                $old_values[$single_role] = $old_values[$single_role][0] ?? null;
+            }
+        }
+
+        $new_values = $old_values;
+        $changed_roles = [];
+        foreach ($submitted_fields as $role => $value) {
+            if (! is_string($role) || ! in_array($role, $roles, true)) {
+                return new \WP_Error('unrecognized_submitted_relationship', 'Submitted fields must use approved Person relationship names.');
+            }
+            $normalized = $this->normalize_submitted_role($role, $value);
+            if (is_wp_error($normalized)) {
+                return $normalized;
+            }
+            if ($normalized !== $old_values[$role]) {
+                $new_values[$role] = $normalized;
+                $changed_roles[] = $role;
+            }
+        }
+
+        $combination_count = 1 << count($changed_roles);
+        for ($mask = 0; $mask < $combination_count; $mask++) {
+            $values = $old_values;
+            foreach ($changed_roles as $bit => $role) {
+                if (($mask & (1 << $bit)) !== 0) {
+                    $values[$role] = $new_values[$role];
+                }
+            }
+            $projection = $this->projection_from_role_values($source_post_id, $source_type, $roles, $values);
+            $result = $this->validate_projection($projection, 'publish');
+            if ($result !== true) {
+                return new \WP_Error(
+                    'unsafe_partial_relationship_write',
+                    sprintf('A possible partial relationship save is invalid: %s', $result->get_error_message()),
+                    ['combination' => $mask, 'changed_fields' => $changed_roles]
+                );
+            }
+        }
+
+        return true;
+    }
+
+    private function normalize_submitted_role(string $role, mixed $value): mixed
+    {
+        if ($value === null || $value === false || $value === '') {
+            return in_array($role, ['primary_author', 'lead_instructor'], true) ? null : [];
+        }
+        $single = in_array($role, ['primary_author', 'lead_instructor'], true);
+        if ($single) {
+            if (is_array($value)) {
+                return new \WP_Error('malformed_relationship', sprintf('The %s field must contain one Person value.', $role));
+            }
+            $person_id = $this->normalize_person_value($value);
+            return $person_id === null
+                ? new \WP_Error('malformed_relationship', sprintf('The %s field contains an invalid Person value.', $role))
+                : $person_id;
+        }
+        if (! is_array($value) || ! array_is_list($value)) {
+            return new \WP_Error('malformed_relationship', sprintf('The %s field must contain an ordered list of Person values.', $role));
+        }
+        $ids = [];
+        foreach ($value as $person_value) {
+            $person_id = $this->normalize_person_value($person_value);
+            if ($person_id === null) {
+                return new \WP_Error('malformed_relationship', sprintf('The %s field contains an invalid Person value.', $role));
+            }
+            $ids[] = $person_id;
+        }
+        return $ids;
+    }
+
+    private function normalize_person_value(mixed $value): ?int
+    {
+        if (is_object($value)) {
+            $value = $value->ID ?? null;
+        } elseif (is_array($value)) {
+            $value = $value['ID'] ?? $value['id'] ?? null;
+        }
+        if (is_string($value) && preg_match('/^[1-9][0-9]*$/', $value) === 1) {
+            $value = (int) $value;
+        }
+        return is_int($value) && $value > 0 ? $value : null;
+    }
+
+    private function projection_from_role_values(int $source_id, string $source_type, array $roles, array $values): array
+    {
+        $relationships = [];
+        foreach ($roles as $role) {
+            $value = $values[$role];
+            $people = in_array($role, ['primary_author', 'lead_instructor'], true)
+                ? ($value === null ? [] : [$value])
+                : $value;
+            foreach ($people as $position => $person_id) {
+                $relationships[] = ['person_id' => $person_id, 'role_key' => $role, 'position' => $position];
+            }
+        }
+        return ['source_post_id' => $source_id, 'source_post_type' => $source_type, 'relationships' => $relationships];
+    }
+
     public function validate_projection(array $projection, string $target_source_status): true|\WP_Error
     {
         $allowed_source_statuses = ['publish', 'future', 'draft', 'pending', 'private', 'auto-draft'];
