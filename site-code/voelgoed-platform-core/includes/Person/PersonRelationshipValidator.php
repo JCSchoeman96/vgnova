@@ -6,6 +6,37 @@ defined('ABSPATH') || exit;
 /** Validates normalized Person relationship projections before they are used or written. */
 final class PersonRelationshipValidator
 {
+    /** Check whether submitted fields are unchanged, without requiring the stored projection to be valid. */
+    public function submitted_fields_match_persisted(int $source_post_id, array $submitted_fields, ?string $source_type = null): bool|\WP_Error
+    {
+        if (function_exists('clean_post_cache')) clean_post_cache($source_post_id);
+        if (function_exists('wp_cache_delete')) wp_cache_delete($source_post_id, 'post_meta');
+        $source = get_post($source_post_id);
+        if (! is_object($source)) return new \WP_Error('source_not_found', 'The source post does not exist.');
+        $source_type ??= (string) ($source->post_type ?? '');
+        if (! PersonRelationshipContract::supported_source_type($source_type)) {
+            return new \WP_Error('unsupported_source', 'The source post type has no approved Person relationship contract.');
+        }
+        if (function_exists('acf_flush_value_cache')) {
+            foreach (PersonRelationshipContract::allowed_roles($source_type) as $role) acf_flush_value_cache($source_post_id, $role);
+        }
+        $projection = (new PersonRelationshipSourceReader())->read_for_source_type($source_post_id, $source_type);
+        if (is_wp_error($projection)) return $projection;
+
+        $persisted = array_fill_keys(PersonRelationshipContract::allowed_roles($source_type), []);
+        foreach ($projection['relationships'] as $row) $persisted[$row['role_key']][] = $row['person_id'];
+        foreach (['primary_author', 'lead_instructor'] as $single_role) {
+            if (isset($persisted[$single_role])) $persisted[$single_role] = $persisted[$single_role][0] ?? null;
+        }
+        foreach ($submitted_fields as $role => $value) {
+            if (! is_string($role) || ! array_key_exists($role, $persisted)) return false;
+            $normalized = $this->normalize_submitted_role($role, $value);
+            if (is_wp_error($normalized)) return $normalized;
+            if ($normalized !== $persisted[$role]) return false;
+        }
+        return true;
+    }
+
     public function validate_publish_partial_write_safety(int $source_post_id, array $submitted_fields, ?string $target_source_type = null): true|\WP_Error
     {
         if (function_exists('clean_post_cache')) {

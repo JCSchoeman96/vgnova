@@ -140,32 +140,44 @@ final class PersonRelationshipCli
             if (is_wp_error($index_issues)) {
                 $sources[] = ['source_post_id' => 0, 'error' => $this->error_details($index_issues)];
             } else {
+                $index_rows = [];
+                $successful_index_repairs = [];
                 foreach ($index_issues as $issue) {
                     $source_id = $issue['source_post_id'];
                     $repair_error = null;
                     if ($repair && $issue['code'] === 'wrong_source_post_type' && PersonRelationshipContract::supported_source_type((string) $issue['details']['current_source_post_type'])) {
                         $repair_result = $this->indexer->rebuild_source($source_id);
                         if (is_wp_error($repair_result)) $repair_error = $this->error_details($repair_result);
-                        else $repaired[] = $source_id;
+                        else { $repaired[] = $source_id; $successful_index_repairs[] = $source_id; }
                     } elseif ($repair && in_array($issue['code'], ['orphan_index_source', 'unsupported_index_source'], true)) {
                         $repair_result = $this->indexer->remove_stale_source($source_id);
                         if (is_wp_error($repair_result)) $repair_error = $this->error_details($repair_result);
-                        else $repaired[] = $source_id;
+                        else { $repaired[] = $source_id; $successful_index_repairs[] = $source_id; }
                     }
-                    $remaining = [$issue];
-                    if ($repair && $repair_error === null && in_array($source_id, $repaired, true)) {
-                        $post_repair_index = $this->reconciler->inspect_index();
-                        if (is_wp_error($post_repair_index)) {
-                            $repair_error = $this->error_details($post_repair_index);
-                        } else {
-                            $remaining = array_values(array_filter(
+                    $index_rows[] = ['source_post_id' => $source_id, 'issues' => [$issue], ...($repair_error === null ? [] : ['repair_error' => $repair_error])];
+                }
+                if ($successful_index_repairs !== []) {
+                    $post_repair_index = $this->reconciler->inspect_index();
+                    if (is_wp_error($post_repair_index)) {
+                        $error = $this->error_details($post_repair_index);
+                        foreach ($index_rows as &$row) {
+                            if (in_array($row['source_post_id'], $successful_index_repairs, true)) {
+                                $row = ['source_post_id' => $row['source_post_id'], 'error' => $error, 'repaired' => true];
+                            }
+                        }
+                        unset($row);
+                    } else {
+                        foreach ($index_rows as &$row) {
+                            if (! in_array($row['source_post_id'], $successful_index_repairs, true)) continue;
+                            $row['issues'] = array_values(array_filter(
                                 $post_repair_index,
-                                static fn (array $remaining_issue): bool => (int) $remaining_issue['source_post_id'] === (int) $source_id
+                                static fn (array $remaining_issue): bool => (int) $remaining_issue['source_post_id'] === (int) $row['source_post_id']
                             ));
                         }
+                        unset($row);
                     }
-                    $sources[] = ['source_post_id' => $source_id, 'issues' => $remaining, ...($repair_error === null ? [] : ['repair_error' => $repair_error])];
                 }
+                array_push($sources, ...$index_rows);
             }
         }
 

@@ -187,6 +187,19 @@ final class PersonRelationshipAdmin
             return $data;
         }
 
+        $meta_input = $postarr['meta_input'] ?? null;
+        if (is_array($meta_input)) {
+            $governed_roles = array_unique(array_merge(
+                PersonRelationshipContract::allowed_roles($source_type),
+                PersonRelationshipContract::allowed_roles($current_type),
+            ));
+            foreach ($governed_roles as $role) {
+                if (array_key_exists($role, $meta_input) || array_key_exists('_' . $role, $meta_input)) {
+                    wp_die('Person relationship metadata must be saved through the supported ACF editor flow.', 'Person relationship validation failed', ['response' => 400]);
+                }
+            }
+        }
+
         if ($post_id > 0 && ! $this->acquire_source_write_lock($post_id)) {
             wp_die('This source is being edited by another request. Retry the save.', 'Person relationship validation failed', ['response' => 409]);
         }
@@ -246,6 +259,17 @@ final class PersonRelationshipAdmin
         // A status-only demotion is the first step in repairing malformed
         // published data. Do not validate the old relationships as a publish.
         $submitted_fields = $this->submitted_relationship_fields($source_type);
+        if ($status !== 'publish' && $submitted_fields !== []) {
+            $unchanged = $this->validator->submitted_fields_match_persisted($post_id, $submitted_fields, $source_type);
+            if ($unchanged === true) {
+                update_post_meta($post_id, PersonRelationshipContract::DIRTY_META_KEY, 1);
+                if ((string) get_post_meta($post_id, PersonRelationshipContract::DIRTY_META_KEY, true) !== '1') {
+                    $this->release_source_write_lock($post_id);
+                    wp_die('Person relationship fields could not be saved because the reverse index could not be marked for repair.', 'Person relationship validation failed', ['response' => 500]);
+                }
+                return;
+            }
+        }
         if ($status !== 'publish' && $submitted_fields === []) {
             update_post_meta($post_id, PersonRelationshipContract::DIRTY_META_KEY, 1);
             if ((string) get_post_meta($post_id, PersonRelationshipContract::DIRTY_META_KEY, true) !== '1') {

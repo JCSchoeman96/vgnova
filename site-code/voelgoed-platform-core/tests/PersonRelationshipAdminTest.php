@@ -231,6 +231,27 @@ final class PersonRelationshipAdminTest
         vgpc_test_same(741, get_field('primary_author', 740, false), 'Rejected preflight must leave persisted ACF data unchanged.');
     }
 
+    public function test_meta_input_cannot_write_governed_values_or_acf_reference_keys(): void
+    {
+        $admin = $this->admin();
+        $admin->register();
+        $this->source_and_people(755, 'draft', [756]);
+        foreach ([
+            [[], ['post_type' => 'post', 'post_status' => 'draft'], ['primary_author' => 756]],
+            [['ID' => 755], ['ID' => 755, 'post_type' => 'post', 'post_status' => 'draft'], ['_additional_authors' => 'field_vg_article_additional_authors']],
+            [['ID' => 755], ['ID' => 755, 'post_type' => 'post', 'post_status' => 'draft'], ['reviewed_by' => 756]],
+            [['ID' => 762], ['ID' => 762, 'post_type' => 'mto-course', 'post_status' => 'draft'], ['_experts' => 'field_vg_course_experts']],
+        ] as [$postarr, $data, $meta_input]) {
+            $postarr['meta_input'] = $meta_input;
+            try {
+                apply_filters('wp_insert_post_data', $data, $postarr);
+                throw new RuntimeException('Direct governed metadata writes must fail before WordPress persists them.');
+            } catch (RuntimeException $error) {
+                vgpc_test_true(str_contains($error->getMessage(), 'supported ACF editor flow'), 'The direct metadata rejection must identify the supported write path.');
+            }
+        }
+    }
+
     public function test_invalid_published_source_can_demote_without_publish_subset_validation(): void
     {
         $admin = $this->admin();
@@ -254,6 +275,55 @@ final class PersonRelationshipAdminTest
         $admin->validate_actual_acf_save(743);
         vgpc_test_same('1', (string) get_post_meta(743, PersonRelationshipContract::DIRTY_META_KEY, true), 'A status-only demotion must mark the derived projection for repair without validating malformed published relationships.');
         $admin->release_source_write_lock(743);
+    }
+
+    public function test_populated_unchanged_acf_fields_allow_invalid_source_demotion_repair_and_republish(): void
+    {
+        $admin = $this->admin();
+        $admin->register();
+        $this->source_and_people(757, 'publish', [758, 759]);
+        $GLOBALS['vgpc_test_posts'][758]->post_status = 'publish';
+        $GLOBALS['vgpc_test_posts'][759]->post_status = 'publish';
+        update_field('primary_author', 758, 757);
+        update_field('additional_authors', [758], 757);
+
+        $_POST = ['post_ID' => 757, 'post_status' => 'draft', 'acf' => [
+            'field_vg_article_primary_author' => 758,
+            'field_vg_article_additional_authors' => [758],
+        ]];
+        $demotion = ['ID' => 757, 'post_type' => 'post', 'post_status' => 'draft'];
+        vgpc_test_same($demotion, apply_filters('wp_insert_post_data', $demotion, ['ID' => 757]), 'WordPress must allow the non-public status write before the ACF save callback.');
+        $GLOBALS['vgpc_test_posts'][757]->post_status = 'draft';
+        $admin->validate_actual_acf_save(757);
+        vgpc_test_same('1', (string) get_post_meta(757, PersonRelationshipContract::DIRTY_META_KEY, true), 'An unchanged populated ACF payload must permit demotion of an invalid source and mark the index dirty.');
+        $admin->release_source_write_lock(757);
+
+        $_POST['acf']['field_vg_article_additional_authors'] = [];
+        $admin->validate_actual_acf_save(757);
+        update_field('additional_authors', [], 757);
+        $admin->release_source_write_lock(757);
+        vgpc_test_same([], get_field('additional_authors', 757, false), 'A valid relationship repair must persist while the source is draft.');
+
+        $_POST['post_status'] = 'publish';
+        $publish = ['ID' => 757, 'post_type' => 'post', 'post_status' => 'publish'];
+        vgpc_test_same($publish, apply_filters('wp_insert_post_data', $publish, ['ID' => 757]), 'The repaired relationship state must pass the normal publish preflight.');
+        $admin->release_source_write_lock(757);
+    }
+
+    public function test_changed_invalid_relationships_do_not_use_the_unchanged_demotion_exception(): void
+    {
+        $admin = $this->admin();
+        $this->source_and_people(760, 'draft', [761]);
+        update_field('primary_author', 761, 760);
+        $_POST = ['post_ID' => 760, 'post_status' => 'draft', 'acf' => ['field_vg_article_primary_author' => 999]];
+        try {
+            $admin->validate_actual_acf_save(760);
+            throw new RuntimeException('A changed invalid value must not pass through the status-only demotion exception.');
+        } catch (RuntimeException $error) {
+            vgpc_test_true(str_contains($error->getMessage(), 'Person 999'), 'Changed invalid values must fail ordinary projection validation.');
+        }
+        vgpc_test_same(761, get_field('primary_author', 760, false), 'Rejected relationship changes must preserve the stored value.');
+        $admin->release_source_write_lock(760);
     }
 
     public function test_rest_status_only_demotion_accepts_invalid_published_relationships(): void
