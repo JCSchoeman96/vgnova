@@ -31,6 +31,8 @@ The deployer records `swap_intent` durably, then calls Linux `renameat2` with `R
 
 The deployer runs PHP bootstrap health, local HTTP health, and exact runtime parity checks. Health and parity must both pass before finalization.
 
+When the verified artifact already matches the active files and expected nested directory metadata, the deployer verifies health and rechecks the unchanged tree without creating a deployment journal or moving directories.
+
 On success, it records `finalize_intent`, moves the old tree from stage to a unique rollback path with no-replace semantics, verifies the old digest, records `finalized`, then moves the completed journal to history. It does not delete retained rollback trees.
 
 On a post-exchange failure with known trees, it records `rollback_intent`, exchanges active and stage again, verifies the old snapshot at active, and moves the known target candidate to the retained failed path. An incomplete stage is retained for diagnosis. The command exits non-zero after recording `rolled_back`. If restoration cannot be proven, the deployer retains all trees and the unresolved journal, records `rollback_failed` when possible, and refuses later deployment.

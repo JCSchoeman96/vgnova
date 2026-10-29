@@ -859,6 +859,28 @@ class PlatformCoreDeploymentTests(unittest.TestCase):
             self.assertEqual(deployer.fingerprint_tree(stage), before)
             self.assertFalse((root / "app" / (".vgnova-platform-core-failed-" + "a" * 32)).exists())
 
+    def test_identical_runtime_is_verified_without_creating_unresolved_journal(self) -> None:
+        deployer = load_deployer()
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            fixture = create_deployment_fixture(root)
+            deployer._remove_owned_tree(fixture["active"])
+            deployer.extract_verified_archive(fixture["artifact_directory"] / "voelgoed-platform-core.tar.gz",
+                                              fixture["active"], fixture["manifest"]["files"])
+            before = deployer.fingerprint_tree(fixture["active"])
+            exchange, rename = mock.Mock(), mock.Mock()
+            result = deployer.deploy_artifact(
+                repo_root=root, target=fixture["target"], target_id=deployer.TARGET_ID,
+                wp_root=fixture["wp_root"], registered_wp_root=fixture["wp_root"],
+                artifact_directory=fixture["artifact_directory"], source_commit=fixture["source_commit"],
+                expected_manifest_sha256=fixture["manifest_sha256"],
+                hooks=deployment_hooks(deployer, fixture, exchange=exchange, rename_directory=rename))
+            self.assertEqual(result["phase"], "unchanged")
+            self.assertEqual(deployer.fingerprint_tree(fixture["active"]), before)
+            self.assertFalse((root / "app/.vgnova-platform-core-deployments/in-progress.json").exists())
+            exchange.assert_not_called()
+            rename.assert_not_called()
+
     def test_existing_unresolved_journal_blocks_deployment(self) -> None:
         deployer = load_deployer()
         self.assertTrue(hasattr(deployer, "deploy_artifact"), "deployment orchestration is not implemented")

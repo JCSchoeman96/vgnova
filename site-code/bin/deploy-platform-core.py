@@ -135,6 +135,8 @@ def _run(arguments: argparse.Namespace) -> dict[str, Any]:
             expected_manifest_sha256=arguments.manifest_sha256,
             hooks=_hooks(),
         )
+        if journal["phase"] == "unchanged":
+            return {"ok": True, **journal}
         return {
             "ok": True,
             "deployment_id": journal["deployment_id"],

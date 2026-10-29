@@ -1463,6 +1463,24 @@ def deploy_artifact(
         read_journal(in_progress)
         raise DeploymentError("An unresolved Platform Core deployment journal blocks this deployment.")
 
+    # A verified identical tree needs no exchange. Do not create a journal
+    # whose old and target identities would be indistinguishable in recovery.
+    expected_directories = [
+        {"path": path, "mode": 0o755, "owner": os.geteuid(), "group": os.getegid()}
+        for path in _expected_directories(records)
+    ]
+    if compare_tree_to_manifest(old_snapshot, records, expected_directories)["ok"]:
+        php_health = _require_hook_success(hooks.verify_health(target_id, Path(wp_root)),
+                                           "WordPress Platform Core bootstrap health")
+        http_health = _require_hook_success(hooks.verify_http_health(target["home"] + "/", php_health.get("site_name")),
+                                            "Local VGNova HTTP health")
+        current = fingerprint_tree(active_path)
+        if not _matches_old_snapshot(current, old_snapshot) or not compare_tree_to_manifest(current, records, expected_directories)["ok"]:
+            raise DeploymentError("Unchanged Platform Core runtime changed during health verification.")
+        return {"phase": "unchanged", "target": target_id, "source_commit": source_commit,
+                "manifest_sha256": expected_manifest_sha256, "target_tree_sha256": manifest["tree_sha256"],
+                "provenance": provenance, "health_verification_result": {"php": php_health, "http": http_health}}
+
     deployment_id = hooks.deployment_id()
     if not isinstance(deployment_id, str) or re.fullmatch(r"[a-f0-9]{32}", deployment_id) is None:
         raise DeploymentError("Deployment ID generator returned an invalid ID.")
