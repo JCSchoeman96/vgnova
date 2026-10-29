@@ -13,7 +13,7 @@
 ## Repository baseline and file map
 
 - Baseline commit: `de90ff061c20b164c127aa97e845e3f192429543`.
-- Existing artifact authority: `site-code/bin/check-platform-core-build.py` and `docs/architecture/PLATFORM_CORE_ASSEMBLY_CONTRACT_v1.3.0.md`.
+- Existing artifact authority: `site-code/bin/check-platform-core-build.py` and `docs/architecture/PLATFORM_CORE_ASSEMBLY_CONTRACT_v1.4.0.md`.
 - Existing runtime authority: `site-code/bin/vgnova-runtime-mutate.php`, `site-code/runtime-tools/runtime-mutation-session.php`, and `site-code/runtime-tools/runtime-mutation-targets.json`.
 - Existing source gate: `site-code/bin/check-source.sh`.
 - New module: `site-code/runtime-tools/platform_core_deployment.py` owns artifact inspection, secure extraction, tree fingerprints, durable journal operations, atomic exchange, deploy orchestration, health/parity decisions, recovery, and read-only status.

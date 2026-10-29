@@ -12,7 +12,7 @@ PE-008 is platform infrastructure. It contains no Person, Product, Event, or VS1
 
 ## Scope
 
-The deployer consumes the canonical archive and manifest produced under `PLATFORM_CORE_ASSEMBLY_CONTRACT_v1.3.0`. It does not rebuild or rewrite those files. Immediately before every deployment it invokes the existing verifier with the requested source commit and artifact directory, then compares the caller's manifest SHA-256 with the verified manifest bytes.
+The deployer consumes the canonical archive and manifest produced under `PLATFORM_CORE_ASSEMBLY_CONTRACT_v1.4.0`. It does not rebuild or rewrite those files. Immediately before every deployment it invokes the existing verifier with the requested source commit and artifact directory, then compares the caller's manifest SHA-256 with the verified manifest bytes.
 
 The only supported target is `vgnova-local-10039`. The deployer checks the registered WordPress root, home URL, site URL, database name, and Platform Core entrypoint. It also requires the active plugin path to be the exact non-symlink path beneath that WordPress root.
 

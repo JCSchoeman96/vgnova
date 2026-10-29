@@ -1310,6 +1310,18 @@ class PlatformCoreDeploymentTests(unittest.TestCase):
                     deployer.committed_source_provenance(root)
                 path.write_text(original, encoding="utf-8")
 
+            relative = "site-code/runtime-tools/runtime-mutation-session.php"
+            original_blob = subprocess.check_output(
+                ["git", "-C", str(root), "rev-parse", f"HEAD:{relative}"], text=True).strip()
+            replacement_blob = subprocess.check_output(
+                ["git", "-C", str(root), "hash-object", "-w", "--stdin"], input="replacement session proof\n", text=True).strip()
+            subprocess.run(["git", "-C", str(root), "replace", original_blob, replacement_blob], check=True)
+            (root / relative).write_text("replacement session proof\n", encoding="utf-8")
+            replaced_bytes = subprocess.check_output(["git", "-C", str(root), "show", f"HEAD:{relative}"])
+            self.assertEqual(replaced_bytes, b"replacement session proof\n")
+            with self.assertRaises(deployer.DeploymentError):
+                deployer.committed_source_provenance(root)
+
     def test_dirty_session_proof_dependency_fails_before_runtime_filesystem_writes(self) -> None:
         deployer = load_deployer()
         for relative in (

@@ -1250,11 +1250,14 @@ def committed_source_provenance(
     repo_root = Path(repo_root).resolve(strict=True)
 
     def git_bytes(arguments: list[str]) -> bytes:
+        git_environment = os.environ.copy()
+        git_environment["GIT_NO_REPLACE_OBJECTS"] = "1"
         result = subprocess.run(
             ["git", "-C", str(repo_root), *arguments],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             check=False,
+            env=git_environment,
         )
         if result.returncode != 0:
             raise DeploymentError("Git could not prove deployment source provenance.")
