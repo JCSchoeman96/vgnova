@@ -33,7 +33,7 @@ The deployer runs PHP bootstrap health, local HTTP health, and exact runtime par
 
 On success, it records `finalize_intent`, moves the old tree from stage to a unique rollback path with no-replace semantics, verifies the old digest, records `finalized`, then moves the completed journal to history. It does not delete retained rollback trees.
 
-On a post-exchange failure, it records `rollback_intent`, exchanges active and stage again, verifies the old digest at active, and moves the failed candidate to the retained failed path. The command exits non-zero after recording `rolled_back`. If restoration cannot be proven, the deployer retains all trees and the unresolved journal, records `rollback_failed` when possible, and refuses later deployment.
+On a post-exchange failure with known trees, it records `rollback_intent`, exchanges active and stage again, verifies the old snapshot at active, and moves the known target candidate to the retained failed path. An incomplete stage is retained for diagnosis. The command exits non-zero after recording `rolled_back`. If restoration cannot be proven, the deployer retains all trees and the unresolved journal, records `rollback_failed` when possible, and refuses later deployment.
 
 ## Journal and recovery
 
@@ -51,7 +51,7 @@ The source-controlled PHP helper loads the exact supplied WordPress root. It emi
 
 HTTP health requests the registered home URL without following redirects. It requires the expected local WordPress response. It runs independently of PHP health.
 
-Runtime parity re-fingerprints the complete active plugin directory and compares every path, mode, size, SHA-256, file count, and tree hash with the canonical manifest. Any difference triggers atomic rollback.
+Runtime parity re-fingerprints the complete active plugin directory and compares file paths, modes, sizes, SHA-256 values, file count, and tree hash with the canonical manifest. It also compares nested directory paths, modes, owners, and groups with the staged directory records saved in the journal before exchange. The prior-runtime snapshot records the same directory metadata. An unknown tree stops recovery without moving it; the journal remains available for diagnosis.
 
 ## Provenance
 

@@ -101,11 +101,12 @@ def sample_journal() -> dict[str, object]:
             f"{target_record['mode']} {target_record['sha256']} {target_record['path']}\n".encode()
         ).hexdigest(),
         "target_manifest_records": [target_record],
+        "target_directories": [{"path": "includes", "mode": 0o755, "owner": os.getuid(), "group": os.getgid()}],
         "old_runtime_tree_sha256": old_hash,
         "old_runtime_snapshot": {
             "file_count": 1,
             "files": [old_record],
-            "directories": ["includes"],
+            "directories": [{"path": "includes", "mode": 0o755, "owner": os.getuid(), "group": os.getgid()}],
             "tree_sha256": old_hash,
             "root_owner": os.getuid(),
             "root_group": os.getgid(),
@@ -255,6 +256,7 @@ def prepare_recovery_state(
         Path(journal["stage_path"]),
         fixture["manifest"]["files"],
     )
+    journal["target_directories"] = deployer.fingerprint_tree(Path(journal["stage_path"]))["directories"]
     deployer.advance_journal(journal, "stage_verified")
     deployer.write_journal(state_root / "in-progress.json", journal)
     deployer.advance_journal(journal, "swap_intent")
@@ -583,6 +585,22 @@ class PlatformCoreDeploymentTests(unittest.TestCase):
             self.assertEqual(deployer.read_journal(journal_path), record)
             self.assertEqual(list(root.glob(".in-progress.json.tmp-*")), [])
 
+    def test_failed_extraction_retains_partial_stage_for_diagnosis(self) -> None:
+        deployer = load_deployer()
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            fixture = create_deployment_fixture(root)
+            stage = root / "stage"
+            def fail_after_write(path, contents, mode):
+                path.write_bytes(contents)
+                raise OSError("injected extraction failure")
+            with mock.patch.object(deployer, "_create_file", side_effect=fail_after_write):
+                with self.assertRaises(OSError):
+                    deployer.extract_verified_archive(fixture["artifact_directory"] / "voelgoed-platform-core.tar.gz",
+                                                      stage, fixture["manifest"]["files"])
+            self.assertTrue(stage.exists())
+            self.assertTrue(any(path.is_file() for path in stage.rglob("*")))
+
     def test_journal_rejects_unknown_phase_and_credential_fields(self) -> None:
         deployer = load_deployer()
         self.assertTrue(hasattr(deployer, "validate_journal"), "journal validation is not implemented")
@@ -610,6 +628,18 @@ class PlatformCoreDeploymentTests(unittest.TestCase):
         deployer.validate_journal(record)
         self.assertEqual(record["target_manifest_records"][0]["path"], "includes/plugin.php")
         self.assertEqual(record["old_runtime_snapshot"]["files"][0]["mode"], "100755")
+
+    def test_journal_rejects_invalid_directory_metadata(self) -> None:
+        deployer = load_deployer()
+        for field, value in (("mode", -1), ("owner", "1"), ("group", -1), ("path", "../escape")):
+            record = sample_journal()
+            record["old_runtime_snapshot"]["directories"][0][field] = value
+            with self.subTest(field=field), self.assertRaises(deployer.DeploymentError):
+                deployer.validate_journal(record)
+        record = sample_journal()
+        record["target_directories"][0]["mode"] = 0o700
+        with self.assertRaises(deployer.DeploymentError):
+            deployer.validate_journal(record)
 
     def test_journal_phase_advance_records_history_and_rejects_skips(self) -> None:
         deployer = load_deployer()
@@ -800,7 +830,7 @@ class PlatformCoreDeploymentTests(unittest.TestCase):
                     hooks=deployment_hooks(deployer, fixture),
                 )
 
-    def test_parity_failure_atomically_restores_old_tree_and_retains_candidate(self) -> None:
+    def test_parity_failure_retains_unknown_active_and_old_stage(self) -> None:
         deployer = load_deployer()
         self.assertTrue(hasattr(deployer, "deploy_artifact"), "deployment orchestration is not implemented")
         with tempfile.TemporaryDirectory() as temporary:
@@ -824,9 +854,10 @@ class PlatformCoreDeploymentTests(unittest.TestCase):
                     expected_manifest_sha256=fixture["manifest_sha256"],
                     hooks=deployment_hooks(deployer, fixture, verify_health=contaminate_active),
                 )
-            self.assertEqual(deployer.fingerprint_tree(fixture["active"]), before)
-            failed = root / "app" / (".vgnova-platform-core-failed-" + "a" * 32)
-            self.assertTrue((failed / "extra.php").is_file())
+            self.assertTrue((fixture["active"] / "extra.php").is_file())
+            stage = root / "app" / (".vgnova-platform-core-stage-" + "a" * 32)
+            self.assertEqual(deployer.fingerprint_tree(stage), before)
+            self.assertFalse((root / "app" / (".vgnova-platform-core-failed-" + "a" * 32)).exists())
 
     def test_existing_unresolved_journal_blocks_deployment(self) -> None:
         deployer = load_deployer()
@@ -960,17 +991,74 @@ class PlatformCoreDeploymentTests(unittest.TestCase):
             deployer._remove_owned_tree(stage)
             stage.mkdir(mode=0o700)
             (stage / "partial.php").write_text("incomplete", encoding="utf-8")
+            (stage / "partial.php").chmod(0o644)
 
-            result = deployer.recover_deployment(
-                state_root,
-                action="rollback",
-                hooks=deployment_hooks(deployer, fixture),
-            )
-
-            self.assertEqual(result["journal"]["phase"], "rolled_back")
+            stage_before = deployer.fingerprint_tree(stage)
+            exchange, rename = mock.Mock(), mock.Mock()
+            self.assertEqual(deployer.status_deployment(state_root)["recovery_options"], [])
+            with self.assertRaises(deployer.DeploymentError):
+                deployer.recover_deployment(state_root, action="rollback", hooks=deployment_hooks(
+                    deployer, fixture, exchange=exchange, rename_directory=rename))
             self.assertEqual(deployer.fingerprint_tree(fixture["active"]), before)
+            self.assertEqual(deployer.fingerprint_tree(stage), stage_before)
+            self.assertFalse(Path(journal["failed_candidate_path"]).exists())
+            self.assertTrue((state_root / "in-progress.json").exists())
+            exchange.assert_not_called()
+            rename.assert_not_called()
+
+    def test_unknown_active_never_moves_any_tree(self) -> None:
+        deployer = load_deployer()
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            fixture = create_deployment_fixture(root)
+            state_root, journal = prepare_recovery_state(deployer, root, fixture)
+            (fixture["active"] / "includes/new.php").write_bytes(b"changed")
+            paths = [fixture["active"], *(Path(journal[key]) for key in (
+                "stage_path", "rollback_path", "failed_candidate_path"))]
+            before = [deployer.fingerprint_tree(path) if path.exists() else None for path in paths]
+            exchange, rename = mock.Mock(), mock.Mock()
+            self.assertEqual(deployer.status_deployment(state_root)["recovery_options"], [])
+            with self.assertRaises(deployer.DeploymentError):
+                deployer.recover_deployment(state_root, action="rollback", hooks=deployment_hooks(
+                    deployer, fixture, exchange=exchange, rename_directory=rename))
+            self.assertEqual([deployer.fingerprint_tree(path) if path.exists() else None for path in paths], before)
+            exchange.assert_not_called()
+            rename.assert_not_called()
+
+    def test_nested_directory_metadata_is_part_of_old_identity(self) -> None:
+        deployer = load_deployer()
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            fixture = create_deployment_fixture(root)
+            before = deployer.fingerprint_tree(fixture["active"])
+            (fixture["active"] / "includes").chmod(0o700)
+            after = deployer.fingerprint_tree(fixture["active"])
+            self.assertFalse(deployer._matches_old_snapshot(after, before))
+            for field in ("owner", "group"):
+                changed = json.loads(json.dumps(before))
+                changed["directories"][0][field] += 1
+                self.assertFalse(deployer._matches_old_snapshot(changed, before))
+
+    def test_target_directory_metadata_survives_exchange_and_detects_drift(self) -> None:
+        deployer = load_deployer()
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            fixture = create_deployment_fixture(root)
+            state_root, journal = prepare_recovery_state(deployer, root, fixture)
+            active, stage = fixture["active"], Path(journal["stage_path"])
+            target = deployer.fingerprint_tree(active)
+            self.assertEqual(deployer._classify_tree(active, journal), "target")
+            self.assertEqual(deployer._classify_tree(stage, journal), "old")
+            (active / "includes").chmod(0o700)
+            self.assertEqual(deployer._classify_tree(active, journal), "unknown")
+            self.assertFalse(deployer.compare_tree_to_manifest(deployer.fingerprint_tree(active),
+                journal["target_manifest_records"], journal["target_directories"])["ok"])
+            self.assertEqual(deployer.status_deployment(state_root)["recovery_options"], [])
+            (active / "includes").chmod(0o755)
+            self.assertEqual(deployer.fingerprint_tree(active), target)
+            deployer.recover_deployment(state_root, action="rollback", hooks=deployment_hooks(deployer, fixture))
             failed = Path(journal["failed_candidate_path"])
-            self.assertEqual((failed / "partial.php").read_text(encoding="utf-8"), "incomplete")
+            self.assertEqual(deployer.fingerprint_tree(failed)["directories"], target["directories"])
 
     def test_recovery_session_failure_precedes_journal_or_tree_changes(self) -> None:
         deployer = load_deployer()

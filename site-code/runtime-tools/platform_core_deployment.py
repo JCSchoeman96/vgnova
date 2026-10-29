@@ -64,6 +64,7 @@ JOURNAL_KEYS = {
     "manifest_sha256",
     "target_tree_sha256",
     "target_manifest_records",
+    "target_directories",
     "old_runtime_tree_sha256",
     "old_runtime_snapshot",
     "active_path",
@@ -206,7 +207,7 @@ def fingerprint_tree(root: Path) -> dict[str, Any]:
         raise DeploymentError("Runtime tree root must be a real directory.")
 
     files: list[dict[str, Any]] = []
-    directories: list[str] = []
+    directories: list[dict[str, Any]] = []
 
     def visit(directory: Path, relative: PurePosixPath | None = None) -> None:
         try:
@@ -224,7 +225,8 @@ def fingerprint_tree(root: Path) -> dict[str, Any]:
             if child_stat.st_dev != root_stat.st_dev:
                 raise DeploymentError("Runtime tree crosses a filesystem boundary.")
             if stat.S_ISDIR(child_stat.st_mode):
-                directories.append(relative_name)
+                directories.append({"path": relative_name, "mode": stat.S_IMODE(child_stat.st_mode),
+                                    "owner": child_stat.st_uid, "group": child_stat.st_gid})
                 visit(Path(child.path), child_relative)
                 continue
             if not stat.S_ISREG(child_stat.st_mode) or child_stat.st_nlink != 1:
@@ -237,7 +239,7 @@ def fingerprint_tree(root: Path) -> dict[str, Any]:
 
     visit(root)
     files.sort(key=lambda item: item["path"].encode("utf-8"))
-    directories.sort(key=lambda item: item.encode("utf-8"))
+    directories.sort(key=lambda item: item["path"].encode("utf-8"))
     return {
         "file_count": len(files),
         "files": files,
@@ -419,7 +421,7 @@ def extract_verified_archive(
             raise DeploymentError("Staged tree differs from the verified artifact manifest.")
         return staged
     except BaseException:
-        _remove_owned_tree(stage_path)
+        # Retain an incomplete stage for diagnosis; its identity is unknown.
         raise
 
 
@@ -457,6 +459,21 @@ def _reject_duplicate_json_keys(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
             raise DeploymentError("Deployment journal contains a duplicate JSON key.")
         result[key] = value
     return result
+
+
+def _validate_directory_records(records: Any) -> None:
+    if not isinstance(records, list):
+        raise DeploymentError("Deployment journal directories are invalid.")
+    paths = []
+    for item in records:
+        if not isinstance(item, dict) or set(item) != {"path", "mode", "owner", "group"}:
+            raise DeploymentError("Deployment journal directory metadata is invalid.")
+        safe_relative_path(item["path"])
+        if any(type(item[key]) is not int or item[key] < 0 for key in ("mode", "owner", "group")) or item["mode"] > 0o7777:
+            raise DeploymentError("Deployment journal directory metadata is invalid.")
+        paths.append(item["path"])
+    if paths != sorted(set(paths), key=lambda item: item.encode("utf-8")):
+        raise DeploymentError("Deployment journal directories are not canonical.")
 
 
 def validate_journal(record: dict[str, Any]) -> None:
@@ -505,13 +522,16 @@ def validate_journal(record: dict[str, Any]) -> None:
     })
     if old_snapshot["tree_sha256"] != record["old_runtime_tree_sha256"]:
         raise DeploymentError("Deployment journal prior-runtime snapshot digest is inconsistent.")
-    directories = old_snapshot["directories"]
-    if not isinstance(directories, list) or any(not isinstance(item, str) for item in directories):
-        raise DeploymentError("Deployment journal prior-runtime directories are invalid.")
-    for directory in directories:
-        safe_relative_path(directory)
-    if directories != sorted(set(directories), key=lambda item: item.encode("utf-8")):
-        raise DeploymentError("Deployment journal prior-runtime directories are not canonical.")
+    _validate_directory_records(old_snapshot["directories"])
+    target_directories = record["target_directories"]
+    if target_directories is not None:
+        _validate_directory_records(target_directories)
+        if [item["path"] for item in target_directories] != _expected_directories(target_records):
+            raise DeploymentError("Deployment journal target directories do not match the manifest.")
+        if any(item["mode"] != 0o755 for item in target_directories):
+            raise DeploymentError("Deployment journal target directory mode is invalid.")
+    elif record["phase"] not in ("prepared", "rollback_intent", "rollback_failed"):
+        raise DeploymentError("Deployment journal lacks approved target directories.")
     for field in ("root_owner", "root_group", "root_mode", "device_id"):
         if type(old_snapshot[field]) is not int or old_snapshot[field] < 0:
             raise DeploymentError("Deployment journal prior-runtime metadata is invalid.")
@@ -806,6 +826,7 @@ def _expected_directories(records: list[dict[str, Any]]) -> list[str]:
 def compare_tree_to_manifest(
     fingerprint: dict[str, Any],
     records: list[dict[str, Any]],
+    expected_directory_records: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     expected = {item["path"]: item for item in records}
     actual = {item["path"]: item for item in fingerprint["files"]}
@@ -821,11 +842,13 @@ def compare_tree_to_manifest(
         if expected[path]["mode"] != actual[path]["mode"]:
             mode_mismatches.append(path)
     expected_directories = _expected_directories(records)
-    actual_directories = fingerprint["directories"]
+    actual_directories = [item["path"] for item in fingerprint["directories"]]
+    directory_metadata_mismatch = (expected_directory_records is not None and
+                                   fingerprint["directories"] != expected_directory_records)
     missing_directories = sorted(set(expected_directories) - set(actual_directories), key=lambda item: item.encode("utf-8"))
     extra_directories = sorted(set(actual_directories) - set(expected_directories), key=lambda item: item.encode("utf-8"))
     expected_tree_hash = canonical_tree_sha256(records)
-    ok = not (missing or extra or mismatched or mode_mismatches or missing_directories or extra_directories)
+    ok = not (missing or extra or mismatched or mode_mismatches or missing_directories or extra_directories or directory_metadata_mismatch)
     ok = ok and fingerprint["file_count"] == len(records) and fingerprint["tree_sha256"] == expected_tree_hash
     return {
         "ok": ok,
@@ -837,6 +860,7 @@ def compare_tree_to_manifest(
         "mode_mismatches": mode_mismatches,
         "missing_directories": missing_directories,
         "extra_directories": extra_directories,
+        "directory_metadata_mismatch": directory_metadata_mismatch,
         "symlinks": 0,
         "unsupported": 0,
     }
@@ -861,7 +885,8 @@ def _matches_old_snapshot(actual: dict[str, Any], expected: dict[str, Any]) -> b
 def _matches_target_tree(actual: dict[str, Any], journal: dict[str, Any]) -> bool:
     return (
         actual["files"] == journal["target_manifest_records"]
-        and actual["directories"] == _expected_directories(journal["target_manifest_records"])
+        and journal["target_directories"] is not None
+        and actual["directories"] == journal["target_directories"]
         and actual["tree_sha256"] == journal["target_tree_sha256"]
     )
 
@@ -1001,6 +1026,7 @@ def _create_journal(
         "manifest_sha256": manifest_sha256,
         "target_tree_sha256": manifest["tree_sha256"],
         "target_manifest_records": manifest["files"],
+        "target_directories": None,
         "old_runtime_tree_sha256": old_snapshot["tree_sha256"],
         "old_runtime_snapshot": old_snapshot,
         "active_path": str(wp_root / "wp-content/plugins/voelgoed-platform-core"),
@@ -1089,8 +1115,10 @@ def _perform_rollback(
             "failed": Path(journal["failed_candidate_path"]),
         }
         states = {name: _tree_classification(path, journal) for name, path in paths.items()}
+        if "unknown" in states.values():
+            raise DeploymentError("Rollback topology contains an unknown tree.")
         old_sources = [name for name in ("stage", "rollback") if states[name] == "old"]
-        if states["active"] != "old":
+        if states["active"] == "target":
             if len(old_sources) != 1 or states["failed"] != "missing":
                 raise DeploymentError("Rollback topology does not identify one retained prior tree.")
             other_managed = "rollback" if old_sources[0] == "stage" else "stage"
@@ -1100,6 +1128,8 @@ def _perform_rollback(
             hooks.exchange(paths["active"], paths[old_sources[0]])
             states = {name: _tree_classification(path, journal) for name, path in paths.items()}
 
+        if "unknown" in states.values():
+            raise DeploymentError("Rollback topology contains an unknown tree.")
         if states["active"] != "old" or not _matches_old_snapshot(
             fingerprint_tree(paths["active"]), journal["old_runtime_snapshot"]
         ):
@@ -1107,7 +1137,7 @@ def _perform_rollback(
         if any(states[name] == "old" for name in ("stage", "rollback")):
             raise DeploymentError("Rollback found an unexplained duplicate of the prior tree.")
         candidate_paths = [
-            name for name in ("stage", "rollback", "failed") if states[name] in ("target", "unknown")
+            name for name in ("stage", "rollback", "failed") if states[name] == "target"
         ]
         if len(candidate_paths) > 1:
             raise DeploymentError("Rollback found duplicate candidate trees.")
@@ -1463,8 +1493,13 @@ def deploy_artifact(
         stage_report = compare_tree_to_manifest(staged, records)
         if not stage_report["ok"]:
             raise DeploymentError("Staged Platform Core tree does not match the verified artifact.")
+        journal["target_directories"] = staged["directories"]
         _save_phase(state_root, journal, "stage_verified", hooks=hooks)
         _save_phase(state_root, journal, "swap_intent", hooks=hooks)
+        if (_tree_classification(active_path, journal) != "old" or
+                _tree_classification(stage_path, journal) != "target" or
+                os.path.lexists(rollback_path) or os.path.lexists(Path(journal["failed_candidate_path"]))):
+            raise DeploymentError("Deployment topology changed before exchange.")
         hooks.exchange(active_path, stage_path)
         _save_phase(state_root, journal, "swapped", hooks=hooks)
 
@@ -1480,7 +1515,7 @@ def deploy_artifact(
         _save_phase(state_root, journal, "health_verified", hooks=hooks)
 
         runtime_fingerprint = fingerprint_tree(active_path)
-        parity = compare_tree_to_manifest(runtime_fingerprint, records)
+        parity = compare_tree_to_manifest(runtime_fingerprint, records, journal["target_directories"])
         journal["runtime_parity_result"] = parity
         if not parity["ok"]:
             raise DeploymentError("Active Platform Core runtime does not match the verified artifact.")
@@ -1490,6 +1525,10 @@ def deploy_artifact(
         staged_old = fingerprint_tree(stage_path)
         if not _matches_old_snapshot(staged_old, old_snapshot):
             raise DeploymentError("Retained prior Platform Core tree changed before finalization.")
+        if (_tree_classification(active_path, journal) != "target" or
+                _tree_classification(stage_path, journal) != "old" or
+                os.path.lexists(rollback_path) or os.path.lexists(Path(journal["failed_candidate_path"]))):
+            raise DeploymentError("Deployment topology changed before retaining the prior tree.")
         hooks.rename_directory(stage_path, rollback_path)
         retained_old = fingerprint_tree(rollback_path)
         if not _matches_old_snapshot(retained_old, old_snapshot):
@@ -1547,13 +1586,13 @@ def status_deployment(
     candidate_sources = [
         name
         for name in ("stage_tree", "rollback_tree", "failed_candidate_tree")
-        if states[name] in ("target", "unknown")
+        if states[name] == "target"
     ]
     recovery_options: list[str] = []
-    if states["active_tree"] in ("old", "target", "unknown") and len(old_sources) == 1:
+    if states["active_tree"] in ("old", "target") and len(old_sources) == 1:
         if states["active_tree"] == "target" and len(candidate_sources) <= 1:
             recovery_options = ["rollback", "finalize"]
-        elif states["active_tree"] in ("old", "unknown") and len(candidate_sources) <= 1:
+        elif states["active_tree"] == "old" and len(candidate_sources) <= 1:
             recovery_options = ["rollback"]
     if states["active_tree"] == "old" and not candidate_sources and journal["phase"] == "prepared":
         recovery_options = ["rollback"]
@@ -1566,6 +1605,8 @@ def status_deployment(
         ]
         if not other_candidates:
             recovery_options = ["rollback"]
+    if "unknown" in states.values():
+        recovery_options = []
     return {
         "in_progress": True,
         "deployment_id": journal["deployment_id"],
@@ -1623,7 +1664,7 @@ def _perform_finalize(
             "Local VGNova HTTP health",
         )
         journal["health_verification_result"] = {"php": php_health, "http": http_health}
-        parity = compare_tree_to_manifest(fingerprint_tree(paths["active"]), journal["target_manifest_records"])
+        parity = compare_tree_to_manifest(fingerprint_tree(paths["active"]), journal["target_manifest_records"], journal["target_directories"])
         journal["runtime_parity_result"] = parity
         if not parity["ok"]:
             raise DeploymentError("Active Platform Core runtime does not match the journaled artifact.")
@@ -1645,6 +1686,9 @@ def _perform_finalize(
 
         old_location = old_sources[0]
         if old_location == "stage":
+            fresh_states = {name: _tree_classification(path, journal) for name, path in paths.items()}
+            if fresh_states != {"active": "target", "stage": "old", "rollback": "missing", "failed": "missing"}:
+                raise DeploymentError("Finalize topology changed before retaining the prior tree.")
             hooks.rename_directory(paths["stage"], paths["rollback"])
         retained = fingerprint_tree(paths["rollback"])
         if not _matches_old_snapshot(retained, journal["old_runtime_snapshot"]):
