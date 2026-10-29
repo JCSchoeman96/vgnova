@@ -28,6 +28,138 @@ const VG_RUNTIME_MUTATION_POLICY_FUNCTIONS = [
     'wp_schedule_single_event', 'wp_schedule_event', 'wp_clear_scheduled_hook', 'wp_unschedule_event',
 ];
 
+const VG_RUNTIME_MUTATION_POLICY_EXTERNAL_ACTIONS = [
+    'create_owned_stage_and_state_files',
+    'atomic_platform_core_directory_exchange',
+    'rename_owned_platform_core_directories',
+];
+
+/** @return list<string> */
+function vg_runtime_mutation_policy_validate_external_mutators(string $repository_root, mixed $entries): array
+{
+    $errors = [];
+    if (! is_array($entries) || ! array_is_list($entries)) {
+        return ['External mutators must be a list.'];
+    }
+
+    $seen = [];
+    foreach ($entries as $entry) {
+        if (! is_array($entry) || ! is_string($entry['path'] ?? null) || trim($entry['path']) === '') {
+            $errors[] = 'External mutator entry is missing its path.';
+            continue;
+        }
+        $path = $entry['path'];
+        if (str_starts_with($path, '/') || str_contains($path, "\\") || str_contains($path, "\0")
+            || in_array('..', explode('/', $path), true) || ! str_ends_with($path, '.py')) {
+            $errors[] = "{$path}: external mutator path is unsafe or is not a Python entry point.";
+            continue;
+        }
+        if (isset($seen[$path])) {
+            $errors[] = "{$path}: duplicate external mutator path.";
+            continue;
+        }
+        $seen[$path] = true;
+        if (! is_file($repository_root . '/' . $path)) {
+            $errors[] = "{$path}: external mutator path is missing on disk.";
+        }
+        if (file_exists($repository_root . '/.git')) {
+            $process = @proc_open(['git', '-C', $repository_root, 'ls-files', '--error-unmatch', '--', $path], [
+                0 => ['file', '/dev/null', 'r'],
+                1 => ['pipe', 'w'],
+                2 => ['pipe', 'w'],
+            ], $pipes);
+            if (! is_resource($process)) {
+                $errors[] = "{$path}: Git tracking status could not be checked.";
+            } else {
+                stream_get_contents($pipes[1]);
+                stream_get_contents($pipes[2]);
+                fclose($pipes[1]);
+                fclose($pipes[2]);
+                if (proc_close($process) !== 0) {
+                    $errors[] = "{$path}: external mutator is not tracked by Git.";
+                }
+            }
+        }
+        foreach (['boundary', 'guard', 'reviewed_scope'] as $field) {
+            if (! is_string($entry[$field] ?? null) || trim($entry[$field]) === '') {
+                $errors[] = "{$path}: external mutator requires a non-empty {$field}.";
+            }
+        }
+        $actions = $entry['actions'] ?? null;
+        $valid_actions = is_array($actions)
+            && array_is_list($actions)
+            && $actions !== []
+            && array_filter($actions, static fn (mixed $action): bool => ! is_string($action) || trim($action) === '') === [];
+        if (! $valid_actions || count($actions) !== count(array_unique($actions))) {
+            $errors[] = "{$path}: external mutator actions must be a non-empty unique string list.";
+        }
+
+        if (($entry['protected'] ?? false) !== true) {
+            $expected_keys = ['actions', 'boundary', 'guard', 'path', 'reviewed_scope'];
+            $actual_keys = array_keys($entry);
+            sort($expected_keys);
+            sort($actual_keys);
+            if ($actual_keys !== $expected_keys) {
+                $errors[] = "{$path}: ordinary external mutator has unexpected policy fields.";
+            }
+            continue;
+        }
+        $expected_keys = ['actions', 'boundary', 'coordinator', 'guard', 'path', 'protected', 'reviewed_scope', 'session_helper', 'target'];
+        $actual_keys = array_keys($entry);
+        sort($expected_keys);
+        sort($actual_keys);
+        if ($actual_keys !== $expected_keys) {
+            $errors[] = "{$path}: protected external mutator has unexpected or missing policy fields.";
+        }
+        if (($entry['target'] ?? null) !== 'vgnova-local-10039') {
+            $errors[] = "{$path}: protected external mutator target must be vgnova-local-10039.";
+        }
+        if (($entry['coordinator'] ?? null) !== 'site-code/bin/vgnova-runtime-mutate.php') {
+            $errors[] = "{$path}: protected external mutator must name the PE-007 coordinator.";
+        }
+        if (($entry['session_helper'] ?? null) !== 'site-code/runtime-tools/platform-core-deployment-health.php') {
+            $errors[] = "{$path}: protected external mutator must name the source-controlled session helper.";
+        } elseif (! is_file($repository_root . '/' . $entry['session_helper'])) {
+            $errors[] = "{$path}: protected external mutator session helper is missing on disk.";
+        }
+        $expected_actions = VG_RUNTIME_MUTATION_POLICY_EXTERNAL_ACTIONS;
+        $declared_actions = is_array($actions) ? $actions : [];
+        sort($expected_actions);
+        sort($declared_actions);
+        if ($declared_actions !== $expected_actions) {
+            $errors[] = "{$path}: protected external mutator actions exceed the reviewed Platform Core boundary.";
+        }
+    }
+
+    return $errors;
+}
+
+/** @return list<string> */
+function vg_runtime_mutation_policy_validate_pe008_contract(array $inventory): array
+{
+    $errors = [];
+    $deployment_mutators = array_values(array_filter(
+        is_array($inventory['external_mutators'] ?? null) ? $inventory['external_mutators'] : [],
+        static fn (mixed $entry): bool => is_array($entry)
+            && ($entry['path'] ?? null) === 'site-code/bin/deploy-platform-core.py'
+    ));
+    if (count($deployment_mutators) !== 1) {
+        $errors[] = 'PE-008 deployer must appear exactly once as a protected external mutator.';
+    } elseif (($deployment_mutators[0]['protected'] ?? false) !== true) {
+        $errors[] = 'PE-008 deployer must be protected by the external-mutator policy.';
+    }
+
+    $health_helpers = array_values(array_filter(
+        is_array($inventory['entries'] ?? null) ? $inventory['entries'] : [],
+        static fn (mixed $entry): bool => is_array($entry)
+            && ($entry['path'] ?? null) === 'site-code/runtime-tools/platform-core-deployment-health.php'
+    ));
+    if (count($health_helpers) !== 1 || ($health_helpers[0]['classification'] ?? null) !== 'read_only') {
+        $errors[] = 'PE-008 PHP health/session helper must be classified exactly once as read_only.';
+    }
+    return $errors;
+}
+
 /** @return list<string> */
 function vg_runtime_mutation_policy_tracked_php_files(string $repository_root): array
 {
@@ -1538,6 +1670,14 @@ function vg_runtime_mutation_policy_check(
         || ! is_array($inventory['entries'] ?? null)
         || ! array_is_list($inventory['entries'])) {
         return ['valid' => false, 'files_scanned' => 0, 'mutation_files' => 0, 'errors' => ['Inventory schema is unsupported.']];
+    }
+
+    array_push(
+        $errors,
+        ...vg_runtime_mutation_policy_validate_external_mutators($repository_root, $inventory['external_mutators'] ?? [])
+    );
+    if (realpath($inventory_path) === realpath($repository_root . '/site-code/runtime-tools/mutating-entrypoints.json')) {
+        array_push($errors, ...vg_runtime_mutation_policy_validate_pe008_contract($inventory));
     }
 
     $tracked_files ??= vg_runtime_mutation_policy_tracked_php_files($repository_root);
