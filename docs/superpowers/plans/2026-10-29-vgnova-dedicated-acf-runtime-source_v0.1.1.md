@@ -3,6 +3,7 @@
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Version:** 0.1.1<br>**Amends:** v0.1.0; this version supersedes its runtime advancement procedure.<br>
+**Version authority:** v0.1.0 remains retained for historical audit; v0.1.1 is the current governing version.<br>
 **Date:** 2026-10-29
 
 **Goal:** Replace the Local VGNova runtime's dependency on the normal development checkout for ACF Local JSON with a dedicated clean detached Git worktree pinned to one exact approved `main` SHA, without synchronizing ACF or mutating WordPress business data.

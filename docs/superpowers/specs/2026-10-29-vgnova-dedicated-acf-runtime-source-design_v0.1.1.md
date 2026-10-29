@@ -2,6 +2,7 @@
 
 **Version:** 0.1.1
 **Amends:** 0.1.0; this version supersedes its runtime advancement procedure.
+**Version authority:** v0.1.0 remains retained for historical audit; v0.1.1 is the current governing version.
 **Status:** APPROVED
 **Date:** 2026-10-29
 **Repository:** `JCSchoeman96/vgnova`
