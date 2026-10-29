@@ -2,16 +2,18 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Version:** 0.1.0<br>
+**Version:** 0.1.1<br>**Amends:** v0.1.0; this version supersedes its runtime advancement procedure.<br>
 **Date:** 2026-10-29
 
 **Goal:** Replace the Local VGNova runtime's dependency on the normal development checkout for ACF Local JSON with a dedicated clean detached Git worktree pinned to one exact approved `main` SHA, without synchronizing ACF or mutating WordPress business data.
 
-**Architecture:** Git remains the sole ACF source authority. A dedicated detached worktree at `/home/jcschoeman96/projects/runtime/vgnova-acf-source` supplies `site-code/acf-json`; the Bricks Child `acf-json` symlink permanently points there. The cutover is a runtime filesystem mutation and therefore runs under PE-007, but performs zero ACF database sync and zero WordPress/Bricks/business-data writes.
+**Architecture:** Git remains the sole ACF source authority. The active generation 1 worktree at `/home/jcschoeman96/projects/runtime/vgnova-acf-source` stays pinned to `5a3bc4fc89fa61ae8916aa460989f1e8912b473d`; future generations use new immutable detached worktrees under `/home/jcschoeman96/projects/runtime/vgnova-acf-sources/<full-sha>`. ACF subtree parity, not whole-repository HEAD equality, determines whether the runtime source advances. Any future link switch is PE-007 guarded and also requires a verified request-consistency gate; this amendment makes no Local runtime change.
 
 **Tech Stack:** Git worktrees, Linux symlinks/atomic rename, WordPress Local, ACF Pro 6.8.x CLI JSON workflow, PE-007 runtime mutation coordinator, PHP/WP-CLI.
 
-**Spec:** `docs/superpowers/specs/2026-10-29-vgnova-dedicated-acf-runtime-source-design_v0.1.0.md`
+**Spec:** `docs/superpowers/specs/2026-10-29-vgnova-dedicated-acf-runtime-source-design_v0.1.1.md`
+
+**Execution status:** The initial cutover operations below are historical and are recorded in `docs/architecture/ACF_RUNTIME_SOURCE_CUTOVER_v1.0.0.md`. The evidence PR remains open for independent review. The v0.1.1 future-generation procedure below is prospective and was not executed by this amendment.
 
 ## Global Constraints
 
@@ -31,6 +33,10 @@
 - Do not deploy Platform Core.
 - Do not create or mutate Person relationships, schema, index, Bricks, commerce, memberships, or editorial/business data.
 - Do not auto-reset a dirty dedicated runtime checkout; preserve evidence and stop.
+- Treat generation 1 at SHA `5a3bc4fc89fa61ae8916aa460989f1e8912b473d` and its current path as immutable; do not move or update it in place.
+- Future source SHAs use new, absent paths under `/home/jcschoeman96/projects/runtime/vgnova-acf-sources/<full-sha>`. Never reuse a generation path.
+- During future activation, prove the complete `site-code/acf-json` subtree matches `ACTIVATION_SOURCE_SHA`; whole-repository SHA equality is not required.
+- A future runtime link switch requires a request-quiescence window or independently verified request-pinned generation reads; PE-007 does not stop PHP readers.
 - The symlink replacement itself must execute inside PE-007.
 - If verification after symlink replacement fails, restore the exact previous symlink target under PE-007 and prove restoration.
 
@@ -41,6 +47,7 @@
 3. **Symlink/path confusion:** preflight and postflight must use both `readlink` and `readlink -f`; the resolved target must be exactly the dedicated `site-code/acf-json`.
 4. **Partial symlink cutover:** create/verify a temporary symlink and atomically rename it over the runtime link; on postflight failure restore the recorded previous link target.
 5. **Collateral ACF mutation:** only `acf json status` is allowed after cutover; `acf json sync` must remain zero.
+6. **Mixed-generation reads:** a future symlink switch is blocked unless all relevant PHP requests are drained or a request-pinned immutable path is independently proven.
 
 ---
 
@@ -48,9 +55,9 @@
 
 Create in a new evidence branch after PR #63 is merged:
 
-- `docs/superpowers/specs/2026-10-29-vgnova-dedicated-acf-runtime-source-design_v0.1.0.md`
+- `docs/superpowers/specs/2026-10-29-vgnova-dedicated-acf-runtime-source-design_v0.1.1.md`
   - approved design record.
-- `docs/superpowers/plans/2026-10-29-vgnova-dedicated-acf-runtime-source_v0.1.0.md`
+- `docs/superpowers/plans/2026-10-29-vgnova-dedicated-acf-runtime-source_v0.1.1.md`
   - this plan.
 - `docs/architecture/ACF_RUNTIME_SOURCE_CUTOVER_v1.0.0.md`
   - durable cutover evidence.
@@ -487,7 +494,39 @@ ops: cut over ACF runtime source to dedicated worktree
 
 STOP for independent ChatGPT review.
 
-Do not restart Person Runtime Activation until this evidence PR is reviewed/merged or an explicit decision is made to proceed from the proven cutover state.
+Do not restart Person Runtime Activation until this evidence PR is independently reviewed and accepted. Any later activation starts again from Stage 1 under separate authorization.
+
+---
+
+## v0.1.1 Amendment: Future Runtime Generation Advancement
+
+This procedure is prospective and is not executed by the current cutover evidence PR. Generation 1 remains at `/home/jcschoeman96/projects/runtime/vgnova-acf-source`, pinned to `5a3bc4fc89fa61ae8916aa460989f1e8912b473d`; this amendment does not move it or change the Local symlink.
+
+For each later activation/source SHA:
+
+1. Freshly fetch and record the exact merged `ACTIVATION_SOURCE_SHA`.
+2. Create a new detached candidate worktree at `/home/jcschoeman96/projects/runtime/vgnova-acf-sources/<full-sha>`. Require the path to be absent; if it exists, stop and establish provenance.
+3. Prove exact HEAD, detached state, clean status, complete ACF JSON file inventory, and byte-for-byte parity against Git object content at that SHA.
+4. Compare the candidate `site-code/acf-json` Git tree with the active generation's subtree. If identical, keep the active runtime source SHA and symlink. Record parity with the activation SHA; do not switch merely because `main` advanced. Retire the comparison worktree only after its evidence is accepted.
+5. If the ACF subtree changed, treat the candidate as a new immutable generation. Before link change, establish and evidence request consistency. ACF Pro 6.8.1 reads multiple JSON files by path; atomic pointer replacement alone is not a per-request snapshot. PE-007 does not stop PHP readers. Stop new requests capable of loading ACF JSON, drain in-flight web/admin/cron/queue/PHP work, and keep the gate closed through replacement and read-only ACF status. Alternatively, use a separately reviewed and verified request-pinned physical generation path. If neither control is proven, stop with the current source active.
+6. Under PE-007, verify the old symlink, create and validate a temporary same-directory symlink to the new generation, then atomically replace the link. While the request gate remains closed, verify both link forms, run only read-only `acf json status`, and verify the candidate remains clean and exact.
+7. On any failure, restore the exact old target under PE-007 before reopening requests, then stop. On success, reopen requests and retain the old generation until the new generation evidence is accepted. Never update, reset, or delete the prior active generation as part of the switch.
+
+Required future evidence includes:
+
+```text
+ACTIVATION_SOURCE_SHA=<exact SHA>
+ACF_RUNTIME_SOURCE_SHA=<active generation SHA>
+ACF_RUNTIME_JSON_PARITY_WITH_ACTIVATION_SHA=PASS|BLOCKED
+CANDIDATE_GENERATION_CLEAN=PASS|BLOCKED
+REQUEST_READ_WINDOW_CONSISTENCY=PASS|BLOCKED|NOT_REQUIRED
+RUNTIME_SYMLINK_SWITCH=PASS|NOT_REQUIRED|BLOCKED
+TARGETED_ACF_STATUS_READ_ONLY=PASS|BLOCKED
+PREVIOUS_GENERATION_RETAINED=YES|NO
+ACF_SYNCS_PERFORMED=0
+```
+
+No generation advancement, WordPress data mutation, ACF sync, or Person Runtime Activation is part of this documentation amendment.
 
 ---
 
@@ -512,7 +551,7 @@ PLATFORM_CORE_DEPLOYMENTS=0
 PERSON_RELATIONSHIP_MUTATIONS=0
 ```
 
-After PASS, restart Simple Person Relationship Runtime Activation from **Stage 1**, not Stage 1 Step 5.
+After independent acceptance of the evidence PR, a separately authorized Simple Person Relationship Runtime Activation must restart from **Stage 1**, not Stage 1 Step 5.
 
 # Explicitly Forbidden
 
@@ -525,4 +564,7 @@ After PASS, restart Simple Person Relationship Runtime Activation from **Stage 1
 - setting up/rebuilding/reconciling Person relationship schema/index;
 - creating QA or real relationship data;
 - changing Bricks or business data;
-- auto-resetting a dirty dedicated runtime checkout.
+- auto-resetting a dirty dedicated runtime checkout;
+- checking out, resetting, pulling, or otherwise updating any active ACF runtime generation in place;
+- switching generations while ACF JSON readers may span the symlink change;
+- treating PE-007 locks as a PHP request quiescence mechanism.
