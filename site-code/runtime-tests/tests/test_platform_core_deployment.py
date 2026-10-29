@@ -1223,11 +1223,9 @@ class PlatformCoreDeploymentTests(unittest.TestCase):
     def test_committed_source_provenance_rejects_dirty_deployer_files(self) -> None:
         deployer = load_deployer()
         self.assertTrue(hasattr(deployer, "committed_source_provenance"), "committed-source provenance is not implemented")
-        critical = (
-            "site-code/bin/deploy-platform-core.py",
-            "site-code/runtime-tools/platform_core_deployment.py",
-            "site-code/bin/check-platform-core-build.py",
-            "site-code/runtime-tools/platform-core-deployment-health.php",
+        critical = tuple(deployer.CRITICAL_SOURCE_PATHS) + (
+            "site-code/runtime-tools/runtime-mutation-session.php",
+            "site-code/voelgoed-platform-core/includes/Runtime/RuntimeMutationSession.php",
         )
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -1237,30 +1235,57 @@ class PlatformCoreDeploymentTests(unittest.TestCase):
                 path.parent.mkdir(parents=True, exist_ok=True)
                 path.write_text(f"committed source: {relative}\n", encoding="utf-8")
             subprocess.run(["git", "-C", str(root), "add", *critical], check=True)
-            subprocess.run(
-                [
-                    "git",
-                    "-C",
-                    str(root),
-                    "-c",
-                    "user.name=PE-008 test",
-                    "-c",
-                    "user.email=pe008-test@example.invalid",
-                    "commit",
-                    "--quiet",
-                    "-m",
-                    "fixture source",
-                ],
-                check=True,
-            )
+            subprocess.run(["git", "-C", str(root), "-c", "user.name=PE-008 test", "-c",
+                            "user.email=pe008-test@example.invalid", "commit", "--quiet", "-m", "fixture source"], check=True)
             result = deployer.committed_source_provenance(root)
             self.assertEqual(len(result["deployer_commit"]), 40)
             self.assertEqual(len(result["deployer_sha256"]), 64)
             self.assertEqual(len(result["deployer_module_sha256"]), 64)
             self.assertEqual(len(result["verifier_sha256"]), 64)
-            (root / critical[1]).write_text("dirty deployer source\n", encoding="utf-8")
-            with self.assertRaises(deployer.DeploymentError):
-                deployer.committed_source_provenance(root)
+            for relative in critical[-2:]:
+                path = root / relative
+                original = path.read_text(encoding="utf-8")
+                path.write_text("weakened session proof\n", encoding="utf-8")
+                with self.subTest(path=relative), self.assertRaises(deployer.DeploymentError):
+                    deployer.committed_source_provenance(root)
+                path.write_text(original, encoding="utf-8")
+
+    def test_dirty_session_proof_dependency_fails_before_runtime_filesystem_writes(self) -> None:
+        deployer = load_deployer()
+        for relative in (
+            "site-code/runtime-tools/runtime-mutation-session.php",
+            "site-code/voelgoed-platform-core/includes/Runtime/RuntimeMutationSession.php",
+        ):
+            with self.subTest(path=relative), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                fixture = create_deployment_fixture(root)
+                critical = tuple(deployer.CRITICAL_SOURCE_PATHS) + (
+                    "site-code/runtime-tools/runtime-mutation-session.php",
+                    "site-code/voelgoed-platform-core/includes/Runtime/RuntimeMutationSession.php",
+                )
+                for item in critical:
+                    path = root / item
+                    path.parent.mkdir(parents=True, exist_ok=True)
+                    path.write_text(f"committed source: {item}\n", encoding="utf-8")
+                subprocess.run(["git", "-C", str(root), "init", "--quiet"], check=True)
+                subprocess.run(["git", "-C", str(root), "add", *critical], check=True)
+                subprocess.run(["git", "-C", str(root), "-c", "user.name=PE-008 test", "-c",
+                                "user.email=pe008-test@example.invalid", "commit", "--quiet", "-m", "fixture source"], check=True)
+                (root / relative).write_text("weakened session proof\n", encoding="utf-8")
+                state_root = root / "app/.vgnova-platform-core-deployments"
+                exchange = mock.Mock()
+                with self.assertRaises(deployer.DeploymentError):
+                    deployer.deploy_artifact(
+                        repo_root=root, target=fixture["target"], target_id=deployer.TARGET_ID,
+                        wp_root=fixture["wp_root"], registered_wp_root=fixture["wp_root"],
+                        artifact_directory=fixture["artifact_directory"], source_commit=fixture["source_commit"],
+                        expected_manifest_sha256=fixture["manifest_sha256"],
+                        hooks=deployment_hooks(deployer, fixture,
+                            provenance=lambda: deployer.committed_source_provenance(root), exchange=exchange))
+                self.assertFalse(state_root.exists())
+                self.assertFalse(list((root / "app").glob(".vgnova-platform-core-stage-*")))
+                self.assertFalse(list((root / "app").glob(".vgnova-platform-core-rollback-*")))
+                exchange.assert_not_called()
 
     def test_canonical_verifier_uses_exact_commit_and_output_path(self) -> None:
         deployer = load_deployer()

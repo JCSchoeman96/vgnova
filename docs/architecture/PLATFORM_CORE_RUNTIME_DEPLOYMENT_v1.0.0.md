@@ -5,7 +5,7 @@
 
 ## Contract
 
-Platform Core deployment accepts only the canonical archive and manifest defined by `PLATFORM_CORE_ASSEMBLY_CONTRACT_v1.3.0`. It verifies the supplied artifact against a full source commit immediately before deployment. It does not rebuild or modify the artifact.
+Platform Core deployment accepts only the canonical archive and manifest defined by `PLATFORM_CORE_ASSEMBLY_CONTRACT_v1.4.0`. It verifies the supplied artifact against a full source commit immediately before deployment. It does not rebuild or modify the artifact.
 
 The registered target is `vgnova-local-10039`, with its expected WordPress root, local home and site URLs, database name, and plugin entrypoint taken from the PE-007 target registry. The deployer also requires that the active plugin is the exact non-symlink path beneath that root.
 

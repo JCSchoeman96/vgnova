@@ -31,6 +31,8 @@ CRITICAL_SOURCE_PATHS = (
     "site-code/runtime-tools/platform_core_deployment.py",
     "site-code/bin/check-platform-core-build.py",
     "site-code/runtime-tools/platform-core-deployment-health.php",
+    "site-code/runtime-tools/runtime-mutation-session.php",
+    "site-code/voelgoed-platform-core/includes/Runtime/RuntimeMutationSession.php",
 )
 MUTATION_SESSION_ENVIRONMENT = (
     "VGNOVA_MUTATION_SESSION_ID",
