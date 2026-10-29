@@ -53,7 +53,7 @@ The source-controlled PHP helper loads the exact supplied WordPress root. It emi
 
 HTTP health requests the registered home URL without following redirects. It requires the expected local WordPress response. It runs independently of PHP health.
 
-Runtime parity re-fingerprints the complete active plugin directory and compares file paths, modes, sizes, SHA-256 values, file count, and tree hash with the canonical manifest. It also compares nested directory paths, modes, owners, and groups with the staged directory records saved in the journal before exchange. The prior-runtime snapshot records the same directory metadata. An unknown tree stops recovery without moving it; the journal remains available for diagnosis.
+Runtime parity re-fingerprints the complete active plugin directory and compares file paths, modes, sizes, SHA-256 values, file count, and tree hash with the canonical manifest. It also compares the plugin root mode, owner, and group with staged root metadata, and nested directory paths, modes, owners, and groups with staged directory records saved in the journal before exchange. The prior-runtime snapshot records the same directory metadata. An unknown tree stops recovery without moving it; the journal remains available for diagnosis.
 
 ## Provenance
 

@@ -589,6 +589,42 @@ class PlatformCoreDeploymentTests(unittest.TestCase):
             self.assertEqual(deployer.read_journal(journal_path), record)
             self.assertEqual(list(root.glob(".in-progress.json.tmp-*")), [])
 
+    def test_runtime_parity_rejects_target_root_metadata_drift(self) -> None:
+        deployer = load_deployer()
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            fixture = create_deployment_fixture(root)
+            def change_root_mode(_target_id, _wp_root):
+                fixture["active"].chmod(0o700)
+                return {"ok": True, "plugin_loaded": True}
+            with self.assertRaises(deployer.DeploymentError):
+                deployer.deploy_artifact(
+                    repo_root=root, target=fixture["target"], target_id=deployer.TARGET_ID,
+                    wp_root=fixture["wp_root"], registered_wp_root=fixture["wp_root"],
+                    artifact_directory=fixture["artifact_directory"], source_commit=fixture["source_commit"],
+                    expected_manifest_sha256=fixture["manifest_sha256"],
+                    hooks=deployment_hooks(deployer, fixture, verify_health=change_root_mode))
+            state_root = root / "app/.vgnova-platform-core-deployments"
+            journal = deployer.read_journal(state_root / "in-progress.json")
+            self.assertFalse(journal["runtime_parity_result"]["ok"])
+
+    def test_wrong_root_metadata_does_not_take_unchanged_fast_path(self) -> None:
+        deployer = load_deployer()
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            fixture = create_deployment_fixture(root)
+            deployer._remove_owned_tree(fixture["active"])
+            deployer.extract_verified_archive(fixture["artifact_directory"] / "voelgoed-platform-core.tar.gz",
+                                              fixture["active"], fixture["manifest"]["files"])
+            fixture["active"].chmod(0o700)
+            result = deployer.deploy_artifact(
+                repo_root=root, target=fixture["target"], target_id=deployer.TARGET_ID,
+                wp_root=fixture["wp_root"], registered_wp_root=fixture["wp_root"],
+                artifact_directory=fixture["artifact_directory"], source_commit=fixture["source_commit"],
+                expected_manifest_sha256=fixture["manifest_sha256"], hooks=deployment_hooks(deployer, fixture))
+            self.assertNotEqual(result["phase"], "unchanged")
+            self.assertEqual(stat.S_IMODE(fixture["active"].stat().st_mode), 0o755)
+
     def test_target_identity_includes_plugin_root_mode_owner_and_group(self) -> None:
         deployer = load_deployer()
         with tempfile.TemporaryDirectory() as temporary:

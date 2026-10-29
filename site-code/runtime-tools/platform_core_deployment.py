@@ -840,6 +840,7 @@ def compare_tree_to_manifest(
     fingerprint: dict[str, Any],
     records: list[dict[str, Any]],
     expected_directory_records: list[dict[str, Any]] | None = None,
+    expected_root_record: dict[str, int] | None = None,
 ) -> dict[str, Any]:
     expected = {item["path"]: item for item in records}
     actual = {item["path"]: item for item in fingerprint["files"]}
@@ -858,10 +859,14 @@ def compare_tree_to_manifest(
     actual_directories = [item["path"] for item in fingerprint["directories"]]
     directory_metadata_mismatch = (expected_directory_records is not None and
                                    fingerprint["directories"] != expected_directory_records)
+    root_metadata_mismatch = expected_root_record is not None and any(
+        fingerprint[field] != expected_root_record[key]
+        for field, key in (("root_mode", "mode"), ("root_owner", "owner"), ("root_group", "group"))
+    )
     missing_directories = sorted(set(expected_directories) - set(actual_directories), key=lambda item: item.encode("utf-8"))
     extra_directories = sorted(set(actual_directories) - set(expected_directories), key=lambda item: item.encode("utf-8"))
     expected_tree_hash = canonical_tree_sha256(records)
-    ok = not (missing or extra or mismatched or mode_mismatches or missing_directories or extra_directories or directory_metadata_mismatch)
+    ok = not (missing or extra or mismatched or mode_mismatches or missing_directories or extra_directories or directory_metadata_mismatch or root_metadata_mismatch)
     ok = ok and fingerprint["file_count"] == len(records) and fingerprint["tree_sha256"] == expected_tree_hash
     return {
         "ok": ok,
@@ -874,6 +879,7 @@ def compare_tree_to_manifest(
         "missing_directories": missing_directories,
         "extra_directories": extra_directories,
         "directory_metadata_mismatch": directory_metadata_mismatch,
+        "root_metadata_mismatch": root_metadata_mismatch,
         "symlinks": 0,
         "unsupported": 0,
     }
@@ -1487,13 +1493,19 @@ def deploy_artifact(
         {"path": path, "mode": 0o755, "owner": os.geteuid(), "group": os.getegid()}
         for path in _expected_directories(records)
     ]
-    if compare_tree_to_manifest(old_snapshot, records, expected_directories)["ok"]:
+    app_stat = os.stat(app_root, follow_symlinks=False)
+    expected_root = {
+        "mode": 0o755,
+        "owner": os.geteuid(),
+        "group": app_stat.st_gid if app_stat.st_mode & stat.S_ISGID else os.getegid(),
+    }
+    if compare_tree_to_manifest(old_snapshot, records, expected_directories, expected_root)["ok"]:
         php_health = _require_hook_success(hooks.verify_health(target_id, Path(wp_root)),
                                            "WordPress Platform Core bootstrap health")
         http_health = _require_hook_success(hooks.verify_http_health(target["home"] + "/", php_health.get("site_name")),
                                             "Local VGNova HTTP health")
         current = fingerprint_tree(active_path)
-        if not _matches_old_snapshot(current, old_snapshot) or not compare_tree_to_manifest(current, records, expected_directories)["ok"]:
+        if not _matches_old_snapshot(current, old_snapshot) or not compare_tree_to_manifest(current, records, expected_directories, expected_root)["ok"]:
             raise DeploymentError("Unchanged Platform Core runtime changed during health verification.")
         return {"phase": "unchanged", "target": target_id, "source_commit": source_commit,
                 "manifest_sha256": expected_manifest_sha256, "target_tree_sha256": manifest["tree_sha256"],
@@ -1553,7 +1565,7 @@ def deploy_artifact(
         _save_phase(state_root, journal, "health_verified", hooks=hooks)
 
         runtime_fingerprint = fingerprint_tree(active_path)
-        parity = compare_tree_to_manifest(runtime_fingerprint, records, journal["target_directories"])
+        parity = compare_tree_to_manifest(runtime_fingerprint, records, journal["target_directories"], journal["target_root"])
         journal["runtime_parity_result"] = parity
         if not parity["ok"]:
             raise DeploymentError("Active Platform Core runtime does not match the verified artifact.")
@@ -1702,7 +1714,8 @@ def _perform_finalize(
             "Local VGNova HTTP health",
         )
         journal["health_verification_result"] = {"php": php_health, "http": http_health}
-        parity = compare_tree_to_manifest(fingerprint_tree(paths["active"]), journal["target_manifest_records"], journal["target_directories"])
+        parity = compare_tree_to_manifest(fingerprint_tree(paths["active"]), journal["target_manifest_records"],
+                                         journal["target_directories"], journal["target_root"])
         journal["runtime_parity_result"] = parity
         if not parity["ok"]:
             raise DeploymentError("Active Platform Core runtime does not match the journaled artifact.")
