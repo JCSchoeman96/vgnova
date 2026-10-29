@@ -67,6 +67,7 @@ JOURNAL_KEYS = {
     "target_tree_sha256",
     "target_manifest_records",
     "target_directories",
+    "target_root",
     "old_runtime_tree_sha256",
     "old_runtime_snapshot",
     "active_path",
@@ -526,13 +527,23 @@ def validate_journal(record: dict[str, Any]) -> None:
         raise DeploymentError("Deployment journal prior-runtime snapshot digest is inconsistent.")
     _validate_directory_records(old_snapshot["directories"])
     target_directories = record["target_directories"]
+    target_root = record["target_root"]
     if target_directories is not None:
         _validate_directory_records(target_directories)
         if [item["path"] for item in target_directories] != _expected_directories(target_records):
             raise DeploymentError("Deployment journal target directories do not match the manifest.")
         if any(item["mode"] != 0o755 for item in target_directories):
             raise DeploymentError("Deployment journal target directory mode is invalid.")
+    if target_root is not None:
+        if not isinstance(target_root, dict) or set(target_root) != {"mode", "owner", "group"}:
+            raise DeploymentError("Deployment journal target root metadata is invalid.")
+        if any(type(target_root[key]) is not int or target_root[key] < 0 for key in ("mode", "owner", "group")):
+            raise DeploymentError("Deployment journal target root metadata is invalid.")
+        if target_root["mode"] != 0o755:
+            raise DeploymentError("Deployment journal target root mode is invalid.")
     elif record["phase"] not in ("prepared", "rollback_intent", "rollback_failed"):
+        raise DeploymentError("Deployment journal lacks approved target root metadata.")
+    if target_directories is None and record["phase"] not in ("prepared", "rollback_intent", "rollback_failed"):
         raise DeploymentError("Deployment journal lacks approved target directories.")
     for field in ("root_owner", "root_group", "root_mode", "device_id"):
         if type(old_snapshot[field]) is not int or old_snapshot[field] < 0:
@@ -889,6 +900,10 @@ def _matches_target_tree(actual: dict[str, Any], journal: dict[str, Any]) -> boo
         actual["files"] == journal["target_manifest_records"]
         and journal["target_directories"] is not None
         and actual["directories"] == journal["target_directories"]
+        and journal["target_root"] is not None
+        and actual["root_mode"] == journal["target_root"]["mode"]
+        and actual["root_owner"] == journal["target_root"]["owner"]
+        and actual["root_group"] == journal["target_root"]["group"]
         and actual["tree_sha256"] == journal["target_tree_sha256"]
     )
 
@@ -1029,6 +1044,7 @@ def _create_journal(
         "target_tree_sha256": manifest["tree_sha256"],
         "target_manifest_records": manifest["files"],
         "target_directories": None,
+        "target_root": None,
         "old_runtime_tree_sha256": old_snapshot["tree_sha256"],
         "old_runtime_snapshot": old_snapshot,
         "active_path": str(wp_root / "wp-content/plugins/voelgoed-platform-core"),
@@ -1514,6 +1530,8 @@ def deploy_artifact(
         if not stage_report["ok"]:
             raise DeploymentError("Staged Platform Core tree does not match the verified artifact.")
         journal["target_directories"] = staged["directories"]
+        journal["target_root"] = {"mode": staged["root_mode"], "owner": staged["root_owner"],
+                                  "group": staged["root_group"]}
         _save_phase(state_root, journal, "stage_verified", hooks=hooks)
         _save_phase(state_root, journal, "swap_intent", hooks=hooks)
         if (_tree_classification(active_path, journal) != "old" or

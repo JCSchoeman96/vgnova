@@ -102,6 +102,7 @@ def sample_journal() -> dict[str, object]:
         ).hexdigest(),
         "target_manifest_records": [target_record],
         "target_directories": [{"path": "includes", "mode": 0o755, "owner": os.getuid(), "group": os.getgid()}],
+        "target_root": {"mode": 0o755, "owner": os.getuid(), "group": os.getgid()},
         "old_runtime_tree_sha256": old_hash,
         "old_runtime_snapshot": {
             "file_count": 1,
@@ -256,7 +257,10 @@ def prepare_recovery_state(
         Path(journal["stage_path"]),
         fixture["manifest"]["files"],
     )
-    journal["target_directories"] = deployer.fingerprint_tree(Path(journal["stage_path"]))["directories"]
+    staged_fingerprint = deployer.fingerprint_tree(Path(journal["stage_path"]))
+    journal["target_directories"] = staged_fingerprint["directories"]
+    journal["target_root"] = {"mode": staged_fingerprint["root_mode"], "owner": staged_fingerprint["root_owner"],
+                              "group": staged_fingerprint["root_group"]}
     deployer.advance_journal(journal, "stage_verified")
     deployer.write_journal(state_root / "in-progress.json", journal)
     deployer.advance_journal(journal, "swap_intent")
@@ -585,6 +589,22 @@ class PlatformCoreDeploymentTests(unittest.TestCase):
             self.assertEqual(deployer.read_journal(journal_path), record)
             self.assertEqual(list(root.glob(".in-progress.json.tmp-*")), [])
 
+    def test_target_identity_includes_plugin_root_mode_owner_and_group(self) -> None:
+        deployer = load_deployer()
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            fixture = create_deployment_fixture(root)
+            _state_root, journal = prepare_recovery_state(deployer, root, fixture)
+            target_fingerprint = deployer.fingerprint_tree(fixture["active"])
+            self.assertTrue(deployer._matches_target_tree(target_fingerprint, journal))
+            for field in ("root_mode", "root_owner", "root_group"):
+                changed = dict(target_fingerprint)
+                changed[field] += 1
+                with self.subTest(field=field):
+                    self.assertFalse(deployer._matches_target_tree(changed, journal))
+            fixture["active"].chmod(0o700)
+            self.assertEqual(deployer._classify_tree(fixture["active"], journal), "unknown")
+
     def test_failed_extraction_retains_partial_stage_for_diagnosis(self) -> None:
         deployer = load_deployer()
         with tempfile.TemporaryDirectory() as temporary:
@@ -638,6 +658,10 @@ class PlatformCoreDeploymentTests(unittest.TestCase):
                 deployer.validate_journal(record)
         record = sample_journal()
         record["target_directories"][0]["mode"] = 0o700
+        with self.assertRaises(deployer.DeploymentError):
+            deployer.validate_journal(record)
+        record = sample_journal()
+        record["target_root"]["group"] = -1
         with self.assertRaises(deployer.DeploymentError):
             deployer.validate_journal(record)
 
