@@ -1339,6 +1339,7 @@ def run_php_health_helper(
     """Invoke the source helper with the PE-007 host-lock descriptor and proof."""
     if target_id != TARGET_ID or mode not in ("session", "health"):
         raise DeploymentError("PHP health helper target or mode is unsupported.")
+    selected_database_socket = os.environ.get("VGNOVA_DB_SOCKET")
     try:
         os.fstat(3)
     except OSError as error:
@@ -1357,6 +1358,10 @@ def run_php_health_helper(
     command = [
         "php",
         "-d",
+        f"mysqli.default_socket={selected_database_socket}",
+        "-d",
+        f"pdo_mysql.default_socket={selected_database_socket}",
+        "-d",
         "display_errors=1",
         "-d",
         "display_startup_errors=1",
@@ -1369,6 +1374,11 @@ def run_php_health_helper(
         target_id,
         str(wp_root),
     ]
+    # Recheck after setup and immediately before launching PHP with this path.
+    database_socket = _validated_php_db_socket()
+    if database_socket != selected_database_socket:
+        raise DeploymentError("WordPress health helper database socket changed during setup.")
+    child_environment["VGNOVA_DB_SOCKET"] = database_socket
     try:
         result = subprocess.run(
             command,
@@ -1397,6 +1407,32 @@ def run_php_health_helper(
     if result.stdout != canonical:
         raise DeploymentError("WordPress health helper emitted unexpected output.")
     return parsed
+
+
+def _validated_php_db_socket(environment: dict[str, str] | None = None) -> str:
+    """Return the exact selected database transport after validating its socket object."""
+    selected_environment = os.environ if environment is None else environment
+    socket_path = selected_environment.get("VGNOVA_DB_SOCKET")
+    if not isinstance(socket_path, str) or not socket_path or "\0" in socket_path or not os.path.isabs(socket_path):
+        raise DeploymentError("WordPress health helper requires an absolute database Unix socket path.")
+    try:
+        socket_stat = os.lstat(socket_path)
+    except (OSError, ValueError) as error:
+        raise DeploymentError("WordPress health helper database socket is unavailable.") from error
+    if stat.S_ISLNK(socket_stat.st_mode) or not stat.S_ISSOCK(socket_stat.st_mode):
+        raise DeploymentError("WordPress health helper database path is not a real Unix socket.")
+    try:
+        with open("/proc/net/unix", encoding="utf-8") as unix_sockets:
+            next(unix_sockets, None)
+            is_active_socket = any(
+                len(fields := line.rstrip("\n").split(maxsplit=7)) == 8 and fields[7] == socket_path
+                for line in unix_sockets
+            )
+    except (OSError, UnicodeError) as error:
+        raise DeploymentError("WordPress health helper could not verify its database socket.") from error
+    if not is_active_socket:
+        raise DeploymentError("WordPress health helper database socket is stale or unavailable.")
+    return socket_path
 
 
 class _NoRedirectHandler(urllib.request.HTTPRedirectHandler):

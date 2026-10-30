@@ -442,13 +442,19 @@ final class VgRuntimeMutationCore
     }
 
     /** @param array<string,string> $baseEnvironment @param array<string,mixed> $proof @return array<string,string> */
-    public static function childEnvironment(array $baseEnvironment, array $proof): array
+    public static function childEnvironment(array $baseEnvironment, array $proof, ?string $databaseSocket = null): array
     {
         $environment = self::safeEnvironment($baseEnvironment);
+        unset($environment['VGNOVA_DB_SOCKET']);
         foreach (array_keys($environment) as $key) {
             if (str_starts_with($key, 'VGNOVA_MUTATION_') && $key !== 'VGNOVA_MUTATION_WP_ROOT') {
                 unset($environment[$key]);
             }
+        }
+
+        $databaseSocket = self::validatedDatabaseSocket($databaseSocket);
+        if ($databaseSocket !== null) {
+            $environment['VGNOVA_DB_SOCKET'] = $databaseSocket;
         }
 
         $environment['VGNOVA_MUTATION_SESSION_ID'] = (string) ($proof['session_id'] ?? '');
@@ -461,6 +467,17 @@ final class VgRuntimeMutationCore
         }
         $environment['VGNOVA_MUTATION_LOCK_FILE'] = (string) ($proof['lock_file'] ?? '');
         return $environment;
+    }
+
+    private static function validatedDatabaseSocket(?string $databaseSocket): ?string
+    {
+        if ($databaseSocket === null || $databaseSocket === '') {
+            return null;
+        }
+        if (! self::isAbsolutePathForDatabase($databaseSocket) || str_contains($databaseSocket, "\0")) {
+            throw new VgRuntimeMutationException(71, 'INVALID_DB_SOCKET', 'Database socket path must be absolute.');
+        }
+        return $databaseSocket;
     }
 
     /** @param array<string,string> $baseEnvironment @return array<string,string> */
@@ -749,8 +766,16 @@ final class VgRuntimeMutationCore
      * @param array{a:resource,b:resource} $lifetimeHandles
      * @param array{a:resource,b:resource} $registrationHandles
      */
-    public static function runChildCommand(array $arguments, array $environment, $lockHandle, array $lifetimeHandles = [], array $registrationHandles = []): int
+    public static function runChildCommand(
+        array $arguments,
+        array $environment,
+        $lockHandle,
+        array $lifetimeHandles = [],
+        array $registrationHandles = [],
+        ?string $databaseSocket = null
+    ): int
     {
+        $databaseSocket = self::validatedDatabaseSocket($databaseSocket);
         if (PHP_SAPI !== 'cli' || $arguments === [] || ! array_is_list($arguments) || ! is_resource($lockHandle)) {
             throw new VgRuntimeMutationException(70, 'CHILD_START_FAILED', 'Child process configuration is invalid.');
         }
@@ -833,6 +858,9 @@ final class VgRuntimeMutationCore
             }
             $runner = __DIR__ . '/runtime-mutation-exec.php';
             $childEnvironment = self::safeEnvironment($environment);
+            if ($databaseSocket !== null) {
+                $childEnvironment['VGNOVA_DB_SOCKET'] = $databaseSocket;
+            }
             foreach (self::SESSION_ENVIRONMENT_KEYS as $sessionKey) {
                 if (isset($environment[$sessionKey]) && is_string($environment[$sessionKey])) {
                     $childEnvironment[$sessionKey] = $environment[$sessionKey];

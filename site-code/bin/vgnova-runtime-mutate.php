@@ -163,11 +163,11 @@ try {
         static function (array $registeredTarget, array $observedIdentity) use ($resolvedRoot): void {
             VgRuntimeMutationCore::validateTargetIdentity($registeredTarget, $observedIdentity, $resolvedRoot);
         },
-        static function (array $proof, $lockHandle, array $lifetimeHandles, array $registrationHandles) use ($childArguments, $resolvedRoot): int {
+        static function (array $proof, $lockHandle, array $lifetimeHandles, array $registrationHandles) use ($childArguments, $resolvedRoot, $socketOverride): int {
             $baseEnvironment = getenv() ?: [];
             $baseEnvironment['VGNOVA_MUTATION_WP_ROOT'] = $resolvedRoot;
-            $environment = VgRuntimeMutationCore::childEnvironment($baseEnvironment, $proof);
-            return VgRuntimeMutationCore::runChildCommand($childArguments, $environment, $lockHandle, $lifetimeHandles, $registrationHandles);
+            $environment = VgRuntimeMutationCore::childEnvironment($baseEnvironment, $proof, $socketOverride);
+            return VgRuntimeMutationCore::runChildCommand($childArguments, $environment, $lockHandle, $lifetimeHandles, $registrationHandles, $socketOverride);
         },
         static function (array $requestedLockNames) use (&$lease): void {
             if (is_array($lease)) {
