@@ -1,0 +1,1819 @@
+{
+  "acf_json_parity": {
+    "activation": {
+      "site-code/acf-json/group_vg_article_people.json": {
+        "bytes": 4354,
+        "exact_git_object": true,
+        "filesystem_sha256": "3f1f0b119c9619c7df3584f780e76685c1ea463d35c2a1ece48d617792fd4e33",
+        "git_blob": "f037a86bec90f4da4fc3c4758a7eb917f8368f81"
+      },
+      "site-code/acf-json/group_vg_course_people.json": {
+        "bytes": 3419,
+        "exact_git_object": true,
+        "filesystem_sha256": "ae9353b6f916dec5f17ad662e71ca602590038b9aaca37f7656d573757bb386a",
+        "git_blob": "cd88c864d642039b75f6a2142d11786a8cd96fbc"
+      },
+      "site-code/acf-json/group_vg_editorial_classification.json": {
+        "bytes": 2312,
+        "exact_git_object": true,
+        "filesystem_sha256": "ec32c95f75b9b1c6599b09312fa0b71a9806044277c0cd7865519df37ace7030",
+        "git_blob": "dddc995e0493e94796968fbd30cd5135c5038541"
+      },
+      "site-code/acf-json/group_vg_event_participation_details.json": {
+        "bytes": 3611,
+        "exact_git_object": true,
+        "filesystem_sha256": "09232c12e7d7cce7ee7c66c9fef4c699410297315112b883ca82b01d842d71c7",
+        "git_blob": "88c1ed154e33e8dcf442d3c372913b0dcb335b7a"
+      },
+      "site-code/acf-json/group_vg_person_details.json": {
+        "bytes": 3755,
+        "exact_git_object": true,
+        "filesystem_sha256": "d37ec3c5d908dd6497fd953319375b641a1534574e83b600eff0bfc702be8e95",
+        "git_blob": "abad8ef4ae7846e7f91c13ded06d0d173fd66f60"
+      },
+      "site-code/acf-json/group_vg_product_contribution_details.json": {
+        "bytes": 3766,
+        "exact_git_object": true,
+        "filesystem_sha256": "3ed2d1a00e3c224adcb7f51e33fa82ed7d5694c5f33a9503da446faaa00f1c03",
+        "git_blob": "ec996f127e04d0395a9fba3b9c6418f5b59895e7"
+      },
+      "site-code/acf-json/post_type_event_participation.json": {
+        "bytes": 3228,
+        "exact_git_object": true,
+        "filesystem_sha256": "434025a42c7c1be6ee20949bf45b0442f3226ff6ce91c99e6cfad4a8ab15816a",
+        "git_blob": "105fc8536c25942f75854b85f211ffb96416b199"
+      },
+      "site-code/acf-json/post_type_person.json": {
+        "bytes": 3061,
+        "exact_git_object": true,
+        "filesystem_sha256": "222dc1839d2a0ffe891aadd4c84fc68a41cbb6cb72667c57ad14cdac4abe583a",
+        "git_blob": "f585fb5bec319a9324d20b058748c23bddac1c3c"
+      },
+      "site-code/acf-json/post_type_product_contribution.json": {
+        "bytes": 3262,
+        "exact_git_object": true,
+        "filesystem_sha256": "d4c7d7ba3ef416e68f21e66ec366dee28e83307739a429c5895b382c15ebc506",
+        "git_blob": "89b8b47bb3e6df0e640b25ac678cf20179798651"
+      },
+      "site-code/acf-json/taxonomy_editorial_collection.json": {
+        "bytes": 3467,
+        "exact_git_object": true,
+        "filesystem_sha256": "a6bb5c6a4d3b8ba3639e6288405c3b913e683c917e041b0d0c2b9735f34e41b4",
+        "git_blob": "ce96442b196fea06e8dfb0a2769959c585fdefa2"
+      },
+      "site-code/acf-json/taxonomy_editorial_format.json": {
+        "bytes": 3362,
+        "exact_git_object": true,
+        "filesystem_sha256": "90ad05e7cba39ea9f0f5e57f36e23990cc5074c25a83e2ad1f2c7273b8d22234",
+        "git_blob": "14ec16b6b339d8bfedae944903ee257ffe1d13f2"
+      },
+      "site-code/acf-json/taxonomy_event_role.json": {
+        "bytes": 2789,
+        "exact_git_object": true,
+        "filesystem_sha256": "e9794d6b6f6be6ff563f5e13c0328d91fa29988434b0d3ed3c0d35834330a895",
+        "git_blob": "b266f44e1210b6604219e31f4282760a2bd40039"
+      },
+      "site-code/acf-json/taxonomy_person_type.json": {
+        "bytes": 2876,
+        "exact_git_object": true,
+        "filesystem_sha256": "d32dba47956594771ce12e5b0eb6c4b61a866d7a90dcce679a777ffc57d9b8c2",
+        "git_blob": "f800f9e7e69bbec3982034398ab4cca7259a6e06"
+      },
+      "site-code/acf-json/taxonomy_product_role.json": {
+        "bytes": 2850,
+        "exact_git_object": true,
+        "filesystem_sha256": "d371c6a1ac769b7491b810d04080991ba638258781bce320e0f4f7b842cb144e",
+        "git_blob": "a62ce908fd612cad28df7888f9582d376d98a7b1"
+      }
+    },
+    "activation_sha": "4b7a30a1a93a8b0d9707ddeec7eeb7462ce31439",
+    "file_count": 14,
+    "generation1": {
+      "site-code/acf-json/group_vg_article_people.json": {
+        "bytes": 4354,
+        "exact_git_object": true,
+        "filesystem_sha256": "3f1f0b119c9619c7df3584f780e76685c1ea463d35c2a1ece48d617792fd4e33",
+        "git_blob": "f037a86bec90f4da4fc3c4758a7eb917f8368f81"
+      },
+      "site-code/acf-json/group_vg_course_people.json": {
+        "bytes": 3419,
+        "exact_git_object": true,
+        "filesystem_sha256": "ae9353b6f916dec5f17ad662e71ca602590038b9aaca37f7656d573757bb386a",
+        "git_blob": "cd88c864d642039b75f6a2142d11786a8cd96fbc"
+      },
+      "site-code/acf-json/group_vg_editorial_classification.json": {
+        "bytes": 2312,
+        "exact_git_object": true,
+        "filesystem_sha256": "ec32c95f75b9b1c6599b09312fa0b71a9806044277c0cd7865519df37ace7030",
+        "git_blob": "dddc995e0493e94796968fbd30cd5135c5038541"
+      },
+      "site-code/acf-json/group_vg_event_participation_details.json": {
+        "bytes": 3611,
+        "exact_git_object": true,
+        "filesystem_sha256": "09232c12e7d7cce7ee7c66c9fef4c699410297315112b883ca82b01d842d71c7",
+        "git_blob": "88c1ed154e33e8dcf442d3c372913b0dcb335b7a"
+      },
+      "site-code/acf-json/group_vg_person_details.json": {
+        "bytes": 3755,
+        "exact_git_object": true,
+        "filesystem_sha256": "d37ec3c5d908dd6497fd953319375b641a1534574e83b600eff0bfc702be8e95",
+        "git_blob": "abad8ef4ae7846e7f91c13ded06d0d173fd66f60"
+      },
+      "site-code/acf-json/group_vg_product_contribution_details.json": {
+        "bytes": 3766,
+        "exact_git_object": true,
+        "filesystem_sha256": "3ed2d1a00e3c224adcb7f51e33fa82ed7d5694c5f33a9503da446faaa00f1c03",
+        "git_blob": "ec996f127e04d0395a9fba3b9c6418f5b59895e7"
+      },
+      "site-code/acf-json/post_type_event_participation.json": {
+        "bytes": 3228,
+        "exact_git_object": true,
+        "filesystem_sha256": "434025a42c7c1be6ee20949bf45b0442f3226ff6ce91c99e6cfad4a8ab15816a",
+        "git_blob": "105fc8536c25942f75854b85f211ffb96416b199"
+      },
+      "site-code/acf-json/post_type_person.json": {
+        "bytes": 3061,
+        "exact_git_object": true,
+        "filesystem_sha256": "222dc1839d2a0ffe891aadd4c84fc68a41cbb6cb72667c57ad14cdac4abe583a",
+        "git_blob": "f585fb5bec319a9324d20b058748c23bddac1c3c"
+      },
+      "site-code/acf-json/post_type_product_contribution.json": {
+        "bytes": 3262,
+        "exact_git_object": true,
+        "filesystem_sha256": "d4c7d7ba3ef416e68f21e66ec366dee28e83307739a429c5895b382c15ebc506",
+        "git_blob": "89b8b47bb3e6df0e640b25ac678cf20179798651"
+      },
+      "site-code/acf-json/taxonomy_editorial_collection.json": {
+        "bytes": 3467,
+        "exact_git_object": true,
+        "filesystem_sha256": "a6bb5c6a4d3b8ba3639e6288405c3b913e683c917e041b0d0c2b9735f34e41b4",
+        "git_blob": "ce96442b196fea06e8dfb0a2769959c585fdefa2"
+      },
+      "site-code/acf-json/taxonomy_editorial_format.json": {
+        "bytes": 3362,
+        "exact_git_object": true,
+        "filesystem_sha256": "90ad05e7cba39ea9f0f5e57f36e23990cc5074c25a83e2ad1f2c7273b8d22234",
+        "git_blob": "14ec16b6b339d8bfedae944903ee257ffe1d13f2"
+      },
+      "site-code/acf-json/taxonomy_event_role.json": {
+        "bytes": 2789,
+        "exact_git_object": true,
+        "filesystem_sha256": "e9794d6b6f6be6ff563f5e13c0328d91fa29988434b0d3ed3c0d35834330a895",
+        "git_blob": "b266f44e1210b6604219e31f4282760a2bd40039"
+      },
+      "site-code/acf-json/taxonomy_person_type.json": {
+        "bytes": 2876,
+        "exact_git_object": true,
+        "filesystem_sha256": "d32dba47956594771ce12e5b0eb6c4b61a866d7a90dcce679a777ffc57d9b8c2",
+        "git_blob": "f800f9e7e69bbec3982034398ab4cca7259a6e06"
+      },
+      "site-code/acf-json/taxonomy_product_role.json": {
+        "bytes": 2850,
+        "exact_git_object": true,
+        "filesystem_sha256": "d371c6a1ac769b7491b810d04080991ba638258781bce320e0f4f7b842cb144e",
+        "git_blob": "a62ce908fd612cad28df7888f9582d376d98a7b1"
+      }
+    },
+    "generation1_sha": "5a3bc4fc89fa61ae8916aa460989f1e8912b473d",
+    "parity": true
+  },
+  "acf_pending_after": [
+    {
+      "Action": "Create",
+      "ID": 0,
+      "Key": "group_vg_article_people",
+      "Local": "json",
+      "Title": "Article People",
+      "Type": "field-group"
+    },
+    {
+      "Action": "Create",
+      "ID": 0,
+      "Key": "group_vg_course_people",
+      "Local": "json",
+      "Title": "Course People",
+      "Type": "field-group"
+    },
+    {
+      "Action": "Create",
+      "ID": 0,
+      "Key": "group_vgmp_options",
+      "Local": "json",
+      "Title": "Voelgoed Perk Settings",
+      "Type": "field-group"
+    },
+    {
+      "Action": "Create",
+      "ID": 0,
+      "Key": "group_vgmp_perk_details",
+      "Local": "json",
+      "Title": "Member Perk Details",
+      "Type": "field-group"
+    }
+  ],
+  "acf_pending_before": [
+    {
+      "Action": "Create",
+      "Key": "group_vg_article_people",
+      "Title": "Article People",
+      "Type": "field-group"
+    },
+    {
+      "Action": "Create",
+      "Key": "group_vg_course_people",
+      "Title": "Course People",
+      "Type": "field-group"
+    },
+    {
+      "Action": "Create",
+      "Key": "group_vgmp_perk_details",
+      "Title": "Member Perk Details",
+      "Type": "field-group"
+    },
+    {
+      "Action": "Create",
+      "Key": "group_vgmp_options",
+      "Title": "Voelgoed Perk Settings",
+      "Type": "field-group"
+    }
+  ],
+  "acf_pending_comparison": {
+    "after": [
+      {
+        "Action": "Create",
+        "Key": "group_vg_article_people",
+        "Title": "Article People",
+        "Type": "field-group"
+      },
+      {
+        "Action": "Create",
+        "Key": "group_vg_course_people",
+        "Title": "Course People",
+        "Type": "field-group"
+      },
+      {
+        "Action": "Create",
+        "Key": "group_vgmp_options",
+        "Title": "Voelgoed Perk Settings",
+        "Type": "field-group"
+      },
+      {
+        "Action": "Create",
+        "Key": "group_vgmp_perk_details",
+        "Title": "Member Perk Details",
+        "Type": "field-group"
+      }
+    ],
+    "before": [
+      {
+        "Action": "Create",
+        "Key": "group_vg_article_people",
+        "Title": "Article People",
+        "Type": "field-group"
+      },
+      {
+        "Action": "Create",
+        "Key": "group_vg_course_people",
+        "Title": "Course People",
+        "Type": "field-group"
+      },
+      {
+        "Action": "Create",
+        "Key": "group_vgmp_options",
+        "Title": "Voelgoed Perk Settings",
+        "Type": "field-group"
+      },
+      {
+        "Action": "Create",
+        "Key": "group_vgmp_perk_details",
+        "Title": "Member Perk Details",
+        "Type": "field-group"
+      }
+    ],
+    "same": true
+  },
+  "acf_runtime_source_sha": "5a3bc4fc89fa61ae8916aa460989f1e8912b473d",
+  "activation_source_sha": "4b7a30a1a93a8b0d9707ddeec7eeb7462ce31439",
+  "artifact": {
+    "archive_sha256": "3babd382c4dddb71d7b358f968eb4e62aa4d37d9d3048aa0bfa07d1a35cfe5c9",
+    "file_count": 66,
+    "manifest_sha256": "6604f328a86c4da493e3e104934cbfdf244067f717145dc9d75f562f3eae6109",
+    "source_commit": "4b7a30a1a93a8b0d9707ddeec7eeb7462ce31439",
+    "tree_sha256": "d8a1244b1ad7e6767e271535959d5c4df2bf35fe0cec1dd1e3c10f11fd6ec373",
+    "verification": "PASS"
+  },
+  "deployment_attempt": {
+    "child_exit_code": 1,
+    "deployment_id": null,
+    "error": "WordPress health helper output is not one JSON result.",
+    "history_path": null,
+    "pe007_coordinated": true,
+    "pe008_status_after": {
+      "in_progress": false,
+      "recovery_options": []
+    },
+    "rollback_path": null,
+    "runtime_mutation_occurred": false
+  },
+  "health_helper_diagnostic": {
+    "modes": [
+      "session",
+      "health"
+    ],
+    "mysqli_default_socket": "/var/run/mysqld/mysqld.sock",
+    "php_cli": "/usr/bin/php 8.5.4",
+    "php_ini": "/etc/php/8.5/cli/php.ini",
+    "returncode": 0,
+    "stderr_bytes": 0,
+    "stdout_bytes": 2482,
+    "stdout_result": "WordPress Database Error HTML: Error establishing a database connection",
+    "stdout_sha256": "4b9443d1fac58409ab0efe11dba4dbcd7b18b65f8de36412511c5edeaad0332a",
+    "target_mysql_socket": "/home/jcschoeman96/.config/Local/run/nAZNpFs99/mysql/mysqld.sock"
+  },
+  "platform_core_post_failed_attempt": {
+    "content_tree_sha256": "a2635dafeb1d82d481b6275526c3850263f549facac80293c810d2b0d93de760",
+    "fingerprint": {
+      "device_id": 66306,
+      "directories": [
+        {
+          "group": 1000,
+          "mode": 493,
+          "owner": 1000,
+          "path": "bin"
+        },
+        {
+          "group": 1000,
+          "mode": 493,
+          "owner": 1000,
+          "path": "includes"
+        },
+        {
+          "group": 1000,
+          "mode": 493,
+          "owner": 1000,
+          "path": "includes/Bricks"
+        },
+        {
+          "group": 1000,
+          "mode": 493,
+          "owner": 1000,
+          "path": "includes/Config"
+        },
+        {
+          "group": 1000,
+          "mode": 493,
+          "owner": 1000,
+          "path": "includes/Contracts"
+        },
+        {
+          "group": 1000,
+          "mode": 493,
+          "owner": 1000,
+          "path": "includes/Dashboard"
+        },
+        {
+          "group": 1000,
+          "mode": 493,
+          "owner": 1000,
+          "path": "includes/Event"
+        },
+        {
+          "group": 1000,
+          "mode": 493,
+          "owner": 1000,
+          "path": "includes/Performance"
+        },
+        {
+          "group": 1000,
+          "mode": 493,
+          "owner": 1000,
+          "path": "includes/Product"
+        },
+        {
+          "group": 1000,
+          "mode": 493,
+          "owner": 1000,
+          "path": "includes/Services"
+        },
+        {
+          "group": 1000,
+          "mode": 493,
+          "owner": 1000,
+          "path": "includes/Taxonomy"
+        },
+        {
+          "group": 1000,
+          "mode": 493,
+          "owner": 1000,
+          "path": "tests"
+        },
+        {
+          "group": 1000,
+          "mode": 493,
+          "owner": 1000,
+          "path": "tests/contracts"
+        },
+        {
+          "group": 1000,
+          "mode": 493,
+          "owner": 1000,
+          "path": "tests/dashboard"
+        },
+        {
+          "group": 1000,
+          "mode": 493,
+          "owner": 1000,
+          "path": "tests/performance"
+        },
+        {
+          "group": 1000,
+          "mode": 493,
+          "owner": 1000,
+          "path": "tests/services"
+        }
+      ],
+      "file_count": 54,
+      "files": [
+        {
+          "mode": "100755",
+          "path": "bin/check.sh",
+          "sha256": "fa75e33b86dc16a8b9ad180319703aaa70376623ac50d1751c2181fe8de8c32f",
+          "size": 2816
+        },
+        {
+          "mode": "100644",
+          "path": "includes/Bricks/DashboardDynamicData.php",
+          "sha256": "78b5e8889dfba308cbe359736c19e3e1da78718df1ff169dfc56c4512e6b3c8f",
+          "size": 13294
+        },
+        {
+          "mode": "100644",
+          "path": "includes/Bricks/DashboardQueryProvider.php",
+          "sha256": "19e488cf222605aeb78337910feac2a7d388173ae2723705946b01ebe8d817ba",
+          "size": 14434
+        },
+        {
+          "mode": "100644",
+          "path": "includes/Config/AfrikaansLabels.php",
+          "sha256": "85ff7693c406d420d8f83f44772a41e0d0c5651daa8de5d9b589351837a6fc36",
+          "size": 2316
+        },
+        {
+          "mode": "100644",
+          "path": "includes/Contracts/DashboardAction.php",
+          "sha256": "a1a6469f6aaf21a3324ccfd22870dad34ec6e9cb0e3f5203857be311fb0d2905",
+          "size": 4177
+        },
+        {
+          "mode": "100644",
+          "path": "includes/Contracts/DashboardCard.php",
+          "sha256": "bed4565c9883328129b4f2dcccb66655fbceae37a97c74af9ed8c227cef73cec",
+          "size": 4123
+        },
+        {
+          "mode": "100644",
+          "path": "includes/Contracts/DashboardServiceInterface.php",
+          "sha256": "fec05df907a648931a90ec2a25d1c68061eec7a80a224afdb40805c56dc17702",
+          "size": 302
+        },
+        {
+          "mode": "100644",
+          "path": "includes/Dashboard/AccessGuard.php",
+          "sha256": "77b55994203e269643ec4101e95ba06c42fc5aa286310813127312d43e1f64ab",
+          "size": 8246
+        },
+        {
+          "mode": "100644",
+          "path": "includes/Dashboard/DashboardContext.php",
+          "sha256": "572534a6a72aa7bb415f376d66fb0597a9d80e57369d609fef8fa0fd20ccae67",
+          "size": 3796
+        },
+        {
+          "mode": "100644",
+          "path": "includes/Dashboard/DashboardRegistry.php",
+          "sha256": "afe5a0e0d35cf02151493459742c86eae6ce435188603c0b330c4723df850e88",
+          "size": 10866
+        },
+        {
+          "mode": "100644",
+          "path": "includes/Dashboard/DashboardRoutes.php",
+          "sha256": "42bf035569292175272216a6d5f1d6d0bdf3fbd2bb8975e15835bc05c6fb8d87",
+          "size": 2275
+        },
+        {
+          "mode": "100644",
+          "path": "includes/Dashboard/Navigation.php",
+          "sha256": "a8f945933987854a30cf85a57816fc3760d1b78d15028bf95b7d249f73d97050",
+          "size": 6512
+        },
+        {
+          "mode": "100644",
+          "path": "includes/Event/EventParticipationAdmin.php",
+          "sha256": "bbdbea299e6712f84d574ea5d5a25c517f2917920d36858f6bf8bf92b5e3b9f9",
+          "size": 10816
+        },
+        {
+          "mode": "100644",
+          "path": "includes/Event/EventParticipationBricks.php",
+          "sha256": "1adee948ecb9a53f762e7f9de62bf721e1bc46c9f8d4e3f093f9fd26a9c87c63",
+          "size": 4865
+        },
+        {
+          "mode": "100644",
+          "path": "includes/Event/EventParticipationPairLock.php",
+          "sha256": "95107d2db6c3e713c6685cd0c13aa7fe4764f89b7ac37596843e436f74e9c49c",
+          "size": 4298
+        },
+        {
+          "mode": "100644",
+          "path": "includes/Event/EventParticipationRepository.php",
+          "sha256": "4de51c154b4863546570245cddc91124b2eabb8a6ee166bddfe98c5c4728baff",
+          "size": 14214
+        },
+        {
+          "mode": "100644",
+          "path": "includes/Event/EventParticipationService.php",
+          "sha256": "4075158d9a6ab4b4079f5722bb9a2736190eb779dfd2ae1282e9c9bf74362600",
+          "size": 9725
+        },
+        {
+          "mode": "100644",
+          "path": "includes/Event/EventRoleSeeder.php",
+          "sha256": "9b0396bf9b2e4b3515fb0b2bd5224e03e501fd964efe80e03cd3f1a76f98c4e6",
+          "size": 8704
+        },
+        {
+          "mode": "100644",
+          "path": "includes/Performance/CachePolicy.php",
+          "sha256": "48de79acd06ce3a9b28596ec5324c1ea7d5217c0b90d10b7f3260b8154826057",
+          "size": 7172
+        },
+        {
+          "mode": "100644",
+          "path": "includes/Plugin.php",
+          "sha256": "054b373bc4512cadf7f4e9700347867dc90ca359527770b0ecf3a3a825512625",
+          "size": 4156
+        },
+        {
+          "mode": "100644",
+          "path": "includes/Product/PersonProductsBricks.php",
+          "sha256": "a7460a1e21d4318a9d3997e52ad9e0d804a155798b1b7992e786b4cb976170e5",
+          "size": 5708
+        },
+        {
+          "mode": "100644",
+          "path": "includes/Product/ProductContributionAdmin.php",
+          "sha256": "435a270647db590a6f9ccfc2f57e8817dd9f55a03d44c115d847746ab6484074",
+          "size": 27954
+        },
+        {
+          "mode": "100644",
+          "path": "includes/Product/ProductContributionPairLock.php",
+          "sha256": "3da0944a49525f7b041c7738cd6cb789fb3a524d88e6bfb31fb2ba85b498a31f",
+          "size": 4547
+        },
+        {
+          "mode": "100644",
+          "path": "includes/Product/ProductContributionRepository.php",
+          "sha256": "db8d394d63a1265cfae9fef61bcfa8abe049da375199d647845f69391a5a0af6",
+          "size": 25790
+        },
+        {
+          "mode": "100644",
+          "path": "includes/Product/ProductContributionService.php",
+          "sha256": "6db9978174b2320bea3efa6ccade1e50db21cd0c6e16e4d279b3208a315d248e",
+          "size": 17377
+        },
+        {
+          "mode": "100644",
+          "path": "includes/Product/ProductPeopleBricks.php",
+          "sha256": "001967451c55ef4911427a53f0b72a3457ff925298450fc6a4517ff123d18ca7",
+          "size": 4499
+        },
+        {
+          "mode": "100644",
+          "path": "includes/Product/ProductPeopleFields.php",
+          "sha256": "373ce7592f6f79603fefc95b2c37978d94fef01d106bc8f6e28995c8146ba762",
+          "size": 2367
+        },
+        {
+          "mode": "100644",
+          "path": "includes/Product/ProductPeopleResolver.php",
+          "sha256": "27181a44aca8e6a701f367d11497596f74c16ca13b2eb592cf0caf8923c9ff23",
+          "size": 1301
+        },
+        {
+          "mode": "100644",
+          "path": "includes/Product/ProductRoleSeeder.php",
+          "sha256": "2b8979dad3eade53b6f5204e06a36621eadbda320ee18efc86b84d166221d4b8",
+          "size": 8588
+        },
+        {
+          "mode": "100644",
+          "path": "includes/Product/ProductRoleVocabulary.php",
+          "sha256": "fc27c8007876eb6ffea5ed2f1509bf349f88b6acd20e742cb2b507e5e07d3bd9",
+          "size": 1180
+        },
+        {
+          "mode": "100644",
+          "path": "includes/Product/ProductSourceEventBricks.php",
+          "sha256": "9781aac4f6594d0626539f0f7fc488b863b3fe0af4a9e8b34e3604fed1467697",
+          "size": 4205
+        },
+        {
+          "mode": "100644",
+          "path": "includes/Services/CommerceService.php",
+          "sha256": "c3fc99ef8f3b224e5921ff708080c680342504a2bbdab5c8572da5ea5703e9e9",
+          "size": 13828
+        },
+        {
+          "mode": "100644",
+          "path": "includes/Services/LearningService.php",
+          "sha256": "b7156f25406f15e8caf8a250961742a2f6514ce68762d609092b3d06d20f0338",
+          "size": 34709
+        },
+        {
+          "mode": "100644",
+          "path": "includes/Services/MemberAreaService.php",
+          "sha256": "9a5bf000eacb1d6eda74a24c1a0dcb86bfaf044dc128e69e0be7a21e7e0e495d",
+          "size": 9335
+        },
+        {
+          "mode": "100644",
+          "path": "includes/Services/MembershipService.php",
+          "sha256": "5355ecdfa921a4b7da306f6384649c7387d1c5fbd58be6425d209820c9a04fe6",
+          "size": 13154
+        },
+        {
+          "mode": "100644",
+          "path": "includes/Services/SubscriptionService.php",
+          "sha256": "70cfa98752f37c60045ef3ca2fc10ff50992e826d0e8a792116eb96c08098f4f",
+          "size": 16835
+        },
+        {
+          "mode": "100644",
+          "path": "includes/Services/TicketService.php",
+          "sha256": "ddde203376c45859763cfe6f2aaf500cc5bf228f5606c1aaef9707cfc9f19318",
+          "size": 35903
+        },
+        {
+          "mode": "100644",
+          "path": "includes/Taxonomy/ContentTopicMigration.php",
+          "sha256": "928521996320fbce4db8154e63a217c34a34bfd0bcf397337cc7ee29f271d856",
+          "size": 41413
+        },
+        {
+          "mode": "100644",
+          "path": "includes/Taxonomy/ContentTopicRoles.php",
+          "sha256": "9241fbaef68ac5318fda72e5daf2c71a5e147d9a3ff30ca97066480de45b6512",
+          "size": 26630
+        },
+        {
+          "mode": "100644",
+          "path": "includes/Taxonomy/ContentTopicTaxonomy.php",
+          "sha256": "5668c77070bebe2dcaa3984438f5297486ed2963803864abbbb7b92b724048c9",
+          "size": 15926
+        },
+        {
+          "mode": "100644",
+          "path": "tests/bootstrap.php",
+          "sha256": "05d60994d10bcd70443f4f8ce17203fcd2d2f1cf947b5344f9c3ce606f1f7acf",
+          "size": 7832
+        },
+        {
+          "mode": "100644",
+          "path": "tests/contracts/DashboardCardTest.php",
+          "sha256": "e624d61733e763e4e8c69edac7b346f71fe4926dc0f4e6fa3fdf68cfd93d8b03",
+          "size": 6992
+        },
+        {
+          "mode": "100644",
+          "path": "tests/dashboard/AccessGuardTest.php",
+          "sha256": "69151d928c2c9deacc13881c50891283bd8371fab0d7dc228cc561580c470150",
+          "size": 4466
+        },
+        {
+          "mode": "100644",
+          "path": "tests/dashboard/DashboardRoutesTest.php",
+          "sha256": "44b32e7f36591313e41516817ed85f48d90f2d14eeef400dabe02cfa816dd0b1",
+          "size": 3093
+        },
+        {
+          "mode": "100644",
+          "path": "tests/dashboard/NavigationTest.php",
+          "sha256": "8edf44b916c8c8a217836b007dace0d8684b4c314f4a64d91cbae60beec934de",
+          "size": 9037
+        },
+        {
+          "mode": "100644",
+          "path": "tests/performance/CachePolicyTest.php",
+          "sha256": "b813031aa173cdc61b4429843eb7cedcb4b303f3a6b43510275c3990d4f8da7d",
+          "size": 24739
+        },
+        {
+          "mode": "100644",
+          "path": "tests/run-dashboard-tests.php",
+          "sha256": "ebea06cb804228bc8bed7e6a6824a01ac4eb0215bc71d1a145e6eef0b7a386d4",
+          "size": 1706
+        },
+        {
+          "mode": "100644",
+          "path": "tests/services/CommerceServiceTest.php",
+          "sha256": "c1f982c6f6ac420aa7bf50dd3cd37d4907aba0ef921ec6356370a6b01c7aa4a8",
+          "size": 13823
+        },
+        {
+          "mode": "100644",
+          "path": "tests/services/LearningServiceTest.php",
+          "sha256": "78a37f8778517cf0971e0d1f8a3aae4b94ac44beaf9fbb45b7b0f7bf5cc0eabb",
+          "size": 17805
+        },
+        {
+          "mode": "100644",
+          "path": "tests/services/MemberAreaServiceTest.php",
+          "sha256": "a4abd9c23fb4a379245fb328173c8b374a958e81c7f18985e4aac9fbf49e168d",
+          "size": 8466
+        },
+        {
+          "mode": "100644",
+          "path": "tests/services/MembershipServiceTest.php",
+          "sha256": "7e94ee415395ef4b67bfafd796bd32d2b07b566e41f46b3627164d8943a4e7cb",
+          "size": 11750
+        },
+        {
+          "mode": "100644",
+          "path": "tests/services/SubscriptionServiceTest.php",
+          "sha256": "4721c3ebab6aa91bebf0dd034adab729e7cdcafc0e85d39bb2c4c9ade19407ad",
+          "size": 14730
+        },
+        {
+          "mode": "100644",
+          "path": "tests/services/TicketServiceTest.php",
+          "sha256": "7cf6e81c7680574cc4a8466497191cc27c24b715d8dc8246e2c4882f91793cf4",
+          "size": 22594
+        },
+        {
+          "mode": "100644",
+          "path": "voelgoed-platform-core.php",
+          "sha256": "3fc688ccf27ec11ee4bb9fe5e282630ded724d4a987e5489f9bc77142dca72bb",
+          "size": 2708
+        }
+      ],
+      "root_group": 1000,
+      "root_mode": 493,
+      "root_owner": 1000,
+      "tree_sha256": "856a3e5978559bfb2572b4b1ff4b34df916743f9e72d6b18220ee64e98af5f56"
+    },
+    "mode_pattern": "53x0644,1x0755,16dirsx0755,root0755",
+    "owner_groups": [
+      [
+        1000,
+        1000
+      ]
+    ]
+  },
+  "platform_core_pre_post_fingerprint_equal": true,
+  "platform_core_predeploy": {
+    "checks": {
+      "content_digest_exact": true,
+      "directories_16": true,
+      "file_count_54": true,
+      "mode_pattern_exact": true,
+      "owner_group_exact": true,
+      "path_size_sha_match_normalization_evidence": true,
+      "pe008_digest_exact": true,
+      "root_owner_group_exact": true,
+      "symlinks_zero": true,
+      "unsupported_zero": true
+    },
+    "content_tree_sha256": "a2635dafeb1d82d481b6275526c3850263f549facac80293c810d2b0d93de760",
+    "fingerprint": {
+      "device_id": 66306,
+      "directories": [
+        {
+          "group": 1000,
+          "mode": 493,
+          "owner": 1000,
+          "path": "bin"
+        },
+        {
+          "group": 1000,
+          "mode": 493,
+          "owner": 1000,
+          "path": "includes"
+        },
+        {
+          "group": 1000,
+          "mode": 493,
+          "owner": 1000,
+          "path": "includes/Bricks"
+        },
+        {
+          "group": 1000,
+          "mode": 493,
+          "owner": 1000,
+          "path": "includes/Config"
+        },
+        {
+          "group": 1000,
+          "mode": 493,
+          "owner": 1000,
+          "path": "includes/Contracts"
+        },
+        {
+          "group": 1000,
+          "mode": 493,
+          "owner": 1000,
+          "path": "includes/Dashboard"
+        },
+        {
+          "group": 1000,
+          "mode": 493,
+          "owner": 1000,
+          "path": "includes/Event"
+        },
+        {
+          "group": 1000,
+          "mode": 493,
+          "owner": 1000,
+          "path": "includes/Performance"
+        },
+        {
+          "group": 1000,
+          "mode": 493,
+          "owner": 1000,
+          "path": "includes/Product"
+        },
+        {
+          "group": 1000,
+          "mode": 493,
+          "owner": 1000,
+          "path": "includes/Services"
+        },
+        {
+          "group": 1000,
+          "mode": 493,
+          "owner": 1000,
+          "path": "includes/Taxonomy"
+        },
+        {
+          "group": 1000,
+          "mode": 493,
+          "owner": 1000,
+          "path": "tests"
+        },
+        {
+          "group": 1000,
+          "mode": 493,
+          "owner": 1000,
+          "path": "tests/contracts"
+        },
+        {
+          "group": 1000,
+          "mode": 493,
+          "owner": 1000,
+          "path": "tests/dashboard"
+        },
+        {
+          "group": 1000,
+          "mode": 493,
+          "owner": 1000,
+          "path": "tests/performance"
+        },
+        {
+          "group": 1000,
+          "mode": 493,
+          "owner": 1000,
+          "path": "tests/services"
+        }
+      ],
+      "file_count": 54,
+      "files": [
+        {
+          "mode": "100755",
+          "path": "bin/check.sh",
+          "sha256": "fa75e33b86dc16a8b9ad180319703aaa70376623ac50d1751c2181fe8de8c32f",
+          "size": 2816
+        },
+        {
+          "mode": "100644",
+          "path": "includes/Bricks/DashboardDynamicData.php",
+          "sha256": "78b5e8889dfba308cbe359736c19e3e1da78718df1ff169dfc56c4512e6b3c8f",
+          "size": 13294
+        },
+        {
+          "mode": "100644",
+          "path": "includes/Bricks/DashboardQueryProvider.php",
+          "sha256": "19e488cf222605aeb78337910feac2a7d388173ae2723705946b01ebe8d817ba",
+          "size": 14434
+        },
+        {
+          "mode": "100644",
+          "path": "includes/Config/AfrikaansLabels.php",
+          "sha256": "85ff7693c406d420d8f83f44772a41e0d0c5651daa8de5d9b589351837a6fc36",
+          "size": 2316
+        },
+        {
+          "mode": "100644",
+          "path": "includes/Contracts/DashboardAction.php",
+          "sha256": "a1a6469f6aaf21a3324ccfd22870dad34ec6e9cb0e3f5203857be311fb0d2905",
+          "size": 4177
+        },
+        {
+          "mode": "100644",
+          "path": "includes/Contracts/DashboardCard.php",
+          "sha256": "bed4565c9883328129b4f2dcccb66655fbceae37a97c74af9ed8c227cef73cec",
+          "size": 4123
+        },
+        {
+          "mode": "100644",
+          "path": "includes/Contracts/DashboardServiceInterface.php",
+          "sha256": "fec05df907a648931a90ec2a25d1c68061eec7a80a224afdb40805c56dc17702",
+          "size": 302
+        },
+        {
+          "mode": "100644",
+          "path": "includes/Dashboard/AccessGuard.php",
+          "sha256": "77b55994203e269643ec4101e95ba06c42fc5aa286310813127312d43e1f64ab",
+          "size": 8246
+        },
+        {
+          "mode": "100644",
+          "path": "includes/Dashboard/DashboardContext.php",
+          "sha256": "572534a6a72aa7bb415f376d66fb0597a9d80e57369d609fef8fa0fd20ccae67",
+          "size": 3796
+        },
+        {
+          "mode": "100644",
+          "path": "includes/Dashboard/DashboardRegistry.php",
+          "sha256": "afe5a0e0d35cf02151493459742c86eae6ce435188603c0b330c4723df850e88",
+          "size": 10866
+        },
+        {
+          "mode": "100644",
+          "path": "includes/Dashboard/DashboardRoutes.php",
+          "sha256": "42bf035569292175272216a6d5f1d6d0bdf3fbd2bb8975e15835bc05c6fb8d87",
+          "size": 2275
+        },
+        {
+          "mode": "100644",
+          "path": "includes/Dashboard/Navigation.php",
+          "sha256": "a8f945933987854a30cf85a57816fc3760d1b78d15028bf95b7d249f73d97050",
+          "size": 6512
+        },
+        {
+          "mode": "100644",
+          "path": "includes/Event/EventParticipationAdmin.php",
+          "sha256": "bbdbea299e6712f84d574ea5d5a25c517f2917920d36858f6bf8bf92b5e3b9f9",
+          "size": 10816
+        },
+        {
+          "mode": "100644",
+          "path": "includes/Event/EventParticipationBricks.php",
+          "sha256": "1adee948ecb9a53f762e7f9de62bf721e1bc46c9f8d4e3f093f9fd26a9c87c63",
+          "size": 4865
+        },
+        {
+          "mode": "100644",
+          "path": "includes/Event/EventParticipationPairLock.php",
+          "sha256": "95107d2db6c3e713c6685cd0c13aa7fe4764f89b7ac37596843e436f74e9c49c",
+          "size": 4298
+        },
+        {
+          "mode": "100644",
+          "path": "includes/Event/EventParticipationRepository.php",
+          "sha256": "4de51c154b4863546570245cddc91124b2eabb8a6ee166bddfe98c5c4728baff",
+          "size": 14214
+        },
+        {
+          "mode": "100644",
+          "path": "includes/Event/EventParticipationService.php",
+          "sha256": "4075158d9a6ab4b4079f5722bb9a2736190eb779dfd2ae1282e9c9bf74362600",
+          "size": 9725
+        },
+        {
+          "mode": "100644",
+          "path": "includes/Event/EventRoleSeeder.php",
+          "sha256": "9b0396bf9b2e4b3515fb0b2bd5224e03e501fd964efe80e03cd3f1a76f98c4e6",
+          "size": 8704
+        },
+        {
+          "mode": "100644",
+          "path": "includes/Performance/CachePolicy.php",
+          "sha256": "48de79acd06ce3a9b28596ec5324c1ea7d5217c0b90d10b7f3260b8154826057",
+          "size": 7172
+        },
+        {
+          "mode": "100644",
+          "path": "includes/Plugin.php",
+          "sha256": "054b373bc4512cadf7f4e9700347867dc90ca359527770b0ecf3a3a825512625",
+          "size": 4156
+        },
+        {
+          "mode": "100644",
+          "path": "includes/Product/PersonProductsBricks.php",
+          "sha256": "a7460a1e21d4318a9d3997e52ad9e0d804a155798b1b7992e786b4cb976170e5",
+          "size": 5708
+        },
+        {
+          "mode": "100644",
+          "path": "includes/Product/ProductContributionAdmin.php",
+          "sha256": "435a270647db590a6f9ccfc2f57e8817dd9f55a03d44c115d847746ab6484074",
+          "size": 27954
+        },
+        {
+          "mode": "100644",
+          "path": "includes/Product/ProductContributionPairLock.php",
+          "sha256": "3da0944a49525f7b041c7738cd6cb789fb3a524d88e6bfb31fb2ba85b498a31f",
+          "size": 4547
+        },
+        {
+          "mode": "100644",
+          "path": "includes/Product/ProductContributionRepository.php",
+          "sha256": "db8d394d63a1265cfae9fef61bcfa8abe049da375199d647845f69391a5a0af6",
+          "size": 25790
+        },
+        {
+          "mode": "100644",
+          "path": "includes/Product/ProductContributionService.php",
+          "sha256": "6db9978174b2320bea3efa6ccade1e50db21cd0c6e16e4d279b3208a315d248e",
+          "size": 17377
+        },
+        {
+          "mode": "100644",
+          "path": "includes/Product/ProductPeopleBricks.php",
+          "sha256": "001967451c55ef4911427a53f0b72a3457ff925298450fc6a4517ff123d18ca7",
+          "size": 4499
+        },
+        {
+          "mode": "100644",
+          "path": "includes/Product/ProductPeopleFields.php",
+          "sha256": "373ce7592f6f79603fefc95b2c37978d94fef01d106bc8f6e28995c8146ba762",
+          "size": 2367
+        },
+        {
+          "mode": "100644",
+          "path": "includes/Product/ProductPeopleResolver.php",
+          "sha256": "27181a44aca8e6a701f367d11497596f74c16ca13b2eb592cf0caf8923c9ff23",
+          "size": 1301
+        },
+        {
+          "mode": "100644",
+          "path": "includes/Product/ProductRoleSeeder.php",
+          "sha256": "2b8979dad3eade53b6f5204e06a36621eadbda320ee18efc86b84d166221d4b8",
+          "size": 8588
+        },
+        {
+          "mode": "100644",
+          "path": "includes/Product/ProductRoleVocabulary.php",
+          "sha256": "fc27c8007876eb6ffea5ed2f1509bf349f88b6acd20e742cb2b507e5e07d3bd9",
+          "size": 1180
+        },
+        {
+          "mode": "100644",
+          "path": "includes/Product/ProductSourceEventBricks.php",
+          "sha256": "9781aac4f6594d0626539f0f7fc488b863b3fe0af4a9e8b34e3604fed1467697",
+          "size": 4205
+        },
+        {
+          "mode": "100644",
+          "path": "includes/Services/CommerceService.php",
+          "sha256": "c3fc99ef8f3b224e5921ff708080c680342504a2bbdab5c8572da5ea5703e9e9",
+          "size": 13828
+        },
+        {
+          "mode": "100644",
+          "path": "includes/Services/LearningService.php",
+          "sha256": "b7156f25406f15e8caf8a250961742a2f6514ce68762d609092b3d06d20f0338",
+          "size": 34709
+        },
+        {
+          "mode": "100644",
+          "path": "includes/Services/MemberAreaService.php",
+          "sha256": "9a5bf000eacb1d6eda74a24c1a0dcb86bfaf044dc128e69e0be7a21e7e0e495d",
+          "size": 9335
+        },
+        {
+          "mode": "100644",
+          "path": "includes/Services/MembershipService.php",
+          "sha256": "5355ecdfa921a4b7da306f6384649c7387d1c5fbd58be6425d209820c9a04fe6",
+          "size": 13154
+        },
+        {
+          "mode": "100644",
+          "path": "includes/Services/SubscriptionService.php",
+          "sha256": "70cfa98752f37c60045ef3ca2fc10ff50992e826d0e8a792116eb96c08098f4f",
+          "size": 16835
+        },
+        {
+          "mode": "100644",
+          "path": "includes/Services/TicketService.php",
+          "sha256": "ddde203376c45859763cfe6f2aaf500cc5bf228f5606c1aaef9707cfc9f19318",
+          "size": 35903
+        },
+        {
+          "mode": "100644",
+          "path": "includes/Taxonomy/ContentTopicMigration.php",
+          "sha256": "928521996320fbce4db8154e63a217c34a34bfd0bcf397337cc7ee29f271d856",
+          "size": 41413
+        },
+        {
+          "mode": "100644",
+          "path": "includes/Taxonomy/ContentTopicRoles.php",
+          "sha256": "9241fbaef68ac5318fda72e5daf2c71a5e147d9a3ff30ca97066480de45b6512",
+          "size": 26630
+        },
+        {
+          "mode": "100644",
+          "path": "includes/Taxonomy/ContentTopicTaxonomy.php",
+          "sha256": "5668c77070bebe2dcaa3984438f5297486ed2963803864abbbb7b92b724048c9",
+          "size": 15926
+        },
+        {
+          "mode": "100644",
+          "path": "tests/bootstrap.php",
+          "sha256": "05d60994d10bcd70443f4f8ce17203fcd2d2f1cf947b5344f9c3ce606f1f7acf",
+          "size": 7832
+        },
+        {
+          "mode": "100644",
+          "path": "tests/contracts/DashboardCardTest.php",
+          "sha256": "e624d61733e763e4e8c69edac7b346f71fe4926dc0f4e6fa3fdf68cfd93d8b03",
+          "size": 6992
+        },
+        {
+          "mode": "100644",
+          "path": "tests/dashboard/AccessGuardTest.php",
+          "sha256": "69151d928c2c9deacc13881c50891283bd8371fab0d7dc228cc561580c470150",
+          "size": 4466
+        },
+        {
+          "mode": "100644",
+          "path": "tests/dashboard/DashboardRoutesTest.php",
+          "sha256": "44b32e7f36591313e41516817ed85f48d90f2d14eeef400dabe02cfa816dd0b1",
+          "size": 3093
+        },
+        {
+          "mode": "100644",
+          "path": "tests/dashboard/NavigationTest.php",
+          "sha256": "8edf44b916c8c8a217836b007dace0d8684b4c314f4a64d91cbae60beec934de",
+          "size": 9037
+        },
+        {
+          "mode": "100644",
+          "path": "tests/performance/CachePolicyTest.php",
+          "sha256": "b813031aa173cdc61b4429843eb7cedcb4b303f3a6b43510275c3990d4f8da7d",
+          "size": 24739
+        },
+        {
+          "mode": "100644",
+          "path": "tests/run-dashboard-tests.php",
+          "sha256": "ebea06cb804228bc8bed7e6a6824a01ac4eb0215bc71d1a145e6eef0b7a386d4",
+          "size": 1706
+        },
+        {
+          "mode": "100644",
+          "path": "tests/services/CommerceServiceTest.php",
+          "sha256": "c1f982c6f6ac420aa7bf50dd3cd37d4907aba0ef921ec6356370a6b01c7aa4a8",
+          "size": 13823
+        },
+        {
+          "mode": "100644",
+          "path": "tests/services/LearningServiceTest.php",
+          "sha256": "78a37f8778517cf0971e0d1f8a3aae4b94ac44beaf9fbb45b7b0f7bf5cc0eabb",
+          "size": 17805
+        },
+        {
+          "mode": "100644",
+          "path": "tests/services/MemberAreaServiceTest.php",
+          "sha256": "a4abd9c23fb4a379245fb328173c8b374a958e81c7f18985e4aac9fbf49e168d",
+          "size": 8466
+        },
+        {
+          "mode": "100644",
+          "path": "tests/services/MembershipServiceTest.php",
+          "sha256": "7e94ee415395ef4b67bfafd796bd32d2b07b566e41f46b3627164d8943a4e7cb",
+          "size": 11750
+        },
+        {
+          "mode": "100644",
+          "path": "tests/services/SubscriptionServiceTest.php",
+          "sha256": "4721c3ebab6aa91bebf0dd034adab729e7cdcafc0e85d39bb2c4c9ade19407ad",
+          "size": 14730
+        },
+        {
+          "mode": "100644",
+          "path": "tests/services/TicketServiceTest.php",
+          "sha256": "7cf6e81c7680574cc4a8466497191cc27c24b715d8dc8246e2c4882f91793cf4",
+          "size": 22594
+        },
+        {
+          "mode": "100644",
+          "path": "voelgoed-platform-core.php",
+          "sha256": "3fc688ccf27ec11ee4bb9fe5e282630ded724d4a987e5489f9bc77142dca72bb",
+          "size": 2708
+        }
+      ],
+      "root_group": 1000,
+      "root_mode": 493,
+      "root_owner": 1000,
+      "tree_sha256": "856a3e5978559bfb2572b4b1ff4b34df916743f9e72d6b18220ee64e98af5f56"
+    },
+    "mode_pattern": "53x0644,1x0755,16dirsx0755,root0755",
+    "owner_groups": [
+      [
+        1000,
+        1000
+      ]
+    ],
+    "plugin_root": "/home/jcschoeman96/Local Sites/voelgoed-novamira/app/public/wp-content/plugins/voelgoed-platform-core"
+  },
+  "protected_snapshot": {
+    "comparison_excludes_only_capture_timestamp": true,
+    "comparison_pass": true,
+    "post": {
+      "bricks_owned_meta": {
+        "rows": 339,
+        "sha256": "61e8a4e7b01b58f48d84311703a2b152e7ccbcf7ac9ba7842f25afef53681a0f"
+      },
+      "captured_at_utc": "2026-10-30T05:22:07Z",
+      "content_topic": {
+        "relationships": {
+          "rows": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "terms": {
+          "rows": 55,
+          "sha256": "94fe3e8054d737cca1e8d0df1324f106147b38b007c155ce6940919f736df80d"
+        }
+      },
+      "dirty_markers": {
+        "rows": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "governed_relationship_meta": {
+        "keys": [
+          "primary_author",
+          "additional_authors",
+          "expert_contributors",
+          "reviewed_by",
+          "lead_instructor",
+          "additional_instructors",
+          "experts",
+          "_primary_author",
+          "_additional_authors",
+          "_expert_contributors",
+          "_reviewed_by",
+          "_lead_instructor",
+          "_additional_instructors",
+          "_experts"
+        ],
+        "rows": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "person_relationship_index": {
+        "exists": false,
+        "schema_option_rows": {
+          "rows": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "schema_option_value": null,
+        "table": "wp_vg_person_relationship_index"
+      },
+      "pmpro_membership_history_tables": {
+        "wp_pmpro_discount_codes": {
+          "rows": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "wp_pmpro_discount_codes_levels": {
+          "rows": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "wp_pmpro_discount_codes_uses": {
+          "rows": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "wp_pmpro_email_log": {
+          "rows": 7,
+          "sha256": "e7c9426f762d05686655972877fa0d8f35de7e909c59af10456ed23ee52467d2"
+        },
+        "wp_pmpro_groups": {
+          "rows": 3,
+          "sha256": "700bbe04f0ce1b67d9d43150cd63580c86c93b749ba1ad1a1694293b9c666fde"
+        },
+        "wp_pmpro_membership_levelmeta": {
+          "rows": 63,
+          "sha256": "15125f534a39a25111829041e55211f057d474b566d4afd05467f6a306e5aae7"
+        },
+        "wp_pmpro_membership_levels": {
+          "rows": 7,
+          "sha256": "15ca39b67f67ab59b628b9c994582638a916ae9486e94341da48641a7fac93cd"
+        },
+        "wp_pmpro_membership_levels_groups": {
+          "rows": 7,
+          "sha256": "6ff26091d88c5bc636113e0376c2b7fc201639dd5c35c842fc6a8f9b3e5cbf59"
+        },
+        "wp_pmpro_membership_ordermeta": {
+          "rows": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "wp_pmpro_membership_orders": {
+          "rows": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "wp_pmpro_memberships_categories": {
+          "rows": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "wp_pmpro_memberships_pages": {
+          "rows": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "wp_pmpro_memberships_users": {
+          "rows": 18,
+          "sha256": "a2c32b05a8b3913df5782e0cec668c60ce730896d5d4231a57e14db93c43554e"
+        },
+        "wp_pmpro_subscriptionmeta": {
+          "rows": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "wp_pmpro_subscriptions": {
+          "rows": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      },
+      "protected_posts": {
+        "event_participation": {
+          "meta": {
+            "rows": 0,
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          "posts": {
+            "rows": 0,
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          "status_counts": []
+        },
+        "mto-course": {
+          "meta": {
+            "rows": 49,
+            "sha256": "455cc83d896d12ded608d2a09dc36473606334e0f57f0e29e1f1977264c0f944"
+          },
+          "posts": {
+            "rows": 6,
+            "sha256": "683ac50fedbe9329cfc4228f36708c912cb55e5ffeda243b49660a460849f80b"
+          },
+          "status_counts": {
+            "draft": "1",
+            "publish": "5"
+          }
+        },
+        "person": {
+          "meta": {
+            "rows": 1,
+            "sha256": "8df6de80c8ca67bc083e0e61324c5a8403b068b35aab6fd042679e54fc3930a7"
+          },
+          "posts": {
+            "rows": 1,
+            "sha256": "2f22b44e611ce8de591a3b0c84f113cc04ce65044ed3a3c02e6823f16c1c0f0b"
+          },
+          "status_counts": {
+            "publish": "1"
+          }
+        },
+        "post": {
+          "meta": {
+            "rows": 4,
+            "sha256": "97f7b92eacf61f71cd257089e81c97e10f720ed8f880eaade1c42688b21efe7e"
+          },
+          "posts": {
+            "rows": 1,
+            "sha256": "91fc67ddba81a00daddc7eca6f8e9bc82c8844bba755b7fa1f5c1bcabe16da11"
+          },
+          "status_counts": {
+            "publish": "1"
+          }
+        },
+        "product": {
+          "meta": {
+            "rows": 589,
+            "sha256": "6308136cf68320d5b710a0444133d444b961006dc75f9e6ba730065e3877ecae"
+          },
+          "posts": {
+            "rows": 20,
+            "sha256": "cd340f61d1218d1ad495a64e10b4b18a8cd6260a15889ac03f4b0f3c79924b02"
+          },
+          "status_counts": {
+            "draft": "7",
+            "private": "1",
+            "publish": "9",
+            "trash": "3"
+          }
+        },
+        "product_contribution": {
+          "meta": {
+            "rows": 0,
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          "posts": {
+            "rows": 0,
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          "status_counts": []
+        },
+        "shop_order": {
+          "meta": {
+            "rows": 0,
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          "posts": {
+            "rows": 0,
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          "status_counts": []
+        },
+        "shop_order_refund": {
+          "meta": {
+            "rows": 0,
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          "posts": {
+            "rows": 0,
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          "status_counts": []
+        },
+        "shop_subscription": {
+          "meta": {
+            "rows": 0,
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          "posts": {
+            "rows": 0,
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          "status_counts": []
+        },
+        "tc_events": {
+          "meta": {
+            "rows": 175,
+            "sha256": "fd384fb623b259b4afd9856ee44979fa8ace92cae6fb97472d842fbeb5c47a8f"
+          },
+          "posts": {
+            "rows": 17,
+            "sha256": "6d295b73c1ab897ba0a05da944ce0ac8f9b43127776b747ae021a3836b40d70a"
+          },
+          "status_counts": {
+            "publish": "17"
+          }
+        }
+      },
+      "target": {
+        "database_host": "localhost",
+        "database_name": "local",
+        "home": "http://localhost:10039",
+        "siteurl": "http://localhost:10039",
+        "table_prefix": "wp_"
+      },
+      "woo_order_subscription_tables": {
+        "wp_wc_order_addresses": {
+          "rows": 16,
+          "sha256": "4ea460292cf1df96fb29d87ebea50bcd1c32328e86262a1c320c8c03f4f06339"
+        },
+        "wp_wc_order_coupon_lookup": {
+          "rows": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "wp_wc_order_operational_data": {
+          "rows": 16,
+          "sha256": "2c6c9531fb18174dcfaa74a37e55a8ef7eefb8d4ea35f4a9a083573780759895"
+        },
+        "wp_wc_order_product_lookup": {
+          "rows": 18,
+          "sha256": "1e16b2360d7a924abb37b54510743fb64c7a97f384fc591bab03c95e6ceab465"
+        },
+        "wp_wc_order_stats": {
+          "rows": 13,
+          "sha256": "21cb553c2bcb4df887a671d4e6d622e5de9b4e9ad9a99ef69a256494e795f155"
+        },
+        "wp_wc_order_tax_lookup": {
+          "rows": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "wp_wc_orders": {
+          "rows": 16,
+          "sha256": "51de9484a2b14c79692a897c56aaaad0174de47d1c2c4c4582201cc1d9749341"
+        },
+        "wp_wc_orders_meta": {
+          "rows": 113,
+          "sha256": "2c476fb252091a880a1a336b146d7d603456b5b01fc3b2464834f4f358ec993d"
+        },
+        "wp_woocommerce_order_itemmeta": {
+          "rows": 401,
+          "sha256": "339f11528ba2b2f6a39f4f95e4375d8800391c94426c8df240ffbe1c9c49d5b5"
+        },
+        "wp_woocommerce_order_items": {
+          "rows": 29,
+          "sha256": "9bbc1dc8701e1ea1bb14501eeb22c77546d1290c1332252d0f0beb97ecb7da00"
+        },
+        "wp_woocommerce_subscription_downloads": {
+          "rows": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    },
+    "post_captured_at_utc": "2026-10-30T05:22:07Z",
+    "pre": {
+      "bricks_owned_meta": {
+        "rows": 339,
+        "sha256": "61e8a4e7b01b58f48d84311703a2b152e7ccbcf7ac9ba7842f25afef53681a0f"
+      },
+      "captured_at_utc": "2026-10-30T05:10:35Z",
+      "content_topic": {
+        "relationships": {
+          "rows": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "terms": {
+          "rows": 55,
+          "sha256": "94fe3e8054d737cca1e8d0df1324f106147b38b007c155ce6940919f736df80d"
+        }
+      },
+      "dirty_markers": {
+        "rows": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "governed_relationship_meta": {
+        "keys": [
+          "primary_author",
+          "additional_authors",
+          "expert_contributors",
+          "reviewed_by",
+          "lead_instructor",
+          "additional_instructors",
+          "experts",
+          "_primary_author",
+          "_additional_authors",
+          "_expert_contributors",
+          "_reviewed_by",
+          "_lead_instructor",
+          "_additional_instructors",
+          "_experts"
+        ],
+        "rows": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "person_relationship_index": {
+        "exists": false,
+        "schema_option_rows": {
+          "rows": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "schema_option_value": null,
+        "table": "wp_vg_person_relationship_index"
+      },
+      "pmpro_membership_history_tables": {
+        "wp_pmpro_discount_codes": {
+          "rows": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "wp_pmpro_discount_codes_levels": {
+          "rows": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "wp_pmpro_discount_codes_uses": {
+          "rows": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "wp_pmpro_email_log": {
+          "rows": 7,
+          "sha256": "e7c9426f762d05686655972877fa0d8f35de7e909c59af10456ed23ee52467d2"
+        },
+        "wp_pmpro_groups": {
+          "rows": 3,
+          "sha256": "700bbe04f0ce1b67d9d43150cd63580c86c93b749ba1ad1a1694293b9c666fde"
+        },
+        "wp_pmpro_membership_levelmeta": {
+          "rows": 63,
+          "sha256": "15125f534a39a25111829041e55211f057d474b566d4afd05467f6a306e5aae7"
+        },
+        "wp_pmpro_membership_levels": {
+          "rows": 7,
+          "sha256": "15ca39b67f67ab59b628b9c994582638a916ae9486e94341da48641a7fac93cd"
+        },
+        "wp_pmpro_membership_levels_groups": {
+          "rows": 7,
+          "sha256": "6ff26091d88c5bc636113e0376c2b7fc201639dd5c35c842fc6a8f9b3e5cbf59"
+        },
+        "wp_pmpro_membership_ordermeta": {
+          "rows": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "wp_pmpro_membership_orders": {
+          "rows": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "wp_pmpro_memberships_categories": {
+          "rows": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "wp_pmpro_memberships_pages": {
+          "rows": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "wp_pmpro_memberships_users": {
+          "rows": 18,
+          "sha256": "a2c32b05a8b3913df5782e0cec668c60ce730896d5d4231a57e14db93c43554e"
+        },
+        "wp_pmpro_subscriptionmeta": {
+          "rows": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "wp_pmpro_subscriptions": {
+          "rows": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      },
+      "protected_posts": {
+        "event_participation": {
+          "meta": {
+            "rows": 0,
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          "posts": {
+            "rows": 0,
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          "status_counts": []
+        },
+        "mto-course": {
+          "meta": {
+            "rows": 49,
+            "sha256": "455cc83d896d12ded608d2a09dc36473606334e0f57f0e29e1f1977264c0f944"
+          },
+          "posts": {
+            "rows": 6,
+            "sha256": "683ac50fedbe9329cfc4228f36708c912cb55e5ffeda243b49660a460849f80b"
+          },
+          "status_counts": {
+            "draft": "1",
+            "publish": "5"
+          }
+        },
+        "person": {
+          "meta": {
+            "rows": 1,
+            "sha256": "8df6de80c8ca67bc083e0e61324c5a8403b068b35aab6fd042679e54fc3930a7"
+          },
+          "posts": {
+            "rows": 1,
+            "sha256": "2f22b44e611ce8de591a3b0c84f113cc04ce65044ed3a3c02e6823f16c1c0f0b"
+          },
+          "status_counts": {
+            "publish": "1"
+          }
+        },
+        "post": {
+          "meta": {
+            "rows": 4,
+            "sha256": "97f7b92eacf61f71cd257089e81c97e10f720ed8f880eaade1c42688b21efe7e"
+          },
+          "posts": {
+            "rows": 1,
+            "sha256": "91fc67ddba81a00daddc7eca6f8e9bc82c8844bba755b7fa1f5c1bcabe16da11"
+          },
+          "status_counts": {
+            "publish": "1"
+          }
+        },
+        "product": {
+          "meta": {
+            "rows": 589,
+            "sha256": "6308136cf68320d5b710a0444133d444b961006dc75f9e6ba730065e3877ecae"
+          },
+          "posts": {
+            "rows": 20,
+            "sha256": "cd340f61d1218d1ad495a64e10b4b18a8cd6260a15889ac03f4b0f3c79924b02"
+          },
+          "status_counts": {
+            "draft": "7",
+            "private": "1",
+            "publish": "9",
+            "trash": "3"
+          }
+        },
+        "product_contribution": {
+          "meta": {
+            "rows": 0,
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          "posts": {
+            "rows": 0,
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          "status_counts": []
+        },
+        "shop_order": {
+          "meta": {
+            "rows": 0,
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          "posts": {
+            "rows": 0,
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          "status_counts": []
+        },
+        "shop_order_refund": {
+          "meta": {
+            "rows": 0,
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          "posts": {
+            "rows": 0,
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          "status_counts": []
+        },
+        "shop_subscription": {
+          "meta": {
+            "rows": 0,
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          "posts": {
+            "rows": 0,
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          "status_counts": []
+        },
+        "tc_events": {
+          "meta": {
+            "rows": 175,
+            "sha256": "fd384fb623b259b4afd9856ee44979fa8ace92cae6fb97472d842fbeb5c47a8f"
+          },
+          "posts": {
+            "rows": 17,
+            "sha256": "6d295b73c1ab897ba0a05da944ce0ac8f9b43127776b747ae021a3836b40d70a"
+          },
+          "status_counts": {
+            "publish": "17"
+          }
+        }
+      },
+      "target": {
+        "database_host": "localhost",
+        "database_name": "local",
+        "home": "http://localhost:10039",
+        "siteurl": "http://localhost:10039",
+        "table_prefix": "wp_"
+      },
+      "woo_order_subscription_tables": {
+        "wp_wc_order_addresses": {
+          "rows": 16,
+          "sha256": "4ea460292cf1df96fb29d87ebea50bcd1c32328e86262a1c320c8c03f4f06339"
+        },
+        "wp_wc_order_coupon_lookup": {
+          "rows": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "wp_wc_order_operational_data": {
+          "rows": 16,
+          "sha256": "2c6c9531fb18174dcfaa74a37e55a8ef7eefb8d4ea35f4a9a083573780759895"
+        },
+        "wp_wc_order_product_lookup": {
+          "rows": 18,
+          "sha256": "1e16b2360d7a924abb37b54510743fb64c7a97f384fc591bab03c95e6ceab465"
+        },
+        "wp_wc_order_stats": {
+          "rows": 13,
+          "sha256": "21cb553c2bcb4df887a671d4e6d622e5de9b4e9ad9a99ef69a256494e795f155"
+        },
+        "wp_wc_order_tax_lookup": {
+          "rows": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "wp_wc_orders": {
+          "rows": 16,
+          "sha256": "51de9484a2b14c79692a897c56aaaad0174de47d1c2c4c4582201cc1d9749341"
+        },
+        "wp_wc_orders_meta": {
+          "rows": 113,
+          "sha256": "2c476fb252091a880a1a336b146d7d603456b5b01fc3b2464834f4f358ec993d"
+        },
+        "wp_woocommerce_order_itemmeta": {
+          "rows": 401,
+          "sha256": "339f11528ba2b2f6a39f4f95e4375d8800391c94426c8df240ffbe1c9c49d5b5"
+        },
+        "wp_woocommerce_order_items": {
+          "rows": 29,
+          "sha256": "9bbc1dc8701e1ea1bb14501eeb22c77546d1290c1332252d0f0beb97ecb7da00"
+        },
+        "wp_woocommerce_subscription_downloads": {
+          "rows": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    },
+    "pre_captured_at_utc": "2026-10-30T05:10:35Z"
+  }
+}

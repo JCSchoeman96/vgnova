@@ -1,0 +1,178 @@
+{
+  "activation": {
+    "site-code/acf-json/group_vg_article_people.json": {
+      "bytes": 4354,
+      "exact_git_object": true,
+      "filesystem_sha256": "3f1f0b119c9619c7df3584f780e76685c1ea463d35c2a1ece48d617792fd4e33",
+      "git_blob": "f037a86bec90f4da4fc3c4758a7eb917f8368f81"
+    },
+    "site-code/acf-json/group_vg_course_people.json": {
+      "bytes": 3419,
+      "exact_git_object": true,
+      "filesystem_sha256": "ae9353b6f916dec5f17ad662e71ca602590038b9aaca37f7656d573757bb386a",
+      "git_blob": "cd88c864d642039b75f6a2142d11786a8cd96fbc"
+    },
+    "site-code/acf-json/group_vg_editorial_classification.json": {
+      "bytes": 2312,
+      "exact_git_object": true,
+      "filesystem_sha256": "ec32c95f75b9b1c6599b09312fa0b71a9806044277c0cd7865519df37ace7030",
+      "git_blob": "dddc995e0493e94796968fbd30cd5135c5038541"
+    },
+    "site-code/acf-json/group_vg_event_participation_details.json": {
+      "bytes": 3611,
+      "exact_git_object": true,
+      "filesystem_sha256": "09232c12e7d7cce7ee7c66c9fef4c699410297315112b883ca82b01d842d71c7",
+      "git_blob": "88c1ed154e33e8dcf442d3c372913b0dcb335b7a"
+    },
+    "site-code/acf-json/group_vg_person_details.json": {
+      "bytes": 3755,
+      "exact_git_object": true,
+      "filesystem_sha256": "d37ec3c5d908dd6497fd953319375b641a1534574e83b600eff0bfc702be8e95",
+      "git_blob": "abad8ef4ae7846e7f91c13ded06d0d173fd66f60"
+    },
+    "site-code/acf-json/group_vg_product_contribution_details.json": {
+      "bytes": 3766,
+      "exact_git_object": true,
+      "filesystem_sha256": "3ed2d1a00e3c224adcb7f51e33fa82ed7d5694c5f33a9503da446faaa00f1c03",
+      "git_blob": "ec996f127e04d0395a9fba3b9c6418f5b59895e7"
+    },
+    "site-code/acf-json/post_type_event_participation.json": {
+      "bytes": 3228,
+      "exact_git_object": true,
+      "filesystem_sha256": "434025a42c7c1be6ee20949bf45b0442f3226ff6ce91c99e6cfad4a8ab15816a",
+      "git_blob": "105fc8536c25942f75854b85f211ffb96416b199"
+    },
+    "site-code/acf-json/post_type_person.json": {
+      "bytes": 3061,
+      "exact_git_object": true,
+      "filesystem_sha256": "222dc1839d2a0ffe891aadd4c84fc68a41cbb6cb72667c57ad14cdac4abe583a",
+      "git_blob": "f585fb5bec319a9324d20b058748c23bddac1c3c"
+    },
+    "site-code/acf-json/post_type_product_contribution.json": {
+      "bytes": 3262,
+      "exact_git_object": true,
+      "filesystem_sha256": "d4c7d7ba3ef416e68f21e66ec366dee28e83307739a429c5895b382c15ebc506",
+      "git_blob": "89b8b47bb3e6df0e640b25ac678cf20179798651"
+    },
+    "site-code/acf-json/taxonomy_editorial_collection.json": {
+      "bytes": 3467,
+      "exact_git_object": true,
+      "filesystem_sha256": "a6bb5c6a4d3b8ba3639e6288405c3b913e683c917e041b0d0c2b9735f34e41b4",
+      "git_blob": "ce96442b196fea06e8dfb0a2769959c585fdefa2"
+    },
+    "site-code/acf-json/taxonomy_editorial_format.json": {
+      "bytes": 3362,
+      "exact_git_object": true,
+      "filesystem_sha256": "90ad05e7cba39ea9f0f5e57f36e23990cc5074c25a83e2ad1f2c7273b8d22234",
+      "git_blob": "14ec16b6b339d8bfedae944903ee257ffe1d13f2"
+    },
+    "site-code/acf-json/taxonomy_event_role.json": {
+      "bytes": 2789,
+      "exact_git_object": true,
+      "filesystem_sha256": "e9794d6b6f6be6ff563f5e13c0328d91fa29988434b0d3ed3c0d35834330a895",
+      "git_blob": "b266f44e1210b6604219e31f4282760a2bd40039"
+    },
+    "site-code/acf-json/taxonomy_person_type.json": {
+      "bytes": 2876,
+      "exact_git_object": true,
+      "filesystem_sha256": "d32dba47956594771ce12e5b0eb6c4b61a866d7a90dcce679a777ffc57d9b8c2",
+      "git_blob": "f800f9e7e69bbec3982034398ab4cca7259a6e06"
+    },
+    "site-code/acf-json/taxonomy_product_role.json": {
+      "bytes": 2850,
+      "exact_git_object": true,
+      "filesystem_sha256": "d371c6a1ac769b7491b810d04080991ba638258781bce320e0f4f7b842cb144e",
+      "git_blob": "a62ce908fd612cad28df7888f9582d376d98a7b1"
+    }
+  },
+  "activation_sha": "4b7a30a1a93a8b0d9707ddeec7eeb7462ce31439",
+  "file_count": 14,
+  "generation1": {
+    "site-code/acf-json/group_vg_article_people.json": {
+      "bytes": 4354,
+      "exact_git_object": true,
+      "filesystem_sha256": "3f1f0b119c9619c7df3584f780e76685c1ea463d35c2a1ece48d617792fd4e33",
+      "git_blob": "f037a86bec90f4da4fc3c4758a7eb917f8368f81"
+    },
+    "site-code/acf-json/group_vg_course_people.json": {
+      "bytes": 3419,
+      "exact_git_object": true,
+      "filesystem_sha256": "ae9353b6f916dec5f17ad662e71ca602590038b9aaca37f7656d573757bb386a",
+      "git_blob": "cd88c864d642039b75f6a2142d11786a8cd96fbc"
+    },
+    "site-code/acf-json/group_vg_editorial_classification.json": {
+      "bytes": 2312,
+      "exact_git_object": true,
+      "filesystem_sha256": "ec32c95f75b9b1c6599b09312fa0b71a9806044277c0cd7865519df37ace7030",
+      "git_blob": "dddc995e0493e94796968fbd30cd5135c5038541"
+    },
+    "site-code/acf-json/group_vg_event_participation_details.json": {
+      "bytes": 3611,
+      "exact_git_object": true,
+      "filesystem_sha256": "09232c12e7d7cce7ee7c66c9fef4c699410297315112b883ca82b01d842d71c7",
+      "git_blob": "88c1ed154e33e8dcf442d3c372913b0dcb335b7a"
+    },
+    "site-code/acf-json/group_vg_person_details.json": {
+      "bytes": 3755,
+      "exact_git_object": true,
+      "filesystem_sha256": "d37ec3c5d908dd6497fd953319375b641a1534574e83b600eff0bfc702be8e95",
+      "git_blob": "abad8ef4ae7846e7f91c13ded06d0d173fd66f60"
+    },
+    "site-code/acf-json/group_vg_product_contribution_details.json": {
+      "bytes": 3766,
+      "exact_git_object": true,
+      "filesystem_sha256": "3ed2d1a00e3c224adcb7f51e33fa82ed7d5694c5f33a9503da446faaa00f1c03",
+      "git_blob": "ec996f127e04d0395a9fba3b9c6418f5b59895e7"
+    },
+    "site-code/acf-json/post_type_event_participation.json": {
+      "bytes": 3228,
+      "exact_git_object": true,
+      "filesystem_sha256": "434025a42c7c1be6ee20949bf45b0442f3226ff6ce91c99e6cfad4a8ab15816a",
+      "git_blob": "105fc8536c25942f75854b85f211ffb96416b199"
+    },
+    "site-code/acf-json/post_type_person.json": {
+      "bytes": 3061,
+      "exact_git_object": true,
+      "filesystem_sha256": "222dc1839d2a0ffe891aadd4c84fc68a41cbb6cb72667c57ad14cdac4abe583a",
+      "git_blob": "f585fb5bec319a9324d20b058748c23bddac1c3c"
+    },
+    "site-code/acf-json/post_type_product_contribution.json": {
+      "bytes": 3262,
+      "exact_git_object": true,
+      "filesystem_sha256": "d4c7d7ba3ef416e68f21e66ec366dee28e83307739a429c5895b382c15ebc506",
+      "git_blob": "89b8b47bb3e6df0e640b25ac678cf20179798651"
+    },
+    "site-code/acf-json/taxonomy_editorial_collection.json": {
+      "bytes": 3467,
+      "exact_git_object": true,
+      "filesystem_sha256": "a6bb5c6a4d3b8ba3639e6288405c3b913e683c917e041b0d0c2b9735f34e41b4",
+      "git_blob": "ce96442b196fea06e8dfb0a2769959c585fdefa2"
+    },
+    "site-code/acf-json/taxonomy_editorial_format.json": {
+      "bytes": 3362,
+      "exact_git_object": true,
+      "filesystem_sha256": "90ad05e7cba39ea9f0f5e57f36e23990cc5074c25a83e2ad1f2c7273b8d22234",
+      "git_blob": "14ec16b6b339d8bfedae944903ee257ffe1d13f2"
+    },
+    "site-code/acf-json/taxonomy_event_role.json": {
+      "bytes": 2789,
+      "exact_git_object": true,
+      "filesystem_sha256": "e9794d6b6f6be6ff563f5e13c0328d91fa29988434b0d3ed3c0d35834330a895",
+      "git_blob": "b266f44e1210b6604219e31f4282760a2bd40039"
+    },
+    "site-code/acf-json/taxonomy_person_type.json": {
+      "bytes": 2876,
+      "exact_git_object": true,
+      "filesystem_sha256": "d32dba47956594771ce12e5b0eb6c4b61a866d7a90dcce679a777ffc57d9b8c2",
+      "git_blob": "f800f9e7e69bbec3982034398ab4cca7259a6e06"
+    },
+    "site-code/acf-json/taxonomy_product_role.json": {
+      "bytes": 2850,
+      "exact_git_object": true,
+      "filesystem_sha256": "d371c6a1ac769b7491b810d04080991ba638258781bce320e0f4f7b842cb144e",
+      "git_blob": "a62ce908fd612cad28df7888f9582d376d98a7b1"
+    }
+  },
+  "generation1_sha": "5a3bc4fc89fa61ae8916aa460989f1e8912b473d",
+  "parity": true
+}
