@@ -19,7 +19,7 @@ PLATFORM_CORE_DEPLOYMENT=BLOCKED
 PLATFORM_CORE_RUNTIME_PARITY=BLOCKED
 ARTICLE_ACF_GROUP=BLOCKED
 COURSE_ACF_GROUP=BLOCKED
-PERSON_SCHEMA_AUTO_INSTALL=NO
+PERSON_SCHEMA_AUTO_INSTALL=BLOCKED_NOT_TESTED
 INDEX_SCHEMA=BLOCKED
 INDEX_SETUP_IDEMPOTENT=BLOCKED
 INDEX_REBUILD=BLOCKED
@@ -39,7 +39,7 @@ MEMBERSHIP_MUTATIONS=0
 
 The restart passed source, ACF, target, protected pre-state, runtime-provenance, and artifact gates. The PE-008 deployment attempt then stopped during its read-only PE-007 session health check, before creating a deployment journal or staging files. No deployment write, file exchange, ACF sync, schema/index operation, or other planned application mutation occurred. The protected pre/post snapshots match. The issue is in the health-helper PHP/database transport path; per the approved plan, activation stopped without a workaround or source edit.
 
-`PERSON_SCHEMA_AUTO_INSTALL=NO` records that no table or schema-version option appeared in the unchanged pre/post snapshots; deployment did not occur, so deploy-time auto-install behavior was not exercised. `INDEX_ROWS_AFTER_REBUILD=NOT_RUN`; the table was absent and no rebuild ran.
+`PERSON_SCHEMA_AUTO_INSTALL=BLOCKED_NOT_TESTED` records that the unchanged pre/post snapshots prove the Person relationship index table and schema-version option remained absent during this blocked attempt. The deployment never occurred, so post-deployment schema auto-install behavior was not tested. The snapshots do not establish whether Platform Core would auto-install the schema after a successful deployment and bootstrap. `INDEX_ROWS_AFTER_REBUILD=NOT_RUN`; the table was absent and no rebuild ran.
 
 ## Source baseline and worktree
 
@@ -64,7 +64,7 @@ The worktree was clean before the run. The required merge commits were ancestors
 | #62, Person relationship foundation | `febe5f79f659568e3c984273e3ea8d6113a7ad14` |
 | #63, blocked activation evidence | `5a3bc4fc89fa61ae8916aa460989f1e8912b473d` |
 | #64, dedicated ACF runtime source | `131cce920354ba90ceb7c9c5438422b2de16a6c3` |
-| #65, runtime mutation coordination | `3e226294e8f72a859e50e5b9a8deb3023ec3ed6a` |
+| #65, blocked Person relationship activation preflight | `3e226294e8f72a859e50e5b9a8deb3023ec3ed6a` |
 | #66, merged legacy-permission normalization | `4b7a30a1a93a8b0d9707ddeec7eeb7462ce31439` |
 
 The ordinary checkout's pre-existing `AGENTS.md` modification and untracked `.agents/` directory were left untouched. No Platform Core source was edited during this activation attempt.
@@ -151,7 +151,7 @@ The detailed ACF pending inventory was unchanged before and after the failed att
 
 No ACF group was synchronized. The two Member Perks groups remain pending and untouched. Generation 1 and the activation candidate remain clean; the runtime symlink still points to generation 1.
 
-The following post-deployment stages were blocked and not run: Person class/CLI checks, auto-install verification, Article/Course dry-runs and sync, Person schema setup and idempotency, relationship-source rehash, index rebuild, reconciliation, and any placeholder QA. The index table remains absent, so no index rows were present; no rebuild result is claimed. No dirty sources were introduced. No Person, Article, or Course placeholder was created, and no real Person relationship was assigned.
+The following post-deployment stages were blocked and not run: Person class/CLI checks, post-deployment schema auto-install behavior checks, Article/Course dry-runs and sync, Person schema setup and idempotency, relationship-source rehash, index rebuild, reconciliation, and any placeholder QA. The index table remains absent, so no index rows were present; no rebuild result is claimed. No dirty sources were introduced. No Person, Article, or Course placeholder was created, and no real Person relationship was assigned.
 
 ## Repository verification
 
