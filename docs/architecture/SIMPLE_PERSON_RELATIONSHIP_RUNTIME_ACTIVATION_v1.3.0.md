@@ -4,7 +4,7 @@
 
 The run stopped at the mandatory PE-008 database transport preflight. The freshly rediscovered socket was active. The `session` helper passed its required checks, but the `health` helper raised `DeploymentError: WordPress health helper returned an error or unexpected diagnostic output.` The plan requires a stop on any preflight failure. No deployment, ACF sync, schema setup, rebuild, reconciliation, or content mutation ran.
 
-I did not use the Local browser, wp-admin, or editor. Keep the requested interactive freeze in place until the protected post-snapshot is reported.
+I did not use the Local browser, wp-admin, or editor. The requested interactive freeze remains active.
 
 ## Source and ACF gates
 
@@ -32,7 +32,7 @@ PE-008 status was clean before and after. Its deployment state directory remaine
 
 ## Stop state
 
-No deployment ID, history entry, or rollback path was created. `PERSON_SCHEMA_AUTO_INSTALL=BLOCKED_NOT_TESTED` because deployment and bootstrap did not succeed. ACF sync, schema setup, idempotency, rebuild, authoritative rebuild-source count/hash, reconciliation, and protected post-snapshot are `NOT_RUN`.
+No deployment ID, history entry, or rollback path was created. `PERSON_SCHEMA_AUTO_INSTALL=BLOCKED_NOT_TESTED` because deployment and bootstrap did not succeed. ACF sync, schema setup, idempotency, rebuild, authoritative rebuild-source count/hash, and reconciliation are `NOT_RUN`. The protected post-snapshot and comparison were completed in the follow-up evidence below.
 The required `check-source.sh`, `git diff --check`, and staged diff check passed.
 
 ```text
@@ -82,5 +82,46 @@ REAL_RELATIONSHIP_ASSIGNMENTS=0
 COURSE_COMMERCE_MUTATIONS=0
 MEMBERSHIP_MUTATIONS=0
 ```
+
+
+## Protected post-snapshot and comparison
+
+The original protected snapshot collector was rerun with the same queries, row canonicalization, ordering, and hashing used for the 2026-10-30 10:14:40 UTC pre-snapshot. The protected post-snapshot was captured at 10:37:29 UTC. Every recorded category matched: protected posts and meta for post, person, mto-course, Woo products, Tickera events, Event Participation, and Product Contribution; governed Person relationship metadata; dirty markers; Person index/schema option; Bricks metadata; content_topic; WooCommerce order/subscription tables; and PMPro membership/history tables.
+
+PROTECTED_POST_SNAPSHOT=PASS
+PROTECTED_PRE_POST_COMPARISON=PASS
+
+The four targeted ACF dry-runs were repeated after this snapshot and before the diagnostic. Each still reported one pending Create; no sync ran.
+
+Before the diagnostic, origin/main remained 06ec482445ca4065b49e745d2164308c5548ce59; the activation branch was clean at 8645072cbf4901df6377486b97ddbe12df08ae2e. PE-008 status was {"in_progress":false,"recovery_options":[]}, and the deployment state directory was absent. The active Platform Core tree remained 54 files with content SHA-256 a2635dafeb1d82d481b6275526c3850263f549facac80293c810d2b0d93de760 and PE-008 tree SHA-256 856a3e5978559bfb2572b4b1ff4b34df916743f9e72d6b18220ee64e98af5f56. The freshly rediscovered active AF_UNIX socket was /home/jcschoeman96/.config/Local/run/nAZNpFs99/mysql/mysqld.sock.
+
+## Post-attempt read-only PE-008 helper diagnostic
+
+This diagnostic ran after the blocked v1.3.0 attempt through PE-007. It did not deploy or mutate WordPress data. The raw helper stdout parsed as JSON for both modes; no credential-like values were found or redacted.
+
+Session:
+
+    returncode=0
+    stdout_sha256=cc9ed387b025e232c95bf62d3cfaa8cb338402168309f1420266cb08f809e320
+    stderr_sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+    stderr=""
+    stdout={"checks":{"session_valid":true},"ok":true,"session_valid":true,"target":"vgnova-local-10039","wp_root":"/home/jcschoeman96/Local Sites/voelgoed-novamira/app/public"}
+
+Health:
+
+    HEALTH_RETURN_CODE=1
+    HEALTH_STDOUT_SHA256=1e362557f4ac820e567bf2281ebec99a1d2affe0ab2b1940eea56cbd1a77bfa1
+    HEALTH_STDERR_SHA256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+    HEALTH_STDERR=""
+    HEALTH_CHECKS={"lifecycle_registered":true,"no_php_diagnostics":true,"no_unexpected_output":false,"plugin_class_loaded":true,"plugin_entrypoint_active":true,"runtime_identity":true,"session_valid":true,"site_name_available":true,"wordpress_bootstrapped":true}
+    HEALTH_STDOUT={"checks":{"lifecycle_registered":true,"no_php_diagnostics":true,"no_unexpected_output":false,"plugin_class_loaded":true,"plugin_entrypoint_active":true,"runtime_identity":true,"session_valid":true,"site_name_available":true,"wordpress_bootstrapped":true},"database":"local","home":"http://localhost:10039/","ok":false,"session_valid":true,"site":"http://localhost:10039/","site_name":"Voelgoed","target":"vgnova-local-10039","wp_root":"/home/jcschoeman96/Local Sites/voelgoed-novamira/app/public"}
+
+The raw result identifies no_unexpected_output=false as the only failed health check. no_php_diagnostics=true and empty stderr show that this diagnostic did not report a PHP diagnostic. The raw output does not establish the underlying cause of the unexpected output.
+
+After the diagnostic, PE-008 remained clean, the deployment state directory remained absent, and the runtime fingerprint matched the accepted baseline. The same protected snapshot collector was rerun at 10:43:31 UTC and matched the 10:37:29 UTC snapshot.
+
+DIAGNOSTIC_DEPLOYMENT_STATE_DELTA=NO
+DIAGNOSTIC_RUNTIME_TREE_DELTA=NO
+DIAGNOSTIC_PROTECTED_STATE_DELTA=NO
 
 Full structured evidence: [SIMPLE_PERSON_RELATIONSHIP_RUNTIME_ACTIVATION_v1.3.0_DETAILS.json](SIMPLE_PERSON_RELATIONSHIP_RUNTIME_ACTIVATION_v1.3.0_DETAILS.json).
