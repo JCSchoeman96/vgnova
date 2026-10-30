@@ -1,0 +1,237 @@
+{
+  "schema_version": 1,
+  "stage": "A",
+  "captured_at_date": "2026-10-30",
+  "repository": {
+    "base_sha": "d363373b3993c37da769862cb3ff13b5de7307ec",
+    "branch": "ops/fluentsnippets-bootstrap-output-remediation",
+    "approved_handoff_artifacts": {
+      "design_path": "docs/superpowers/specs/2026-10-30-fluentsnippets-bootstrap-output-remediation-design_v0.1.0.md",
+      "design_sha256": "a4a8bcd33601d1ac7f1ba6b68852949aa5bcfa8dcd775b1b098c3c6a9120c026",
+      "plan_path": "docs/superpowers/plans/2026-10-30-fluentsnippets-bootstrap-output-remediation_v0.1.1.md",
+      "plan_sha256": "bc841d378204c6304e8bcef248416ef0e8fb99621ead2b2da4ca24167581ed2f"
+    },
+    "repository_copies": {
+      "design_path": "docs/superpowers/specs/2026-10-30-fluentsnippets-bootstrap-output-remediation-design_v0.1.0.md",
+      "design_sha256": "b5aef279a0709bc183a370982bbfa08a53fa17319278e8bce540aa61c72ba5c8",
+      "plan_path": "docs/superpowers/plans/2026-10-30-fluentsnippets-bootstrap-output-remediation_v0.1.1.md",
+      "plan_sha256": "8a6536fd945e44777a189fecdd6404c8ae9827621cc3dd5d6a09e88da04566cb"
+    },
+    "REPOSITORY_COPY_NORMALIZATION": "WHITESPACE_ONLY",
+    "SEMANTIC_DESIGN_CHANGE": "NO"
+  },
+  "pr69": {
+    "merged": true,
+    "approved_head": "e883386d1d5ac565814f05894660b90efdfe8d4b",
+    "merge_commit": "d363373b3993c37da769862cb3ff13b5de7307ec",
+    "merge_parent_1": "06ec482445ca4065b49e745d2164308c5548ce59",
+    "merge_parent_2": "e883386d1d5ac565814f05894660b90efdfe8d4b",
+    "exact_head_checks": {
+      "Dashboard checks": "SUCCESS",
+      "Canonical source checks": "SUCCESS",
+      "VG Nova Platform Gate": "SUCCESS",
+      "Publish Platform Core artifact": "SKIPPED"
+    }
+  },
+  "runtime": {
+    "target": "vgnova-local-10039",
+    "wp_root": "/home/jcschoeman96/Local Sites/voelgoed-novamira/app/public/",
+    "home": "http://localhost:10039/",
+    "site": "http://localhost:10039/",
+    "database_name": "local",
+    "database_host": "localhost",
+    "table_prefix": "wp_",
+    "active_mysql_unix_socket": "/home/jcschoeman96/.config/Local/run/nAZNpFs99/mysql/mysqld.sock",
+    "socket_active": true,
+    "socket_inode": 106434737,
+    "pe008_status": {
+      "in_progress": false,
+      "recovery_options": []
+    },
+    "deployment_state_directory_absent": true,
+    "platform_core_fingerprint": {
+      "file_count": 54,
+      "content_sha256": "a2635dafeb1d82d481b6275526c3850263f549facac80293c810d2b0d93de760",
+      "content_hash_algorithm": "SHA-256 over sorted entries: relative path + NUL + file SHA-256 + newline",
+      "pe008_tree_sha256": "856a3e5978559bfb2572b4b1ff4b34df916743f9e72d6b18220ee64e98af5f56"
+    },
+    "protected_snapshot": {
+      "collector": "/tmp/v13-protected-snapshot-code.php",
+      "final_v1_3_snapshot": "/tmp/v13-final-post-output-snapshot.json",
+      "current_snapshot_sha256": "2d268408fd466e19bb9bbc62964b2d132fe26810865d15c0255d79b365488e4e",
+      "matches_final_v1_3_snapshot": true
+    },
+    "acf_pending_inventory": [
+      {"key": "group_vg_article_people", "status": "Create", "id": 0, "source": "json"},
+      {"key": "group_vg_course_people", "status": "Create", "id": 0, "source": "json"},
+      {"key": "group_vgmp_perk_details", "status": "Create", "id": 0, "source": "json"},
+      {"key": "group_vgmp_options", "status": "Create", "id": 0, "source": "json"}
+    ],
+    "interactive_freeze": {
+      "browser": true,
+      "wp_admin": true,
+      "editor": true
+    }
+  },
+  "fluentsnippets": {
+    "plugin_name": "Fluent Snippets",
+    "plugin_slug": "easy-code-manager",
+    "plugin_path": "wp-content/plugins/easy-code-manager/easy-code-manager.php",
+    "plugin_version": "10.56",
+    "plugin_active_wpcli_exit_code": 0,
+    "authority_kind": "file-backed FluentSnippets Snippet model record",
+    "persistence": "PHP files in fluent-snippet-storage; no snippet database row or numeric record ID",
+    "model": "FluentSnippets\\App\\Model\\Snippet",
+    "derived_index": "wp-content/fluent-snippet-storage/index.php",
+    "identity": {
+      "record_id": null,
+      "record_key": "10-vg-bricks-medewerker-queries.php",
+      "title": "[Bricks] Medewerker — Query loop support",
+      "name": "[Bricks] Medewerker — Query loop support",
+      "status": "published",
+      "type": "PHP",
+      "run_at": "all",
+      "condition": {"status": "no", "run_if": "assertive", "items": [[]]},
+      "load_as_file": "",
+      "load_in_block_editor": "",
+      "description": "Bricks Query Loop vars for Medewerker MVP (ACF relationships).",
+      "tags": "medewerker,bricks,acf,query-loop",
+      "group": "Medewerkers",
+      "created_by": "1",
+      "created_at": "2026-06-04 12:00:00",
+      "updated_by": "1",
+      "updated_at": "2026-06-04 12:00:00",
+      "is_valid": "1",
+      "priority": "10",
+      "authoritative_code_bytes": 5400,
+      "authoritative_source_sha256": "7134a1de4a5e8447314b1c3843a60349b8622beaad5de940c4d8c66cb019ae4e",
+      "authoritative_record_file_bytes": 5998,
+      "authoritative_record_file_sha256": "e1b7c014cd15a673d663426403a2024a21a1286075c355015f4e217d7e498fa2",
+      "generated_file_path": "wp-content/fluent-snippet-storage/10-vg-bricks-medewerker-queries.php",
+      "generated_file_bytes": 5998,
+      "generated_file_sha256": "e1b7c014cd15a673d663426403a2024a21a1286075c355015f4e217d7e498fa2",
+      "generated_equals_authoritative_file": true,
+      "owner": "jcschoeman96",
+      "group_owner": "jcschoeman96",
+      "mode_octal": "0664"
+    },
+    "defined_query_modes": [
+      "event_medewerkers",
+      "event_products",
+      "medewerker_events",
+      "medewerker_products",
+      "product_medewerkers",
+      "product_source_event"
+    ],
+    "mode_count_expected_in_approved_docs": 5,
+    "mode_count_observed_in_installed_code": 6,
+    "mode_count_discrepancy": "Approved design/plan refer to five modes; installed source has six switch branches. No caller audit or mutation was performed.",
+    "mutation_interface": {
+      "editor_action": "wp_ajax_fluent_snippet_update -> AdminMenuHandler::saveSnippet()",
+      "callable": "FluentSnippets\\App\\Helpers\\Helper::updateSnippet($data)",
+      "signature": "public static function updateSnippet($data)",
+      "defining_file": "wp-content/plugins/easy-code-manager/app/Helpers/Helper.php:875",
+      "payload": ["meta", "code", "file_name", "reactivate"],
+      "model_write": "FluentSnippets\\App\\Model\\Snippet::updateSnippet($fileName, $code, $metaData)",
+      "model_signature": "public function updateSnippet($fileName, $code, $metaData)",
+      "model_file": "wp-content/plugins/easy-code-manager/app/Model/Snippet.php:288",
+      "identity_preserved_by": "Existing file_name is passed to the model; the model writes the existing storage path and does not create a new record.",
+      "invoked_in_stage_a": false
+    },
+    "regeneration_interface": {
+      "trigger": "fluent_snippets/snippet_updated action",
+      "triggered_by": "Helper::updateSnippet($data)",
+      "listener": "FluentSnippets\\App\\Hooks\\Handlers\\CodeHandler::rebuildCache()",
+      "listener_file": "wp-content/plugins/easy-code-manager/app/Hooks/Handlers/CodeHandler.php:52,162",
+      "refresh": "Helper::cacheSnippetIndex() writes index.php from snippet files; Helper::syncSnippetIndex() performs stale-index comparison and rebuild.",
+      "helper_file": "wp-content/plugins/easy-code-manager/app/Helpers/Helper.php:325,359,497",
+      "target_file_write": "Snippet::updateSnippet() -> Helper::atomicPut() -> Helper::invalidateOpcache()",
+      "invoked_in_stage_a": false
+    },
+    "rollback_interface": {
+      "proven": false,
+      "reason": "The high-level update overwrites updated_at and serializes metadata; generic atomicPut can fall back to non-atomic file_put_contents, and no exact rollback operation is exposed.",
+      "independent_review": "A fresh independent source review confirmed that exact-byte rollback is not proven by installed FluentSnippets code.",
+      "rollback_capture_directory": "/tmp/vgnova-stage-a-fluentsnippets-rollback/",
+      "rollback_manifest_sha256": "8f2056cf7847bd0d3b5b4f01ad67520b1e867fef583bb3fdb8344ebf621f9176",
+      "captured_files": [
+        {"file": "authoritative-record-file.php", "bytes": 5998, "sha256": "e1b7c014cd15a673d663426403a2024a21a1286075c355015f4e217d7e498fa2"},
+        {"file": "generated-storage-file.php", "bytes": 5998, "sha256": "e1b7c014cd15a673d663426403a2024a21a1286075c355015f4e217d7e498fa2"},
+        {"file": "authoritative-code-field.php", "bytes": 5400, "sha256": "7134a1de4a5e8447314b1c3843a60349b8622beaad5de940c4d8c66cb019ae4e"}
+      ],
+      "exact_rollback_available": false
+    },
+    "siblings": {
+      "count": 9,
+      "inventory_sha256": "e0a135f9cc354e5a79ca91507c23e0e5e96d457a26d0c534f4a1a3db7dd7e5d0",
+      "files": [
+        {"file": "1-vg-product-card.php", "size": 1803, "sha256": "adffb4db926ebb14df5f6ba1e4efe884aa9b473970bac53c0fbf697da11ef2a0"},
+        {"file": "2-vg-article-dynamic-tags.php", "size": 8957, "sha256": "168708e2b91f45f6248b70cf8077d906f9193759b111bdc040ba0442ecd466d8"},
+        {"file": "3-shortcode-voelgoed-vennoot-block.php", "size": 10598, "sha256": "fa1412c934e0bdfa9a5a139003de219dd883985411d5058c08eb69a7ba2362b3"},
+        {"file": "4-taxonomy-posts-hide.php", "size": 1375, "sha256": "167fa19506c408fe37f489688c21e5b8769202d9716b5196d634d8762a8298a5"},
+        {"file": "6-taxonomy-posts-happyfiles.php", "size": 5649, "sha256": "76cd761dc8192c2de0b8dcc4c87ebc10fd4a484d0bdf980fb0871645a329f42b"},
+        {"file": "7-maintenance-action-scheduler.php", "size": 987, "sha256": "b2596a31714287e587a5ffda605905ddb9e92a4335a76e7beed48d14ff59c7ef"},
+        {"file": "9-acf-product-copy.php", "size": 1263, "sha256": "58e8035502b30397b9659f952e4d49bbdbd7cdbd15070e37e5b07ebaa5ce2f70"},
+        {"file": "9-bricks-tickera-event-date-time.php", "size": 8932, "sha256": "1e76da0808a4c0c038e4c44615d3c54d8b767430eed7457fbcbb3ddba4e72ea9"},
+        {"file": "index.php", "size": 8610, "sha256": "48be6875afa366359cc056c357906bbf9d5d3e7f1434f921f6a1c5c62ad934f5"}
+      ]
+    }
+  },
+  "pe008_red_baseline": {
+    "session": {
+      "exit_code": 0,
+      "ok": true,
+      "checks": {"session_valid": true},
+      "stderr_bytes": 0
+    },
+    "health": {
+      "exit_code": 1,
+      "ok": false,
+      "checks": {
+        "lifecycle_registered": true,
+        "no_php_diagnostics": true,
+        "no_unexpected_output": false,
+        "plugin_class_loaded": true,
+        "plugin_entrypoint_active": true,
+        "runtime_identity": true,
+        "session_valid": true,
+        "site_name_available": true,
+        "wordpress_bootstrapped": true
+      },
+      "stderr_bytes": 0
+    },
+    "direct_capture": {
+      "length": 1,
+      "hex": "0a",
+      "base64": "Cg==",
+      "sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+      "diagnostic_severities": []
+    },
+    "tokenization": {
+      "authoritative_code_field": [{"token":"T_INLINE_HTML","line":1,"length":1,"hex":"0a"}],
+      "generated_file": [{"token":"T_INLINE_HTML","line":26,"length":1,"hex":"0a"}],
+      "causal_lf_present_in_both": true
+    }
+  },
+  "status": {
+    "PR69_EVIDENCE_MERGED": "PASS",
+    "FLUENTSNIPPETS_OWNERSHIP_PROVEN": "PASS",
+    "AUTHORITATIVE_SNIPPET_IDENTITY": "PASS",
+    "MUTATION_INTERFACE_PROVEN": "PASS",
+    "REGENERATION_INTERFACE_PROVEN": "PASS",
+    "ROLLBACK_INTERFACE_PROVEN": "FAIL",
+    "PRE_MUTATION_PROTECTED_STATE": "PASS",
+    "PE008_SESSION_RED_BASELINE": "PASS",
+    "PE008_HEALTH_RED_BASELINE": "PASS",
+    "BOOTSTRAP_CAPTURE_LENGTH": "1",
+    "BOOTSTRAP_CAPTURE_SHA256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+    "PROTECTED_STATE": "PASS",
+    "RUNTIME_MUTATIONS": 0,
+    "ACF_SYNCS": 0,
+    "PERSON_SCHEMA_MUTATIONS": 0,
+    "BRICKS_MUTATIONS": 0,
+    "MUTATION_AUTHORIZATION": "REQUIRED",
+    "REPOSITORY_COPY_NORMALIZATION": "WHITESPACE_ONLY",
+    "SEMANTIC_DESIGN_CHANGE": "NO"
+  }
+}
