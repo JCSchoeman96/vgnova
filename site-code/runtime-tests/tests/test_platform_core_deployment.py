@@ -9,6 +9,7 @@ import hashlib
 import io
 import json
 import os
+import socket
 import stat
 import subprocess
 import sys
@@ -982,6 +983,21 @@ class PlatformCoreDeploymentTests(unittest.TestCase):
             self.assertEqual(journal_path.read_bytes(), before)
             self.assertEqual(deployer.fingerprint_tree(stage), stage_before)
 
+    def test_read_only_status_does_not_require_database_socket_or_php_health(self) -> None:
+        deployer = load_deployer()
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            state_root = root / "state"
+            state_root.mkdir(mode=0o700)
+            with mock.patch.object(deployer.os, "environ", {}):
+                with mock.patch.object(
+                    deployer,
+                    "run_php_health_helper",
+                    side_effect=AssertionError("status must not invoke PHP health bootstrap"),
+                ) as helper:
+                    self.assertEqual(deployer.status_deployment(state_root), {"in_progress": False, "recovery_options": []})
+            helper.assert_not_called()
+
     def test_status_and_recovery_reject_journal_for_another_wordpress_root(self) -> None:
         deployer = load_deployer()
         with tempfile.TemporaryDirectory() as temporary:
@@ -1395,25 +1411,187 @@ class PlatformCoreDeploymentTests(unittest.TestCase):
         encoded = json.dumps(result, sort_keys=True, separators=(",", ":")) + "\n"
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
+            socket_path = root / "mysql.sock"
             completed = subprocess.CompletedProcess([], 0, encoded, "")
-            with mock.patch.object(deployer.os, "fstat", return_value=object()) as fstat:
-                with mock.patch.object(deployer.subprocess, "run", return_value=completed) as run:
-                    self.assertEqual(
-                        deployer.run_php_health_helper(root, root, "vgnova-local-10039", mode="session"),
-                        result,
-                    )
-            fstat.assert_called_once_with(3)
-            self.assertEqual(run.call_args.kwargs["pass_fds"], (3,))
-            self.assertNotIn("DB_PASSWORD", run.call_args.kwargs["env"])
+            with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as database_socket:
+                database_socket.bind(str(socket_path))
+                with mock.patch.object(deployer.os, "environ", {"VGNOVA_DB_SOCKET": str(socket_path)}):
+                    with mock.patch.object(deployer.os, "fstat", return_value=object()) as fstat:
+                        with mock.patch.object(deployer.subprocess, "run", return_value=completed) as run:
+                            self.assertEqual(
+                                deployer.run_php_health_helper(root, root, "vgnova-local-10039", mode="session"),
+                                result,
+                            )
+                    fstat.assert_called_once_with(3)
+                    self.assertEqual(run.call_args.kwargs["pass_fds"], (3,))
+                    self.assertNotIn("DB_PASSWORD", run.call_args.kwargs["env"])
+                    self.assertEqual(run.call_args.kwargs["env"]["VGNOVA_DB_SOCKET"], str(socket_path))
 
-            with mock.patch.object(deployer.os, "fstat", return_value=object()):
-                with mock.patch.object(
-                    deployer.subprocess,
-                    "run",
-                    return_value=subprocess.CompletedProcess([], 0, encoded + "warning\n", ""),
-                ):
-                    with self.assertRaises(deployer.DeploymentError):
-                        deployer.run_php_health_helper(root, root, "vgnova-local-10039", mode="health")
+                    with mock.patch.object(deployer.os, "fstat", return_value=object()):
+                        with mock.patch.object(
+                            deployer.subprocess,
+                            "run",
+                            return_value=subprocess.CompletedProcess([], 0, encoded + "warning\n", ""),
+                        ):
+                            with self.assertRaises(deployer.DeploymentError):
+                                deployer.run_php_health_helper(root, root, "vgnova-local-10039", mode="health")
+
+    def test_php_session_and_health_helpers_bind_exact_selected_database_socket(self) -> None:
+        deployer = load_deployer()
+        result = {"ok": True, "target": "vgnova-local-10039"}
+        encoded = json.dumps(result, sort_keys=True, separators=(",", ":")) + "\n"
+        self.assertNotIn("VGNOVA_DB_SOCKET", deployer.MUTATION_SESSION_ENVIRONMENT)
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            socket_directory = root / "database socket directory"
+            socket_directory.mkdir()
+            socket_path = socket_directory / "mysql.sock"
+            with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as database_socket:
+                database_socket.bind(str(socket_path))
+                with mock.patch.object(deployer.os, "environ", {"VGNOVA_DB_SOCKET": str(socket_path)}):
+                    for mode in ("session", "health"):
+                        with self.subTest(mode=mode):
+                            with mock.patch.object(deployer.os, "fstat", return_value=object()):
+                                with mock.patch.object(
+                                    deployer.subprocess,
+                                    "run",
+                                    return_value=subprocess.CompletedProcess([], 0, encoded, ""),
+                                ) as run:
+                                    self.assertEqual(
+                                        deployer.run_php_health_helper(root, root, "vgnova-local-10039", mode=mode),
+                                        result,
+                                    )
+                            command = run.call_args.args[0]
+                            self.assertEqual(
+                                command[1:5],
+                                [
+                                    "-d",
+                                    f"mysqli.default_socket={socket_path}",
+                                    "-d",
+                                    f"pdo_mysql.default_socket={socket_path}",
+                                ],
+                            )
+                            self.assertEqual(run.call_args.kwargs["env"]["VGNOVA_DB_SOCKET"], str(socket_path))
+
+    def test_php_health_helper_requires_explicit_database_socket_before_process_launch(self) -> None:
+        deployer = load_deployer()
+        result = {"ok": True, "target": "vgnova-local-10039"}
+        encoded = json.dumps(result, sort_keys=True, separators=(",", ":")) + "\n"
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            for mode in ("session", "health"):
+                with self.subTest(mode=mode):
+                    with mock.patch.dict(deployer.os.environ, {}, clear=True):
+                        with mock.patch.object(deployer.os, "fstat", return_value=object()):
+                            with mock.patch.object(
+                                deployer.subprocess,
+                                "run",
+                                return_value=subprocess.CompletedProcess([], 0, encoded, ""),
+                            ) as run:
+                                with self.assertRaises(deployer.DeploymentError):
+                                    deployer.run_php_health_helper(root, root, "vgnova-local-10039", mode=mode)
+                    run.assert_not_called()
+
+    def test_php_health_helper_rejects_invalid_database_socket_paths_before_process_launch(self) -> None:
+        deployer = load_deployer()
+        result = {"ok": True, "target": "vgnova-local-10039"}
+        encoded = json.dumps(result, sort_keys=True, separators=(",", ":")) + "\n"
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            directory = root / "database directory"
+            directory.mkdir()
+            regular_file = root / "regular-file"
+            regular_file.write_text("not a socket", encoding="utf-8")
+            missing_path = root / "missing.sock"
+            socket_path = directory / "mysql.sock"
+            with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as database_socket:
+                database_socket.bind(str(socket_path))
+                symlink = root / "socket-link"
+                symlink.symlink_to(socket_path)
+                invalid_values = (
+                    "",
+                    "relative.sock",
+                    str(root) + "/invalid\0.sock",
+                    str(missing_path),
+                    str(symlink),
+                    str(regular_file),
+                    str(directory),
+                )
+                for invalid_value in invalid_values:
+                    with self.subTest(database_socket=repr(invalid_value)):
+                        with mock.patch.object(deployer.os, "environ", {"VGNOVA_DB_SOCKET": invalid_value}):
+                            with mock.patch.object(deployer.os, "fstat", return_value=object()):
+                                with mock.patch.object(
+                                    deployer.subprocess,
+                                    "run",
+                                    return_value=subprocess.CompletedProcess([], 0, encoded, ""),
+                                ) as run:
+                                    with self.assertRaises(deployer.DeploymentError):
+                                        deployer.run_php_health_helper(root, root, "vgnova-local-10039", mode="health")
+                            run.assert_not_called()
+
+                with mock.patch.object(deployer.os, "environ", {"VGNOVA_DB_SOCKET": str(socket_path)}):
+                    with mock.patch.object(deployer.os, "fstat", return_value=object()):
+                        with mock.patch.object(
+                            deployer.subprocess,
+                            "run",
+                            return_value=subprocess.CompletedProcess([], 0, encoded, ""),
+                        ) as run:
+                            self.assertEqual(
+                                deployer.run_php_health_helper(root, root, "vgnova-local-10039", mode="health"),
+                                result,
+                            )
+                    run.assert_called_once()
+
+    def test_php_health_helper_rejects_stale_database_socket_inode_before_process_launch(self) -> None:
+        deployer = load_deployer()
+        result = {"ok": True, "target": "vgnova-local-10039"}
+        encoded = json.dumps(result, sort_keys=True, separators=(",", ":")) + "\n"
+        with tempfile.TemporaryDirectory() as temporary:
+            socket_path = Path(temporary) / "stale-mysql.sock"
+            with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as database_socket:
+                database_socket.bind(str(socket_path))
+            self.assertTrue(socket_path.exists())
+            self.assertTrue(stat.S_ISSOCK(socket_path.lstat().st_mode))
+
+            with mock.patch.object(deployer.os, "environ", {"VGNOVA_DB_SOCKET": str(socket_path)}):
+                with mock.patch.object(deployer.os, "fstat", return_value=object()):
+                    with mock.patch.object(
+                        deployer.subprocess,
+                        "run",
+                        return_value=subprocess.CompletedProcess([], 0, encoded, ""),
+                    ) as run:
+                        with self.assertRaises(deployer.DeploymentError):
+                            deployer.run_php_health_helper(
+                                Path(temporary), Path(temporary), "vgnova-local-10039", mode="health"
+                            )
+                run.assert_not_called()
+
+    def test_php_health_helper_revalidates_database_socket_immediately_before_process_launch(self) -> None:
+        deployer = load_deployer()
+        result = {"ok": True, "target": "vgnova-local-10039"}
+        encoded = json.dumps(result, sort_keys=True, separators=(",", ":")) + "\n"
+        with tempfile.TemporaryDirectory() as temporary:
+            socket_path = Path(temporary) / "mysql.sock"
+            with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as database_socket:
+                database_socket.bind(str(socket_path))
+
+                def close_socket_before_launch(_descriptor: int) -> object:
+                    database_socket.close()
+                    return object()
+
+                with mock.patch.object(deployer.os, "environ", {"VGNOVA_DB_SOCKET": str(socket_path)}):
+                    with mock.patch.object(deployer.os, "fstat", side_effect=close_socket_before_launch):
+                        with mock.patch.object(
+                            deployer.subprocess,
+                            "run",
+                            return_value=subprocess.CompletedProcess([], 0, encoded, ""),
+                        ) as run:
+                            with self.assertRaises(deployer.DeploymentError):
+                                deployer.run_php_health_helper(
+                                    Path(temporary), Path(temporary), "vgnova-local-10039", mode="health"
+                                )
+                    run.assert_not_called()
 
     def test_cli_rejects_unknown_target_wrong_root_and_missing_artifact_authority(self) -> None:
         cli = Path(__file__).resolve().parents[2] / "bin/deploy-platform-core.py"

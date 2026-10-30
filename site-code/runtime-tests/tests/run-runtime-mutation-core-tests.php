@@ -629,6 +629,99 @@ $test('child environment excludes database credentials and keeps only session pr
     );
 });
 
+$test('child environment receives only the explicitly selected DB socket and preserves the seven proof fields', static function (): void {
+    $proof = [
+        'session_id' => 'session-selected-socket',
+        'target' => 'vgnova-local-10039',
+        'db_locks' => [
+            'a' => ['name' => 'vgnova.mutation.a.' . str_repeat('a', 40), 'connection_id' => 42],
+            'b' => ['name' => 'vgnova.mutation.b.' . str_repeat('b', 40), 'connection_id' => 43],
+        ],
+        'lock_file' => '/state/target.lock',
+    ];
+    $baseEnvironment = ['PATH' => '/usr/bin', 'VGNOVA_DB_SOCKET' => '/tmp/ambient.sock'];
+    $environment = VgRuntimeMutationCore::childEnvironment($baseEnvironment, $proof, '/tmp/selected.sock');
+
+    vg_runtime_mutation_core_test(
+        ($environment['VGNOVA_DB_SOCKET'] ?? null) === '/tmp/selected.sock',
+        'The coordinator-selected database socket did not reach the child unchanged.'
+    );
+
+    $expectedProof = [
+        'VGNOVA_MUTATION_SESSION_ID' => 'session-selected-socket',
+        'VGNOVA_MUTATION_TARGET' => 'vgnova-local-10039',
+        'VGNOVA_MUTATION_DB_LOCK_A' => 'vgnova.mutation.a.' . str_repeat('a', 40),
+        'VGNOVA_MUTATION_DB_CONNECTION_ID_A' => '42',
+        'VGNOVA_MUTATION_DB_LOCK_B' => 'vgnova.mutation.b.' . str_repeat('b', 40),
+        'VGNOVA_MUTATION_DB_CONNECTION_ID_B' => '43',
+        'VGNOVA_MUTATION_LOCK_FILE' => '/state/target.lock',
+    ];
+    foreach ($expectedProof as $key => $value) {
+        vg_runtime_mutation_core_test(($environment[$key] ?? null) === $value, "Session proof field {$key} changed.");
+    }
+
+    $withoutSelection = VgRuntimeMutationCore::childEnvironment($baseEnvironment, $proof, null);
+    vg_runtime_mutation_core_test(
+        ! isset($withoutSelection['VGNOVA_DB_SOCKET']),
+        'An ambient database socket reached the child without explicit selection.'
+    );
+});
+
+$test('child environment rejects relative and NUL-containing selected DB socket paths', static function (): void {
+    $proof = ['session_id' => 'session-socket-validation', 'target' => 'vgnova-local-10039'];
+    foreach (['relative.sock', "/tmp/unsafe\0.sock"] as $socket) {
+        vg_runtime_mutation_core_throws(
+            71,
+            static fn (): array => VgRuntimeMutationCore::childEnvironment([], $proof, $socket),
+            'An invalid selected database socket was accepted.'
+        );
+    }
+});
+
+$test('child process receives the exact explicitly selected database socket', static function (): void {
+    vg_runtime_mutation_core_with_temp_dir(static function (string $directory): void {
+        $selectedSocket = $directory . '/selected socket.sock';
+        $baseEnvironment = ['PATH' => (string) getenv('PATH'), 'VGNOVA_DB_SOCKET' => '/tmp/ambient.sock'];
+        $proof = ['session_id' => 'session-child-socket', 'target' => 'vgnova-local-10039'];
+        $environment = VgRuntimeMutationCore::childEnvironment($baseEnvironment, $proof, $selectedSocket);
+        $capture = $directory . '/selected-socket.txt';
+        $lock = VgRuntimeMutationCore::acquireFilesystemLock($directory . '/target.lock');
+        vg_runtime_mutation_core_test(is_resource($lock), 'Could not acquire the child transport fixture lock.');
+        try {
+            $childCode = '$socket = getenv("VGNOVA_DB_SOCKET"); file_put_contents($argv[1], $socket === false ? "<missing>" : $socket);';
+            $status = VgRuntimeMutationCore::runChildCommand(
+                [PHP_BINARY, '-r', $childCode, $capture],
+                $environment,
+                $lock,
+                [],
+                [],
+                $selectedSocket
+            );
+            vg_runtime_mutation_core_test($status === 0, 'Socket transport child did not complete.');
+            vg_runtime_mutation_core_test(
+                file_get_contents($capture) === $selectedSocket,
+                'The child process did not receive the exact selected database socket.'
+            );
+        } finally {
+            flock($lock, LOCK_UN);
+            fclose($lock);
+        }
+    });
+});
+
+$test('coordinator preserves DB socket precedence and forwards its selected socket to the child', static function (): void {
+    $source = file_get_contents(__DIR__ . '/../../bin/vgnova-runtime-mutate.php');
+    vg_runtime_mutation_core_test(is_string($source), 'The runtime mutation coordinator source is unavailable.');
+    vg_runtime_mutation_core_test(
+        preg_match('/\$socketOverride\s*=\s*isset\(\$options\[\'db-socket\'\]\).*?getenv\(\'VGNOVA_DB_SOCKET\'\)\s*\?:\s*null/s', $source) === 1,
+        'CLI --db-socket no longer takes precedence over the incoming transport environment.'
+    );
+    vg_runtime_mutation_core_test(
+        preg_match('/static function \(array \$proof, \$lockHandle, array \$lifetimeHandles, array \$registrationHandles\) use \([^)]*\$socketOverride[^)]*\): int\s*\{.*?childEnvironment\(\$baseEnvironment,\s*\$proof,\s*\$socketOverride\).*?runChildCommand\(\$childArguments,\s*\$environment,\s*\$lockHandle,\s*\$lifetimeHandles,\s*\$registrationHandles,\s*\$socketOverride\)/s', $source) === 1,
+        'The child launch does not carry the coordinator-selected database socket through both environment boundaries.'
+    );
+});
+
 $test('metadata and command summary omit secret values', static function (): void {
     $metadata = VgRuntimeMutationCore::metadata([
         'target' => 'vgnova-local-10039', 'purpose' => 'password=do-not-store',
