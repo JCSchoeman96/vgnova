@@ -32,7 +32,7 @@ PE-008 status was clean before and after. Its deployment state directory remaine
 
 ## Stop state
 
-No deployment ID, history entry, or rollback path was created. `PERSON_SCHEMA_AUTO_INSTALL=BLOCKED_NOT_TESTED` because deployment and bootstrap did not succeed. ACF sync, schema setup, idempotency, rebuild, authoritative rebuild-source count/hash, and reconciliation are `NOT_RUN`. The protected post-snapshot and comparison were completed in the follow-up evidence below.
+No deployment ID, history entry, or rollback path was created. `PERSON_SCHEMA_AUTO_INSTALL=BLOCKED_NOT_TESTED` because deployment was never performed, so the required post-deployment negative auto-install check was never exercised. WordPress bootstrap succeeded during the later read-only health diagnostic. ACF sync, schema setup, idempotency, rebuild, authoritative rebuild-source count/hash, and reconciliation are `NOT_RUN`. The protected post-snapshot and comparison were completed in the follow-up evidence below.
 The required `check-source.sh`, `git diff --check`, and staged diff check passed.
 
 ```text
@@ -125,3 +125,44 @@ DIAGNOSTIC_RUNTIME_TREE_DELTA=NO
 DIAGNOSTIC_PROTECTED_STATE_DELTA=NO
 
 Full structured evidence: [SIMPLE_PERSON_RELATIONSHIP_RUNTIME_ACTIVATION_v1.3.0_DETAILS.json](SIMPLE_PERSON_RELATIONSHIP_RUNTIME_ACTIVATION_v1.3.0_DETAILS.json).
+
+## Post-attempt unexpected-output root-cause investigation
+
+This read-only investigation followed the blocked v1.3.0 attempt. It did not deploy or change WordPress data. The recorded `RUNTIME_ACTIVATION=BLOCKED` status remains unchanged.
+
+Two separate PE-007 sessions reproduced the PHP helper’s buffer, error handler, `wp-load.php` include, and session assertion. Both returned code 0 with `wordpress_bootstrapped=true`, `session_valid=true`, `captured_errors=[]`, and empty PHP stderr. Each captured exactly one LF byte:
+
+```text
+CAPTURE_1_LENGTH=1
+CAPTURE_1_SHA256=01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b
+CAPTURE_2_LENGTH=1
+CAPTURE_2_SHA256=01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b
+CAPTURE_DETERMINISTIC=YES
+CAPTURED_OUTPUT_SAFE_REPRESENTATION=LF 0a; JSON "\n"; base64 Cg==
+CAPTURED_OUTPUT_HEX=0a
+CAPTURED_OUTPUT_BASE64=Cg==
+CAPTURED_OUTPUT_JSON_ESCAPED="\n"
+CAPTURED_ERRORS=[]
+```
+
+No credential, token, password, private-key, or session-cookie material was detected in the captured bytes; the exact representation is preserved. The failing health check remains `no_unexpected_output=false`; all other health checks passed.
+
+The second boot collected `get_included_files()`. A subsequent read-only bootstrap replay produced the same output hash and preserved the normalized 3,603-path inventory (SHA-256 `3f0368b0cc30044291b4f1e0df009f4755bba2c893c1352d9eae00d966ba785a`). A PHP tokenizer scan found one exact matching inline-output source in the included files:
+
+```text
+OUTPUT_SOURCE_CANDIDATE=wp-content/fluent-snippet-storage/10-vg-bricks-medewerker-queries.php:26
+MATCHING_SOURCE_BYTES=LF (0a), T_INLINE_HTML
+SOURCE_CONTEXT=line 25 closes PHP; line 26 is one LF; line 27 reopens PHP
+SOURCE_CONTEXT_BYTES=?>\n\n<?php (the second LF is the captured byte)
+```
+
+The snippet’s preceding guard returns only when `ABSPATH` is undefined. During this successful WordPress bootstrap `ABSPATH` was defined, so execution passed the guard and reached the inline LF at line 26. That exact byte matches the complete captured buffer, and the included-file scan found no other matching inline-output token.
+
+```text
+CAUSALITY=PROVEN
+OUTPUT_DIAGNOSTIC_DEPLOYMENT_STATE_DELTA=NO
+OUTPUT_DIAGNOSTIC_RUNTIME_TREE_DELTA=NO
+OUTPUT_DIAGNOSTIC_PROTECTED_STATE_DELTA=NO
+```
+
+The final protected snapshot was captured at 11:08:29 UTC with the original collector and matched the prior post-diagnostic snapshot. PE-008 remained clean, the deployment state directory remained absent, and the 54-file live Platform Core fingerprint remained unchanged. Four targeted ACF dry-runs still each showed one `Create`; no sync ran.
