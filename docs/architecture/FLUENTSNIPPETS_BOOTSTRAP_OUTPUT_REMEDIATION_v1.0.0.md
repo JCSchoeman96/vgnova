@@ -5,10 +5,17 @@
 
 ## Authority and scope
 
-This evidence is based on the approved design and plan installed verbatim at:
+This evidence records the approved handoff artifact hashes and the hashes of their repository copies separately. The repository copies remove only the eight trailing ASCII spaces required by the repository whitespace check: six in the design and two in the plan. No other bytes or wording changed.
 
-- `docs/superpowers/specs/2026-10-30-fluentsnippets-bootstrap-output-remediation-design_v0.1.0.md` — SHA-256 `a4a8bcd33601d1ac7f1ba6b68852949aa5bcfa8dcd775b1b098c3c6a9120c026`
-- `docs/superpowers/plans/2026-10-30-fluentsnippets-bootstrap-output-remediation_v0.1.1.md` — SHA-256 `bc841d378204c6304e8bcef248416ef0e8fb99621ead2b2da4ca24167581ed2f`
+- **Approved handoff artifact — design:** `docs/superpowers/specs/2026-10-30-fluentsnippets-bootstrap-output-remediation-design_v0.1.0.md`; SHA-256 `a4a8bcd33601d1ac7f1ba6b68852949aa5bcfa8dcd775b1b098c3c6a9120c026`
+- **Approved handoff artifact — plan:** `docs/superpowers/plans/2026-10-30-fluentsnippets-bootstrap-output-remediation_v0.1.1.md`; SHA-256 `bc841d378204c6304e8bcef248416ef0e8fb99621ead2b2da4ca24167581ed2f`
+- **Repository copy — design:** `docs/superpowers/specs/2026-10-30-fluentsnippets-bootstrap-output-remediation-design_v0.1.0.md`; SHA-256 `b5aef279a0709bc183a370982bbfa08a53fa17319278e8bce540aa61c72ba5c8`
+- **Repository copy — plan:** `docs/superpowers/plans/2026-10-30-fluentsnippets-bootstrap-output-remediation_v0.1.1.md`; SHA-256 `8a6536fd945e44777a189fecdd6404c8ae9827621cc3dd5d6a09e88da04566cb`
+
+```text
+REPOSITORY_COPY_NORMALIZATION=WHITESPACE_ONLY
+SEMANTIC_DESIGN_CHANGE=NO
+```
 
 PR #69 was already merged. Its exact head was `e883386d1d5ac565814f05894660b90efdfe8d4b`; merge commit `d363373b3993c37da769862cb3ff13b5de7307ec` has parent 2 equal to that head. Exact-head checks were Dashboard checks **SUCCESS**, Canonical source checks **SUCCESS**, VG Nova Platform Gate **SUCCESS**, and artifact publication **SKIPPED**. The Stage A branch is based on that merge commit.
 
@@ -67,6 +74,8 @@ ACF_SYNCS=0
 PERSON_SCHEMA_MUTATIONS=0
 BRICKS_MUTATIONS=0
 MUTATION_AUTHORIZATION=REQUIRED
+REPOSITORY_COPY_NORMALIZATION=WHITESPACE_ONLY
+SEMANTIC_DESIGN_CHANGE=NO
 ```
 
 Stage A evidence is ready for independent PR review. No snippet fix or other runtime mutation is authorized by this evidence.

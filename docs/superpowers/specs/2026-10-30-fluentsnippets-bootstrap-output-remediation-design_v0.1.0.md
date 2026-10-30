@@ -1,8 +1,8 @@
 # FluentSnippets Bootstrap Output Remediation Design v0.1.0
 
-**Date:** 2026-10-30  
-**Status:** APPROVED  
-**Scope:** Minimal remediation of the proven one-byte WordPress bootstrap output emitted by FluentSnippet `10-vg-bricks-medewerker-queries.php`  
+**Date:** 2026-10-30
+**Status:** APPROVED
+**Scope:** Minimal remediation of the proven one-byte WordPress bootstrap output emitted by FluentSnippet `10-vg-bricks-medewerker-queries.php`
 **Runtime:** VGNova Local target `vgnova-local-10039`
 
 ## 1. Intent

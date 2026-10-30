@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Version:** 0.1.1  
+**Version:** 0.1.1
 **Date:** 2026-10-30
 
 **Goal:** Remove the proven one-byte LF emitted during WordPress bootstrap by FluentSnippet `10-vg-bricks-medewerker-queries.php` through FluentSnippets' authoritative persistence path, while preserving all legacy behavior and keeping PE-008 strict.
