@@ -43,6 +43,687 @@ Local runtime references:
 - After changes, report exactly what was changed and where.
 - Flag risky actions before executing them.
 - If MCP is unavailable, say so clearly and do not invent results.
+- PR's are mandatory for external independent review
+
+# VG Nova Native-First Development Policy
+
+## Status
+
+**MANDATORY — applies to all human developers, coding agents, ChatGPT workstreams and implementation plans.**
+
+VG Nova is built on WordPress, Bricks Builder, ACF Pro and established specialist plugins deliberately.
+
+These tools are the **first implementation choice**, not merely infrastructure underneath custom development.
+
+The objective is to **complete the platform efficiently using the capabilities we already own**, then optimise or replace components only where measured evidence demonstrates a real limitation.
+
+---
+
+# 1. Core rule
+
+Before proposing or implementing custom functionality, the agent MUST first investigate whether the requirement can be satisfied using:
+
+1. WordPress core
+2. Bricks Builder
+3. ACF Pro
+4. the native specialist plugin responsible for the domain
+5. configuration of those tools
+6. a small integration/hook between those tools
+
+Custom subsystems are the **last option**, not the first.
+
+The required order is:
+
+```text
+Native capability
+      ↓
+Configuration
+      ↓
+ACF fields / Options / relationships
+      ↓
+Bricks dynamic data / Query Loop
+      ↓
+Existing plugin APIs
+      ↓
+Small integration adapter
+      ↓
+Measure actual limitation
+      ↓
+Custom subsystem only if justified
+```
+
+An agent MUST NOT skip directly from:
+
+```text
+"We need feature X"
+```
+
+to:
+
+```text
+"Create a repository, service, table, indexer or custom CPT."
+```
+
+---
+
+# 2. Finish-first principle
+
+VG Nova is now:
+
+```text
+DELIVERY FIRST
+OPTIMISATION SECOND
+CUSTOM REPLACEMENT THIRD
+```
+
+The priority is to:
+
+```text
+complete journeys
+complete templates
+populate real data
+complete migration
+prove commerce
+complete responsive design
+complete SEO
+launch the site
+```
+
+before replacing working WordPress/plugin functionality with custom implementations.
+
+Do not optimise theoretical future bottlenecks.
+
+Optimisation requires evidence.
+
+---
+
+# 3. Mandatory native-capability investigation
+
+Every implementation plan MUST contain a section:
+
+```text
+NATIVE CAPABILITY REVIEW
+```
+
+It must explicitly state which capabilities were checked.
+
+At minimum, when relevant:
+
+```text
+WORDPRESS_CORE=
+BRICKS=
+ACF_PRO=
+WOOCOMMERCE=
+PMPro=
+WOOCOMMERCE_SUBSCRIPTIONS=
+MASTERIYO=
+TICKERA=
+CLOUDFLARE=
+OTHER_RELEVANT_PLUGIN=
+```
+
+The agent must describe:
+
+```text
+what the existing tool provides
+whether it satisfies the requirement
+what limitation remains
+```
+
+If the native tools satisfy the requirement adequately:
+
+```text
+CUSTOM_DEVELOPMENT=NOT_AUTHORISED
+```
+
+---
+
+# 4. Bricks-first frontend rule
+
+Before writing custom query/rendering infrastructure, investigate Bricks.
+
+Use Bricks where appropriate for:
+
+```text
+Query Loops
+WP_Query
+meta queries
+taxonomy queries
+dynamic data
+ACF relationships
+components
+conditions
+templates
+template conditions
+Query Editor
+custom query arguments
+query hooks
+filters
+pagination
+archive presentation
+```
+
+A Platform Core adapter may provide data or query arguments where necessary.
+
+Platform Core should not replace Bricks' query/rendering system simply because custom code could theoretically be cleaner.
+
+Example:
+
+```text
+Person → Articles
+```
+
+Default solution:
+
+```text
+ACF relationship
+→ Bricks Query Loop
+```
+
+Not:
+
+```text
+ACF
+→ custom index table
+→ indexer
+→ reconciler
+→ repository
+→ service
+→ custom query abstraction
+→ Bricks
+```
+
+unless real evidence proves the native query is inadequate.
+
+---
+
+# 5. ACF-first content modelling rule
+
+ACF Pro is the default metadata and simple relationship layer.
+
+Agents MUST actively use and evaluate:
+
+```text
+Field Groups
+Post Object fields
+Relationship fields
+Taxonomy fields
+User fields
+Repeaters
+Groups
+Conditional Logic
+Options Pages
+Bidirectional Relationships
+Local JSON
+ACF CPT registration
+ACF taxonomy registration
+```
+
+before custom implementation.
+
+Do not create custom admin interfaces for functionality ACF already provides adequately.
+
+---
+
+# 6. ACF Options Pages
+
+Site-wide editable values SHOULD normally use ACF Options Pages rather than:
+
+```text
+hard-coded values
+custom database tables
+scattered WordPress options
+theme constants
+custom settings screens
+```
+
+Examples:
+
+```text
+telephone numbers
+WhatsApp number
+default CTAs
+social links
+contact details
+global labels
+default images
+site-wide marketing copy
+company information
+```
+
+The objective is to make ordinary site management easy for editors.
+
+---
+
+# 7. Bidirectional relationship rule
+
+For a **simple relationship** that needs reverse access, ACF bidirectional relationships are the default candidate.
+
+Examples:
+
+```text
+Article ↔ Person
+Course ↔ Person
+Related Article ↔ Article
+simple Person ↔ Programme relationships
+```
+
+Before building custom reverse-query infrastructure, the agent MUST evaluate:
+
+```text
+ACF Post Object / Relationship
++
+Bidirectional target field
++
+Bricks Query Loop
+```
+
+If this adequately satisfies the journey:
+
+```text
+USE IT
+```
+
+Do not reject bidirectional storage merely because a theoretically purer custom relational model exists.
+
+For VG Nova, **simplicity and delivery speed are legitimate architectural requirements.**
+
+---
+
+# 8. Exception — rich relationship domains
+
+Bidirectional ACF fields are NOT automatically appropriate when the relationship itself is a first-class domain concept.
+
+A richer model may be justified when the relationship requires meaningful:
+
+```text
+roles
+multiple simultaneous roles
+relationship metadata
+display order
+publication lifecycle
+uniqueness constraints
+state transitions
+race/concurrency protection
+independent editorial management
+```
+
+Existing examples:
+
+```text
+Event Participation
+Product Contribution
+```
+
+These are not justification for making every relationship equally complex.
+
+---
+
+# 9. Simple relationships must stay simple
+
+The default architecture for something like:
+
+```text
+Article:
+Primary Author → Person
+Additional Authors → People
+Expert Contributors → People
+Reviewed By → People
+```
+
+should remain an ACF relationship model.
+
+Similarly:
+
+```text
+Course:
+Lead Instructor → Person
+Additional Instructors → People
+Experts → People
+```
+
+should remain an ACF relationship model unless real requirements prove otherwise.
+
+Do not create an `ArticleParticipation` or `CourseParticipation` domain merely to obtain theoretical consistency with Event Participation.
+
+---
+
+# 10. Performance optimisation requires measurement
+
+An agent may not justify custom infrastructure using only:
+
+```text
+"This might be slow later."
+```
+
+Before introducing:
+
+```text
+custom indexes
+custom tables
+materialised relationships
+persistent caches
+shadow indexes
+custom search infrastructure
+```
+
+the agent MUST demonstrate a measured problem.
+
+Evidence should include where practical:
+
+```text
+realistic corpus size
+actual query
+actual execution time
+cold/warm behaviour
+expected page frequency
+cache behaviour
+user-visible impact
+```
+
+Only then compare alternative solutions.
+
+The required sequence is:
+
+```text
+implement native solution
+→ measure
+→ identify bottleneck
+→ optimise bottleneck
+```
+
+not:
+
+```text
+predict possible bottleneck
+→ build infrastructure first
+```
+
+---
+
+# 11. Small adapters before subsystems
+
+Where Bricks or ACF needs help, prefer a very small adapter.
+
+Good example:
+
+```text
+Bricks Query Loop
+    ↓
+small query-vars adapter
+    ↓
+native WP_Query
+```
+
+A small integration may:
+
+```text
+supply current Person ID
+add meta_query arguments
+provide approved post IDs
+supply dynamic data
+enforce one domain rule
+```
+
+This is preferable to introducing an independent storage/query subsystem.
+
+---
+
+# 12. Use plugin APIs instead of rebuilding plugin domains
+
+Native providers remain authoritative.
+
+```text
+WooCommerce
+→ products, cart, checkout, orders
+
+WooCommerce Subscriptions
+→ subscription billing lifecycle
+
+PMPro
+→ membership entitlement
+
+Masteriyo
+→ courses, lessons, enrolments, progress
+
+Tickera
+→ event ticketing
+
+Bricks
+→ templates, rendering, Query Loops, components
+
+ACF
+→ fields, relationships, Options Pages and editorial metadata
+```
+
+Platform Core should integrate these systems.
+
+It should not reproduce their functionality unless a proven requirement cannot be met through their supported APIs/configuration.
+
+---
+
+# 13. Examples
+
+## Article → Person
+
+Preferred:
+
+```text
+ACF Post Object / Relationship
++ bidirectional Person target where reverse access is required
++ Bricks Query Loop
+```
+
+Do not begin with a custom relationship table.
+
+---
+
+## Course → Person
+
+Preferred:
+
+```text
+Masteriyo Course
++ ACF Person fields
++ bidirectional relationship
++ Bricks presentation
+```
+
+Do not use Product Contribution to infer Course instructors.
+
+Do not build a Course relationship engine unless actual requirements demand one.
+
+---
+
+## Global company contact data
+
+Preferred:
+
+```text
+ACF Options Page
+```
+
+Not:
+
+```text
+custom options table
+custom settings controller
+hard-coded values
+```
+
+---
+
+## Person → Product
+
+If Product Contribution already owns contextual roles:
+
+```text
+use Product Contribution
+```
+
+Do not add a second ACF bidirectional relationship for the same canonical fact.
+
+---
+
+## Event → Person
+
+If Event Participation owns:
+
+```text
+Person
+Event
+role
+order
+lifecycle
+```
+
+continue using Event Participation.
+
+Do not replace it with a plain bidirectional field.
+
+---
+
+# 14. Custom development authorization gate
+
+Before any substantial new custom subsystem is authorised, the implementation proposal MUST answer:
+
+```text
+1. What existing WordPress/plugin capability was investigated?
+
+2. Why is Bricks insufficient?
+
+3. Why is ACF insufficient?
+
+4. Why is the owning specialist plugin insufficient?
+
+5. Could a small hook/adapter solve the problem?
+
+6. What measured limitation requires custom development?
+
+7. What is the smallest custom implementation that solves it?
+
+8. Does this custom implementation create new data authority?
+
+9. What maintenance burden does it add?
+
+10. Can we postpone this custom development until after launch?
+```
+
+If #10 is:
+
+```text
+YES
+```
+
+the default decision is:
+
+```text
+DEFER UNTIL AFTER LAUNCH
+```
+
+---
+
+# 15. Master Gate rule
+
+The Master Programme Gate MUST challenge any proposal containing new:
+
+```text
+custom database tables
+relationship indexes
+custom CPTs
+repositories
+services
+reconciliation engines
+background synchronisation
+custom caches
+settings systems
+query engines
+```
+
+unless the proposal includes the mandatory native-capability review and evidence showing why existing tools are insufficient.
+
+No native-capability review:
+
+```text
+REJECT / RETURN FOR INVESTIGATION
+```
+
+---
+
+# 16. Agent behaviour
+
+All agents must assume:
+
+> Existing tools are capable until proven otherwise.
+
+Not:
+
+> Custom code is cleaner, therefore custom code is preferable.
+
+Agents should favour:
+
+```text
+configuration over code
+
+native feature over custom feature
+
+small adapter over subsystem
+
+delivery over abstraction
+
+measured optimisation over speculative optimisation
+```
+
+---
+
+# 17. Source control and future portability
+
+Using ACF today does not mean VG Nova must depend on every ACF implementation forever.
+
+Use ACF Local JSON and other source-controlled definitions wherever appropriate.
+
+This provides:
+
+```text
+versioning
+reviewability
+portability
+repeatability
+```
+
+If future evidence justifies moving particular definitions into native PHP or another implementation, that migration can be performed later.
+
+Do not prematurely reproduce ACF functionality in custom PHP merely to preserve the possibility of removing ACF someday.
+
+First finish the platform.
+
+---
+
+# 18. Architectural principle
+
+VG Nova uses WordPress, Bricks and ACF **because they remove work**.
+
+Therefore:
+
+> **If our architecture causes us to rebuild large portions of functionality already provided by WordPress, Bricks or ACF without a demonstrated deficiency, the architecture is wrong for the current phase of the project.**
+
+---
+
+# 19. Current project priority
+
+Until the first complete vertical journeys and production launch are achieved:
+
+```text
+FINISH
+    >
+REFINE
+    >
+OPTIMISE
+    >
+REBUILD
+```
+
+Any deviation requires evidence and Master Gate approval.
 
 ## What We Are Building
 
@@ -378,3 +1059,5 @@ Important exception:
 - Use the plugin repo, branches, PRs, and slice planning docs as the implementation authority.
 
 The parent `vgnova` repo remains the Novamira/staging documentation workspace. The plugin repo is the code authority for Voelgoed Member Perks.
+
+PR's are mandatory for external independent review
