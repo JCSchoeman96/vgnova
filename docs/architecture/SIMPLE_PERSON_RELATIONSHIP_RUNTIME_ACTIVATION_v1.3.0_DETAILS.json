@@ -1,0 +1,1826 @@
+{
+  "acf": {
+    "candidate_remained_detached_clean": true,
+    "candidate_sha": "06ec482445ca4065b49e745d2164308c5548ce59",
+    "contract": {
+      "article": "Four post_object fields target person; return format id; no bidirectional target.",
+      "course": "Three post_object fields target person; return format id; no bidirectional target."
+    },
+    "generation1_remained_detached_clean": true,
+    "generation1_sha": "5a3bc4fc89fa61ae8916aa460989f1e8912b473d",
+    "parity": "PASS",
+    "parity_inventory": "SIMPLE_PERSON_RELATIONSHIP_RUNTIME_ACTIVATION_v1.3.0_ACF_JSON_PARITY.json",
+    "parity_inventory_sha256": "616fd051c06e81643aa53a754751e3f9606cd6159d71e2990eb2b10b2c33ec6f",
+    "path_byte_parity_files": 14,
+    "pending_after": "NOT_RUN",
+    "pending_before": [
+      {
+        "action": "Create",
+        "key": "group_vg_article_people"
+      },
+      {
+        "action": "Create",
+        "key": "group_vg_course_people"
+      },
+      {
+        "action": "Create",
+        "key": "group_vgmp_perk_details"
+      },
+      {
+        "action": "Create",
+        "key": "group_vgmp_options"
+      }
+    ],
+    "post_attempt_pending_inventory": {
+      "observation": "Four targeted read-only ACF sync dry-runs repeated after the original protected post-snapshot and before the raw diagnostic.",
+      "pending": [
+        {
+          "action": "Create",
+          "key": "group_vg_article_people"
+        },
+        {
+          "action": "Create",
+          "key": "group_vg_course_people"
+        },
+        {
+          "action": "Create",
+          "key": "group_vgmp_perk_details"
+        },
+        {
+          "action": "Create",
+          "key": "group_vgmp_options"
+        }
+      ],
+      "same_as_pending_before": true,
+      "sync_performed": false
+    },
+    "runtime_symlink": "/home/jcschoeman96/projects/runtime/vgnova-acf-source/site-code/acf-json",
+    "targeted_dry_runs": "All four exact keys returned one Create item; no group was synced.",
+    "post_output_diagnostic_pending_inventory": {
+      "observation": "Four targeted read-only ACF sync dry-runs after the output captures and source trace.",
+      "pending": [
+        {
+          "action": "Create",
+          "key": "group_vg_article_people"
+        },
+        {
+          "action": "Create",
+          "key": "group_vg_course_people"
+        },
+        {
+          "action": "Create",
+          "key": "group_vgmp_perk_details"
+        },
+        {
+          "action": "Create",
+          "key": "group_vgmp_options"
+        }
+      ],
+      "same_as_prior_pending_inventory": true,
+      "sync_performed": false
+    }
+  },
+  "artifact": {
+    "archive_sha256": "3babd382c4dddb71d7b358f968eb4e62aa4d37d9d3048aa0bfa07d1a35cfe5c9",
+    "file_count": 66,
+    "manifest_sha256": "0ce7b008739315af56f98a6fcb952ba76a8e454d5067f80f6bcee7466351460f",
+    "path": "/tmp/vgnova-person-runtime-06ec482445ca4065b49e745d2164308c5548ce59",
+    "python": "CPython 3.14.4",
+    "source_commit": "06ec482445ca4065b49e745d2164308c5548ce59",
+    "tree_sha256": "d8a1244b1ad7e6767e271535959d5c4df2bf35fe0cec1dd1e3c10f11fd6ec373",
+    "verification": "PASS"
+  },
+  "captured_at_utc": "2026-10-30 10:20:27 UTC",
+  "historical_records_modified": false,
+  "later_stages": {
+    "acf_pending_after": "NOT_RUN",
+    "acf_sync": "NOT_RUN",
+    "authoritative_rebuild_source_count_hash": "NOT_RUN",
+    "deployment": "BLOCKED_NOT_RUN",
+    "deployment_id": "NOT_CREATED",
+    "history": "NOT_CREATED",
+    "post_attempt_read_only_diagnostic": "COMPLETE",
+    "protected_post_snapshot": "PASS",
+    "protected_pre_post_comparison": "PASS",
+    "rebuild": "NOT_RUN",
+    "reconcile": "NOT_RUN",
+    "rollback_path": "NOT_CREATED",
+    "schema_setup": "NOT_RUN",
+    "setup_idempotency": "NOT_RUN"
+  },
+  "outcome": "BLOCKED",
+  "pe008_preflight": {
+    "deployment_state_after": {
+      "exists": false
+    },
+    "deployment_state_before": {
+      "exists": false
+    },
+    "deployment_state_delta": "NO",
+    "exact_error": "platform_core_deployment.DeploymentError: WordPress health helper returned an error or unexpected diagnostic output.",
+    "exact_output": "Traceback (most recent call last):\n  File \"<string>\", line 15, in <module>\n    health = deployment.run_php_health_helper(repo, wp_root, target, mode=\"health\")\n  File \"/home/jcschoeman96/projects/current/vgnova/.worktrees/simple-person-relationship-runtime-activation-v1-3/site-code/runtime-tools/platform_core_deployment.py\", line 1399, in run_php_health_helper\n    raise DeploymentError(\"WordPress health helper returned an error or unexpected diagnostic output.\")\nplatform_core_deployment.DeploymentError: WordPress health helper returned an error or unexpected diagnostic output.",
+    "exact_plan_code_unmodified": true,
+    "exit_code": 1,
+    "health": "BLOCKED",
+    "health_json": "NOT_EMITTED; helper raised before the combined JSON print.",
+    "pe008_status_after": {
+      "in_progress": false,
+      "recovery_options": []
+    },
+    "pe008_status_before": {
+      "in_progress": false,
+      "recovery_options": []
+    },
+    "runtime_tree_delta": "NO",
+    "session": "PASS; helper returned and both required session checks passed before code proceeded to health.",
+    "session_json": "NOT_EMITTED; the plan code prints combined JSON only after both calls and guards finish.",
+    "socket_transport": "BLOCKED",
+    "state_root": "/home/jcschoeman96/Local Sites/voelgoed-novamira/app/.vgnova-platform-core-deployments"
+  },
+  "post_attempt_read_only_diagnostic": {
+    "boundary": "PE-007",
+    "health_checks": {
+      "lifecycle_registered": true,
+      "no_php_diagnostics": true,
+      "no_unexpected_output": false,
+      "plugin_class_loaded": true,
+      "plugin_entrypoint_active": true,
+      "runtime_identity": true,
+      "session_valid": true,
+      "site_name_available": true,
+      "wordpress_bootstrapped": true
+    },
+    "health_failing_checks": [
+      "no_unexpected_output"
+    ],
+    "helper_results": {
+      "health": {
+        "mode": "health",
+        "parse_error": null,
+        "parsed": {
+          "checks": {
+            "lifecycle_registered": true,
+            "no_php_diagnostics": true,
+            "no_unexpected_output": false,
+            "plugin_class_loaded": true,
+            "plugin_entrypoint_active": true,
+            "runtime_identity": true,
+            "session_valid": true,
+            "site_name_available": true,
+            "wordpress_bootstrapped": true
+          },
+          "database": "local",
+          "home": "http://localhost:10039/",
+          "ok": false,
+          "session_valid": true,
+          "site": "http://localhost:10039/",
+          "site_name": "Voelgoed",
+          "target": "vgnova-local-10039",
+          "wp_root": "/home/jcschoeman96/Local Sites/voelgoed-novamira/app/public"
+        },
+        "returncode": 1,
+        "stderr": "",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "stdout": "{\"checks\":{\"lifecycle_registered\":true,\"no_php_diagnostics\":true,\"no_unexpected_output\":false,\"plugin_class_loaded\":true,\"plugin_entrypoint_active\":true,\"runtime_identity\":true,\"session_valid\":true,\"site_name_available\":true,\"wordpress_bootstrapped\":true},\"database\":\"local\",\"home\":\"http://localhost:10039/\",\"ok\":false,\"session_valid\":true,\"site\":\"http://localhost:10039/\",\"site_name\":\"Voelgoed\",\"target\":\"vgnova-local-10039\",\"wp_root\":\"/home/jcschoeman96/Local Sites/voelgoed-novamira/app/public\"}\n",
+        "stdout_sha256": "1e362557f4ac820e567bf2281ebec99a1d2affe0ab2b1940eea56cbd1a77bfa1"
+      },
+      "session": {
+        "mode": "session",
+        "parse_error": null,
+        "parsed": {
+          "checks": {
+            "session_valid": true
+          },
+          "ok": true,
+          "session_valid": true,
+          "target": "vgnova-local-10039",
+          "wp_root": "/home/jcschoeman96/Local Sites/voelgoed-novamira/app/public"
+        },
+        "returncode": 0,
+        "stderr": "",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "stdout": "{\"checks\":{\"session_valid\":true},\"ok\":true,\"session_valid\":true,\"target\":\"vgnova-local-10039\",\"wp_root\":\"/home/jcschoeman96/Local Sites/voelgoed-novamira/app/public\"}\n",
+        "stdout_sha256": "cc9ed387b025e232c95bf62d3cfaa8cb338402168309f1420266cb08f809e320"
+      }
+    },
+    "kind": "Post-attempt read-only diagnostic; not part of the original v1.3.0 activation attempt.",
+    "post_diagnostic_state": {
+      "deployment_state_delta": "NO",
+      "deployment_state_root_exists": false,
+      "pe008_status": {
+        "in_progress": false,
+        "recovery_options": []
+      },
+      "protected_state_delta": "NO",
+      "runtime_fingerprint": {
+        "content_sha256": "a2635dafeb1d82d481b6275526c3850263f549facac80293c810d2b0d93de760",
+        "file_count": 54,
+        "pe008_tree_sha256": "856a3e5978559bfb2572b4b1ff4b34df916743f9e72d6b18220ee64e98af5f56"
+      },
+      "runtime_tree_delta": "NO"
+    },
+    "purpose": "Diagnose blocked PE-008 health preflight without mutation",
+    "secret_redactions": "NONE",
+    "socket": {
+      "active_unix_socket": true,
+      "device": 66306,
+      "inode": 106434737,
+      "mode": "0777",
+      "path": "/home/jcschoeman96/.config/Local/run/nAZNpFs99/mysql/mysqld.sock",
+      "uid": 1000
+    },
+    "wrapper_returncode": 0,
+    "wrapper_stderr": "",
+    "wrapper_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "post_diagnostic_snapshot_comparison": {
+    "active_platform_core_fingerprint": {
+      "post_diagnostic": {
+        "content_sha256": "a2635dafeb1d82d481b6275526c3850263f549facac80293c810d2b0d93de760",
+        "file_count": 54,
+        "pe008_tree_sha256": "856a3e5978559bfb2572b4b1ff4b34df916743f9e72d6b18220ee64e98af5f56"
+      },
+      "pre_diagnostic": {
+        "content_sha256": "a2635dafeb1d82d481b6275526c3850263f549facac80293c810d2b0d93de760",
+        "file_count": 54,
+        "pe008_tree_sha256": "856a3e5978559bfb2572b4b1ff4b34df916743f9e72d6b18220ee64e98af5f56"
+      },
+      "unchanged": true
+    },
+    "after_diagnostic_snapshot_at_utc": "2026-10-30 10:43:31 UTC",
+    "before_diagnostic_snapshot_at_utc": "2026-10-30 10:37:29 UTC",
+    "changed_categories": [],
+    "result": "PASS"
+  },
+  "pre_diagnostic_boundary": {
+    "activation_branch": "ops/simple-person-relationship-runtime-activation-v1-3",
+    "activation_worktree_clean": true,
+    "activation_worktree_head": "8645072cbf4901df6377486b97ddbe12df08ae2e",
+    "active_platform_core_fingerprint": {
+      "content_sha256": "a2635dafeb1d82d481b6275526c3850263f549facac80293c810d2b0d93de760",
+      "file_count": 54,
+      "pe008_tree_sha256": "856a3e5978559bfb2572b4b1ff4b34df916743f9e72d6b18220ee64e98af5f56"
+    },
+    "deployment_state_root_exists": false,
+    "fresh_socket": {
+      "active_unix_socket": true,
+      "device": 66306,
+      "inode": 106434737,
+      "mode": "0777",
+      "path": "/home/jcschoeman96/.config/Local/run/nAZNpFs99/mysql/mysqld.sock",
+      "uid": 1000
+    },
+    "origin_main_sha": "06ec482445ca4065b49e745d2164308c5548ce59",
+    "pe008_status": {
+      "in_progress": false,
+      "recovery_options": []
+    }
+  },
+  "predeploy_runtime_fingerprint": {
+    "content_sha256": "a2635dafeb1d82d481b6275526c3850263f549facac80293c810d2b0d93de760",
+    "directories": "16x0755",
+    "file_count": 54,
+    "file_modes": "53x0644,1x0755",
+    "owner_group": "1000:1000",
+    "pe008_tree_sha256": "856a3e5978559bfb2572b4b1ff4b34df916743f9e72d6b18220ee64e98af5f56",
+    "preflight_before_after_equal": true
+  },
+  "protected_post_diagnostic_snapshot": {
+    "captured_at_utc": "2026-10-30 10:43:31 UTC",
+    "data": {
+      "bricks_owned_meta": {
+        "rows": 338,
+        "sha256": "2eedb823dbed8b98a29f7b0b1c955079764676ba4135f3d9282d0b738da81099"
+      },
+      "content_topic": {
+        "relationships": {
+          "rows": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "terms": {
+          "rows": 55,
+          "sha256": "80a691317e8c3d78dfe72e73136729f74283ac19e92befc561274496415a5d06"
+        }
+      },
+      "dirty_markers": {
+        "rows": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "governed_relationship_meta": {
+        "keys": [
+          "primary_author",
+          "additional_authors",
+          "expert_contributors",
+          "reviewed_by",
+          "lead_instructor",
+          "additional_instructors",
+          "experts",
+          "_primary_author",
+          "_additional_authors",
+          "_expert_contributors",
+          "_reviewed_by",
+          "_lead_instructor",
+          "_additional_instructors",
+          "_experts"
+        ],
+        "rows": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "person_relationship_index": {
+        "schema": {
+          "exists": false
+        },
+        "schema_option_rows": {
+          "rows": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "schema_option_value": null,
+        "table": "wp_vg_person_relationship_index"
+      },
+      "pmpro_membership_history_tables": {
+        "wp_pmpro_discount_codes": {
+          "exists": true,
+          "rows": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "wp_pmpro_discount_codes_levels": {
+          "exists": true,
+          "rows": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "wp_pmpro_discount_codes_uses": {
+          "exists": true,
+          "rows": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "wp_pmpro_email_log": {
+          "exists": true,
+          "rows": 7,
+          "sha256": "620f481dc5ee321e2b15d51c2181e88b9678a31611c6e7ec92a3ed230b35b2e4"
+        },
+        "wp_pmpro_groups": {
+          "exists": true,
+          "rows": 3,
+          "sha256": "732a020fb7ac247799b7427821ddee1440575a3c1a7bf3820673cb9fa5f076b4"
+        },
+        "wp_pmpro_membership_levelmeta": {
+          "exists": true,
+          "rows": 63,
+          "sha256": "d732f2fa274ad2ccb4b3adf11cb3d6546b8a21f9ca796fbdfc4d47b45a5c3e03"
+        },
+        "wp_pmpro_membership_levels": {
+          "exists": true,
+          "rows": 7,
+          "sha256": "99681cb106fe13360d42b9dbb6558cf13abf6de11cc81cac5c2367381d4aab22"
+        },
+        "wp_pmpro_membership_levels_groups": {
+          "exists": true,
+          "rows": 7,
+          "sha256": "123f881783b5243a7c86cd42d3bd2fe9fc80f9881c74fb524880c1ad01971071"
+        },
+        "wp_pmpro_membership_ordermeta": {
+          "exists": true,
+          "rows": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "wp_pmpro_membership_orders": {
+          "exists": true,
+          "rows": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "wp_pmpro_memberships_categories": {
+          "exists": true,
+          "rows": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "wp_pmpro_memberships_pages": {
+          "exists": true,
+          "rows": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "wp_pmpro_memberships_users": {
+          "exists": true,
+          "rows": 18,
+          "sha256": "28d566fc111c36ded28d0916fa35e2ff008c66d918349c5e063aa1324bab0c25"
+        },
+        "wp_pmpro_subscriptionmeta": {
+          "exists": true,
+          "rows": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "wp_pmpro_subscriptions": {
+          "exists": true,
+          "rows": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      },
+      "protected_posts": {
+        "event_participation": {
+          "meta": {
+            "rows": 0,
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          "posts": {
+            "rows": 0,
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          "status_counts": {}
+        },
+        "mto-course": {
+          "meta": {
+            "rows": 49,
+            "sha256": "e21e78614c52fcbde4c0815affbdd6a793a227a5fa8bc9d6f4c4d5b285e59b44"
+          },
+          "posts": {
+            "rows": 6,
+            "sha256": "1eb3967812dadf5528fe624e42d1d23b23fd41bcf0df61a3f294825ae8babd5e"
+          },
+          "status_counts": {
+            "draft": 1,
+            "publish": 5
+          }
+        },
+        "person": {
+          "meta": {
+            "rows": 1,
+            "sha256": "c15afcce6572c48df550ec1741bcf42f5256c60daf4bbb675f60862ce9ea3cc5"
+          },
+          "posts": {
+            "rows": 1,
+            "sha256": "0706df8c13aeaf92519568f5a02543d12b6197b9216b245beb5c68a6d9e48e38"
+          },
+          "status_counts": {
+            "publish": 1
+          }
+        },
+        "post": {
+          "meta": {
+            "rows": 4,
+            "sha256": "5c2974d0be109c1fc2dc83d0a28ab8733f8fa6e70a24d731525d372be93c42d6"
+          },
+          "posts": {
+            "rows": 1,
+            "sha256": "aa75b0b3b784d6935e72dff180f5faefcc3ec01b937fab4f4c6020d50f897754"
+          },
+          "status_counts": {
+            "publish": 1
+          }
+        },
+        "product": {
+          "meta": {
+            "rows": 589,
+            "sha256": "81db0581c01bb5ceebc97b7a343e6f5501cf89dd05b22a868a81b002e7a85ab1"
+          },
+          "posts": {
+            "rows": 20,
+            "sha256": "20a7c323196d0fba7127be13eb537bfca9de88111bce34c0ce12a743aeb6152f"
+          },
+          "status_counts": {
+            "draft": 7,
+            "private": 1,
+            "publish": 9,
+            "trash": 3
+          }
+        },
+        "product_contribution": {
+          "meta": {
+            "rows": 0,
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          "posts": {
+            "rows": 0,
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          "status_counts": {}
+        },
+        "shop_order": {
+          "meta": {
+            "rows": 0,
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          "posts": {
+            "rows": 0,
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          "status_counts": {}
+        },
+        "shop_order_refund": {
+          "meta": {
+            "rows": 0,
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          "posts": {
+            "rows": 0,
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          "status_counts": {}
+        },
+        "shop_subscription": {
+          "meta": {
+            "rows": 0,
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          "posts": {
+            "rows": 0,
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          "status_counts": {}
+        },
+        "tc_events": {
+          "meta": {
+            "rows": 175,
+            "sha256": "fb960b1415c29dabc6a292db63d3ff34b96d90b7961c127874ed75e762d6f361"
+          },
+          "posts": {
+            "rows": 17,
+            "sha256": "baf33ca66074b29f1db905c9601ec68b04e77b859fa679406c376002aa12ae7a"
+          },
+          "status_counts": {
+            "publish": 17
+          }
+        }
+      },
+      "target": {
+        "database_host": "localhost",
+        "database_name": "local",
+        "home": "http://localhost:10039/",
+        "siteurl": "http://localhost:10039/",
+        "table_prefix": "wp_"
+      },
+      "woo_order_subscription_tables": {
+        "wp_wc_order_addresses": {
+          "exists": true,
+          "rows": 16,
+          "sha256": "9d0c50eba4b1975ce435f76b40a6bfc938c485e9c2b4ddbe41461d2e1c9147b8"
+        },
+        "wp_wc_order_coupon_lookup": {
+          "exists": true,
+          "rows": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "wp_wc_order_operational_data": {
+          "exists": true,
+          "rows": 16,
+          "sha256": "4e65132a4c72b5b8f62b72990480377443c9af35f73d6ed70541edaa8b8c503b"
+        },
+        "wp_wc_order_product_lookup": {
+          "exists": true,
+          "rows": 18,
+          "sha256": "608ea31bbc4672165c7b56e1396dfcc0fb6b58693b20494e8753cd20ac398d09"
+        },
+        "wp_wc_order_stats": {
+          "exists": true,
+          "rows": 13,
+          "sha256": "3bcda034df88175ffaf009532e4733904c344086b3025038d38e9f4c5440fac2"
+        },
+        "wp_wc_order_tax_lookup": {
+          "exists": true,
+          "rows": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "wp_wc_orders": {
+          "exists": true,
+          "rows": 16,
+          "sha256": "aaf44a38bf52a783126f2b5bcee132dd204a2d48c0e7df8822146af0bad45fd4"
+        },
+        "wp_wc_orders_meta": {
+          "exists": true,
+          "rows": 113,
+          "sha256": "d602185df299b3b64745b15c736b93995cc4c7b861d22221ed1498bc78398a53"
+        },
+        "wp_woocommerce_order_itemmeta": {
+          "exists": true,
+          "rows": 401,
+          "sha256": "e0bfbd7b72097b5d6809700d357eec06c1048fcc21ed74fe024403edd2a0cf2e"
+        },
+        "wp_woocommerce_order_items": {
+          "exists": true,
+          "rows": 29,
+          "sha256": "08f0c2b3fd9587e5fdcb7e06848eb156573dbecd2490c5d6912c6f0f933ba66b"
+        },
+        "wp_woocommerce_subscription_downloads": {
+          "exists": true,
+          "rows": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    }
+  },
+  "protected_post_snapshot": {
+    "captured_at_utc": "2026-10-30 10:37:29 UTC",
+    "data": {
+      "bricks_owned_meta": {
+        "rows": 338,
+        "sha256": "2eedb823dbed8b98a29f7b0b1c955079764676ba4135f3d9282d0b738da81099"
+      },
+      "content_topic": {
+        "relationships": {
+          "rows": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "terms": {
+          "rows": 55,
+          "sha256": "80a691317e8c3d78dfe72e73136729f74283ac19e92befc561274496415a5d06"
+        }
+      },
+      "dirty_markers": {
+        "rows": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "governed_relationship_meta": {
+        "keys": [
+          "primary_author",
+          "additional_authors",
+          "expert_contributors",
+          "reviewed_by",
+          "lead_instructor",
+          "additional_instructors",
+          "experts",
+          "_primary_author",
+          "_additional_authors",
+          "_expert_contributors",
+          "_reviewed_by",
+          "_lead_instructor",
+          "_additional_instructors",
+          "_experts"
+        ],
+        "rows": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "person_relationship_index": {
+        "schema": {
+          "exists": false
+        },
+        "schema_option_rows": {
+          "rows": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "schema_option_value": null,
+        "table": "wp_vg_person_relationship_index"
+      },
+      "pmpro_membership_history_tables": {
+        "wp_pmpro_discount_codes": {
+          "exists": true,
+          "rows": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "wp_pmpro_discount_codes_levels": {
+          "exists": true,
+          "rows": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "wp_pmpro_discount_codes_uses": {
+          "exists": true,
+          "rows": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "wp_pmpro_email_log": {
+          "exists": true,
+          "rows": 7,
+          "sha256": "620f481dc5ee321e2b15d51c2181e88b9678a31611c6e7ec92a3ed230b35b2e4"
+        },
+        "wp_pmpro_groups": {
+          "exists": true,
+          "rows": 3,
+          "sha256": "732a020fb7ac247799b7427821ddee1440575a3c1a7bf3820673cb9fa5f076b4"
+        },
+        "wp_pmpro_membership_levelmeta": {
+          "exists": true,
+          "rows": 63,
+          "sha256": "d732f2fa274ad2ccb4b3adf11cb3d6546b8a21f9ca796fbdfc4d47b45a5c3e03"
+        },
+        "wp_pmpro_membership_levels": {
+          "exists": true,
+          "rows": 7,
+          "sha256": "99681cb106fe13360d42b9dbb6558cf13abf6de11cc81cac5c2367381d4aab22"
+        },
+        "wp_pmpro_membership_levels_groups": {
+          "exists": true,
+          "rows": 7,
+          "sha256": "123f881783b5243a7c86cd42d3bd2fe9fc80f9881c74fb524880c1ad01971071"
+        },
+        "wp_pmpro_membership_ordermeta": {
+          "exists": true,
+          "rows": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "wp_pmpro_membership_orders": {
+          "exists": true,
+          "rows": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "wp_pmpro_memberships_categories": {
+          "exists": true,
+          "rows": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "wp_pmpro_memberships_pages": {
+          "exists": true,
+          "rows": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "wp_pmpro_memberships_users": {
+          "exists": true,
+          "rows": 18,
+          "sha256": "28d566fc111c36ded28d0916fa35e2ff008c66d918349c5e063aa1324bab0c25"
+        },
+        "wp_pmpro_subscriptionmeta": {
+          "exists": true,
+          "rows": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "wp_pmpro_subscriptions": {
+          "exists": true,
+          "rows": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      },
+      "protected_posts": {
+        "event_participation": {
+          "meta": {
+            "rows": 0,
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          "posts": {
+            "rows": 0,
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          "status_counts": {}
+        },
+        "mto-course": {
+          "meta": {
+            "rows": 49,
+            "sha256": "e21e78614c52fcbde4c0815affbdd6a793a227a5fa8bc9d6f4c4d5b285e59b44"
+          },
+          "posts": {
+            "rows": 6,
+            "sha256": "1eb3967812dadf5528fe624e42d1d23b23fd41bcf0df61a3f294825ae8babd5e"
+          },
+          "status_counts": {
+            "draft": 1,
+            "publish": 5
+          }
+        },
+        "person": {
+          "meta": {
+            "rows": 1,
+            "sha256": "c15afcce6572c48df550ec1741bcf42f5256c60daf4bbb675f60862ce9ea3cc5"
+          },
+          "posts": {
+            "rows": 1,
+            "sha256": "0706df8c13aeaf92519568f5a02543d12b6197b9216b245beb5c68a6d9e48e38"
+          },
+          "status_counts": {
+            "publish": 1
+          }
+        },
+        "post": {
+          "meta": {
+            "rows": 4,
+            "sha256": "5c2974d0be109c1fc2dc83d0a28ab8733f8fa6e70a24d731525d372be93c42d6"
+          },
+          "posts": {
+            "rows": 1,
+            "sha256": "aa75b0b3b784d6935e72dff180f5faefcc3ec01b937fab4f4c6020d50f897754"
+          },
+          "status_counts": {
+            "publish": 1
+          }
+        },
+        "product": {
+          "meta": {
+            "rows": 589,
+            "sha256": "81db0581c01bb5ceebc97b7a343e6f5501cf89dd05b22a868a81b002e7a85ab1"
+          },
+          "posts": {
+            "rows": 20,
+            "sha256": "20a7c323196d0fba7127be13eb537bfca9de88111bce34c0ce12a743aeb6152f"
+          },
+          "status_counts": {
+            "draft": 7,
+            "private": 1,
+            "publish": 9,
+            "trash": 3
+          }
+        },
+        "product_contribution": {
+          "meta": {
+            "rows": 0,
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          "posts": {
+            "rows": 0,
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          "status_counts": {}
+        },
+        "shop_order": {
+          "meta": {
+            "rows": 0,
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          "posts": {
+            "rows": 0,
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          "status_counts": {}
+        },
+        "shop_order_refund": {
+          "meta": {
+            "rows": 0,
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          "posts": {
+            "rows": 0,
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          "status_counts": {}
+        },
+        "shop_subscription": {
+          "meta": {
+            "rows": 0,
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          "posts": {
+            "rows": 0,
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          "status_counts": {}
+        },
+        "tc_events": {
+          "meta": {
+            "rows": 175,
+            "sha256": "fb960b1415c29dabc6a292db63d3ff34b96d90b7961c127874ed75e762d6f361"
+          },
+          "posts": {
+            "rows": 17,
+            "sha256": "baf33ca66074b29f1db905c9601ec68b04e77b859fa679406c376002aa12ae7a"
+          },
+          "status_counts": {
+            "publish": 17
+          }
+        }
+      },
+      "target": {
+        "database_host": "localhost",
+        "database_name": "local",
+        "home": "http://localhost:10039/",
+        "siteurl": "http://localhost:10039/",
+        "table_prefix": "wp_"
+      },
+      "woo_order_subscription_tables": {
+        "wp_wc_order_addresses": {
+          "exists": true,
+          "rows": 16,
+          "sha256": "9d0c50eba4b1975ce435f76b40a6bfc938c485e9c2b4ddbe41461d2e1c9147b8"
+        },
+        "wp_wc_order_coupon_lookup": {
+          "exists": true,
+          "rows": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "wp_wc_order_operational_data": {
+          "exists": true,
+          "rows": 16,
+          "sha256": "4e65132a4c72b5b8f62b72990480377443c9af35f73d6ed70541edaa8b8c503b"
+        },
+        "wp_wc_order_product_lookup": {
+          "exists": true,
+          "rows": 18,
+          "sha256": "608ea31bbc4672165c7b56e1396dfcc0fb6b58693b20494e8753cd20ac398d09"
+        },
+        "wp_wc_order_stats": {
+          "exists": true,
+          "rows": 13,
+          "sha256": "3bcda034df88175ffaf009532e4733904c344086b3025038d38e9f4c5440fac2"
+        },
+        "wp_wc_order_tax_lookup": {
+          "exists": true,
+          "rows": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "wp_wc_orders": {
+          "exists": true,
+          "rows": 16,
+          "sha256": "aaf44a38bf52a783126f2b5bcee132dd204a2d48c0e7df8822146af0bad45fd4"
+        },
+        "wp_wc_orders_meta": {
+          "exists": true,
+          "rows": 113,
+          "sha256": "d602185df299b3b64745b15c736b93995cc4c7b861d22221ed1498bc78398a53"
+        },
+        "wp_woocommerce_order_itemmeta": {
+          "exists": true,
+          "rows": 401,
+          "sha256": "e0bfbd7b72097b5d6809700d357eec06c1048fcc21ed74fe024403edd2a0cf2e"
+        },
+        "wp_woocommerce_order_items": {
+          "exists": true,
+          "rows": 29,
+          "sha256": "08f0c2b3fd9587e5fdcb7e06848eb156573dbecd2490c5d6912c6f0f933ba66b"
+        },
+        "wp_woocommerce_subscription_downloads": {
+          "exists": true,
+          "rows": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    }
+  },
+  "protected_pre_post_comparison": {
+    "active_platform_core_fingerprint": {
+      "post_snapshot_pre_diagnostic": {
+        "content_sha256": "a2635dafeb1d82d481b6275526c3850263f549facac80293c810d2b0d93de760",
+        "file_count": 54,
+        "pe008_tree_sha256": "856a3e5978559bfb2572b4b1ff4b34df916743f9e72d6b18220ee64e98af5f56"
+      },
+      "pre_snapshot_baseline": {
+        "content_sha256": "a2635dafeb1d82d481b6275526c3850263f549facac80293c810d2b0d93de760",
+        "file_count": 54,
+        "pe008_tree_sha256": "856a3e5978559bfb2572b4b1ff4b34df916743f9e72d6b18220ee64e98af5f56"
+      },
+      "unchanged": true
+    },
+    "changed_categories": [],
+    "post_captured_at_utc": "2026-10-30 10:37:29 UTC",
+    "pre_captured_at_utc": "2026-10-30 10:14:40 UTC",
+    "result": "PASS"
+  },
+  "protected_pre_snapshot": {
+    "captured_at_utc": "2026-10-30 10:14:40 UTC",
+    "data": {
+      "bricks_owned_meta": {
+        "rows": 338,
+        "sha256": "2eedb823dbed8b98a29f7b0b1c955079764676ba4135f3d9282d0b738da81099"
+      },
+      "content_topic": {
+        "relationships": {
+          "rows": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "terms": {
+          "rows": 55,
+          "sha256": "80a691317e8c3d78dfe72e73136729f74283ac19e92befc561274496415a5d06"
+        }
+      },
+      "dirty_markers": {
+        "rows": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "governed_relationship_meta": {
+        "keys": [
+          "primary_author",
+          "additional_authors",
+          "expert_contributors",
+          "reviewed_by",
+          "lead_instructor",
+          "additional_instructors",
+          "experts",
+          "_primary_author",
+          "_additional_authors",
+          "_expert_contributors",
+          "_reviewed_by",
+          "_lead_instructor",
+          "_additional_instructors",
+          "_experts"
+        ],
+        "rows": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "person_relationship_index": {
+        "schema": {
+          "exists": false
+        },
+        "schema_option_rows": {
+          "rows": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "schema_option_value": null,
+        "table": "wp_vg_person_relationship_index"
+      },
+      "pmpro_membership_history_tables": {
+        "wp_pmpro_discount_codes": {
+          "exists": true,
+          "rows": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "wp_pmpro_discount_codes_levels": {
+          "exists": true,
+          "rows": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "wp_pmpro_discount_codes_uses": {
+          "exists": true,
+          "rows": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "wp_pmpro_email_log": {
+          "exists": true,
+          "rows": 7,
+          "sha256": "620f481dc5ee321e2b15d51c2181e88b9678a31611c6e7ec92a3ed230b35b2e4"
+        },
+        "wp_pmpro_groups": {
+          "exists": true,
+          "rows": 3,
+          "sha256": "732a020fb7ac247799b7427821ddee1440575a3c1a7bf3820673cb9fa5f076b4"
+        },
+        "wp_pmpro_membership_levelmeta": {
+          "exists": true,
+          "rows": 63,
+          "sha256": "d732f2fa274ad2ccb4b3adf11cb3d6546b8a21f9ca796fbdfc4d47b45a5c3e03"
+        },
+        "wp_pmpro_membership_levels": {
+          "exists": true,
+          "rows": 7,
+          "sha256": "99681cb106fe13360d42b9dbb6558cf13abf6de11cc81cac5c2367381d4aab22"
+        },
+        "wp_pmpro_membership_levels_groups": {
+          "exists": true,
+          "rows": 7,
+          "sha256": "123f881783b5243a7c86cd42d3bd2fe9fc80f9881c74fb524880c1ad01971071"
+        },
+        "wp_pmpro_membership_ordermeta": {
+          "exists": true,
+          "rows": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "wp_pmpro_membership_orders": {
+          "exists": true,
+          "rows": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "wp_pmpro_memberships_categories": {
+          "exists": true,
+          "rows": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "wp_pmpro_memberships_pages": {
+          "exists": true,
+          "rows": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "wp_pmpro_memberships_users": {
+          "exists": true,
+          "rows": 18,
+          "sha256": "28d566fc111c36ded28d0916fa35e2ff008c66d918349c5e063aa1324bab0c25"
+        },
+        "wp_pmpro_subscriptionmeta": {
+          "exists": true,
+          "rows": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "wp_pmpro_subscriptions": {
+          "exists": true,
+          "rows": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      },
+      "protected_posts": {
+        "event_participation": {
+          "meta": {
+            "rows": 0,
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          "posts": {
+            "rows": 0,
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          "status_counts": {}
+        },
+        "mto-course": {
+          "meta": {
+            "rows": 49,
+            "sha256": "e21e78614c52fcbde4c0815affbdd6a793a227a5fa8bc9d6f4c4d5b285e59b44"
+          },
+          "posts": {
+            "rows": 6,
+            "sha256": "1eb3967812dadf5528fe624e42d1d23b23fd41bcf0df61a3f294825ae8babd5e"
+          },
+          "status_counts": {
+            "draft": 1,
+            "publish": 5
+          }
+        },
+        "person": {
+          "meta": {
+            "rows": 1,
+            "sha256": "c15afcce6572c48df550ec1741bcf42f5256c60daf4bbb675f60862ce9ea3cc5"
+          },
+          "posts": {
+            "rows": 1,
+            "sha256": "0706df8c13aeaf92519568f5a02543d12b6197b9216b245beb5c68a6d9e48e38"
+          },
+          "status_counts": {
+            "publish": 1
+          }
+        },
+        "post": {
+          "meta": {
+            "rows": 4,
+            "sha256": "5c2974d0be109c1fc2dc83d0a28ab8733f8fa6e70a24d731525d372be93c42d6"
+          },
+          "posts": {
+            "rows": 1,
+            "sha256": "aa75b0b3b784d6935e72dff180f5faefcc3ec01b937fab4f4c6020d50f897754"
+          },
+          "status_counts": {
+            "publish": 1
+          }
+        },
+        "product": {
+          "meta": {
+            "rows": 589,
+            "sha256": "81db0581c01bb5ceebc97b7a343e6f5501cf89dd05b22a868a81b002e7a85ab1"
+          },
+          "posts": {
+            "rows": 20,
+            "sha256": "20a7c323196d0fba7127be13eb537bfca9de88111bce34c0ce12a743aeb6152f"
+          },
+          "status_counts": {
+            "draft": 7,
+            "private": 1,
+            "publish": 9,
+            "trash": 3
+          }
+        },
+        "product_contribution": {
+          "meta": {
+            "rows": 0,
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          "posts": {
+            "rows": 0,
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          "status_counts": {}
+        },
+        "shop_order": {
+          "meta": {
+            "rows": 0,
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          "posts": {
+            "rows": 0,
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          "status_counts": {}
+        },
+        "shop_order_refund": {
+          "meta": {
+            "rows": 0,
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          "posts": {
+            "rows": 0,
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          "status_counts": {}
+        },
+        "shop_subscription": {
+          "meta": {
+            "rows": 0,
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          "posts": {
+            "rows": 0,
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          "status_counts": {}
+        },
+        "tc_events": {
+          "meta": {
+            "rows": 175,
+            "sha256": "fb960b1415c29dabc6a292db63d3ff34b96d90b7961c127874ed75e762d6f361"
+          },
+          "posts": {
+            "rows": 17,
+            "sha256": "baf33ca66074b29f1db905c9601ec68b04e77b859fa679406c376002aa12ae7a"
+          },
+          "status_counts": {
+            "publish": 17
+          }
+        }
+      },
+      "target": {
+        "database_host": "localhost",
+        "database_name": "local",
+        "home": "http://localhost:10039/",
+        "siteurl": "http://localhost:10039/",
+        "table_prefix": "wp_"
+      },
+      "woo_order_subscription_tables": {
+        "wp_wc_order_addresses": {
+          "exists": true,
+          "rows": 16,
+          "sha256": "9d0c50eba4b1975ce435f76b40a6bfc938c485e9c2b4ddbe41461d2e1c9147b8"
+        },
+        "wp_wc_order_coupon_lookup": {
+          "exists": true,
+          "rows": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "wp_wc_order_operational_data": {
+          "exists": true,
+          "rows": 16,
+          "sha256": "4e65132a4c72b5b8f62b72990480377443c9af35f73d6ed70541edaa8b8c503b"
+        },
+        "wp_wc_order_product_lookup": {
+          "exists": true,
+          "rows": 18,
+          "sha256": "608ea31bbc4672165c7b56e1396dfcc0fb6b58693b20494e8753cd20ac398d09"
+        },
+        "wp_wc_order_stats": {
+          "exists": true,
+          "rows": 13,
+          "sha256": "3bcda034df88175ffaf009532e4733904c344086b3025038d38e9f4c5440fac2"
+        },
+        "wp_wc_order_tax_lookup": {
+          "exists": true,
+          "rows": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "wp_wc_orders": {
+          "exists": true,
+          "rows": 16,
+          "sha256": "aaf44a38bf52a783126f2b5bcee132dd204a2d48c0e7df8822146af0bad45fd4"
+        },
+        "wp_wc_orders_meta": {
+          "exists": true,
+          "rows": 113,
+          "sha256": "d602185df299b3b64745b15c736b93995cc4c7b861d22221ed1498bc78398a53"
+        },
+        "wp_woocommerce_order_itemmeta": {
+          "exists": true,
+          "rows": 401,
+          "sha256": "e0bfbd7b72097b5d6809700d357eec06c1048fcc21ed74fe024403edd2a0cf2e"
+        },
+        "wp_woocommerce_order_items": {
+          "exists": true,
+          "rows": 29,
+          "sha256": "08f0c2b3fd9587e5fdcb7e06848eb156573dbecd2490c5d6912c6f0f933ba66b"
+        },
+        "wp_woocommerce_subscription_downloads": {
+          "exists": true,
+          "rows": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    }
+  },
+  "required_status": {
+    "ACF_RUNTIME_JSON_PARITY_WITH_ACTIVATION_SHA": "PASS",
+    "ACF_RUNTIME_SOURCE_SHA": "5a3bc4fc89fa61ae8916aa460989f1e8912b473d",
+    "ACTIVATION_SOURCE_SHA": "06ec482445ca4065b49e745d2164308c5548ce59",
+    "ARTICLE_ACF_GROUP": "NOT_RUN",
+    "BRICKS_MUTATIONS": "0",
+    "COURSE_ACF_GROUP": "NOT_RUN",
+    "COURSE_COMMERCE_MUTATIONS": "0",
+    "DIAGNOSTIC_DEPLOYMENT_STATE_DELTA": "NO",
+    "DIAGNOSTIC_PROTECTED_STATE_DELTA": "NO",
+    "DIAGNOSTIC_RUNTIME_TREE_DELTA": "NO",
+    "GOVERNED_META_PREEXISTING": "0",
+    "INDEX_REBUILD": "NOT_RUN",
+    "INDEX_RECONCILIATION": "NOT_RUN",
+    "INDEX_ROWS_AFTER_REBUILD": "NOT_RUN",
+    "INDEX_SCHEMA": "NOT_RUN",
+    "INDEX_SETUP_IDEMPOTENT": "NOT_RUN",
+    "MEMBERSHIP_MUTATIONS": "0",
+    "NEW_DIRTY_SOURCES": "NOT_RUN",
+    "PE008_DB_TRANSPORT_FIX_MERGE_SHA": "06ec482445ca4065b49e745d2164308c5548ce59",
+    "PE008_DB_TRANSPORT_SOURCE_FIX": "MERGED",
+    "PE008_HEALTH_PREFLIGHT": "BLOCKED",
+    "PE008_PREFLIGHT_DEPLOYMENT_STATE_DELTA": "NO",
+    "PE008_PREFLIGHT_RUNTIME_TREE_DELTA": "NO",
+    "PE008_SESSION_PREFLIGHT": "PASS",
+    "PE008_SOCKET_TRANSPORT_PREFLIGHT": "BLOCKED",
+    "PERSON_SCHEMA_AUTO_INSTALL": "BLOCKED_NOT_TESTED",
+    "PLACEHOLDER_QA": "NOT_STARTED",
+    "PLATFORM_CORE_DEPLOYMENT": "BLOCKED",
+    "PLATFORM_CORE_RUNTIME_PARITY": "NOT_RUN",
+    "POST_ATTEMPT_READ_ONLY_DIAGNOSTIC": "COMPLETE",
+    "PREVIOUS_ATTEMPT_V1_0_0": "BLOCKED_ACF_SOURCE_GATE",
+    "PREVIOUS_ATTEMPT_V1_1_0": "BLOCKED_RUNTIME_PERMISSION_PROVENANCE",
+    "PREVIOUS_ATTEMPT_V1_2_0": "BLOCKED_PE008_DB_TRANSPORT_HEALTH",
+    "PRE_DEPLOY_RUNTIME_PE008_TREE_SHA256": "856a3e5978559bfb2572b4b1ff4b34df916743f9e72d6b18220ee64e98af5f56",
+    "PROTECTED_POST_SNAPSHOT": "PASS",
+    "PROTECTED_PRE_POST_COMPARISON": "PASS",
+    "REAL_GOLDEN_JOURNEY_DATA": "NOT_STARTED",
+    "REAL_RELATIONSHIP_ASSIGNMENTS": "0",
+    "REPRESENTATIVE_DATA_MUTATIONS": "0",
+    "REQUEST_READ_WINDOW_CONSISTENCY": "NOT_REQUIRED",
+    "RUNTIME_ACTIVATION": "BLOCKED",
+    "RUNTIME_SYMLINK_SWITCH": "NOT_REQUIRED",
+    "OUTPUT_CAPTURE_DETERMINISTIC": "YES",
+    "OUTPUT_SOURCE": "PROVEN",
+    "OUTPUT_DIAGNOSTIC_DEPLOYMENT_STATE_DELTA": "NO",
+    "OUTPUT_DIAGNOSTIC_RUNTIME_TREE_DELTA": "NO",
+    "OUTPUT_DIAGNOSTIC_PROTECTED_STATE_DELTA": "NO",
+    "PROTECTED_POST_OUTPUT_DIAGNOSTIC_SNAPSHOT": "PASS",
+    "PROTECTED_POST_OUTPUT_DIAGNOSTIC_COMPARISON": "PASS"
+  },
+  "socket": {
+    "active_unix_socket": true,
+    "device": 66306,
+    "inode": 106434737,
+    "mode": "0777",
+    "rediscovered_immediately_before_preflight": true,
+    "selected": "/home/jcschoeman96/.config/Local/run/nAZNpFs99/mysql/mysqld.sock",
+    "stale_socket_active": false,
+    "stale_socket_seen_earlier": "/home/jcschoeman96/.config/Local/run/KHpXkBuV8/mysql/mysqld.sock",
+    "uid": 1000
+  },
+  "source": {
+    "activation_source_sha": "06ec482445ca4065b49e745d2164308c5548ce59",
+    "approved_parent_2": "cc52a154e2c16271ad13dda00b6743a24327559a",
+    "branch": "ops/simple-person-relationship-runtime-activation-v1-3",
+    "merge_parent_2": "cc52a154e2c16271ad13dda00b6743a24327559a",
+    "merge_sha": "06ec482445ca4065b49e745d2164308c5548ce59",
+    "origin_main_sha": "06ec482445ca4065b49e745d2164308c5548ce59"
+  },
+  "target": {
+    "id": "vgnova-local-10039",
+    "identity": {
+      "database": "local",
+      "database_host": "localhost",
+      "home": "http://localhost:10039/",
+      "mto_course_exists": true,
+      "person_exists": true,
+      "prefix": "wp_",
+      "site": "http://localhost:10039/"
+    },
+    "php_fpm_version_evidence": "The active Local FPM master used the php-8.5.12+0 binary path and the connected WordPress runtime reported 8.5.12. Direct -v execution failed because libtidy.so.5deb1 was unavailable.",
+    "versions": {
+      "acf_pro": "6.8.1",
+      "cli_php": "8.5.4",
+      "local_php_fpm": "8.5.12",
+      "masteriyo": "3.4.3",
+      "platform_core": "0.1.0",
+      "wordpress": "7.1.4"
+    },
+    "wp_root": "/home/jcschoeman96/Local Sites/voelgoed-novamira/app/public/"
+  },
+  "validation": {
+    "check_source_sh": "PASS",
+    "git_diff_cached_check": "PASS",
+    "git_diff_check": "PASS"
+  },
+  "version": "1.3.0",
+  "protected_post_output_diagnostic_snapshot": {
+    "captured_at_utc": "2026-10-30 11:08:29 UTC",
+    "data": {
+      "target": {
+        "home": "http://localhost:10039/",
+        "siteurl": "http://localhost:10039/",
+        "database_host": "localhost",
+        "database_name": "local",
+        "table_prefix": "wp_"
+      },
+      "protected_posts": {
+        "event_participation": {
+          "posts": {
+            "rows": 0,
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          "meta": {
+            "rows": 0,
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          "status_counts": {}
+        },
+        "mto-course": {
+          "posts": {
+            "rows": 6,
+            "sha256": "1eb3967812dadf5528fe624e42d1d23b23fd41bcf0df61a3f294825ae8babd5e"
+          },
+          "meta": {
+            "rows": 49,
+            "sha256": "e21e78614c52fcbde4c0815affbdd6a793a227a5fa8bc9d6f4c4d5b285e59b44"
+          },
+          "status_counts": {
+            "draft": 1,
+            "publish": 5
+          }
+        },
+        "person": {
+          "posts": {
+            "rows": 1,
+            "sha256": "0706df8c13aeaf92519568f5a02543d12b6197b9216b245beb5c68a6d9e48e38"
+          },
+          "meta": {
+            "rows": 1,
+            "sha256": "c15afcce6572c48df550ec1741bcf42f5256c60daf4bbb675f60862ce9ea3cc5"
+          },
+          "status_counts": {
+            "publish": 1
+          }
+        },
+        "post": {
+          "posts": {
+            "rows": 1,
+            "sha256": "aa75b0b3b784d6935e72dff180f5faefcc3ec01b937fab4f4c6020d50f897754"
+          },
+          "meta": {
+            "rows": 4,
+            "sha256": "5c2974d0be109c1fc2dc83d0a28ab8733f8fa6e70a24d731525d372be93c42d6"
+          },
+          "status_counts": {
+            "publish": 1
+          }
+        },
+        "product": {
+          "posts": {
+            "rows": 20,
+            "sha256": "20a7c323196d0fba7127be13eb537bfca9de88111bce34c0ce12a743aeb6152f"
+          },
+          "meta": {
+            "rows": 589,
+            "sha256": "81db0581c01bb5ceebc97b7a343e6f5501cf89dd05b22a868a81b002e7a85ab1"
+          },
+          "status_counts": {
+            "draft": 7,
+            "private": 1,
+            "publish": 9,
+            "trash": 3
+          }
+        },
+        "product_contribution": {
+          "posts": {
+            "rows": 0,
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          "meta": {
+            "rows": 0,
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          "status_counts": {}
+        },
+        "shop_order": {
+          "posts": {
+            "rows": 0,
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          "meta": {
+            "rows": 0,
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          "status_counts": {}
+        },
+        "shop_order_refund": {
+          "posts": {
+            "rows": 0,
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          "meta": {
+            "rows": 0,
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          "status_counts": {}
+        },
+        "shop_subscription": {
+          "posts": {
+            "rows": 0,
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          "meta": {
+            "rows": 0,
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          "status_counts": {}
+        },
+        "tc_events": {
+          "posts": {
+            "rows": 17,
+            "sha256": "baf33ca66074b29f1db905c9601ec68b04e77b859fa679406c376002aa12ae7a"
+          },
+          "meta": {
+            "rows": 175,
+            "sha256": "fb960b1415c29dabc6a292db63d3ff34b96d90b7961c127874ed75e762d6f361"
+          },
+          "status_counts": {
+            "publish": 17
+          }
+        }
+      },
+      "governed_relationship_meta": {
+        "keys": [
+          "primary_author",
+          "additional_authors",
+          "expert_contributors",
+          "reviewed_by",
+          "lead_instructor",
+          "additional_instructors",
+          "experts",
+          "_primary_author",
+          "_additional_authors",
+          "_expert_contributors",
+          "_reviewed_by",
+          "_lead_instructor",
+          "_additional_instructors",
+          "_experts"
+        ],
+        "rows": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "dirty_markers": {
+        "rows": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "person_relationship_index": {
+        "table": "wp_vg_person_relationship_index",
+        "schema": {
+          "exists": false
+        },
+        "schema_option_rows": {
+          "rows": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "schema_option_value": null
+      },
+      "bricks_owned_meta": {
+        "rows": 338,
+        "sha256": "2eedb823dbed8b98a29f7b0b1c955079764676ba4135f3d9282d0b738da81099"
+      },
+      "content_topic": {
+        "terms": {
+          "rows": 55,
+          "sha256": "80a691317e8c3d78dfe72e73136729f74283ac19e92befc561274496415a5d06"
+        },
+        "relationships": {
+          "rows": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      },
+      "woo_order_subscription_tables": {
+        "wp_wc_order_addresses": {
+          "exists": true,
+          "rows": 16,
+          "sha256": "9d0c50eba4b1975ce435f76b40a6bfc938c485e9c2b4ddbe41461d2e1c9147b8"
+        },
+        "wp_wc_order_coupon_lookup": {
+          "exists": true,
+          "rows": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "wp_wc_order_operational_data": {
+          "exists": true,
+          "rows": 16,
+          "sha256": "4e65132a4c72b5b8f62b72990480377443c9af35f73d6ed70541edaa8b8c503b"
+        },
+        "wp_wc_order_product_lookup": {
+          "exists": true,
+          "rows": 18,
+          "sha256": "608ea31bbc4672165c7b56e1396dfcc0fb6b58693b20494e8753cd20ac398d09"
+        },
+        "wp_wc_order_stats": {
+          "exists": true,
+          "rows": 13,
+          "sha256": "3bcda034df88175ffaf009532e4733904c344086b3025038d38e9f4c5440fac2"
+        },
+        "wp_wc_order_tax_lookup": {
+          "exists": true,
+          "rows": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "wp_wc_orders": {
+          "exists": true,
+          "rows": 16,
+          "sha256": "aaf44a38bf52a783126f2b5bcee132dd204a2d48c0e7df8822146af0bad45fd4"
+        },
+        "wp_wc_orders_meta": {
+          "exists": true,
+          "rows": 113,
+          "sha256": "d602185df299b3b64745b15c736b93995cc4c7b861d22221ed1498bc78398a53"
+        },
+        "wp_woocommerce_order_itemmeta": {
+          "exists": true,
+          "rows": 401,
+          "sha256": "e0bfbd7b72097b5d6809700d357eec06c1048fcc21ed74fe024403edd2a0cf2e"
+        },
+        "wp_woocommerce_order_items": {
+          "exists": true,
+          "rows": 29,
+          "sha256": "08f0c2b3fd9587e5fdcb7e06848eb156573dbecd2490c5d6912c6f0f933ba66b"
+        },
+        "wp_woocommerce_subscription_downloads": {
+          "exists": true,
+          "rows": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      },
+      "pmpro_membership_history_tables": {
+        "wp_pmpro_discount_codes": {
+          "exists": true,
+          "rows": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "wp_pmpro_discount_codes_levels": {
+          "exists": true,
+          "rows": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "wp_pmpro_discount_codes_uses": {
+          "exists": true,
+          "rows": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "wp_pmpro_email_log": {
+          "exists": true,
+          "rows": 7,
+          "sha256": "620f481dc5ee321e2b15d51c2181e88b9678a31611c6e7ec92a3ed230b35b2e4"
+        },
+        "wp_pmpro_groups": {
+          "exists": true,
+          "rows": 3,
+          "sha256": "732a020fb7ac247799b7427821ddee1440575a3c1a7bf3820673cb9fa5f076b4"
+        },
+        "wp_pmpro_membership_levelmeta": {
+          "exists": true,
+          "rows": 63,
+          "sha256": "d732f2fa274ad2ccb4b3adf11cb3d6546b8a21f9ca796fbdfc4d47b45a5c3e03"
+        },
+        "wp_pmpro_membership_levels": {
+          "exists": true,
+          "rows": 7,
+          "sha256": "99681cb106fe13360d42b9dbb6558cf13abf6de11cc81cac5c2367381d4aab22"
+        },
+        "wp_pmpro_membership_levels_groups": {
+          "exists": true,
+          "rows": 7,
+          "sha256": "123f881783b5243a7c86cd42d3bd2fe9fc80f9881c74fb524880c1ad01971071"
+        },
+        "wp_pmpro_membership_ordermeta": {
+          "exists": true,
+          "rows": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "wp_pmpro_membership_orders": {
+          "exists": true,
+          "rows": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "wp_pmpro_memberships_categories": {
+          "exists": true,
+          "rows": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "wp_pmpro_memberships_pages": {
+          "exists": true,
+          "rows": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "wp_pmpro_memberships_users": {
+          "exists": true,
+          "rows": 18,
+          "sha256": "28d566fc111c36ded28d0916fa35e2ff008c66d918349c5e063aa1324bab0c25"
+        },
+        "wp_pmpro_subscriptionmeta": {
+          "exists": true,
+          "rows": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "wp_pmpro_subscriptions": {
+          "exists": true,
+          "rows": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    }
+  },
+  "post_output_diagnostic_snapshot_comparison": {
+    "before_diagnostic_snapshot_at_utc": "2026-10-30 10:43:31 UTC",
+    "after_diagnostic_snapshot_at_utc": "2026-10-30 11:08:29 UTC",
+    "changed_categories": [],
+    "result": "PASS",
+    "active_platform_core_fingerprint": {
+      "pre_output_diagnostic": {
+        "file_count": 54,
+        "content_sha256": "a2635dafeb1d82d481b6275526c3850263f549facac80293c810d2b0d93de760",
+        "pe008_tree_sha256": "856a3e5978559bfb2572b4b1ff4b34df916743f9e72d6b18220ee64e98af5f56"
+      },
+      "post_output_diagnostic": {
+        "file_count": 54,
+        "content_sha256": "a2635dafeb1d82d481b6275526c3850263f549facac80293c810d2b0d93de760",
+        "pe008_tree_sha256": "856a3e5978559bfb2572b4b1ff4b34df916743f9e72d6b18220ee64e98af5f56"
+      },
+      "unchanged": true
+    }
+  },
+  "post_attempt_unexpected_output_root_cause_investigation": {
+    "kind": "Post-attempt read-only root-cause investigation; not part of the original v1.3.0 activation attempt.",
+    "health_return_code": 1,
+    "health_checks": {
+      "lifecycle_registered": true,
+      "no_php_diagnostics": true,
+      "no_unexpected_output": false,
+      "plugin_class_loaded": true,
+      "plugin_entrypoint_active": true,
+      "runtime_identity": true,
+      "session_valid": true,
+      "site_name_available": true,
+      "wordpress_bootstrapped": true
+    },
+    "only_failing_check": "no_unexpected_output",
+    "capture_1": {
+      "php_returncode": 0,
+      "captured_output_byte_length": 1,
+      "captured_output_sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+      "captured_output_hex": "0a",
+      "captured_output_base64": "Cg==",
+      "captured_output_json_escaped": "\"\\n\"",
+      "captured_errors": [],
+      "wordpress_bootstrapped": true,
+      "session_valid": true,
+      "php_stderr": "",
+      "php_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "potential_secret_detected": false,
+      "secret_redactions": "NONE",
+      "mode": "bootstrap-and-session"
+    },
+    "capture_2": {
+      "php_returncode": 0,
+      "captured_output_byte_length": 1,
+      "captured_output_sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+      "captured_output_hex": "0a",
+      "captured_output_base64": "Cg==",
+      "captured_output_json_escaped": "\"\\n\"",
+      "captured_errors": [],
+      "wordpress_bootstrapped": true,
+      "session_valid": true,
+      "php_stderr": "",
+      "php_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "potential_secret_detected": false,
+      "secret_redactions": "NONE",
+      "mode": "bootstrap-session-and-included-files"
+    },
+    "capture_deterministic": "YES",
+    "included_file_inventory_replay": {
+      "collection_point": "After the second deterministic bootstrap capture; preserved by a read-only inventory replay with the same captured output SHA-256.",
+      "normalized_paths": "realpath where available, unique, lexically sorted",
+      "count": 3603,
+      "sha256": "3f0368b0cc30044291b4f1e0df009f4755bba2c893c1352d9eae00d966ba785a",
+      "scan_method": "PHP token_get_all over included PHP files; one T_INLINE_HTML token exactly matched the one-byte captured output.",
+      "active_wp_content_search_needed": false,
+      "captured_output_byte_length": 1,
+      "captured_output_sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b"
+    },
+    "captured_output_secret_inspection": "No credential, token, password, private-key, or session-cookie material found; exact bytes are safe to preserve.",
+    "output_source_candidate": {
+      "file": "/home/jcschoeman96/Local Sites/voelgoed-novamira/app/public/wp-content/fluent-snippet-storage/10-vg-bricks-medewerker-queries.php",
+      "line": 26,
+      "matching_source_text": "\n",
+      "matching_source_hex": "0a",
+      "token_kind": "T_INLINE_HTML",
+      "preceding_bytes_hex": "3e0a",
+      "following_bytes_hex": "3c3f",
+      "unique_exact_match_among_included_php_files": true,
+      "source_file_sha256": "e1b7c014cd15a673d663426403a2024a21a1286075c355015f4e217d7e498fa2",
+      "source_context": [
+        {
+          "line": 23,
+          "text": "<?php if (!defined('ABSPATH')) {"
+        },
+        {
+          "line": 24,
+          "text": "    return;"
+        },
+        {
+          "line": 25,
+          "text": "} // <Internal Doc End> ?>"
+        },
+        {
+          "line": 26,
+          "text": "\\n [captured T_INLINE_HTML byte]"
+        },
+        {
+          "line": 27,
+          "text": "<?php"
+        }
+      ],
+      "why_it_emits": "The file appeared in get_included_files() during wp-load.php. That bootstrap defined ABSPATH, so the line 23 guard was false and did not return. PHP then emitted the single inline LF at line 26 between the closing and reopening PHP tags.",
+      "causality": "PROVEN",
+      "source_context_hex": "3f3e0a0a3c3f706870",
+      "source_context_display": "?>\\n[matched LF]\\n<?php"
+    },
+    "causality": "PROVEN",
+    "post_diagnostic_state": {
+      "pe008_status": {
+        "in_progress": false,
+        "recovery_options": []
+      },
+      "deployment_state_root_exists": false,
+      "runtime_fingerprint": {
+        "file_count": 54,
+        "content_sha256": "a2635dafeb1d82d481b6275526c3850263f549facac80293c810d2b0d93de760",
+        "pe008_tree_sha256": "856a3e5978559bfb2572b4b1ff4b34df916743f9e72d6b18220ee64e98af5f56"
+      },
+      "deployment_state_delta": "NO",
+      "runtime_tree_delta": "NO",
+      "protected_state_delta": "NO",
+      "protected_snapshot_captured_at_utc": "2026-10-30 11:08:29 UTC",
+      "protected_snapshot_baseline_captured_at_utc": "2026-10-30 10:43:31 UTC",
+      "protected_snapshot_changed_categories": [],
+      "all_deltas": "NO"
+    },
+    "captured_output_safe_representation": "LF 0a; JSON \"\\n\"; base64 Cg=="
+  }
+}
